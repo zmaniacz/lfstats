@@ -9,7 +9,7 @@ class MigrateShell extends AppShell {
         $this->out('choose a step');
     }
 
-    public function do() {
+    public function step1() {
         $db = ConnectionManager::getDataSource('default');
 
         $this->out('Rename teams table and foreign keys');
@@ -178,7 +178,7 @@ class MigrateShell extends AppShell {
                             ON UPDATE NO ACTION");
     }
 
-    function do2() {
+    function step3() {
         $db = ConnectionManager::getDataSource('default');
         
         $this->out('recalc all game winners');
@@ -239,7 +239,7 @@ class MigrateShell extends AppShell {
         ");*/
     }
 
-    public function views() {
+    public function step2() {
         $db = ConnectionManager::getDataSource('default');
 
         $db->rawQuery("CREATE OR REPLACE
