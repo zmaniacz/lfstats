@@ -1,0 +1,274 @@
+2018-02-07 18:46:11 Error: [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+Request URL: /
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(619): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(632): CakeSession::_cookieName()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(404): CakeSession::_hasSession()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Controller/Component/SessionComponent.php(69): CakeSession::read('Config.userAgen...')
+#4 /home/vagrant/code/lfstats/Plugin/DebugKit/Controller/Component/ToolbarComponent.php(161): SessionComponent->read('Config.userAgen...')
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Controller/ComponentCollection.php(116): ToolbarComponent->__construct(Object(ComponentCollection), Array)
+#6 /home/vagrant/code/lfstats/app/Config/bootstrap.php(94): ComponentCollection->load('DebugKit.Toolba...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Event/CakeEventManager.php(243): Configure::{closure}(Object(CakeEvent))
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Controller/Controller.php(677): CakeEventManager->dispatch(Object(CakeEvent))
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(189): Controller->startupProcess()
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(167): Dispatcher->_invoke(Object(PagesController), Object(CakeRequest))
+#11 /home/vagrant/code/lfstats/webroot/index.php(114): Dispatcher->dispatch(Object(CakeRequest), Object(CakeResponse))
+#12 {main}
+2018-02-07 18:46:11 Error: Fatal Error (256): [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(546): View->_render('/home/vagrant/c...')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(481): View->renderLayout('<h2>Unable to c...', 'error')
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(328): View->render('error500', 'error')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(309): ExceptionRenderer->_outputMessageSafe('error500')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(300): ExceptionRenderer->_outputMessage('error500')
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(213): ExceptionRenderer->_outputMessage('cakeSession')
+#13 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(190): ExceptionRenderer->_cakeError(Object(CakeSessionException))
+#14 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(127): ExceptionRenderer->render()
+#15 [internal function]: ErrorHandler::handleException(Object(CakeSessionException))
+#16 {main} in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:46:11 Error: Fatal Error (1): Uncaught FatalErrorException: [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:46:11 Error: [FatalErrorException] Uncaught FatalErrorException: [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib
+Request URL: /
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(212): ErrorHandler::handleFatalError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138)
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(970): ErrorHandler::handleError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138, Array)
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(943): App::_checkFatalError()
+#3 [internal function]: App::shutdown()
+#4 {main}
+2018-02-07 18:46:11 Error: Fatal Error (256): [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(546): View->_render('/home/vagrant/c...')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(481): View->renderLayout('<h2>Uncaught Fa...', 'error')
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(328): View->render('error500', 'error')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(309): ExceptionRenderer->_outputMessageSafe('error500')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(213): ExceptionRenderer->_outputMessage('fatalError')
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(190): ExceptionRenderer->_cakeError(Object(FatalErrorException))
+#13 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(127): ExceptionRenderer->render()
+#14 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(269): ErrorHandler::handleException(Object(FatalErrorException))
+#15 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(212): ErrorHandler::handleFatalError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138)
+#16 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(970): ErrorHandler::handleError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138, Array)
+#17 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(943): App::_checkFatalError()
+#18 [internal function]: App::shutdown()
+#19 {main} in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:48:47 Error: [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+Request URL: /
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(619): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(632): CakeSession::_cookieName()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(404): CakeSession::_hasSession()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Controller/Component/SessionComponent.php(69): CakeSession::read('Config.userAgen...')
+#4 /home/vagrant/code/lfstats/Plugin/DebugKit/Controller/Component/ToolbarComponent.php(161): SessionComponent->read('Config.userAgen...')
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Controller/ComponentCollection.php(116): ToolbarComponent->__construct(Object(ComponentCollection), Array)
+#6 /home/vagrant/code/lfstats/app/Config/bootstrap.php(94): ComponentCollection->load('DebugKit.Toolba...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Event/CakeEventManager.php(243): Configure::{closure}(Object(CakeEvent))
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Controller/Controller.php(677): CakeEventManager->dispatch(Object(CakeEvent))
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(189): Controller->startupProcess()
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(167): Dispatcher->_invoke(Object(PagesController), Object(CakeRequest))
+#11 /home/vagrant/code/lfstats/webroot/index.php(114): Dispatcher->dispatch(Object(CakeRequest), Object(CakeResponse))
+#12 {main}
+2018-02-07 18:48:47 Error: Fatal Error (256): [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(546): View->_render('/home/vagrant/c...')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(481): View->renderLayout('<h2>Unable to c...', 'error')
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(328): View->render('error500', 'error')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(309): ExceptionRenderer->_outputMessageSafe('error500')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(300): ExceptionRenderer->_outputMessage('error500')
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(213): ExceptionRenderer->_outputMessage('cakeSession')
+#13 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(190): ExceptionRenderer->_cakeError(Object(CakeSessionException))
+#14 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(127): ExceptionRenderer->render()
+#15 [internal function]: ErrorHandler::handleException(Object(CakeSessionException))
+#16 {main} in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:48:47 Error: Fatal Error (1): Uncaught FatalErrorException: [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:48:47 Error: [FatalErrorException] Uncaught FatalErrorException: [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib
+Request URL: /
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(212): ErrorHandler::handleFatalError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138)
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(970): ErrorHandler::handleError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138, Array)
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(943): App::_checkFatalError()
+#3 [internal function]: App::shutdown()
+#4 {main}
+2018-02-07 18:48:47 Error: Fatal Error (256): [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(546): View->_render('/home/vagrant/c...')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(481): View->renderLayout('<h2>Uncaught Fa...', 'error')
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(328): View->render('error500', 'error')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(309): ExceptionRenderer->_outputMessageSafe('error500')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(213): ExceptionRenderer->_outputMessage('fatalError')
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(190): ExceptionRenderer->_cakeError(Object(FatalErrorException))
+#13 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(127): ExceptionRenderer->render()
+#14 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(269): ErrorHandler::handleException(Object(FatalErrorException))
+#15 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(212): ErrorHandler::handleFatalError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138)
+#16 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(970): ErrorHandler::handleError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138, Array)
+#17 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(943): App::_checkFatalError()
+#18 [internal function]: App::shutdown()
+#19 {main} in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:50:54 Error: [MissingPluginException] Plugin Crud could not be found.
+Exception Attributes: array (
+  'plugin' => 'Crud',
+)
+Stack Trace:
+#0 /home/vagrant/code/lfstats/app/Config/bootstrap.php(79): CakePlugin::load('Crud')
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/Configure.php(98): include('/home/vagrant/c...')
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/bootstrap.php(439): Configure::bootstrap(true)
+#3 /home/vagrant/code/lfstats/webroot/index.php(101): include('/home/vagrant/c...')
+#4 {main}
+2018-02-07 18:50:54 Error: Fatal Error (256): [MissingPluginException] Plugin Crud could not be found.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(227): CakePlugin::path('Crud')
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(549): App::path('Lib', 'Crud')
+#2 [internal function]: App::load('CrudControllerT...')
+#3 /home/vagrant/code/lfstats/app/Controller/AppController.php(37): spl_autoload_call('CrudControllerT...')
+#4 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#5 [internal function]: App::load('AppController')
+#6 [internal function]: spl_autoload_call('AppController')
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(155): class_exists('AppController')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(95): ExceptionRenderer->_getController(Object(MissingPluginException))
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(126): ExceptionRenderer->__construct(Object(MissingPluginException))
+#10 [internal function]: ErrorHandler::handleException(Object(MissingPluginException))
+#11 {main} in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:50:54 Error: Fatal Error (1): Uncaught FatalErrorException: [MissingPluginException] Plugin Crud could not be found.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(227): CakePlugin::path('Crud')
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(549): App::path('Lib', 'Crud')
+#2 [internal function]: App::load('CrudControllerT...')
+#3 /home/vagrant/code/lfstats/app/Controller/AppController.php(37): spl_autoload_call('CrudControllerT...')
+#4 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#5 [internal function]: App::load('AppController')
+#6 [internal function]: spl_autoload_call('AppController')
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(155): class_exists('AppController')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(95): ExceptionRenderer->_getController(Object(MissingPluginException))
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/ in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:50:54 Error: [FatalErrorException] Uncaught FatalErrorException: [MissingPluginException] Plugin Crud could not be found.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(227): CakePlugin::path('Crud')
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(549): App::path('Lib', 'Crud')
+#2 [internal function]: App::load('CrudControllerT...')
+#3 /home/vagrant/code/lfstats/app/Controller/AppController.php(37): spl_autoload_call('CrudControllerT...')
+#4 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#5 [internal function]: App::load('AppController')
+#6 [internal function]: spl_autoload_call('AppController')
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(155): class_exists('AppController')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(95): ExceptionRenderer->_getController(Object(MissingPluginException))
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(212): ErrorHandler::handleFatalError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138)
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(970): ErrorHandler::handleError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138, Array)
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(943): App::_checkFatalError()
+#3 [internal function]: App::shutdown()
+#4 {main}
+2018-02-07 18:50:54 Error: Fatal Error (256): [CakeSessionException] Unable to configure the session, setting session.use_trans_sid failed.
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(732): CakeSession::_configureSession()
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(219): CakeSession::_startSession()
+#2 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Model/Datasource/CakeSession.php(248): CakeSession::start()
+#3 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/Helper/SessionHelper.php(134): CakeSession::check('Message.flash')
+#4 /home/vagrant/code/lfstats/app/View/Layouts/error.ctp(47): SessionHelper->flash()
+#5 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(971): include('/home/vagrant/c...')
+#6 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(933): View->_evaluate('/home/vagrant/c...', Array)
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(546): View->_render('/home/vagrant/c...')
+#8 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/View/View.php(481): View->renderLayout('<h2>Uncaught Fa...', 'error')
+#9 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(328): View->render('error500', 'error')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(309): ExceptionRenderer->_outputMessageSafe('error500')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(213): ExceptionRenderer->_outputMessage('fatalError')
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ExceptionRenderer.php(190): ExceptionRenderer->_cakeError(Object(FatalErrorException))
+#13 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(127): ExceptionRenderer->render()
+#14 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(269): ErrorHandler::handleException(Object(FatalErrorException))
+#15 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php(212): ErrorHandler::handleFatalError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138)
+#16 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(970): ErrorHandler::handleError(1, 'Uncaught FatalE...', '/home/vagrant/c...', 138, Array)
+#17 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(943): App::_checkFatalError()
+#18 [internal function]: App::shutdown()
+#19 {main} in [/home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Error/ErrorHandler.php, line 138]
+2018-02-07 18:54:33 Error: [MissingPluginException] Plugin Crud could not be found.
+Exception Attributes: array (
+  'plugin' => 'Crud',
+)
+Request URL: /
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(227): CakePlugin::path('Crud')
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(549): App::path('Lib', 'Crud')
+#2 [internal function]: App::load('CrudControllerT...')
+#3 /home/vagrant/code/lfstats/app/Controller/AppController.php(37): spl_autoload_call('CrudControllerT...')
+#4 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#5 [internal function]: App::load('AppController')
+#6 /home/vagrant/code/lfstats/app/Controller/PagesController.php(32): spl_autoload_call('AppController')
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#8 [internal function]: App::load('PagesController')
+#9 [internal function]: spl_autoload_call('PagesController')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(266): class_exists('PagesController')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(235): Dispatcher->_loadController(Object(CakeRequest))
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(158): Dispatcher->_getController(Object(CakeRequest), Object(CakeResponse))
+#13 /home/vagrant/code/lfstats/webroot/index.php(114): Dispatcher->dispatch(Object(CakeRequest), Object(CakeResponse))
+#14 {main}
+2018-02-07 18:56:26 Error: [MissingPluginException] Plugin Crud could not be found.
+Exception Attributes: array (
+  'plugin' => 'Crud',
+)
+Request URL: /
+Stack Trace:
+#0 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(227): CakePlugin::path('Crud')
+#1 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(549): App::path('Lib', 'Crud')
+#2 [internal function]: App::load('CrudControllerT...')
+#3 /home/vagrant/code/lfstats/app/Controller/AppController.php(37): spl_autoload_call('CrudControllerT...')
+#4 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#5 [internal function]: App::load('AppController')
+#6 /home/vagrant/code/lfstats/app/Controller/PagesController.php(32): spl_autoload_call('AppController')
+#7 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Core/App.php(567): include('/home/vagrant/c...')
+#8 [internal function]: App::load('PagesController')
+#9 [internal function]: spl_autoload_call('PagesController')
+#10 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(266): class_exists('PagesController')
+#11 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(235): Dispatcher->_loadController(Object(CakeRequest))
+#12 /home/vagrant/code/lfstats/vendor/cakephp/cakephp/lib/Cake/Routing/Dispatcher.php(158): Dispatcher->_getController(Object(CakeRequest), Object(CakeResponse))
+#13 /home/vagrant/code/lfstats/webroot/index.php(114): Dispatcher->dispatch(Object(CakeRequest), Object(CakeResponse))
+#14 {main}
