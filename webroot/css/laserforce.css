@@ -1,0 +1,43 @@
+@charset "utf-8";
+body {
+    padding-top: 70px;
+	padding-bottom: 70px;
+}
+
+.panel-heading {
+    cursor: pointer;
+}
+
+.noUi-connect {
+    background-color: #5bc0de;
+  }
+
+.noUi-handle {
+    border: 1px solid #5bc0de;
+    border-radius: 6px;
+    box-shadow: none;
+    color: rgb(0, 0, 0);
+    display: table;
+    font-size: 15px;
+    height: 40px;
+    left: 0;
+    padding: 0;
+    position: absolute;
+    text-align: center;
+    top: 0;
+    width: 80px;
+    z-index: 2;
+}
+
+.noUi-handle::before {
+    background: transparent;
+    content: attr(data-value);
+    display: table-cell;
+    position: static;
+    width: 100%;
+    vertical-align: middle;
+}
+
+.noUi-handle::after {
+    display: none;
+}

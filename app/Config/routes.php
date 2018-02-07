@@ -26,11 +26,21 @@
  * its action called 'display', and we pass a param to select the view file
  * to use (in this case, /app/View/Pages/home.ctp)...
  */
-	Router::connect('/', ['controller' => 'pages', 'action' => 'display', 'home']);
-/**
- * ...and connect the rest of 'Pages' controller's urls.
- */
-	Router::connect('/pages/*', ['controller' => 'pages', 'action' => 'display']);
+Router::connect('/', array('controller' => 'scorecards', 'action' => 'landing'));
+Router::connect('/ect5', array('controller' => 'scorecards', 'action' => 'setState', 'league', 6, 7));
+Router::connect('/wct3', array('controller' => 'scorecards', 'action' => 'setState', 'league', 9, 13));
+Router::connect('/wct4', array('controller' => 'scorecards', 'action' => 'setState', 'league', 12, 14));
+Router::connect('/syr', array('controller' => 'scorecards', 'action' => 'setState', 'social', null, 8));
+Router::connect('/ltc', array('controller' => 'scorecards', 'action' => 'setState', 'social', null, 14));
+Router::connect('/cv', array('controller' => 'scorecards', 'action' => 'setState', 'social', null, 15));
+Router::connect('/akl', array('controller' => 'scorecards', 'action' => 'setState', 'social', null, 16));
+Router::connect('/geddon2014', array('controller' => 'scorecards', 'action' => 'setState', 'social', null, 3));
+Router::connect('/geddon2015', array('controller' => 'scorecards', 'action' => 'setState', 'social', null, 9));
+Router::connect('/internationals-2014', array('controller' => 'scorecards', 'action' => 'setState', 'league', 7, 5));
+Router::connect('/internationals-2015', array('controller' => 'scorecards', 'action' => 'setState', 'league', 8, 10));
+Router::connect('/nats2016', array('controller' => 'scorecards', 'action' => 'setState', 'league', 10, 8));
+Router::connect('/internats2017', array('controller' => 'scorecards', 'action' => 'setState', 'league', 16, 14));
+Router::parseExtensions();
 
 /**
  * Load all plugin routes. See the CakePlugin documentation on
