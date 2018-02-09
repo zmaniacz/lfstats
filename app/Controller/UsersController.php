@@ -18,6 +18,7 @@ class UsersController extends AppController {
 
 	public function beforeFilter() {
 		$this->Auth->deny();
+		$this->Auth->allow('logout');
 		parent::beforeFilter();
 	}
 
