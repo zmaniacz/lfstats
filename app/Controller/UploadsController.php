@@ -14,7 +14,7 @@ class UploadsController extends AppController {
 			$options = array
 			(
 				'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
-				'upload_dir' => APP.WEBROOT_DIR.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
+				'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
 				'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
 				'delete_type' => 'POST',
 				'print_response' => false,
@@ -62,7 +62,7 @@ class UploadsController extends AppController {
 
 	public function parse() {
 		$center_id = $this->Session->read('state.centerID');
-		$command = "nohup sh -c '".APP.WEBROOT_DIR.DS."parser/pdfparse.sh $center_id' > /dev/null 2>&1 & echo $!";
+		$command = "nohup sh -c 'parser/pdfparse.sh $center_id' > /dev/null 2>&1 & echo $!";
 		$this->set('pid', exec($command,$output));
 		$this->set('selectedEvent', (isset($this->request->data['Event']) ? $this->request->data['Event'] : 0));
 	}
