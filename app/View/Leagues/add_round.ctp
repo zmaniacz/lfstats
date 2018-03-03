@@ -8,7 +8,7 @@
 	<div class="panel-body">
 		<?php
 			echo $this->Form->create('Round');
-			echo $this->Form->hidden('league_id', array('value' => $this->Session->read('state.leagueID')));
+			echo $this->Form->hidden('event_id', array('value' => $this->Session->read('state.leagueID')));
 			echo $this->Form->input('round', array('class' => 'form-control','div' => array('class' => 'form-group')));
 			echo $this->Form->label('is_finals', 'Finals');
 			echo $this->Form->checkbox('is_finals', array('class' => 'form-control','div' => array('class' => 'form-group')));
