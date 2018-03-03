@@ -104,9 +104,6 @@ class LeaguesController extends AppController {
 				$this->redirect(array('controller' => 'leagues', 'action' => 'standings'));
 			}
 		}
-
-		$leagues = $this->Event->find('list', array('conditions' => array('id' => $this->Session->read('state.leagueID'))));
-		$this->set(compact('leagues'));
 	}
 	
 	public function addRound() {

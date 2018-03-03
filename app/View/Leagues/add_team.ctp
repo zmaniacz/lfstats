@@ -6,10 +6,9 @@
 	</div>
 	<div class="panel-body">
 		<?php
-			echo $this->Form->create('Team');
+			echo $this->Form->create('EventTeam');
 			echo $this->Form->input('name', array('class' => 'form-control','div' => array('class' => 'form-group')));
-			echo $this->Form->input('league_id', array('class' => 'form-control','div' => array('class' => 'form-group')));
-			//echo $this->Form->input('captain_id', array('class' => 'form-control','div' => array('class' => 'form-group')));
+			echo $this->Form->hidden('event_id', array('value' => $selected_league['Event']['id']));
 			echo $this->Form->end('Submit');
 		?>
 	</div>
