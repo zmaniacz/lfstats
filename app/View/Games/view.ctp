@@ -45,7 +45,7 @@
 			echo $this->Form->input('match', array(
 				'type' => 'select', 
 				'options' => array($match_list),
-				'empty' => 'Select a match/game',
+				'empty' => array("0|0" => 'Unassigned'),
 				'selected' => $game['Game']['match_id']."|".$game['Game']['league_game'],
 			));
 		} else {

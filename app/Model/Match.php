@@ -41,52 +41,46 @@ class Match extends AppModel {
 	);
 	
 	public function addGame($match_id, $game_number, $game_id) {
-		
-		$match = $this->find('first', array(
-			'contain' => array(
-				'Game_1',
-				'Game_2',
-				'Team_1',
-				'Team_2'
-			),
-			'conditions' => array(
-				'Match.id' => $match_id
-			)
-		));
-		
 		$game = $this->Game->findById($game_id);
-		
-		//do we know who these teams are?
-		if(!empty($game['Game']['red_team_id'])) {
-			//is this game 1?
-			if($match['Team_1']['id'] == $game['Game']['red_team_id']) {
-				//yes it is
-				$game['Game']['match_id'] = $match['Match']['id'];
-				$game['Game']['red_team_id'] = $match['Team_1']['id'];
-				$game['Game']['green_team_id'] = $match['Team_2']['id'];
-				$game['Game']['league_game'] = 1;
-			} elseif($match['Team_1']['id'] == $game['Game']['green_team_id']) {
-				//nope it's game 2
-				$game['Game']['match_id'] = $match['Match']['id'];
-				$game['Game']['red_team_id'] = $match['Team_2']['id'];
-				$game['Game']['green_team_id'] = $match['Team_1']['id'];
-				$game['Game']['league_game'] = 2;
-			}
+
+		if($match_id == 0) {
+			$old_match_id = $game['Game']['match_id'];
+
+			$game['Game']['match_id'] = null;
+			$game['Game']['red_team_id'] = null;
+			$game['Game']['green_team_id'] = null;
+			$game['Game']['league_game'] = null;
+
+			$this->Game->save($game);
+			$this->updatePoints($old_match_id);
 		} else {
+			$match = $this->find('first', array(
+				'contain' => array(
+					'Game_1',
+					'Game_2',
+					'Team_1',
+					'Team_2'
+				),
+				'conditions' => array(
+					'Match.id' => $match_id
+				)
+			));
+
+			$game['Game']['match_id'] = $match['Match']['id'];
+
 			if($game_number == 1) {
-				$game['Game']['match_id'] = $match['Match']['id'];
 				$game['Game']['red_team_id'] = $match['Team_1']['id'];
 				$game['Game']['green_team_id'] = $match['Team_2']['id'];
 				$game['Game']['league_game'] = 1;
 			} elseif($game_number == 2) {
-				$game['Game']['match_id'] = $match['Match']['id'];
 				$game['Game']['red_team_id'] = $match['Team_2']['id'];
 				$game['Game']['green_team_id'] = $match['Team_1']['id'];
 				$game['Game']['league_game'] = 2;
 			}
+
+			$this->Game->save($game);
+			$this->updatePoints($match_id);
 		}
-		$this->Game->save($game);
-		$this->updatePoints($match_id);
 	}
 	
 	public function updatePoints($match_id) {
