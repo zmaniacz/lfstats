@@ -1,6 +1,6 @@
 <h3><a href="https://objects-us-west-1.dream.io/lfstatsstatic/LaserforceTournamentRules-May2017.pdf">Official Rules</a></h3>
 <h3>Class Details</h3>
-<table class="info">
+<table class="table table-sm">
 	<thead>
 		<th>Class</th>
 		<th>Shots: Initial</th>
@@ -80,7 +80,7 @@
 <br />
 <br />
 <h3>Scoring</h3>
-<table class="info">
+<table class="table table-sm">
 	<thead>
 		<th>Event</th>
 		<th>Score</th>

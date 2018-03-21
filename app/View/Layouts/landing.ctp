@@ -57,6 +57,10 @@
 						<a class="navbar-brand" href="/scorecards/landing"><span class="glyphicon glyphicon-home"></span></a>
 					</div>
 					<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+						<ul class="nav navbar-nav">
+							<li><?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5')); ?></li>
+							<li><?= $this->Html->link('Twitch', array('controller' => 'pages', 'action' => 'twitch'), array('id' => 'twitch_status')); ?></li>
+						</ul>
 						<ul class="nav navbar-nav navbar-right">
 							<li>
 							<?php if (AuthComponent::user('id')): ?>
