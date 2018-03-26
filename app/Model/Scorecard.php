@@ -1239,7 +1239,8 @@ class Scorecard extends AppModel {
 					'fields' => array(
 						'player_name'
 					)
-				)
+				),
+				'Penalty'
 			),
 			'fields' => array(
 				'player_id',
@@ -1252,6 +1253,14 @@ class Scorecard extends AppModel {
 			'limit' => 500
 
 		));
+
+		foreach($leaderboards as &$entry) {
+			$adjScore = 0;
+			foreach($entry['Penalty'] as $penalty) {
+				$adjScore += $penalty['value'];
+			}
+			$entry['Scorecard']['final_score'] = $entry['Scorecard']['score'] + $adjScore;
+		}
 
 		return $leaderboards;
 	}

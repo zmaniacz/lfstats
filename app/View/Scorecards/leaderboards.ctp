@@ -29,7 +29,7 @@
 							<?php foreach ($commander as $row): ?>
 							<tr>
 								<td><?php echo $this->Html->link($row['Player']['player_name'], array('controller' => 'Players', 'action' => 'view', $row['Player']['id'])); ?></td>
-								<td><?php echo $this->Html->link($row['Scorecard']['score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
+								<td><?php echo $this->Html->link($row['Scorecard']['final_score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 								<td><?php echo $this->Html->link($row['Scorecard']['mvp_points'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 							</tr>
 							<?php endforeach; ?>
@@ -48,7 +48,7 @@
 							<?php foreach ($heavy as $row): ?>
 							<tr>
 								<td><?php echo $this->Html->link($row['Player']['player_name'], array('controller' => 'Players', 'action' => 'view', $row['Player']['id'])); ?></td>
-								<td><?php echo $this->Html->link($row['Scorecard']['score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
+								<td><?php echo $this->Html->link($row['Scorecard']['final_score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 								<td><?php echo $this->Html->link($row['Scorecard']['mvp_points'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 							</tr>
 							<?php endforeach; ?>
@@ -69,7 +69,7 @@
 							<?php foreach ($scout as $row): ?>
 							<tr>
 								<td><?php echo $this->Html->link($row['Player']['player_name'], array('controller' => 'Players', 'action' => 'view', $row['Player']['id'])); ?></td>
-								<td><?php echo $this->Html->link($row['Scorecard']['score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
+								<td><?php echo $this->Html->link($row['Scorecard']['final_score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 								<td><?php echo $this->Html->link($row['Scorecard']['mvp_points'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 							</tr>
 							<?php endforeach; ?>
@@ -88,7 +88,7 @@
 							<?php foreach ($ammo as $row): ?>
 							<tr>
 								<td><?php echo $this->Html->link($row['Player']['player_name'], array('controller' => 'Players', 'action' => 'view', $row['Player']['id'])); ?></td>
-								<td><?php echo $this->Html->link($row['Scorecard']['score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
+								<td><?php echo $this->Html->link($row['Scorecard']['final_score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 								<td><?php echo $this->Html->link($row['Scorecard']['mvp_points'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 							</tr>
 							<?php endforeach; ?>
@@ -107,7 +107,7 @@
 							<?php foreach ($medic as $row): ?>
 							<tr>
 								<td><?php echo $this->Html->link($row['Player']['player_name'], array('controller' => 'Players', 'action' => 'view', $row['Player']['id'])); ?></td>
-								<td><?php echo $this->Html->link($row['Scorecard']['score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
+								<td><?php echo $this->Html->link($row['Scorecard']['final_score'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 								<td><?php echo $this->Html->link($row['Scorecard']['mvp_points'], array('controller' => 'games', 'action' => 'view', $row['Scorecard']['game_id'])); ?></td>
 							</tr>
 							<?php endforeach; ?>
