@@ -63,19 +63,30 @@
 			?>
 			<div class="row">
 			<?php foreach($round['Match'] as $match): ?>
-				<div class="col-md-4 match-panel">
+				<?php
+					if(!empty($match['Game_1'])) {
+						$game1Url = $this->Html->url(array('controller' => 'Games', 'action' => 'view', $match['Game_1']['id']));
+						$team1Game1Score = $match['Game_1']['red_score']+$match['Game_1']['red_adj'];
+						$team2Game1Score = $match['Game_1']['green_score']+$match['Game_1']['green_adj'];
+					}
+
+					if(!empty($match['Game_2'])) {
+						$game2Url = $this->Html->url(array('controller' => 'Games', 'action' => 'view', $match['Game_2']['id']));
+						$team1Game2Score = $match['Game_2']['green_score']+$match['Game_2']['green_adj'];
+						$team2Game2Score = $match['Game_2']['red_score']+$match['Game_2']['red_adj'];
+					}
+				?>
+				<div class="col-md-6 match-panel">
 					<div class="panel panel-primary">
-						<div class="panel-heading">
-							<button type="button" class="btn btn-primary btn-sm pull-right" data-toggle="modal" data-target="#matchModal" target="<?= $this->Html->url(array('controller' => 'leagues', 'action' => 'ajax_getMatchDetails', $match['id'], 'ext' => 'json')); ?>">More...</button>
-							<h5><?= (($round['is_finals']) ? "Finals" : "R".$round['round'])." M".$match['match']; ?></h5>
-						</div>
 						<div class="panel-body">
 							<table class="table table-condensed">
 								<thead>
 									<tr>
 										<th>Team</th>
-										<th>Game 1</th>
-										<th>Game 2</th>
+										<th class="text-center">Game 1</th>
+										<th class="text-center">Game 2</th>
+										<th class="text-center">Score Diff</th>
+										<th class="text-center">Match Points</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -100,33 +111,46 @@
 													echo "</select>";
 												} else {
 													echo (is_null($match['team_1_id'])) ? "TBD" : $this->Html->link($teams[$match['team_1_id']], array('controller' => 'teams', 'action' => 'view', $match['team_1_id']));
-												}
-
-												echo " <strong>{$match['team_1_points']}</strong>";
-												
-												if(!empty($match['Game_1']) && !empty($match['Game_2']) && $match['team_1_points'] > $match['team_2_points']) {
-													echo " <span class=\"glyphicon glyphicon-star text-warning\"></span>";
+													if(!empty($match['Game_1']) && !empty($match['Game_2']) && $match['team_1_points'] > $match['team_2_points']) {
+														echo " <span class=\"glyphicon glyphicon-star text-warning\"></span>";
+													}
 												}
 											?>
 										</td>
 										<td class="text-center">
 											<?php 
 												if(!empty($match['Game_1'])) {
+													echo "<a href=\"$game1Url\">$team1Game1Score</a>";
 													if( ($match['Game_1']['winner'] == 'red' && $match['team_1_id'] == $match['Game_1']['red_team_id']) || ($match['Game_1']['winner'] == 'green' && $match['team_1_id'] == $match['Game_1']['green_team_id']))
-														echo "<span class=\"glyphicon glyphicon-ok text-success\"></span>";
+														echo " <span class=\"glyphicon glyphicon-ok text-success\"></span>";
 													else
-														echo "<span class=\"glyphicon glyphicon-remove text-danger\"></span>";
+														echo " <span class=\"glyphicon glyphicon-remove text-danger\"></span>";
 												}
 											?>
 										</td>
 										<td class="text-center">
 											<?php 
 												if(!empty($match['Game_2'])) {
+													echo "<a href=\"$game2Url\">$team1Game2Score</a>";
 													if( ($match['Game_2']['winner'] == 'red' && $match['team_1_id'] == $match['Game_2']['red_team_id']) || ($match['Game_2']['winner'] == 'green' && $match['team_1_id'] == $match['Game_2']['green_team_id']))
-														echo "<span class=\"glyphicon glyphicon-ok text-success\"></span>";
+														echo " <span class=\"glyphicon glyphicon-ok text-success\"></span>";
 													else
-														echo "<span class=\"glyphicon glyphicon-remove text-danger\"></span>";
+														echo " <span class=\"glyphicon glyphicon-remove text-danger\"></span>";
 												}
+											?>
+										</td>
+										<td class="text-center">
+											<?php
+												if($team1Game1Score+$team1Game2Score > $team2Game1Score+$team2Game2Score) {
+													echo "+".(($team1Game1Score+$team1Game2Score) - ($team2Game1Score+$team2Game2Score));
+												} else {
+													echo "-".(($team1Game1Score+$team1Game2Score) - ($team2Game1Score+$team2Game2Score));
+												}
+											?>
+										</td>
+										<td class="text-center">
+											<?php
+												echo " <strong>{$match['team_1_points']}</strong>";
 											?>
 										</td>
 									</tr>
@@ -151,33 +175,46 @@
 													echo "</select>";
 												} else {
 													echo (is_null($match['team_2_id'])) ? "TBD" : $this->Html->link($teams[$match['team_2_id']], array('controller' => 'teams', 'action' => 'view', $match['team_2_id']));
-												}
-
-												echo " <strong>{$match['team_2_points']}</strong>";
-
-												if(!empty($match['Game_1']) && !empty($match['Game_2']) && $match['team_2_points'] > $match['team_1_points']) {
-													echo " <span class=\"glyphicon glyphicon-star text-warning\"></span>";
+													if(!empty($match['Game_1']) && !empty($match['Game_2']) && $match['team_2_points'] > $match['team_1_points']) {
+														echo " <span class=\"glyphicon glyphicon-star text-warning\"></span>";
+													}
 												}
 											?>
 										</td>
 										<td class="text-center">
 											<?php 
 												if(!empty($match['Game_1'])) {
+													echo "<a href=\"$game1Url\">$team2Game1Score</a>";
 													if( ($match['Game_1']['winner'] == 'red' && $match['team_2_id'] == $match['Game_1']['red_team_id']) || ($match['Game_1']['winner'] == 'green' && $match['team_2_id'] == $match['Game_1']['green_team_id']))
-														echo "<span class=\"glyphicon glyphicon-ok text-success\"></span>";
+														echo " <span class=\"glyphicon glyphicon-ok text-success\"></span>";
 													else
-														echo "<span class=\"glyphicon glyphicon-remove text-danger\"></span>";
+														echo " <span class=\"glyphicon glyphicon-remove text-danger\"></span>";
 												}
 											?>
 										</td>
 										<td class="text-center">
 											<?php 
 												if(!empty($match['Game_2'])) {
+													echo "<a href=\"$game2Url\">$team2Game2Score</a>";
 													if( ($match['Game_2']['winner'] == 'red' && $match['team_2_id'] == $match['Game_2']['red_team_id']) || ($match['Game_2']['winner'] == 'green' && $match['team_2_id'] == $match['Game_2']['green_team_id']))
-														echo "<span class=\"glyphicon glyphicon-ok text-success\"></span>";
+														echo " <span class=\"glyphicon glyphicon-ok text-success\"></span>";
 													else
-														echo "<span class=\"glyphicon glyphicon-remove text-danger\"></span>";
+														echo " <span class=\"glyphicon glyphicon-remove text-danger\"></span>";
 												}
+											?>
+										</td>
+										<td class="text-center">
+											<?php
+												if($team2Game1Score+$team2Game2Score > $team1Game1Score+$team1Game2Score) {
+													echo "+".(($team2Game1Score+$team2Game2Score) - ($team1Game1Score+$team1Game2Score));
+												} else {
+													echo "-".(($team2Game1Score+$team2Game2Score) - ($team1Game1Score+$team1Game2Score));
+												}
+											?>
+										</td>
+										<td class="text-center">
+											<?php
+												echo " <strong>{$match['team_2_points']}</strong>";
 											?>
 										</td>
 									</tr>
