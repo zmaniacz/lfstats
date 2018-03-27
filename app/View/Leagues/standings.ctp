@@ -232,7 +232,7 @@
 	$(document).ready(function() {
 		var standings_data
 		var standings_table = $('#team_standings').DataTable( {
-			"deferRender" : true,
+			"processing" : true,
 			"order": [[1, "desc"]],
 			"columns" : [
 				{ "data" : "name", },
@@ -289,13 +289,7 @@
 			if(round > 0) {
 				url = url.replace(".json", "/"+round+".json")
 			}
-			
-			$.ajax({
-				"url" : url
-			}).done(function(response) {
-				table.clear()
-				table.rows.add(response.data).draw()
-			})
+			table.ajax.url(url).load();
 		}
 
 		$("#round_radio :input").change(function() {
