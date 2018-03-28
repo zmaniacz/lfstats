@@ -207,6 +207,20 @@
 		<div id="medic_plot" style="display: inline-block;height:400px;width:800px; "></div>
 	</div>
 	<div role="tabpanel" class="tab-pane" id="head_to_head_tab">
+		<br />
+		<br />
+		<br />
+		<div id="headTeamSelector" class="btn-group" data-toggle="buttons">
+			<label class="btn btn-primary active">
+				<input type="radio" name="head_team_options" id="option_opponent" autocomplete="off" checked>Opponent
+			</label>
+			<label class="btn btn-primary">
+				<input type="radio" name="head_team_options" id="option_all" autocomplete="off">All
+			</label>
+			<label class="btn btn-primary">
+				<input type="radio" name="head_team_options" id="option_team" autocomplete="off">Team
+			</label>
+		</div>
 		<div class="table-responsive">
 			<table id="head_to_head" class="table table-striped table-hover table-border table-condensed">
 				<thead>
@@ -218,6 +232,7 @@
 						<th>Missiles</th>
 						<th>Missiled By</th>
 						<th>Missile Ratio</th>
+						<th>Games Played</th>
 					</tr>
 				</thead>
 			</table>
@@ -227,8 +242,6 @@
 <script type="text/javascript">
 $(document).ready(function(){
 	function renderWinLossBar(data) {
-		
-
 		chartData = data.map(function(item, index) {
 			let value = (item.winloss === "W") ? 1 : -1;
 			let color = (item.team === 'red') ? '#F04124' : '#43ac6a';
@@ -811,7 +824,6 @@ $(document).ready(function(){
 		]
 	});
 
-
 	$('#mvp_plot').highcharts({
 		chart: {
 			alignTicks: false
@@ -987,7 +999,6 @@ $(document).ready(function(){
 		}
 		]
 	});
-
 
 	$('#score_plot').highcharts({
 		chart: {
@@ -1392,6 +1403,21 @@ $(document).ready(function(){
 		"order": [[ 1, "desc" ]]
 	});
 
+	var headToHeadTable = $('#head_to_head').DataTable( {
+		"processing" : true,
+		"columns" : [
+			{ "data" : "name" },
+			{ "data" : "hits" },
+			{ "data" : "hit_by" },
+			{ "data" : "hit_ratio" },
+			{ "data" : "missiles" },
+			{ "data" : "missile_by" },
+			{ "data" : "missile_ratio" },
+			{ "data" : "games_played" }
+		],
+		"order": [[ 1, "desc" ]]
+	});
+
 	$.ajax({
 		url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'playerScorecards', $id, 'ext' => 'json'))); ?>"
 	}).done(function(response) {
@@ -1401,21 +1427,31 @@ $(document).ready(function(){
 		renderWinLossBar(winLossBarData);
 	})
 
-	var headToHeadTable = $('#head_to_head').DataTable( {
-		"processing" : true,
-		"ajax" : {
-			"url" : "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getPlayerHitBreakdown', $id, 'ext' => 'json'))); ?>"
-		},
-		"columns" : [
-			{ "data" : "name" },
-			{ "data" : "hits" },
-			{ "data" : "hit_by" },
-			{ "data" : "hit_ratio" },
-			{ "data" : "missiles" },
-			{ "data" : "missile_by" },
-			{ "data" : "missile_ratio" }
-		],
-		"order": [[ 1, "desc" ]]
+	function updateHeadTable(type) {
+		const params = new URLSearchParams(location.search);
+		const player_id = <?= $id; ?>
+		
+		params.set('team_flag',type);
+
+		var hitUrl = '/Scorecards/getPlayerHitBreakdown/'+player_id+'.json?'+params.toString();
+
+		$.ajax({
+			url: hitUrl
+		}).done(function(response) {
+			$('#head_to_head').DataTable().clear().rows.add(response.data).draw();
+		})
+	}
+
+	$("#headTeamSelector :input").change(function() {
+    	if(this.id === 'option_opponent') {
+			updateHeadTable('opponent');
+		} else if(this.id === 'option_all') {
+			updateHeadTable('all');
+		} else if (this.id === 'option_team') {
+			updateHeadTable('team');
+		}
 	});
+
+	updateHeadTable('opponent')
 });
 </script>

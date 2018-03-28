@@ -1034,7 +1034,8 @@ class Scorecard extends AppModel {
         return $results;
     }
 
-	public function getPlayerHitDetails($player_id, $state) {
+	// $teamFlag is 'all', 'team', or 'opponent'
+	public function getPlayerHitDetails($player_id, $positions, $teamFlag, $state) {
 		$conditions = array();
 
 		$conditions[] = array('Scorecard.player_id' => $player_id);
@@ -1048,6 +1049,10 @@ class Scorecard extends AppModel {
 		if(isset($state['leagueID']) && $state['leagueID'] > 0)
 			$conditions[] = array('Scorecard.event_id' => $state['leagueID']);
 
+		$playerPos = implode('","',$positions['player']);
+		$targetPos = implode('","',$positions['target']);
+		$conditions[] = array("Scorecard.position IN (\"$playerPos\")");
+
         $scorecards = $this->find('list', array(
 			'fields' => array('game_id'),
             'conditions' => $conditions
@@ -1055,56 +1060,80 @@ class Scorecard extends AppModel {
 
 		$games_ids = implode(",",$scorecards);
 
-		$db = $this->getDataSource();
-		$results = $db->fetchAll("
-			SELECT 
-				player_hits.player_id,
-				player_hits.target_id,
-				SUM(player_hits.hits) AS hits,
-				SUM(player_hits.missiles) AS missiles,
-				targets.hit_by,
-				targets.missile_by
-			FROM
-				(SELECT 
-					hits.*, scorecards.game_id
-				FROM
-					hits
-				LEFT JOIN scorecards ON hits.scorecard_id = scorecards.id
-				WHERE
-					hits.player_id = $player_id) AS player_hits
-					LEFT JOIN
-				(SELECT 
-					player_hits.player_id,
-						SUM(player_hits.hits) AS hit_by,
-						SUM(player_hits.missiles) AS missile_by
-				FROM
-					(SELECT 
-					hits.*, scorecards.game_id
-				FROM
-					hits
-				LEFT JOIN scorecards ON hits.scorecard_id = scorecards.id
-				WHERE
-					hits.target_id = $player_id) AS player_hits
-				WHERE
-					player_hits.target_id = $player_id AND player_hits.game_id IN ($games_ids)
-				GROUP BY player_hits.player_id) AS targets ON player_hits.target_id = targets.player_id
-			WHERE
-				player_hits.player_id = $player_id
-					AND player_hits.game_id IN ($games_ids)
-			GROUP BY player_hits.player_id , player_hits.target_id");
+		$whereFlag = "";
+		if($teamFlag == 'team') {
+			$whereFlag = " AND scorecards.team = targets.team";
+		} elseif($teamFlag == 'opponent') {
+			$whereFlag = " AND scorecards.team != targets.team";
+		}
 
+		$playerHitsQuery = "
+			SELECT 
+				hits.player_id,
+				hits.target_id,
+				SUM(hits.hits) AS hits,
+				SUM(hits.missiles) AS missiles,
+				COUNT(hits.scorecard_id) AS games_played
+			FROM
+				hits
+					LEFT JOIN
+				scorecards ON hits.scorecard_id = scorecards.id
+					LEFT JOIN
+				scorecards AS targets ON targets.game_id = scorecards.game_id
+					AND targets.player_id = hits.target_id
+			WHERE
+				hits.player_id = $player_id
+					AND scorecards.position IN (\"$playerPos\")
+					$whereFlag
+					AND scorecards.game_id IN ($games_ids)
+			GROUP BY hits.target_id
+		";
+
+		$playerHitByQuery = "
+			SELECT 
+				hits.player_id,
+				hits.target_id,
+				SUM(hits.hits) AS hits,
+				SUM(hits.missiles) AS missiles,
+				COUNT(hits.scorecard_id) AS games_played
+			FROM
+				hits
+					LEFT JOIN
+				scorecards ON hits.scorecard_id = scorecards.id
+					LEFT JOIN
+				scorecards AS targets ON targets.game_id = scorecards.game_id
+					AND targets.player_id = hits.target_id
+			WHERE
+				hits.target_id = $player_id
+					AND targets.position IN (\"$targetPos\")
+					$whereFlag
+					AND scorecards.game_id IN ($games_ids)
+			GROUP BY hits.player_id
+		";
+
+		$db = $this->getDataSource();
+
+		$playerHits = $db->fetchAll($playerHitsQuery);
+		$playerHitBy = $db->fetchAll($playerHitByQuery);
+		
 		$hits = array();
-		foreach($results as $result) {
-			$hits[] = array(
-				'opponent_id' => $result['player_hits']['target_id'],
-				'hits' => $result[0]['hits'],
-				'missiles' => $result[0]['missiles'],
-				'hit_by' => $result['targets']['hit_by'],
-				'missile_by' => $result['targets']['missile_by'],
+		foreach($playerHits as $hit) {
+			$hits[$hit['hits']['target_id']] = array(
+				'opponent_id' => $hit['hits']['target_id'],
+				'hits' => $hit[0]['hits'],
+				'missiles' => $hit[0]['missiles'],
+				'games_played' => $hit[0]['games_played'],
+				'hit_by' => 0,
+				'missile_by' => 0
 			);
 		}
 
-        return $hits;
+		foreach($playerHitBy as $hit) {
+			$hits[$hit['hits']['player_id']]['hit_by'] = $hit[0]['hits'];
+			$hits[$hit['hits']['player_id']]['missile_by'] = $hit[0]['missiles'];
+		}
+
+        return array_values($hits);
     }
 
 	public function getLeaderboards($state) {

@@ -269,8 +269,29 @@ class ScorecardsController extends AppController {
         $this->set('player_id', $player_id);
     }
 
-	public function getPlayerHitBreakdown($player_id) {
-        $this->set('data', $this->Scorecard->getPlayerHitDetails($player_id, $this->Session->read('state')));
+	public function getPlayerHitBreakdown($player_id, $teamFlag = 'opponent') {
+		$positions = array(
+			'player' => array(
+				'commander' => 'Commander',
+				'heavy' => 'Heavy Weapons',
+				'scout' => 'Scout',
+				'ammo' => 'Ammo Carrier',
+				'medic' => 'Medic'
+			),
+			'target' => array(
+				'commander' => 'Commander',
+				'heavy' => 'Heavy Weapons',
+				'scout' => 'Scout',
+				'ammo' => 'Ammo Carrier',
+				'medic' => 'Medic'
+			)
+		);
+
+		if(isset($this->request->query['team_flag'])) {
+			$teamFlag = $this->request->query['team_flag'];
+		}
+
+        $this->set('data', $this->Scorecard->getPlayerHitDetails($player_id, $positions, $teamFlag, $this->Session->read('state')));
 		$this->set('players', $this->Scorecard->Player->find('list'));
     }
 	
