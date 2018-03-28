@@ -1355,7 +1355,7 @@ $(document).ready(function(){
 	});
 
 	var gameListTable = $('#game_list').DataTable( {
-		"deferRender" : true,
+		"processing" : true,
 		"orderCellsTop" : true,
 		"dom": '<"H"lr>t<"F"ip>',
 		"columns" : [
@@ -1392,8 +1392,17 @@ $(document).ready(function(){
 		"order": [[ 1, "desc" ]]
 	});
 
+	$.ajax({
+		url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'playerScorecards', $id, 'ext' => 'json'))); ?>"
+	}).done(function(response) {
+		$('#game_list').DataTable().clear().rows.add(response.data).draw();
+		
+		var winLossBarData = response.data.slice(0,25);
+		renderWinLossBar(winLossBarData);
+	})
+
 	var headToHeadTable = $('#head_to_head').DataTable( {
-		"deferRender" : true,
+		"processing" : true,
 		"ajax" : {
 			"url" : "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getPlayerHitBreakdown', $id, 'ext' => 'json'))); ?>"
 		},
@@ -1408,14 +1417,5 @@ $(document).ready(function(){
 		],
 		"order": [[ 1, "desc" ]]
 	});
-
-	$.ajax({
-		url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'playerScorecards', $id, 'ext' => 'json'))); ?>"
-	}).done(function(response) {
-		$('#game_list').DataTable().clear().rows.add(response.data).draw();
-		
-		var winLossBarData = response.data.slice(0,25);
-		renderWinLossBar(winLossBarData);
-	})
 });
 </script>

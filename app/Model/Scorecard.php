@@ -874,17 +874,36 @@ class Scorecard extends AppModel {
 			$conditions[] = array('Scorecard.event_id' => $state['leagueID']);
 
 		$scorecards = $this->find('all', array(
+			'fields' => array(
+				'Scorecard.*',
+				'Game.*',
+				'Match.*',
+				'Round.*'
+			),
 			'conditions' => $conditions,
 			'order' => 'Scorecard.game_datetime DESC',
-			'contain' => array('Game' => array(
-				'Red_Team', 
-				'Green_Team', 
-				'Match' =>array(
-					'Round'
+			'joins' => array(
+				array(
+					'table' => 'games',
+					'alias' => 'Game',
+					'type' => 'LEFT',
+					'conditions' => array('Game.id = Scorecard.game_id')
+				),
+				array(
+					'table' => 'matches',
+					'alias' => 'Match',
+					'type' => 'LEFT',
+					'conditions' => array('Match.id = Game.match_id')
+				),
+				array(
+					'table' => 'rounds',
+					'alias' => 'Round',
+					'type' => 'LEFT',
+					'conditions' => array('Round.id = Match.round_id')
 				)
-			))
+			)
 		));
-		
+
 		return $scorecards;
 	}
 	

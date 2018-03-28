@@ -207,7 +207,6 @@ class ScorecardsController extends AppController {
 	}
 
 	public function playerScorecards($id) {
-		$this->request->onlyAllow('ajax');
 		$this->set('scorecards', $this->Scorecard->getPlayerGamesScorecardsById($id, $this->Session->read('state')));
 	}
 	
