@@ -123,12 +123,8 @@
 <script type="text/javascript">
 	$(document).ready(function() {
 		$('#commander_allstar_table').DataTable( {
-			"deferRender" : true,
+			"processing" : true,
 			"order": [[2, "desc"]],
-			"ajax" : {
-				"url" : "<?= html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getAllStarStats', 'ext' => 'json'))); ?>",
-				"dataSrc": "data.commander"
-			},
 			"columns" : [
 				{ "data" : "name" },
 				{ "data" : function ( row, type, val, meta ) {
@@ -145,12 +141,8 @@
 		});
 		
 		$('#heavy_allstar_table').DataTable( {
-			"deferRender" : true,
+			"processing" : true,
 			"order": [[2, "desc"]],
-			"ajax" : {
-				"url" : "<?= html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getAllStarStats', 'ext' => 'json'))); ?>",
-				"dataSrc": "data.heavy"
-			},
 			"columns" : [
 				{ "data" : "name" },
 				{ "data" : function ( row, type, val, meta ) {
@@ -167,12 +159,8 @@
 		});
 		
 		$('#scout_allstar_table').DataTable( {
-			"deferRender" : true,
+			"processing" : true,
 			"order": [[2, "desc"]],
-			"ajax" : {
-				"url" : "<?= html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getAllStarStats', 'ext' => 'json'))); ?>",
-				"dataSrc": "data.scout"
-			},
 			"columns" : [
 				{ "data" : "name" },
 				{ "data" : function ( row, type, val, meta ) {
@@ -189,12 +177,8 @@
 		});
 		
 		$('#ammo_allstar_table').DataTable( {
-			"deferRender" : true,
+			"processing" : true,
 			"order": [[2, "desc"]],
-			"ajax" : {
-				"url" : "<?= html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getAllStarStats', 'ext' => 'json'))); ?>",
-				"dataSrc": "data.ammo"
-			},
 			"columns" : [
 				{ "data" : "name" },
 				{ "data" : function ( row, type, val, meta ) {
@@ -211,12 +195,8 @@
 		});
 		
 		$('#medic_allstar_table').DataTable( {
-			"deferRender" : true,
+			"processing" : true,
 			"order": [[2, "desc"]],
-			"ajax" : {
-				"url" : "<?= html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getAllStarStats', 'ext' => 'json'))); ?>",
-				"dataSrc": "data.medic"
-			},
 			"columns" : [
 				{ "data" : "name" },
 				{ "data" : function ( row, type, val, meta ) {
@@ -231,6 +211,16 @@
 				{ "data" : "avg_mvp" }
 			]
 		});
+
+		$.ajax({
+			"url" : "<?= html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getAllStarStats', 'ext' => 'json'))); ?>"
+		}).done(function(response) {
+			$('#commander_allstar_table').DataTable().clear().rows.add(response.data.commander).draw()
+			$('#heavy_allstar_table').DataTable().clear().rows.add(response.data.heavy).draw()
+			$('#scout_allstar_table').DataTable().clear().rows.add(response.data.scout).draw()
+			$('#ammo_allstar_table').DataTable().clear().rows.add(response.data.ammo).draw()
+			$('#medic_allstar_table').DataTable().clear().rows.add(response.data.medic).draw()
+		})
 
 		$('#sub_cbox').change(function() {
 			if($('#sub_cbox').is(':checked')) {
