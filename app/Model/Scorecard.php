@@ -1052,7 +1052,6 @@ class Scorecard extends AppModel {
 			'fields' => array('game_id'),
             'conditions' => $conditions
         ));
-		
 
 		$games_ids = implode(",",$scorecards);
 
@@ -1070,7 +1069,9 @@ class Scorecard extends AppModel {
 					hits.*, scorecards.game_id
 				FROM
 					hits
-				LEFT JOIN scorecards ON hits.scorecard_id = scorecards.id) AS player_hits
+				LEFT JOIN scorecards ON hits.scorecard_id = scorecards.id
+				WHERE
+					hits.player_id = $player_id) AS player_hits
 					LEFT JOIN
 				(SELECT 
 					player_hits.player_id,
@@ -1081,7 +1082,9 @@ class Scorecard extends AppModel {
 					hits.*, scorecards.game_id
 				FROM
 					hits
-				LEFT JOIN scorecards ON hits.scorecard_id = scorecards.id) AS player_hits
+				LEFT JOIN scorecards ON hits.scorecard_id = scorecards.id
+				WHERE
+					hits.target_id = $player_id) AS player_hits
 				WHERE
 					player_hits.target_id = $player_id AND player_hits.game_id IN ($games_ids)
 				GROUP BY player_hits.player_id) AS targets ON player_hits.target_id = targets.player_id
@@ -1089,7 +1092,7 @@ class Scorecard extends AppModel {
 				player_hits.player_id = $player_id
 					AND player_hits.game_id IN ($games_ids)
 			GROUP BY player_hits.player_id , player_hits.target_id");
-        
+
 		$hits = array();
 		foreach($results as $result) {
 			$hits[] = array(
