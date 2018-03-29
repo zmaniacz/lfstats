@@ -1058,7 +1058,10 @@ class Scorecard extends AppModel {
             'conditions' => $conditions
         ));
 
-		$games_ids = implode(",",$scorecards);
+		if(count($scorecards) > 0)
+			$games_ids = implode(",",$scorecards);
+		else
+			$games_ids = 0;
 
 		$whereFlag = "";
 		if($teamFlag == 'team') {
@@ -1114,7 +1117,7 @@ class Scorecard extends AppModel {
 		";
 
 		$db = $this->getDataSource();
-
+		
 		$playerHits = $db->fetchAll($playerHitsQuery);
 		$playerHitBy = $db->fetchAll($playerHitByQuery);
 		
