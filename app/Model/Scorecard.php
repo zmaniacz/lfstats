@@ -1084,6 +1084,7 @@ class Scorecard extends AppModel {
 			WHERE
 				hits.player_id = $player_id
 					AND scorecards.position IN (\"$playerPos\")
+					AND targets.position IN (\"$targetPos\")
 					$whereFlag
 					AND scorecards.game_id IN ($games_ids)
 			GROUP BY hits.target_id
@@ -1105,7 +1106,8 @@ class Scorecard extends AppModel {
 					AND targets.player_id = hits.target_id
 			WHERE
 				hits.target_id = $player_id
-					AND targets.position IN (\"$targetPos\")
+					AND scorecards.position IN (\"$targetPos\")
+					AND targets.position IN (\"$playerPos\")
 					$whereFlag
 					AND scorecards.game_id IN ($games_ids)
 			GROUP BY hits.player_id
@@ -1117,20 +1119,21 @@ class Scorecard extends AppModel {
 		$playerHitBy = $db->fetchAll($playerHitByQuery);
 		
 		$hits = array();
-		foreach($playerHits as $hit) {
-			$hits[$hit['hits']['target_id']] = array(
-				'opponent_id' => $hit['hits']['target_id'],
-				'hits' => $hit[0]['hits'],
-				'missiles' => $hit[0]['missiles'],
-				'games_played' => $hit[0]['games_played'],
-				'hit_by' => 0,
-				'missile_by' => 0
+
+		foreach($playerHitBy as $hit) {
+			$hits[$hit['hits']['player_id']] = array(
+				'opponent_id' => $hit['hits']['player_id'],
+				'hit_by' => $hit[0]['hits'],
+				'missile_by' => $hit[0]['missiles'],
+				'games_played' => $hit[0]['games_played']
 			);
 		}
 
-		foreach($playerHitBy as $hit) {
-			$hits[$hit['hits']['player_id']]['hit_by'] = $hit[0]['hits'];
-			$hits[$hit['hits']['player_id']]['missile_by'] = $hit[0]['missiles'];
+		foreach($playerHits as $hit) {
+			if(isset($hits[$hit['hits']['target_id']])) {
+				$hits[$hit['hits']['target_id']]['hits'] = $hit[0]['hits'];
+				$hits[$hit['hits']['target_id']]['missiles'] = $hit[0]['missiles'];
+			}
 		}
 
         return array_values($hits);

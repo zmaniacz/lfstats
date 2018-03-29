@@ -33,12 +33,12 @@
 	<script defer src='https://code.highcharts.com/stock/highcharts-more.js'></script>
 	<script defer src='https://code.highcharts.com/stock/indicators/indicators.js'></script>
 	<?php
+		echo $this->Html->css('laserforce');
 		echo $this->Html->css('https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/paper/bootstrap.min.css');
 		echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/css/dataTables.bootstrap.min.css');
 		echo $this->Html->css('https://cdn.datatables.net/responsive/2.2.1/css/responsive.dataTables.min.css');
 		echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css');
 		echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.css');
-		echo $this->Html->css('laserforce');
 	?>
 	<title>
 		<?php echo $title_for_layout; ?>

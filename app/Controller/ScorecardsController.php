@@ -270,22 +270,39 @@ class ScorecardsController extends AppController {
     }
 
 	public function getPlayerHitBreakdown($player_id, $teamFlag = 'opponent') {
-		$positions = array(
-			'player' => array(
-				'commander' => 'Commander',
-				'heavy' => 'Heavy Weapons',
-				'scout' => 'Scout',
-				'ammo' => 'Ammo Carrier',
-				'medic' => 'Medic'
-			),
-			'target' => array(
-				'commander' => 'Commander',
-				'heavy' => 'Heavy Weapons',
-				'scout' => 'Scout',
-				'ammo' => 'Ammo Carrier',
-				'medic' => 'Medic'
-			)
-		);
+		$positions = array('player','target');
+
+		if(isset($this->request->query['player_commander'])) {
+			$positions['player']['commander'] = 'Commander';
+		}
+		if(isset($this->request->query['player_heavy'])) {
+			$positions['player']['heavy'] = 'Heavy Weapons';
+		}
+		if(isset($this->request->query['player_scout'])) {
+			$positions['player']['scout'] = 'Scout';
+		}
+		if(isset($this->request->query['player_ammo'])) {
+			$positions['player']['ammo'] = 'Ammo Carrier';
+		}
+		if(isset($this->request->query['player_medic'])) {
+			$positions['player']['medic'] = 'Medic';
+		}
+
+		if(isset($this->request->query['target_commander'])) {
+			$positions['target']['commander'] = 'Commander';
+		}
+		if(isset($this->request->query['target_heavy'])) {
+			$positions['target']['heavy'] = 'Heavy Weapons';
+		}
+		if(isset($this->request->query['target_scout'])) {
+			$positions['target']['scout'] = 'Scout';
+		}
+		if(isset($this->request->query['target_ammo'])) {
+			$positions['target']['ammo'] = 'Ammo Carrier';
+		}
+		if(isset($this->request->query['target_medic'])) {
+			$positions['target']['medic'] = 'Medic';
+		}
 
 		if(isset($this->request->query['team_flag'])) {
 			$teamFlag = $this->request->query['team_flag'];

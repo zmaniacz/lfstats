@@ -210,17 +210,71 @@
 		<br />
 		<br />
 		<br />
-		<div id="headTeamSelector" class="btn-group" data-toggle="buttons">
-			<label class="btn btn-primary active">
-				<input type="radio" name="head_team_options" id="option_opponent" autocomplete="off" checked>Opponent
-			</label>
-			<label class="btn btn-primary">
-				<input type="radio" name="head_team_options" id="option_all" autocomplete="off">All
-			</label>
-			<label class="btn btn-primary">
-				<input type="radio" name="head_team_options" id="option_team" autocomplete="off">Team
-			</label>
+		<div class ="row">
+			<div class="col-sm-6">
+				<h4>Choose Hits</h4>
+				<div id="headTeamSelector" class="btn-group" data-toggle="buttons">
+					<label class="btn btn-primary active">
+						<input type="radio" name="head_team_options" value="opponent" autocomplete="off" checked>Opponent
+					</label>
+					<label class="btn btn-primary">
+						<input type="radio" name="head_team_options" value="all" autocomplete="off">All
+					</label>
+					<label class="btn btn-primary">
+						<input type="radio" name="head_team_options" value="team" autocomplete="off">Team
+					</label>
+				</div>
+			</div>
 		</div>
+		<div class="row">
+			<div class="col-sm-4">
+				<h4>Player Positions</h4>
+				<div id="headPlayerPosSelector" class="btn-group lf-positions" data-toggle="buttons">
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_player_pos_options" value="commander" autocomplete="off" checked><span style="font-size:32px" class="icon-commander"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_player_pos_options" value="heavy" autocomplete="off" checked><span style="font-size:32px" class="icon-heavy"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_player_pos_options" value="scout" autocomplete="off" checked><span style="font-size:32px" class="icon-scout"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_player_pos_options" value="ammo" autocomplete="off" checked><span style="font-size:32px" class="icon-ammo"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_player_pos_options" value="medic" autocomplete="off" checked><span style="font-size:32px" class="icon-medic"></span>
+					</label>
+				</div>
+			</div>
+			<div class="col-sm-4">
+				<h4>Target Positions</h4>
+				<div id="headTargetPosSelector" class="btn-group lf-positions" data-toggle="buttons">
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_target_pos_options" value="commander" autocomplete="off" checked><span style="font-size:32px" class="icon-commander"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_target_pos_options" value="heavy" autocomplete="off" checked><span style="font-size:32px" class="icon-heavy"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_target_pos_options" value="scout" autocomplete="off" checked><span style="font-size:32px" class="icon-scout"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_target_pos_options" value="ammo" autocomplete="off" checked><span style="font-size:32px" class="icon-ammo"></span>
+					</label>
+					<label class="btn btn-primary active">
+						<input type="checkbox" name="head_target_pos_options" value="medic" autocomplete="off" checked><span style="font-size:32px" class="icon-medic"></span>
+					</label>
+				</div>
+			</div>
+		</div>
+		<br />
+		<div class="row">
+			<div class="col-sm-4">
+				<button id="applyChanges" class="btn btn-info">Apply</button>
+			</div>
+		</div>
+		<br />
 		<div class="table-responsive">
 			<table id="head_to_head" class="table table-striped table-hover table-border table-condensed">
 				<thead>
@@ -241,6 +295,10 @@
 </div>
 <script type="text/javascript">
 $(document).ready(function(){
+	$(".lf-positions > .btn").click(function() {
+		$(this).toggleClass('btn-primary btn-default');
+	});
+
 	function renderWinLossBar(data) {
 		chartData = data.map(function(item, index) {
 			let value = (item.winloss === "W") ? 1 : -1;
@@ -1427,31 +1485,33 @@ $(document).ready(function(){
 		renderWinLossBar(winLossBarData);
 	})
 
-	function updateHeadTable(type) {
+	function updateHeadTable() {
 		const params = new URLSearchParams(location.search);
 		const player_id = <?= $id; ?>
-		
-		params.set('team_flag',type);
 
-		var hitUrl = '/Scorecards/getPlayerHitBreakdown/'+player_id+'.json?'+params.toString();
-
-		$.ajax({
-			url: hitUrl
-		}).done(function(response) {
-			$('#head_to_head').DataTable().clear().rows.add(response.data).draw();
+		$.each($("#headPlayerPosSelector input:checked"), function() {
+			let position = this.value
+			params.set('player_'+position, position)
 		})
+
+		$.each($("#headTargetPosSelector input:checked"), function() {
+			let position = this.value
+			params.set('target_'+position, position)
+		})
+		
+		params.set('team_flag', $("#headTeamSelector input:checked").val());
+
+		let hitUrl = '/Scorecards/getPlayerHitBreakdown/'+player_id+'.json?'+params.toString();
+
+		console.log(hitUrl)
+
+		$('#head_to_head').DataTable().ajax.url(hitUrl).load();
 	}
 
-	$("#headTeamSelector :input").change(function() {
-    	if(this.id === 'option_opponent') {
-			updateHeadTable('opponent');
-		} else if(this.id === 'option_all') {
-			updateHeadTable('all');
-		} else if (this.id === 'option_team') {
-			updateHeadTable('team');
-		}
+	$("#applyChanges").click(function() {
+		updateHeadTable()
 	});
 
-	updateHeadTable('opponent')
+	updateHeadTable()
 });
 </script>
