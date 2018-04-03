@@ -549,9 +549,6 @@ class Scorecard extends AppModel {
 		if(isset($state['centerID']) && $state['centerID'] > 0)
 			$conditions[] = array('Scorecard.center_id' => $state['centerID']);
 		
-		if(isset($state['gametype']) && $state['gametype'] != 'all')
-			$conditions[] = array('Scorecard.type' => $state['gametype']);
-		
 		if(isset($state['gametype']) && $state['gametype'] != 'all') {
 			$conditions[] = array('Scorecard.type' => $state['gametype']);
 			
@@ -617,6 +614,7 @@ class Scorecard extends AppModel {
 				'AVG(Scorecard.mvp_points) as avg_mvp',
 				'SUM(Scorecard.mvp_points) as total_mvp',
 				'AVG(Scorecard.accuracy) as avg_acc',
+				'(SUM(Scorecard.shot_opponent)/SUM(Scorecard.times_zapped)) as hit_diff',
 				'COUNT(Scorecard.game_datetime) as games_played',
 				'SUM(GameResult.won) as games_won' 
 			),
@@ -646,6 +644,7 @@ class Scorecard extends AppModel {
 			$results[$player['Scorecard']['player_id']]['avg_avg_mvp'] = $player[0]['avg_mvp'];
 			$results[$player['Scorecard']['player_id']]['total_mvp'] = $player[0]['total_mvp'];
 			$results[$player['Scorecard']['player_id']]['avg_avg_acc'] = $player[0]['avg_acc'];
+			$results[$player['Scorecard']['player_id']]['hit_diff'] = $player[0]['hit_diff'];
 			$results[$player['Scorecard']['player_id']]['total_games_won'] = $player[0]['games_won'];
 			$results[$player['Scorecard']['player_id']]['total_games'] = $player[0]['games_played'];
 			$results[$player['Scorecard']['player_id']]['Commander']['avg_mvp'] = 0;

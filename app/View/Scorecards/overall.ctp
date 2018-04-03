@@ -32,7 +32,7 @@
 					<thead>
 						<tr>
 							<th rowspan="2">Name</th>
-							<th colspan="4">Overall</th>
+							<th colspan="5">Overall</th>
 							<th colspan="3">Commander</th>
 							<th colspan="3">Heavy Weapons</th>
 							<th colspan="3">Scout</th>
@@ -43,6 +43,7 @@
 							<th>MVP</th>
 							<th>Total MVP</th>
 							<th>Accuracy</th>
+							<th>Hit Diff</th>
 							<th>Win Rate</th>
 							<th>MVP</th>
 							<th>Accuracy</th>
@@ -253,6 +254,13 @@
 				{ "data" : "avg_avg_mvp" },
 				{ "data" : "total_mvp" },
 				{ "data" : "avg_avg_acc" },
+				{ "data" : function ( row, type, val, meta ) {
+						if (type === 'display') {
+							return '<a href="/Players/view/'+row.player_id+'">'+row.hit_diff+'</a>';
+						}
+						return row.hit_diff;
+					}
+				},
 				{ "data" : function ( row, type, val, meta ) {
 						var ratio = Math.round((row.games_won/row.games_played) * 100);
 						if (type === 'display') {
