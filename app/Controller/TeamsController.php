@@ -32,4 +32,16 @@ class TeamsController extends AppController {
 		$this->set('teams',  $this->Event->EventTeam->find('list', array('fields' => array('EventTeam.name'), 'conditions' => array('event_id' => $this->Session->read('state.leagueID')))));
 		$this->set('details', $this->EventTeam->getTeamMatches($id, $this->Session->read('state')));
 	}
+
+	public function setName() {
+		$team = $this->EventTeam->read(null, $this->request->data["team-id"]);
+		$this->EventTeam->set('name', $this->request->data["team-name"]);
+		
+		if($this->EventTeam->save())
+			$response = array('body' => 'success');
+		else
+			$response = array('body' => 'failure');
+		
+		return new CakeResponse($response);
+	}
 }

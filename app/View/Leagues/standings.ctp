@@ -229,6 +229,29 @@
 		<?php endif; ?>
 	<?php endforeach; ?>
 </div>
+<div class="modal fade" id="teamNameModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" >&times;</button>
+        <h4 class="modal-title" id="teamNameModalLabel">Team Name:</h4>
+      </div>
+      <div class="modal-body">
+        <form id="teamNameModalForm" method="post">
+          <div class="form-group">
+            <label for="team-name" class="control-label">Name:</label>
+            <input type="text" class="form-control" id="team-name" name="team-name">
+			<input type="hidden" id="team-id" name="team-id">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="teamNameModalSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 	$(document).ready(function() {
 		const loggedIn = <?php 
@@ -238,12 +261,39 @@
 				echo "false";
 		?>
 
+		$('#teamNameModal').on('show.bs.modal', function (event) {
+			let button = $(event.relatedTarget)
+			let teamId = button.data('team-id')
+			let teamName = button.data('team-name')
+			let modal = $(this)
+			modal.find('#team-name').val(teamName)
+			modal.find('#team-id').val(teamId)
+		})
+
+		$('#teamNameModalSaveBtn').click(function() {
+			$.post('/teams/setName', $('#teamNameModalForm').serialize())
+			.done( function(data) {
+				toastr.success('Updated Name');
+				update_standings(standings_table,0);
+			});
+
+			$('#teamNameModal').modal('hide');
+		})
+
 		var standings_data
 		var standings_table = $('#team_standings').DataTable( {
 			"processing" : true,
 			"order": [[1, "desc"]],
 			"columns" : [
-				{ "data" : "name", },
+				{ 
+					data: function ( row, type, val, meta) {
+						if (type === 'display' && loggedIn) {
+							return row.link+' <a class="pull-right" data-toggle="modal" data-team-id="'+row.id+'" data-team-name="'+row.name+'" href="#teamNameModal"><span class="glyphicon glyphicon-pencil"></span></a>';
+						} else {
+							return row.link;
+						}
+					}
+				},
 				{ "data" : "points" },
 				{ "data" : "match_win_lose" },
 				{ "data" : "game_win_lose" },
