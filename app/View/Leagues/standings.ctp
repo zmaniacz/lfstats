@@ -81,6 +81,7 @@
 					<div class="panel panel-primary">
 						<div class="panel-body">
 							<table class="table table-condensed">
+								<caption>Match <?= $match['match']; ?></caption>
 								<thead>
 									<tr>
 										<th>Team</th>
