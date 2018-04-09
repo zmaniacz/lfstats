@@ -64,6 +64,7 @@
 			<div class="row">
 			<?php foreach($round['Match'] as $match): ?>
 				<?php
+					$team1Game1Score = $team2Game1Score = $team1Game2Score = $team2Game2Score = 0;
 					if(!empty($match['Game_1'])) {
 						$game1Url = $this->Html->url(array('controller' => 'Games', 'action' => 'view', $match['Game_1']['id']));
 						$team1Game1Score = $match['Game_1']['red_score']+$match['Game_1']['red_adj'];
@@ -230,6 +231,13 @@
 </div>
 <script>
 	$(document).ready(function() {
+		const loggedIn = <?php 
+			if(AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID')))
+				echo "true";
+			else
+				echo "false";
+		?>
+
 		var standings_data
 		var standings_table = $('#team_standings').DataTable( {
 			"processing" : true,
