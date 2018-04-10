@@ -134,49 +134,81 @@
 				<div id="win_loss_pie"></div>
 			</div>
 		</div>		
-		<div class="table-responsive">
-			<table id="game_list" class="table table-striped table-hover table-border table-condensed">
-				<thead>
-					<tr>
-						<th>Game</th>
-						<th>Time</th>
-						<th>W/L</th>
-						<th>Team</th>
-						<th>Position</th>
-						<th rowspan="2">Score</th>
-						<th rowspan="2">Accuracy</th>
-						<th rowspan="2">MVP Points</th>
-						<th rowspan="2">Lives Left</th>
-						<th rowspan="2">Shots Left</th>
-						<th rowspan="2">Shot Opponent</th>
-						<th rowspan="2">Got Shot</th>
-						<th rowspan="2">Hit Diff</th>
-						<th rowspan="2">Missiled</th>
-						<th rowspan="2">Got Missiled</th>
-						<th rowspan="2">Medic Hits</th>
-						<th rowspan="2">Medic Nukes</th>
-						<th rowspan="2">Shot 3-Hits</th>
-						<th rowspan="2">Shot Team</th>
-						<th rowspan="2">Missiled Team</th>
-						<th rowspan="2">Shot Own Medic</th>
-						<th rowspan="2">Nukes Activated</th>
-						<th rowspan="2">Nukes Detonated</th>
-						<th rowspan="2">Nuke Cancels</th>
-						<th rowspan="2">Own Nuke Cancels</th>
-						<th rowspan="2">Rapid Fires</th>
-						<th rowspan="2">Boosts</th>
-						<th rowspan="2">Resupplies</th>
-						<th rowspan="2">PDF</th>
-					</tr>
-					<tr>
-						<th class="searchable">Game</th>
-						<th class="searchable">Time</th>
-						<th class="searchable">W/L</th>
-						<th class="searchable">Team</th>
-						<th class="searchable">Position</th>
-					</tr>
-				</thead>
-			</table>
+		<div id="game_list_panel" class="panel panel-primary">
+			<div class="panel-heading">
+				<h4 class="panel-title">
+					Games Played
+				</h4>
+			</div>
+			<div class="panel-body">
+				<div class="table-responsive">
+					<table id="game_list" class="table table-striped table-hover table-border table-condensed">
+						<thead>
+							<tr>
+								<th>Game</th>
+								<th>Time</th>
+								<th>W/L</th>
+								<th>Team</th>
+								<th>Position</th>
+								<th rowspan="2">Score</th>
+								<th rowspan="2">Accuracy</th>
+								<th rowspan="2">MVP Points</th>
+								<th rowspan="2">Lives Left</th>
+								<th rowspan="2">Shots Left</th>
+								<th rowspan="2">Shot Opponent</th>
+								<th rowspan="2">Got Shot</th>
+								<th rowspan="2">Hit Diff</th>
+								<th rowspan="2">Missiled</th>
+								<th rowspan="2">Got Missiled</th>
+								<th rowspan="2">Medic Hits</th>
+								<th rowspan="2">Medic Nukes</th>
+								<th rowspan="2">Shot 3-Hits</th>
+								<th rowspan="2">Shot Team</th>
+								<th rowspan="2">Missiled Team</th>
+								<th rowspan="2">Shot Own Medic</th>
+								<th rowspan="2">Nukes Activated</th>
+								<th rowspan="2">Nukes Detonated</th>
+								<th rowspan="2">Nuke Cancels</th>
+								<th rowspan="2">Own Nuke Cancels</th>
+								<th rowspan="2">Rapid Fires</th>
+								<th rowspan="2">Boosts</th>
+								<th rowspan="2">Resupplies</th>
+								<th rowspan="2">PDF</th>
+							</tr>
+							<tr>
+								<th class="searchable">Game</th>
+								<th class="searchable">Time</th>
+								<th class="searchable">W/L</th>
+								<th class="searchable">Team</th>
+								<th class="searchable">Position</th>
+							</tr>
+						</thead>
+					</table>
+				</div>
+			</div>
+		</div>
+		<div id="targets_destroyed_panel" class="panel panel-primary">
+			<div class="panel-heading">
+				<h4 class="panel-title">
+					Bases Destroyed Average
+				</h4>
+			</div>
+			<div class="panel-body">
+				<div class="table-responsive">
+					<table id="target_stats" class="table table-striped table-hover table-border table-condensed">
+						<thead>
+							<tr>
+								<th>Position</th>
+								<th>Overall</th>
+								<th>Player Survives</th>
+								<th>Survive and Elim Opp</th>
+								<th>Die and Elim Opp</th>
+								<th>Elimed</th>
+							</tr>
+						</thead>
+					</table>
+				</div>
+			</div>
 		</div>
 	</div>
 	<div role="tabpanel" class="tab-pane" id="overall_tab">
@@ -297,7 +329,7 @@
 $(document).ready(function(){
 	$(".lf-positions > .btn").click(function() {
 		$(this).toggleClass('btn-primary btn-default');
-	});
+	});	
 
 	function renderWinLossBar(data) {
 		chartData = data.map(function(item, index) {
@@ -1461,6 +1493,23 @@ $(document).ready(function(){
 		"order": [[ 1, "desc" ]]
 	});
 
+	var targetsTable = $('#target_stats').DataTable( {
+		processing : true,
+		orderCellsTop : true,
+		ajax: {
+			url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getPlayerTargetsBreakdown', $id, 'ext' => 'json'))); ?>"
+		},
+		columns : [
+			{ "data" : "position" },
+			{ "data" : "overall" },
+			{ "data" : "survives" },
+			{ "data" : "survivesElim" },
+			{ "data" : "dieElim" },
+			{ "data" : "elim" }
+		],
+		order: [[ 0, "asc" ]]
+	});
+
 	var headToHeadTable = $('#head_to_head').DataTable( {
 		"processing" : true,
 		"columns" : [
@@ -1502,8 +1551,6 @@ $(document).ready(function(){
 		params.set('team_flag', $("#headTeamSelector input:checked").val());
 
 		let hitUrl = '/Scorecards/getPlayerHitBreakdown/'+player_id+'.json?'+params.toString();
-
-		console.log(hitUrl)
 
 		$('#head_to_head').DataTable().ajax.url(hitUrl).load();
 	}

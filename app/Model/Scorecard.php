@@ -1139,7 +1139,185 @@ class Scorecard extends AppModel {
 		}
 
         return array_values($hits);
-    }
+	}
+	
+	public function getPlayerTargetsBreakdown($player_id, $state) {
+		$conditions = array();
+
+		$conditions[] = array('Scorecard.player_id' => $player_id);
+		
+		if(isset($state['centerID']) && $state['centerID'] > 0)
+			$conditions[] = array('Scorecard.center_id' => $state['centerID']);
+		
+		if(isset($state['gametype']) && $state['gametype'] != 'all')
+			$conditions[] = array('Scorecard.type' => $state['gametype']);
+		
+		if(isset($state['leagueID']) && $state['leagueID'] > 0)
+			$conditions[] = array('Scorecard.event_id' => $state['leagueID']);
+
+		$overall = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $conditions,
+			'group' => 'player_id'
+		));
+
+		$overallPositions = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'position',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $conditions,
+			'group' => 'player_id, position'
+		));
+
+		$survivesConditions = $conditions;
+		$survivesConditions[] = array('Scorecard.lives_left > 0');
+
+		$survives = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $survivesConditions,
+			'group' => 'player_id'
+		));
+
+		$survivesPositions = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'position',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $survivesConditions,
+			'group' => 'player_id, position'
+		));
+
+		$survivesElimConditions = $conditions;
+		$survivesElimConditions[] = array('Scorecard.lives_left > 0');
+		$survivesElimConditions[] = array('Scorecard.elim_other_team = 1');
+
+		$survivesElim = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $survivesElimConditions,
+			'group' => 'player_id'
+		));
+
+		$survivesElimPositions = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'position',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $survivesElimConditions,
+			'group' => 'player_id, position'
+		));
+
+		$dieElimConditions = $conditions;
+		$dieElimConditions[] = array('Scorecard.lives_left = 0');
+		$dieElimConditions[] = array('Scorecard.elim_other_team = 1');
+
+		$dieElim = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $dieElimConditions,
+			'group' => 'player_id'
+		));
+
+		$dieElimPositions = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'position',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $dieElimConditions,
+			'group' => 'player_id, position'
+		));
+
+		$elimConditions = $conditions;
+		$elimConditions[] = array('Scorecard.team_elim = 1');
+
+		$elim = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $elimConditions,
+			'group' => 'player_id'
+		));
+
+		$elimPositions = $this->find('all', array(
+			'fields' => array(
+				'player_id',
+				'position',
+				'(AVG(bases_destroyed)/2) as avg_targets'
+			),
+			'conditions' => $elimConditions,
+			'group' => 'player_id, position'
+		));
+
+		$response = array();
+
+		$base = array(
+			'overall' => 'n/a',
+			'survives' => 'n/a',
+			'survivesElim' => 'n/a',
+			'dieElim' => 'n/a',
+			'elim' => 'n/a'
+		);
+
+		$response['all'] = $response['commander'] = $response['heavy'] = $response['scout'] = $response['ammo'] = $response['medic'] = $base;
+
+		$response['commander']['position'] = 'Commander'; 
+		$response['heavy']['position'] = 'Heavy Weapons';
+		$response['scout']['position'] = 'Scout';
+		$response['ammo']['position'] = 'Ammo Carrier';
+		$response['medic']['position'] = 'Medic';
+
+		$categories = array(
+			'overall' => $overallPositions,
+			'survives' => $survivesPositions,
+			'survivesElim' => $survivesElimPositions,
+			'dieElim' => $dieElimPositions,
+			'elim' => $elimPositions
+		);
+
+		$response['all']['position'] = 'All Positions';
+		$response['all']['overall'] = $overall[0][0]['avg_targets'];
+		$response['all']['survives'] = $survives[0][0]['avg_targets'];
+		$response['all']['survivesElim'] = $survivesElim[0][0]['avg_targets'];
+		$response['all']['dieElim'] = $dieElim[0][0]['avg_targets'];
+		$response['all']['elim'] = $elim[0][0]['avg_targets'];
+
+		foreach($categories as $key => $value) {
+			foreach($value as $entry) {
+				if($entry['Scorecard']['position'] == 'Commander')
+					$response['commander'][$key] = $entry[0]['avg_targets'];
+
+				if($entry['Scorecard']['position'] == 'Heavy Weapons')
+					$response['heavy'][$key] = $entry[0]['avg_targets'];
+
+				if($entry['Scorecard']['position'] == 'Scout')
+					$response['scout'][$key] = $entry[0]['avg_targets'];
+
+				if($entry['Scorecard']['position'] == 'Ammo Carrier')
+					$response['ammo'][$key] = $entry[0]['avg_targets'];
+
+				if($entry['Scorecard']['position'] == 'Medic')
+					$response['medic'][$key] = $entry[0]['avg_targets'];
+			}
+		}
+
+		return array_values($response);
+	}
 
 	public function getLeaderboards($state) {
 		$conditions = array();

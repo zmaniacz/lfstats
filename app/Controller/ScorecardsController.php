@@ -31,7 +31,8 @@ class ScorecardsController extends AppController {
 			'getAllStarStats',
 			'getComparison',
 			'getPlayerHitBreakdown',
-			'getAllCenter'
+			'getAllCenter',
+			'getPlayerTargetsBreakdown'
 		);
 		parent::beforeFilter();
 	}
@@ -310,7 +311,11 @@ class ScorecardsController extends AppController {
 
         $this->set('data', $this->Scorecard->getPlayerHitDetails($player_id, $positions, $teamFlag, $this->Session->read('state')));
 		$this->set('players', $this->Scorecard->Player->find('list'));
-    }
+	}
+	
+	public function getPlayerTargetsBreakdown($player_id) {
+		$this->set('data', $this->Scorecard->getPlayerTargetsBreakdown($player_id, $this->Session->read('state')));
+	}
 	
 	public function ajax_switchSub($id) {
 		$this->request->onlyAllow('ajax');
