@@ -1,8 +1,8 @@
 <div class="row">
     <div class="jumbotron">
-        <h3>WCT 2018</h3>
-        <p>The 5th West Coast Tournament held January 16th - 18th, 2017 at Loveland LaserTag in Loveland, CO.</p>
-        <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=18&amp;centerID=10&amp;isComp=1">Details <i class="fas fa-caret-right"></i></a></p>
+        <h3>2018 Detroit Invitational</h3>
+        <p>A random draw/random position tournament hosted at Revolution Lasertag in Detroit, MI, April 16th-17th 2018.</p>
+        <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=434&amp;centerID=7&amp;isComp=1">Details <i class="fas fa-caret-right"></i></a></p>
     </div>
 </div>
 <div class="row">
