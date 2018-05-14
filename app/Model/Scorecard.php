@@ -877,7 +877,9 @@ class Scorecard extends AppModel {
 				'Scorecard.*',
 				'Game.*',
 				'Match.*',
-				'Round.*'
+				'Round.*',
+				'RedTeam.*',
+				'GreenTeam.*'
 			),
 			'conditions' => $conditions,
 			'order' => 'Scorecard.game_datetime DESC',
@@ -899,6 +901,18 @@ class Scorecard extends AppModel {
 					'alias' => 'Round',
 					'type' => 'LEFT',
 					'conditions' => array('Round.id = Match.round_id')
+				),
+				array(
+					'table' => 'event_teams',
+					'alias' => 'RedTeam',
+					'type' => 'LEFT',
+					'conditions' => array('RedTeam.id = Game.red_team_id')
+				),
+				array(
+					'table' => 'event_teams',
+					'alias' => 'GreenTeam',
+					'type' => 'LEFT',
+					'conditions' => array('GreenTeam.id = Game.green_team_id')
 				)
 			)
 		));

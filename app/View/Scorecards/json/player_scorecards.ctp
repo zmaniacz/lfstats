@@ -1,13 +1,20 @@
 <?php
 	$data = array();
-
 	foreach($scorecards as $score) {
-		if(!empty($score['Game']['Match']['id'])) {
-			$game_name = 'R'.$score['Game']['Match']['Round']['round'].' M'.$score['Game']['Match']['match'].' G'.$score['Game']['league_game'];
-			if($score['Game']['Match']['Round']['is_finals'])
+		if(!empty($score['Match']['id'])) {
+			$game_name = 'R'.$score['Round']['round'].' M'.$score['Match']['match'].' G'.$score['Game']['league_game'];
+			if($score['Round']['is_finals'])
 				$game_name .= '(Finals)';
 		} else {
 			$game_name = $score['Game']['game_name'];
+		}
+
+		if($score['Scorecard']['team'] == 'red' && !empty($score['Game']['red_team_id'])) {
+			$team = 'Red - '.$score['RedTeam']['name'];
+		} elseif($score['Scorecard']['team'] == 'green' && !empty($score['Game']['green_team_id'])) {
+			$team = 'Green - '.$score['GreenTeam']['name'];
+		} else {
+			$team = $score['Scorecard']['team'];
 		}
 		
 		if($score['Game']['pdf_id'] == null) {
@@ -20,7 +27,7 @@
 			'game_name' => $this->Html->link($game_name, array('controller' => 'games', 'action' => 'view', $score['Game']['id']), array('class' => 'btn btn-primary btn-block')),
 			'game_datetime' => 	$score['Game']['game_datetime'],
 			'winloss' => ($score['Scorecard']['team'] == $score['Game']['winner']) ? "W" : "L",
-			'team' => $score['Scorecard']['team'],
+			'team' => $team,
 			'position' => $score['Scorecard']['position'],
 			'score' => $score['Scorecard']['score'],
 			'accuracy' => round($score['Scorecard']['accuracy']*100,2),
