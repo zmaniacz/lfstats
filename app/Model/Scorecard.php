@@ -177,7 +177,7 @@ class Scorecard extends AppModel {
 					debug($this->validationErrors); die();
 				}
 			}
-		} while($scores.count() > 0);
+		} while(count($scores) > 0);
 		return $counter;
 	}
 	
