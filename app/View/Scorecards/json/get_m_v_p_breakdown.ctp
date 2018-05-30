@@ -3,21 +3,21 @@
 
 	switch($score['Scorecard']['position']) {
 		case "Ammo Carrier":
-			$mvp['Position Score Bonus'] = max(((($score['Scorecard']['score']-3000)/10)*.01),0);
+			$mvp['Position Score Bonus'] = max((floor(($score['Scorecard']['score']-3000)/10)*.01),0);
 			break;
 		case "Commander":
-			$mvp['Position Score Bonus'] = max(((($score['Scorecard']['score']-10000)/10)*.01),0);
+			$mvp['Position Score Bonus'] = max((floor(($score['Scorecard']['score']-10000)/10)*.01),0);
 			$mvp['Missiled Opponent'] = $score['Scorecard']['missiled_opponent'];
 			break;
 		case "Heavy Weapons":
-			$mvp['Position Score Bonus'] = max(((($score['Scorecard']['score']-7000)/10)*.01),0);
+			$mvp['Position Score Bonus'] = max((floor(($score['Scorecard']['score']-7000)/10)*.01),0);
 			$mvp['Missiled Opponent'] = $score['Scorecard']['missiled_opponent'] * 2;
 			break;
 		case "Medic":
-			$mvp['Position Score Bonus'] = max(((($score['Scorecard']['score']-2000)/10)*.01),0);
+			$mvp['Position Score Bonus'] = max((floor(($score['Scorecard']['score']-2000)/10)*.01),0);
 			break;
 		case "Scout":
-			$mvp['Position Score Bonus'] = max(((($score['Scorecard']['score']-6000)/10)*.01),0);
+			$mvp['Position Score Bonus'] = max((floor(($score['Scorecard']['score']-6000)/10)*.01),0);
 			break;
 	}
 	
