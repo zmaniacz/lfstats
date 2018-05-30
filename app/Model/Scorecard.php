@@ -58,19 +58,19 @@ class Scorecard extends AppModel {
 				//Position based point bonus
 				switch($score['Scorecard']['position']) {
 					case "Ammo Carrier":
-						$mvp += max((($score['Scorecard']['score']-3000)*.001),0);
+						$mvp += max(((($score['Scorecard']['score']-3000)/10)*.01),0);
 						break;
 					case "Commander":
-						$mvp += max((($score['Scorecard']['score']-10000)*.001),0);
+						$mvp += max(((($score['Scorecard']['score']-10000)/10)*.01),0);
 						break;
 					case "Heavy Weapons":
-						$mvp += max((($score['Scorecard']['score']-7000)*.001),0);
+						$mvp += max(((($score['Scorecard']['score']-7000)/10)*.01),0);
 						break;
 					case "Medic":
-						$mvp += max((($score['Scorecard']['score']-2000)*.001),0);
+						$mvp += max(((($score['Scorecard']['score']-2000)/10)*.01),0);
 						break;
 					case "Scout":
-						$mvp += max((($score['Scorecard']['score']-6000)*.001),0);
+						$mvp += max(((($score['Scorecard']['score']-6000)/10)*.01),0);
 						break;
 				}
 	
