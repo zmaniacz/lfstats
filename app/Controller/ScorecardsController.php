@@ -153,23 +153,7 @@ class ScorecardsController extends AppController {
 
 	public function nightlyMedicHits() {
 		$date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
-		$medic_hits = $this->Scorecard->getMedicHitStatsByDate($date, $this->Session->read('state'));
-
-		$data = array();
-		foreach($medic_hits as $medic) {
-			$data[] = array(
-				'player_name' => $medic['Scorecard']['player_name'],
-				'player_id' => $medic['Scorecard']['player_id'],
-				'total_medic_hits' => $medic[0]['total_medic_hits'],
-				'medic_hits_per_game' => $medic[0]['medic_hits_per_game'],
-				'games_played' => $medic[0]['games_played'],
-				'non_resup_total_medic_hits' => $medic['ScorecardNoResup']['total_medic_hits'],
-				'non_resup_medic_hits_per_game' => $medic['ScorecardNoResup']['medic_hits_per_game'],
-				'non_resup_games_played' => $medic['ScorecardNoResup']['games_played'],
-			);
-		}
-
-		$this->set('data', $data);
+		$this->set('data', $this->Scorecard->getMedicHitStatsByDate($date, $this->Session->read('state')));
 	}
 
 	public function nightlySummaryStats() {

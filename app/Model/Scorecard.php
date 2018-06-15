@@ -789,55 +789,54 @@ class Scorecard extends AppModel {
 		
 		if(isset($state['leagueID']) && $state['leagueID'] > 0)
 			$conditions[] = array('event_id' => $state['leagueID']);
-
-		$subQueryConditions = $conditions;
-
-		$subQueryConditions[] = array('position NOT IN ("Medic", "Ammo Carrier")');
-
-		$db = $this->getDataSource();
-		$subQuery = $db->buildStatement(
-			array(
-				'fields' => array(
-					'ScorecardNoResup.player_id',
-					'SUM(ScorecardNoResup.medic_hits) as total_medic_hits',
-					'(SUM(ScorecardNoResup.medic_hits)/COUNT(ScorecardNoResup.game_datetime)) as medic_hits_per_game',
-					'COUNT(ScorecardNoResup.game_datetime) as games_played'
-				),
-				'table' => $db->fullTableName($this),
-				'alias' => 'ScorecardNoResup',
-				'conditions' => $subQueryConditions,
-				'group' => 'ScorecardNoResup.player_id',
-			),
-			$this
-		);
-
-		$subQuery = '('.$subQuery.')';
 	
 		$scores = $this->find('all', array(
-			'joins' => array(
-				array(
-					'alias' => 'ScorecardNoResup',
-					'table' => $subQuery,
-					'conditions' =>array(
-						'Scorecard.player_id = ScorecardNoResup.player_id'
-					)
-				)
-			),
 			'fields' => array(
 				'player_name',
 				'player_id',
+				'position',
 				'SUM(Scorecard.medic_hits) as total_medic_hits',
-				'(SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) as medic_hits_per_game',
-				'COUNT(Scorecard.game_datetime) as games_played',
-				'ScorecardNoResup.total_medic_hits',
-				'ScorecardNoResup.medic_hits_per_game',
-				'ScorecardNoResup.games_played',
+				'COUNT(Scorecard.game_datetime) as games_played'
 			),
 			'conditions' => $conditions,
-			'group' => 'player_id, player_name',
-			'order' => 'total_medic_hits DESC'
+			'group' => 'player_id, player_name, position'
 		));
-		return $scores;
+		
+		$results = array();
+
+		foreach($scores as $score) {
+			$pid = $score['Scorecard']['player_id'];
+			if(!isset($results[$pid])) {
+				$results[$pid] = array(
+					'player_id' => $score['Scorecard']['player_id'],
+					'player_name' => $score['Scorecard']['player_name'],
+					'total_medic_hits' => 0,
+					'medic_hits_per_game' => 0,
+					'games_played' => 0,
+					'non_resup_total_medic_hits' => 0,
+					'non_resup_medic_hits_per_game' => 0,
+					'non_resup_games_played' => 0
+				);
+			}
+
+			$results[$pid]['total_medic_hits'] += $score[0]['total_medic_hits'];
+			$results[$pid]['games_played'] += $score[0]['games_played'];
+
+			if($score['Scorecard']['position'] == 'Commander' || $score['Scorecard']['position'] == 'Heavy Weapons' || $score['Scorecard']['position'] == 'Scout') {
+				$results[$pid]['non_resup_total_medic_hits'] += $score[0]['total_medic_hits'];
+				$results[$pid]['non_resup_games_played'] += $score[0]['games_played'];
+			}
+		}
+
+		foreach($results as &$result) {
+			$result['medic_hits_per_game'] = $result['total_medic_hits']/$result['games_played'];
+
+			if($result['non_resup_games_played'] > 0) {
+				$result['non_resup_medic_hits_per_game'] = $result['non_resup_total_medic_hits']/$result['non_resup_games_played'];
+			}
+		}
+
+		return array_values($results);
 	}
 
 	public function getMedicHitStatsByRound($round, $league_id) {
