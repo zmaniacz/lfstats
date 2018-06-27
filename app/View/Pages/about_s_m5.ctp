@@ -1,4 +1,4 @@
-<h3><a href="https://objects-us-west-1.dream.io/lfstatsstatic/LaserforceTournamentRules-May2017.pdf">Official Rules</a></h3>
+<h3><a href="https://objects-us-east-1.dream.io/lfstatsstatic/Laserforce-Tournament-rules-current-through-June-2018.pdf">Official Rules</a></h3>
 <h3>Class Details</h3>
 <table class="table table-sm">
 	<thead>
