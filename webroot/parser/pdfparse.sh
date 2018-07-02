@@ -7,7 +7,7 @@ if [ $# = 1 ]; then
 OutputDirectory=$DIR/output/$1/
 baseKeyWords=Target,Base,Generator,Team,Mech,Reactor
 teamSectionKeyWords=team,army,marines,green,red,blue,base,yellow
-teamColorsKeyWords=green,red,blue,yellow" > LFScoreParser.properties
+teamColorsKeyWords=green,red,blue,yellow,fire,ice" > LFScoreParser.properties
 	mkdir -p output/$1/
 	mkdir -p pending/$1/
 	java -jar LFScoreParser.jar

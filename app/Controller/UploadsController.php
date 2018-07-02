@@ -152,8 +152,11 @@ class UploadsController extends AppController {
 
 					//blue or yellow team gets autoconverted to green
 					$team = strtolower($player['team']);
-					if($team == 'yellow' || $team == 'blue')
+					if($team == 'yellow' || $team == 'blue' || $team == 'ice')
 						$team = 'green';
+
+					if($team == 'fire')
+						$team = 'red';
 					
 					$this->Scorecard->create();
 					$this->Scorecard->set(array(
