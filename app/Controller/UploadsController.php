@@ -152,7 +152,7 @@ class UploadsController extends AppController {
 
 					//blue or yellow team gets autoconverted to green
 					$team = strtolower($player['team']);
-					if($team == 'yellow' || $team == 'blue' || $team == 'ice')
+					if($team == 'yellow' || $team == 'blue' || $team == 'ice' || $team == 'earth')
 						$team = 'green';
 
 					if($team == 'fire')
