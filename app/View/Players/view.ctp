@@ -151,6 +151,8 @@
 								<th>Team</th>
 								<th>Position</th>
 								<th rowspan="2">Score</th>
+								<th rowspan="2">Max Score</th>
+								<th rowspan="2">Score Ratio</th>
 								<th rowspan="2">Accuracy</th>
 								<th rowspan="2">MVP Points</th>
 								<th rowspan="2">Lives Left</th>
@@ -1466,6 +1468,8 @@ $(document).ready(function(){
 			{ "data" : "team" },
 			{ "data" : "position" },
 			{ "data" : "score" },
+			{ "data" : "max_score"},
+			{ "data" : "score_ratio"},
 			{ "data" : "accuracy" },
 			{ "data" : "mvp_points" },
 			{ "data" : "lives_left" },

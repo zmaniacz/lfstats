@@ -30,6 +30,8 @@
 			'team' => $team,
 			'position' => $score['Scorecard']['position'],
 			'score' => $score['Scorecard']['score'],
+			'max_score' => $score['Scorecard']['max_score'],
+			'score_ratio' => ($score['Scorecard']['max_score'] > 0) ? round($score['Scorecard']['score']/$score['Scorecard']['max_score'],2) : 0,
 			'accuracy' => round($score['Scorecard']['accuracy']*100,2),
 			'mvp_points' => "<button type=\"button\" class=\"btn btn-primary btn-block\" data-toggle=\"modal\" data-target=\"#mvpModal\" target=\"".$this->Html->url(array('controller' => 'scorecards', 'action' => 'getMVPBreakdown', $score['Scorecard']['id'], 'ext' => 'json'))."\">".$score['Scorecard']['mvp_points']."</button>",
 			'lives_left' => $score['Scorecard']['lives_left'],

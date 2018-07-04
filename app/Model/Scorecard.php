@@ -47,6 +47,21 @@ class Scorecard extends AppModel {
 		));
 		return $count == 0;
 	}
+
+	public function generateMaxScore($id) {
+		$scorecard = $this->find('first', array('conditions' => array('Scorecard.id' => $id)));
+
+		$max = 0;
+
+		$max += $scorecard['Scorecard']['shot_opponent']*100;
+		$max += $scorecard['Scorecard']['missiled_opponent']*500;
+		$max += $scorecard['Scorecard']['bases_destroyed']*1001;
+		$max += $scorecard['Scorecard']['nukes_activated']*500;
+
+		$scorecard['Scorecard']['max_score'] = $max;
+
+		$this->save($scorecard);
+	}
 	
 	public function generateMVP() {
 		$counter = 0;

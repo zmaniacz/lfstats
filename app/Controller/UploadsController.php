@@ -165,6 +165,7 @@ class UploadsController extends AppController {
 						'team' => $team, 
 						'position' => $player['position'], 
 						'score' => ($player['score']+(1000*$player['penalties'])),
+						'max_score' => 0,
 						'shots_hit' => $player['shotsHit'],
 						'shots_fired' => $player['shotsFired'],
 						'accuracy' => (($player['shotsFired'] > 0) ? ($player['shotsHit']/$player['shotsFired']) : 0),
@@ -222,14 +223,15 @@ class UploadsController extends AppController {
 						foreach($player['playerTarget'] as $hits) {
 							$this->Scorecard->generatePlayer($hits['name']);
 							$this->Scorecard->Hit->storeHits($player['name'], $scorecard_id, $hits);
-						}  
+						}
+
+						$this->Scorecard->generateMaxScore($scorecard_id);
 					}
 				}
 				$this->Game->updateGameWinner($this->Game->id);
 			}
 		}
 
-		
 		$this->Scorecard->generateMVP();
 
 		if($type == "social") {
