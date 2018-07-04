@@ -5,7 +5,8 @@ class ScoreShell extends AppShell {
         $scorecards = $this->Scorecard->find('all', array(
             'conditions' => array(
                 'max_score' => NULL
-            )
+            ),
+            'limit' => 5000
         ));
 
         foreach($scorecards as $score) {
