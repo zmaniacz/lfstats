@@ -145,7 +145,8 @@
 			columns: [
 				{
 					defaultContent : '',
-					orderable: false
+					orderable: false,
+					responsivePriority: 1
 				},
 				{
 					data : null,
@@ -153,7 +154,7 @@
 						_: "player_name",
 						display: "player_link"
 					},
-					responsivePriority: 1
+					responsivePriority: 2
 				},
 				{
 					data : null,
@@ -168,7 +169,7 @@
 						_: "position",
 						display: "position_element"
 					},
-					responsivePriority: 2
+					responsivePriority: 3
 				},
 				{ data: "score", orderSequence: [ "desc", "asc"], className: "text-right" },
 				{
@@ -178,7 +179,7 @@
 						display: "mvp_points_link"
 					},
 					className: "text-right",
-					responsivePriority: 3
+					responsivePriority: 4
 				},
 				{
 					data : null,
@@ -210,7 +211,8 @@
 			columns : [
 				{
 					defaultContent: '',
-					orderable: false
+					orderable: false,
+					responsivePriority: 1
 				},
 				{ 
 					data: function ( row, type, val, meta) {
@@ -219,7 +221,7 @@
 						}
 						return row.player_name;
 					},
-					responsivePriority: 1
+					responsivePriority: 2
 				},
 				{ data: "min_score", orderSequence: [ "desc", "asc"], className: "text-right" },
 				{ data: "avg_score", orderSequence: [ "desc", "asc"], className: "text-right" },
@@ -242,7 +244,7 @@
 					},
 					orderSequence: [ "desc", "asc"],
 					className: "text-right",
-					responsivePriority: 2
+					responsivePriority: 3
 				},
 				{ data: "max_mvp", orderSequence: [ "desc", "asc"], className: "text-right" },
 				{
@@ -262,7 +264,7 @@
 					},
 					orderSequence: [ "desc", "asc"],
 					className: "text-right",
-					responsivePriority: 3
+					responsivePriority: 4
 				},
 				{
 					data: function ( row, type, val, meta) {
@@ -321,7 +323,8 @@
 			columns: [
 				{
 					defaultContent: '',
-					orderable: false
+					orderable: false,
+					responsivePriority: 1
 				},
 				{ 
 					data: function ( row, type, val, meta) {
@@ -330,13 +333,13 @@
 						}
 						return row.player_name;
 					},
-					responsivePriority: 1
+					responsivePriority: 2
 				},
-				{ data: "total_medic_hits", orderSequence: [ "desc", "asc"], className: "text-right", responsivePriority: 2 },
-				{ data: "medic_hits_per_game", orderSequence: [ "desc", "asc"], className: "text-right", responsivePriority: 3 },
+				{ data: "total_medic_hits", orderSequence: [ "desc", "asc"], className: "text-right", responsivePriority: 3 },
+				{ data: "medic_hits_per_game", orderSequence: [ "desc", "asc"], className: "text-right", responsivePriority: 4 },
 				{ data: "games_played", orderSequence: [ "desc", "asc"], className: "text-right" },
 				{ data: "non_resup_total_medic_hits", orderSequence: [ "desc", "asc"], className: "text-right" },
-				{ data: "non_resup_medic_hits_per_game", orderSequence: [ "desc", "asc"], className: "text-right" },
+				{ data: "non_resup_medic_hits_per_game", orderSequence: [ "desc", "asc"], className: "text-right",responsivePriority: 5 },
 				{ data: "non_resup_games_played", orderSequence: [ "desc", "asc"], className: "text-right" }
 			],
 			"order": [[ 2, "desc" ]]
