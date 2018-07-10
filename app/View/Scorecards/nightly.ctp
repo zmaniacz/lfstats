@@ -336,10 +336,32 @@
 					responsivePriority: 2
 				},
 				{ data: "total_medic_hits", orderSequence: [ "desc", "asc"], className: "text-right", responsivePriority: 3 },
-				{ data: "medic_hits_per_game", orderSequence: [ "desc", "asc"], className: "text-right", responsivePriority: 4 },
+				{ 
+					data: function ( row, type, val, meta) {
+						if (type === 'display') {
+							return Math.round(row.medic_hits_per_game * 100) / 100;
+						}
+
+						return row.medic_hits_per_game;
+					},
+					orderSequence: [ "desc", "asc"],
+					className: "text-right",
+					responsivePriority: 4
+				},
 				{ data: "games_played", orderSequence: [ "desc", "asc"], className: "text-right" },
 				{ data: "non_resup_total_medic_hits", orderSequence: [ "desc", "asc"], className: "text-right" },
-				{ data: "non_resup_medic_hits_per_game", orderSequence: [ "desc", "asc"], className: "text-right",responsivePriority: 5 },
+				{ 
+					data: function ( row, type, val, meta) {
+						if (type === 'display') {
+							return Math.round(row.non_resup_medic_hits_per_game * 100) / 100;
+						}
+
+						return row.non_resup_medic_hits_per_game;
+					},
+					orderSequence: [ "desc", "asc"],
+					className: "text-right",
+					responsivePriority: 5
+				},
 				{ data: "non_resup_games_played", orderSequence: [ "desc", "asc"], className: "text-right" }
 			],
 			"order": [[ 2, "desc" ]]
