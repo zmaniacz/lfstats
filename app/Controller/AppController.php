@@ -53,7 +53,8 @@ class AppController extends Controller {
 				'home'
         	),
         	'authorize' => array('Controller')
-    	)
+		),
+		'DebugKit.Toolbar'
 	];
 
 	public $uses = array('Center', 'Event', 'Scorecard', 'Game');

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "4662453736568fdb3d6499c4ed30805b",
+    "content-hash": "9ceb50c6664c9e0f531a80abb9c36173",
     "packages": [
         {
             "name": "ad7six/dsn",
@@ -46,29 +46,33 @@
                 }
             ],
             "description": "A utility for parsing and generating service DSNs",
+            "abandoned": true,
             "time": "2014-05-31T16:17:08+00:00"
         },
         {
             "name": "cakephp/cakephp",
-            "version": "2.x-dev",
+            "version": "2.10.11",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cakephp/cakephp.git",
-                "reference": "f1db01395b89e5b43cb3f330ba25a51a3192ecc4"
+                "reference": "98c7fa1c97b26097c923cd3481a8a2114e23fe4f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cakephp/cakephp/zipball/f1db01395b89e5b43cb3f330ba25a51a3192ecc4",
-                "reference": "f1db01395b89e5b43cb3f330ba25a51a3192ecc4",
+                "url": "https://api.github.com/repos/cakephp/cakephp/zipball/98c7fa1c97b26097c923cd3481a8a2114e23fe4f",
+                "reference": "98c7fa1c97b26097c923cd3481a8a2114e23fe4f",
                 "shasum": ""
             },
             "require": {
-                "ext-mcrypt": "*",
                 "php": ">=5.3.0"
             },
             "require-dev": {
                 "cakephp/cakephp-codesniffer": "^1.0.0",
                 "phpunit/phpunit": "^3.7"
+            },
+            "suggest": {
+                "ext-mcrypt": "You need to install ext-openssl or ext-mcrypt to use AES-256 encryption",
+                "ext-openssl": "You need to install ext-openssl or ext-mcrypt to use AES-256 encryption"
             },
             "bin": [
                 "lib/Cake/Console/cake"
@@ -89,7 +93,7 @@
             "keywords": [
                 "framework"
             ],
-            "time": "2018-02-05T16:59:52+00:00"
+            "time": "2018-07-01T19:05:15+00:00"
         },
         {
             "name": "composer/installers",
@@ -266,16 +270,16 @@
     "packages-dev": [
         {
             "name": "cakephp/debug_kit",
-            "version": "2.2.x-dev",
+            "version": "2.2.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cakephp/debug_kit.git",
-                "reference": "37b1e27e1bc78ac61efacfa03bc16f2c71fb89e3"
+                "reference": "c864f21add2cd0d0c4e58b5d6c68a8016b1a3235"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cakephp/debug_kit/zipball/37b1e27e1bc78ac61efacfa03bc16f2c71fb89e3",
-                "reference": "37b1e27e1bc78ac61efacfa03bc16f2c71fb89e3",
+                "url": "https://api.github.com/repos/cakephp/debug_kit/zipball/c864f21add2cd0d0c4e58b5d6c68a8016b1a3235",
+                "reference": "c864f21add2cd0d0c4e58b5d6c68a8016b1a3235",
                 "shasum": ""
             },
             "require": {
@@ -314,7 +318,7 @@
                 "debug",
                 "kit"
             ],
-            "time": "2017-04-25T18:54:04+00:00"
+            "time": "2018-04-18T01:39:58+00:00"
         }
     ],
     "aliases": [],
