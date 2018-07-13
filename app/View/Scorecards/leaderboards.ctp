@@ -381,7 +381,7 @@
 			}
 		} );
 
-		$("table[id$='_leader_table").DataTable( {
+		$("table[id$='_leader_table']").DataTable( {
 			columns : [
 				{ 
 					data: function ( row, type, val, meta) {
@@ -394,9 +394,9 @@
 				{ "data" : "value" },
 			]
 		});
-		$("div[id$='_leader_table_processing").show();
+		$("div[id$='_leader_table_processing']").show();
 
-		$("table[id$='_scores_table").DataTable( {
+		$("table[id$='_scores_table']").DataTable( {
 			columns : [
 				{ 
 					data: function ( row, type, val, meta) {
@@ -410,20 +410,20 @@
 				{ "data" : "Scorecard.mvp_points" },
 			]
 		});
-		$("div[id$='_scores_table_processing").show();
+		$("div[id$='_scores_table_processing']").show();
 
-		$("table[id$='_streak_table").DataTable( {
+		$("table[id$='_streak_table']").DataTable( {
 			columns : [
 				{ "data" : "player_name" },
 				{ "data" : "maxstreak" },
 			]
 		});
-		$("div[id$='_streak_table_processing").show();
+		$("div[id$='_streak_table_processing']").show();
 		
 		$.ajax({
 			url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getPositionLeaderboards', 'ext' => 'json'))); ?>"
 		}).done(function(response) {
-			$("div[id$='_scores_table_processing").hide();
+			$("div[id$='_scores_table_processing']").hide();
 			$('#commander_scores_table').DataTable().clear().rows.add(response.data.commander).draw();
 			$('#heavy_scores_table').DataTable().clear().rows.add(response.data.heavy).draw();
 			$('#scout_scores_table').DataTable().clear().rows.add(response.data.scout).draw();
@@ -434,7 +434,7 @@
 		$.ajax({
 			url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getLeaderboards', 'ext' => 'json'))); ?>"
 		}).done(function(response) {
-			$("div[id$='_leader_table_processing").hide();
+			$("div[id$='_leader_table_processing']").hide();
 			$('#games_played_leader_table').DataTable().clear().rows.add(response.data.games_played).draw();
 			$('#score_total_leader_table').DataTable().clear().rows.add(response.data.score_total).draw();
 
