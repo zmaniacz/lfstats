@@ -1,8 +1,8 @@
 <div class="row">
     <div class="jumbotron">
-        <h3>2018 Detroit Invitational</h3>
-        <p>A random draw/random position tournament hosted at Revolution Lasertag in Detroit, MI, April 16th-17th 2018.</p>
-        <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=434&amp;centerID=7&amp;isComp=1">Details <i class="fas fa-caret-right"></i></a></p>
+        <h3>2018 Internationals</h3>
+        <p>The annual Internationals featuring teams from Australia, New Zealand, and the USA.  Hosted at LaserForce HQ in Brisbane, Australia, July 30th - August 3rd, 2018.</p>
+        <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=507&amp;centerID=5&amp;isComp=1">Details <i class="fas fa-caret-right"></i></a></p>
     </div>
 </div>
 <div class="row">
