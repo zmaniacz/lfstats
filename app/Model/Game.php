@@ -254,7 +254,8 @@ class Game extends AppModel {
 					'fields' => array(
 						'score',
 						'team_elim',
-						'team'
+						'team',
+						'survived'
 					),
 					'Penalty'
 				),
@@ -284,6 +285,7 @@ class Game extends AppModel {
 		$green_team_pens = 0;
 		$green_elim = 0;
 		$winner = 'green';
+		$max_time = -1;
 
 		foreach($scores['Scorecard'] as $scorecard) {
 			if($scorecard['team'] == 'red') {
@@ -293,6 +295,8 @@ class Game extends AppModel {
 				$green_raw += $scorecard['score'];
 				$green_elim += $scorecard['team_elim'];
 			}
+
+			$max_time = max($max_time, $scorecard['survived']);
 
 			if(!empty($scorecard['Penalty'])) {
 				foreach($scorecard['Penalty'] as $penalty) {
@@ -341,6 +345,11 @@ class Game extends AppModel {
 		if($green_elim > 0) {
 			$winner = 'red';
 		}
+
+		//max time validation
+		if($max_time < 0) {
+			$max_time = null;
+		}
 			
 		$data = array('id' => $id,
 			'green_score' => $green_raw,
@@ -349,7 +358,8 @@ class Game extends AppModel {
 			'green_adj' => $green_bonus + $green_pens + $green_team_pens,
 			'red_eliminated' => $red_elim,
 			'green_eliminated' => $green_elim,
-			'winner' => $winner
+			'winner' => $winner,
+			'game_length' => $max_time
 		);
 		
 		$this->save($data);

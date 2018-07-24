@@ -157,6 +157,9 @@ class UploadsController extends AppController {
 
 					if($team == 'fire')
 						$team = 'red';
+
+					$survived = explode(":",$player['survived']);
+					$survivedSeconds = (($survived[0] * 60) + $survived[1]);
 					
 					$this->Scorecard->create();
 					$this->Scorecard->set(array(
@@ -165,6 +168,7 @@ class UploadsController extends AppController {
 						'team' => $team, 
 						'position' => $player['position'], 
 						'score' => ($player['score']+(1000*$player['penalties'])),
+						'survived' => $survivedSeconds,
 						'max_score' => 0,
 						'shots_hit' => $player['shotsHit'],
 						'shots_fired' => $player['shotsFired'],
@@ -229,10 +233,9 @@ class UploadsController extends AppController {
 					}
 				}
 				$this->Game->updateGameWinner($this->Game->id);
+				$this->Scorecard->generateMVP($this->Game->id);
 			}
 		}
-
-		$this->Scorecard->generateMVP();
 
 		if($type == "social") {
 			$this->Game->fixSocialGameNames(date("Y-m-d", strtotime($datetime)), $center_id);

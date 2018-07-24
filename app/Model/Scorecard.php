@@ -63,137 +63,146 @@ class Scorecard extends AppModel {
 		$this->save($scorecard);
 	}
 	
-	public function generateMVP() {
-		$counter = 0;
-		do {
-			$scores = $this->find('all', array('conditions' => array('Scorecard.mvp_points' => NULL), 'limit' => 1000));
-			foreach ($scores as $score) {
-				$mvp = 0;
-	
-				//Position based point bonus
-				switch($score['Scorecard']['position']) {
-					case "Ammo Carrier":
-						$mvp += max((floor(($score['Scorecard']['score']-3000)/10)*.01),0);
-						break;
-					case "Commander":
-						$mvp += max((floor(($score['Scorecard']['score']-10000)/10)*.01),0);
-						break;
-					case "Heavy Weapons":
-						$mvp += max((floor(($score['Scorecard']['score']-7000)/10)*.01),0);
-						break;
-					case "Medic":
-						$mvp += max((floor(($score['Scorecard']['score']-2000)/10)*.01),0);
-						break;
-					case "Scout":
-						$mvp += max((floor(($score['Scorecard']['score']-6000)/10)*.01),0);
-						break;
-				}
-	
-				//medic bonus point
-				if($score['Scorecard']['position'] == 'Medic' && $score['Scorecard']['score'] >= 3000) {
-					$mvp += 1;
-				}
+	public function generateMVP($game_id) {
+
+		$scores = $this->find('all', array(
+			'conditions' => array(
+				'Scorecard.game_id' => $game_id
+			),
+			'contain' => array(
+				'Game'
+			)
+		));
+
+		foreach ($scores as $score) {
+			$mvp = 0;
+
+			//Position based point bonus
+			switch($score['Scorecard']['position']) {
+				case "Ammo Carrier":
+					$mvp += max((floor(($score['Scorecard']['score']-3000)/10)*.01),0);
+					break;
+				case "Commander":
+					$mvp += max((floor(($score['Scorecard']['score']-10000)/10)*.01),0);
+					break;
+				case "Heavy Weapons":
+					$mvp += max((floor(($score['Scorecard']['score']-7000)/10)*.01),0);
+					break;
+				case "Medic":
+					$mvp += max((floor(($score['Scorecard']['score']-2000)/10)*.01),0);
+					break;
+				case "Scout":
+					$mvp += max((floor(($score['Scorecard']['score']-6000)/10)*.01),0);
+					break;
+			}
+
+			//medic bonus point
+			if($score['Scorecard']['position'] == 'Medic' && $score['Scorecard']['score'] >= 3000) {
+				$mvp += 1;
+			}
+			
+			//accuracy bonus
+			$mvp += round($score['Scorecard']['accuracy'] * 10,1);
+			
+			//don't get missiled dummy
+			$mvp += $score['Scorecard']['times_missiled'] * -1;
+			
+			//missile other people instead
+			switch($score['Scorecard']['position']) {
+				case "Commander":
+					$mvp += $score['Scorecard']['missiled_opponent'];
+					break;
+				case "Heavy Weapons":
+					$mvp += $score['Scorecard']['missiled_opponent'] * 2;
+					break;
+			}
+			
+			//get dat 5-chain
+			$mvp += $score['Scorecard']['nukes_detonated'];
+			
+			//maybe hide better
+			if($score['Scorecard']['nukes_activated'] - $score['Scorecard']['nukes_detonated'] > 0) {
+				$conditions = array();
 				
-				//accuracy bonus
-				$mvp += round($score['Scorecard']['accuracy'] * 10,1);
+				$conditions[] = array('game_id' => $score['Scorecard']['game_id']);
 				
-				//don't get missiled dummy
-				$mvp += $score['Scorecard']['times_missiled'] * -1;
+				if($score['Scorecard']['team'] == 'red')
+					$conditions[] = array('team' => 'green');
+				else
+					$conditions[] = array('team' => 'red');
 				
-				//missile other people instead
-				switch($score['Scorecard']['position']) {
-					case "Commander":
-						$mvp += $score['Scorecard']['missiled_opponent'];
-						break;
-					case "Heavy Weapons":
-						$mvp += $score['Scorecard']['missiled_opponent'] * 2;
-						break;
-				}
+				$nukes = $this->find('all',
+					array(
+						'fields' => array(
+							'SUM(nukes_canceled) AS all_nukes_canceled'
+						),
+						'conditions' => $conditions
+					)
+				);
 				
-				//get dat 5-chain
-				$mvp += $score['Scorecard']['nukes_detonated'];
+				if($nukes[0][0]['all_nukes_canceled'] > 0)
+					$mvp += (int)$nukes[0][0]['all_nukes_canceled'] * -3;
+			}
+			
+			//make commanders cry
+			$mvp += $score['Scorecard']['nukes_canceled'] *3;
+			
+			//medic tears are scrumptious
+			$mvp += $score['Scorecard']['medic_hits'];
+			
+			//dont be a venom
+			$mvp += $score['Scorecard']['own_medic_hits'] * -1;
+			
+			//push the little button
+			$mvp += $score['Scorecard']['scout_rapid'] * .5;
+			$mvp += $score['Scorecard']['life_boost'] * 2;
+			$mvp += $score['Scorecard']['ammo_boost'] * 3;
+			
+			//survival bonuses/penalties
+			if($score['Scorecard']['lives_left'] > 0 && $score['Scorecard']['position'] == "Medic")
+				$mvp += 2;
+			
+			if($score['Scorecard']['lives_left'] <= 0 && $score['Scorecard']['position'] != "Medic")
+				$mvp += -1;
+			
+			//lose 5 points for every penalty in competitive games only
+			if($score['Scorecard']['type'] == 'league' || $score['Scorecard']['type'] == 'tournament') {
+				$penalties = $this->Penalty->find('all', array(
+					'conditions' => array(
+						'scorecard_id' => $score['Scorecard']['id']
+					)
+				));
 				
-				//maybe hide better
-				if($score['Scorecard']['nukes_activated'] - $score['Scorecard']['nukes_detonated'] > 0) {
-					$conditions = array();
-					
-					$conditions[] = array('game_id' => $score['Scorecard']['game_id']);
-					
-					if($score['Scorecard']['team'] == 'red')
-						$conditions[] = array('team' => 'green');
-					else
-						$conditions[] = array('team' => 'red');
-					
-					$nukes = $this->find('all',
-						array(
-							'fields' => array(
-								'SUM(nukes_canceled) AS all_nukes_canceled'
-							),
-							'conditions' => $conditions
-						)
-					);
-					
-					if($nukes[0][0]['all_nukes_canceled'] > 0)
-						$mvp += (int)$nukes[0][0]['all_nukes_canceled'] * -3;
-				}
-				
-				//make commanders cry
-				$mvp += $score['Scorecard']['nukes_canceled'] *3;
-				
-				//medic tears are scrumptious
-				$mvp += $score['Scorecard']['medic_hits'];
-				
-				//dont be a venom
-				$mvp += $score['Scorecard']['own_medic_hits'] * -1;
-				
-				//push the little button
-				$mvp += $score['Scorecard']['scout_rapid'] * .5;
-				$mvp += $score['Scorecard']['life_boost'] * 2;
-				$mvp += $score['Scorecard']['ammo_boost'] * 3;
-				
-				//survival bonuses/penalties
-				if($score['Scorecard']['lives_left'] > 0 && $score['Scorecard']['position'] == "Medic")
-					$mvp += 2;
-				
-				if($score['Scorecard']['lives_left'] <= 0 && $score['Scorecard']['position'] != "Medic")
-					$mvp += -1;
-				
-				//lose 5 points for every penalty in competitive games only
-				if($score['Scorecard']['type'] == 'league' || $score['Scorecard']['type'] == 'tournament') {
-					$penalties = $this->Penalty->find('all', array(
-						'conditions' => array(
-							'scorecard_id' => $score['Scorecard']['id']
-						)
-					));
-					
-					foreach($penalties as $penalty) {
-						if($penalty['Penalty']['type'] != 'Penalty Removed')
-							$mvp += $penalty['Penalty']['mvp_value'];
-					}
-				}
-				
-				//raping 3hits.  the math looks weird, but it works and gets the desired result
-				$mvp += floor(($score['Scorecard']['shot_3hit']/6)*100) / 100;
-				
-				//No.  Stahp.
-				$mvp += $score['Scorecard']['own_nuke_cancels'] * -3;
-				
-				//more venom points
-				$mvp += $score['Scorecard']['missiled_team'] * -3;
-				
-				//WINNER
-				$mvp += $score['Scorecard']['elim_other_team'] * 2;
-				
-				$score['Scorecard']['mvp_points'] = max($mvp,0);
-	
-				if($this->save($score)) {
-					$counter++;
-				} else {
-					debug($this->validationErrors); die();
+				foreach($penalties as $penalty) {
+					if($penalty['Penalty']['type'] != 'Penalty Removed')
+						$mvp += $penalty['Penalty']['mvp_value'];
 				}
 			}
-		} while(count($scores) > 0);
-		return $counter;
+			
+			//raping 3hits.  the math looks weird, but it works and gets the desired result
+			$mvp += floor(($score['Scorecard']['shot_3hit']/6)*100) / 100;
+			
+			//No.  Stahp.
+			$mvp += $score['Scorecard']['own_nuke_cancels'] * -3;
+			
+			//more venom points
+			$mvp += $score['Scorecard']['missiled_team'] * -3;
+			
+			//WINNER
+			//at least 1 MVP for an elim, increased by 1/60 for each second of time remaining over 60
+			if($score['Scorecard']['elim_other_team'] > 0) {
+				if(!is_null($score['Game']['game_length'])) {
+					$mvp += max(1, ((900 - $score['Game']['game_length']) / 60));
+				} else {
+					//default to 2
+					$mvp += $score['Scorecard']['elim_other_team'] * 2;
+				}
+			}
+			
+			$score['Scorecard']['mvp_points'] = max($mvp,0);
+
+			$this->save($score);
+		}
 	}
 	
 	public function generateGames() {
