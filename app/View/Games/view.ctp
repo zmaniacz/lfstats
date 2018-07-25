@@ -89,7 +89,7 @@
 		} elseif (file_exists(WWW_ROOT."/pdf/".$game['Game']['pdf_id'].".pdf")) {
 			echo " - ".$this->Html->link("PDF", "/pdf/".$game['Game']['pdf_id'].".pdf");
 		}*/
-		echo " - ".$this->Html->link("PDF", "http://scorecards.lfstats.com/".$game['Game']['pdf_id'].".pdf");
+		echo " - ".$this->Html->link("PDF", "http://lfstatsscorecards.objects-us-east-1.dream.io/".$game['Game']['pdf_id'].".pdf");
 	?>
 	</span>
 	<span class="col-md-4 text-right">
