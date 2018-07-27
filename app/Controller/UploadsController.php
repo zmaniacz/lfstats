@@ -158,8 +158,12 @@ class UploadsController extends AppController {
 					if($team == 'fire')
 						$team = 'red';
 
-					$survived = explode(":",$player['survived']);
-					$survivedSeconds = (($survived[0] * 60) + $survived[1]);
+					if(is_numeric($player['survived'])) {
+						$survived = explode(":",$player['survived']);
+						$survivedSeconds = (($survived[0] * 60) + $survived[1]);
+					} else {
+						$survivedSeconds = null;
+					}
 					
 					$this->Scorecard->create();
 					$this->Scorecard->set(array(

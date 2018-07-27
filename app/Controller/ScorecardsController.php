@@ -258,10 +258,11 @@ class ScorecardsController extends AppController {
 		$scorecard = $this->Scorecard->find('first', 
 			array(
 				'contain' => array(
-					'Penalty'
+					'Penalty',
+					'Game'
 				),
 				'conditions' => array(
-					'id' => $id
+					'Scorecard.id' => $id
 				)
 			)
 		);

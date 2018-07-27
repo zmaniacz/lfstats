@@ -285,7 +285,7 @@ class Game extends AppModel {
 		$green_team_pens = 0;
 		$green_elim = 0;
 		$winner = 'green';
-		$max_time = -1;
+		$max_time = 0;
 
 		foreach($scores['Scorecard'] as $scorecard) {
 			if($scorecard['team'] == 'red') {
@@ -347,7 +347,7 @@ class Game extends AppModel {
 		}
 
 		//max time validation
-		if($max_time < 0) {
+		if($max_time <= 0) {
 			$max_time = null;
 		}
 			

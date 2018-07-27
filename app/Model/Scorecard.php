@@ -199,7 +199,7 @@ class Scorecard extends AppModel {
 				}
 			}
 			
-			$score['Scorecard']['mvp_points'] = max($mvp,0);
+			$score['Scorecard']['mvp_points'] = max(round($mvp,2),0);
 
 			$this->save($score);
 		}

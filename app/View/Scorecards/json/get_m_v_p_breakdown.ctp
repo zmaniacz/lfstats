@@ -20,6 +20,15 @@
 			$mvp['Position Score Bonus'] = max((floor(($score['Scorecard']['score']-6000)/10)*.01),0);
 			break;
 	}
+
+	$elimBonus = 0;
+	if($score['Scorecard']['elim_other_team']) {
+		if(is_null($score['Game']['game_length'])) {
+			$elimBonus = $score['Scorecard']['elim_other_team'] * 2;
+		} else {
+			$elimBonus = max(1, round(((900 - $score['Game']['game_length']) / 60),2));
+		}
+	}
 	
 	$mvp['Accuracy'] = round($score['Scorecard']['accuracy'] * 10,1);
 	$mvp['Nukes Detonated'] = $score['Scorecard']['nukes_detonated'];
@@ -32,7 +41,7 @@
 	$mvp['Life Boost'] = $score['Scorecard']['life_boost'] * 2;
 	$mvp['Medic Survival Bonus'] = ($score['Scorecard']['lives_left'] > 0 && $score['Scorecard']['position'] == "Medic") ? 2 : 0;
 	$mvp['Medic Score Bonus'] = ($score['Scorecard']['position'] == 'Medic' && $score['Scorecard']['score'] >= 3000) ? 1 : 0;
-	$mvp['Elimination Bonus'] = ($score['Scorecard']['elim_other_team']) ? $score['Scorecard']['elim_other_team'] * 2 : 0;
+	$mvp['Elimination Bonus'] = $elimBonus;
 	$mvp['Times Missiled'] = $score['Scorecard']['times_missiled']*-1;
 	$mvp['Missiled Team'] = $score['Scorecard']['missiled_team']*-3;
 	$mvp['Your Nukes Canceled'] = ($score['Scorecard']['nukes_activated'] - $score['Scorecard']['nukes_detonated'])*-3;
