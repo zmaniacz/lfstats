@@ -159,8 +159,15 @@
 				} else {
 					$score_line .= (($score['is_sub']) ? "<td class=\"text-warning\"><span class=\"glyphicon glyphicon-asterisk\"></span></td>" : "<td></td>");
 				}
+
+				if($score['survived'] > 0) {
+					//We have a survival time so let's draw a pie chart
+					$alive = (($score['lives_left'] > 0) ? "<td class=\"text-success\">" : "<td class=\"text-danger text-center\">")."<svg class=\"timeLeft\" data-percent=\"".round($score['survived']/$game['Game']['game_length'],2)."\" viewBox=\"-1 -1 2 2\" style=\"transform: rotate(-90deg);height:25px\"><title>".gmdate("i:s",$score['survived'])."</title></svg></td>";
+				} else {
+					$alive = (($score['lives_left'] > 0) ? "<td class=\"text-success\"><span class=\"glyphicon glyphicon-ok\"></span>" : "<td class=\"text-danger text-center\"><span class=\"glyphicon glyphicon-remove\"></span>")."</td>";
+				}
 				
-				$score_line .= (($score['lives_left'] > 0) ? "<td class=\"text-success\"><span class=\"glyphicon glyphicon-ok\"></span>" : "<td class=\"text-danger text-center\"><span class=\"glyphicon glyphicon-remove\"></span>")."</td>";
+				$score_line .= $alive;
 				$score_line .= "<td>".$this->Html->link($score['player_name'], array('controller' => 'Players', 'action' => 'view', $score['player_id']), array('class' => 'btn btn-primary btn-block'))."</td>";
 				$score_line .= "<td>".$score['position']."</td>";
 				$score_line .= "<td>".($score['score']+$penalty_score).(($penalty_score != 0) ? " ($penalty_score)" : "")."</td>";
@@ -325,6 +332,12 @@
 	</div>
 </div>
 <script type="text/javascript">
+	function getCoordinatesForPercent(percent) {
+		const x = Math.cos(2 * Math.PI * percent);
+		const y = Math.sin(2 * Math.PI * percent);
+		return [x, y];
+	}
+
 	$(document).ready(function() {
 		$('.gamelist').DataTable( {
 			"searching": false,
@@ -332,6 +345,25 @@
 			"paging": false,
 			"ordering": false
 		} );
+
+		$('.timeLeft').each(function() {
+			const [endX, endY] = getCoordinatesForPercent($(this).data("percent"));
+
+			// if the slice is more than 50%, take the large arc (the long way around)
+			const largeArcFlag = $(this).data("percent") > .5 ? 1 : 0;
+
+			// create an array and join it just for code readability
+			const pathData = [
+			`M 1 0`, // Move
+			`A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY}`, // Arc
+			`L 0 0`, // Line
+			].join(' ');
+
+			const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+			pathEl.setAttribute('d', pathData);
+			pathEl.setAttribute('fill', 'currentColor');
+			$(this).append(pathEl);
+		})
 
 		$('#breakdown_container').highcharts({
 			chart: {
