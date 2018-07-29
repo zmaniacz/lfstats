@@ -91,7 +91,7 @@
 								?></li>
 								<li><?= $this->Html->link('Penalties', array('controller' => 'penalties', 'action' => 'index')); ?></li>
 								<li><?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5')); ?></li>
-                                <li><?= $this->Html->link('Twitch', array('controller' => 'pages', 'action' => 'twitch'), array('id' => 'twitch_status')); ?></li>
+								<li><a href="https://www.twitch.tv/laserforce_brisbane">Twitch</a></li>
                                 <li><?= $this->Html->link('WCT 2018', array('controller' => 'leagues', 'action' => 'standings', '?' => array('gametype' => 'league', 'leagueID' => 18, 'centerID' => 10))); ?></li>
 								<?php if(AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
 									<li><?= $this->Html->link('Upload PDFs', array('controller' => 'uploads', 'action' => 'index')); ?></li>
@@ -314,7 +314,7 @@
 	<script>
 		$(document).ready(function() {
 			$.ajax({ 
-				url:'https://api.twitch.tv/kraken/streams/laserforcetournaments?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
+				url:'https://api.twitch.tv/kraken/streams/laserforce_brisbane?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
 				dataType:'jsonp',
 			}).done(function(channel) { 
 				if(channel["stream"] == null) {
