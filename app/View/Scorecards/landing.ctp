@@ -3,6 +3,7 @@
         <h3>2018 Internationals</h3>
         <p>The annual Internationals featuring teams from Australia, New Zealand, and the USA.  Hosted at LaserForce HQ in Brisbane, Australia, July 30th - August 3rd, 2018.</p>
         <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=507&amp;centerID=5&amp;isComp=1">Details <i class="fas fa-caret-right"></i></a></p>
+        <p><a class="btn btn-primary btn-lg" href="https://docs.google.com/spreadsheets/d/1TLN-1bidtzrVJy3wG08HB1PZrQbjk8yKo0P-zNjN2Ak/edit?usp=sharing">Schedule <i class="fas fa-caret-right"></i></a></p>
     </div>
 </div>
 <div class="row">
