@@ -59,7 +59,7 @@
 					<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
 						<ul class="nav navbar-nav">
 							<li><?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5')); ?></li>
-							<li><a href="https://www.twitch.tv/laserforce_brisbane">Twitch</a></li>
+							<li><a id="twitch_status" href="https://www.twitch.tv/laserforce_brisbane">Twitch</a></li>
 						</ul>
 						<ul class="nav navbar-nav navbar-right">
 							<li>
@@ -89,7 +89,7 @@
 	<script>
 		$(document).ready(function() {
 			$.ajax({ 
-				url:'https://api.twitch.tv/kraken/streams/laserforcetournaments?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
+				url:'https://api.twitch.tv/kraken/streams/laserforce_brisbane?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
 				dataType:'jsonp',
 				success:function(channel) { 
 					if(channel["stream"] == null) {
