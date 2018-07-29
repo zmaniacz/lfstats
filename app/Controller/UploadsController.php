@@ -158,7 +158,7 @@ class UploadsController extends AppController {
 					if($team == 'fire')
 						$team = 'red';
 
-					if(is_numeric($player['survived'])) {
+					if(!empty($player['survived'])) {
 						$survived = explode(":",$player['survived']);
 						$survivedSeconds = (($survived[0] * 60) + $survived[1]);
 					} else {
