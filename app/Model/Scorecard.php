@@ -1584,6 +1584,7 @@ class Scorecard extends AppModel {
 					'type' => 'LEFT',
 					'conditions' => array(
 						'Penalty.scorecard_id = Scorecard.id',
+						'Penalty.type != "Penalty Removed"'
 					)
 				)
 			),
