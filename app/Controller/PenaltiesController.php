@@ -82,9 +82,8 @@ class PenaltiesController extends AppController {
 
 				//add a penalty to the scorecard record and recalc MVP
 				$scorecard['Scorecard']['penalties'] += 1;
-				$scorecard['Scorecard']['mvp_points'] = null;
 				$this->Penalty->Scorecard->save($scorecard);
-				$this->Penalty->Scorecard->generateMVP();
+				$this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['game_id']);
 
 				$this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
 				
@@ -123,9 +122,8 @@ class PenaltiesController extends AppController {
 			));
 
 			if ($this->Penalty->save($this->request->data)) {
-				$scorecard['Scorecard']['mvp_points'] = null;
 				$this->Penalty->Scorecard->save($scorecard);
-				$this->Penalty->Scorecard->generateMVP();
+				$this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['game_id']);
 				
 				$this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
 				
