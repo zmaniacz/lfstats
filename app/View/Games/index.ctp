@@ -11,6 +11,7 @@
 				<th>Time</th>
 				<th>Winner Score</th>
 				<th>Loser Score</th>
+				<th>Game Length</th>
 				<th>PDF</th>
 			</thead>
 		</table>
@@ -58,21 +59,38 @@
 					pdf = '<a href="http://lfstatsscorecards.objects-us-east-1.dream.io/'+element.Game.pdf_id+'.pdf" class="btn btn-primary btn-block" target="_blank">PDF</a>';
 				}
 
-				return {game_name: game_name, game_datetime: element.Game.game_datetime, winner: winner, loser: loser, pdf: pdf};
+				let game_length = "N/A";
+				if(element.Game.game_length != null) {
+					game_length = element.Game.game_length;
+				}
+
+				return {game_name: game_name, game_datetime: element.Game.game_datetime, game_length: game_length, winner: winner, loser: loser, pdf: pdf};
 			});
 			
 			$('#game_list').DataTable( {
-			"pageLength": 25,
-			"order": [1,'desc'],
-			"data" : data,
-			"columns" : [
-				{ "data" : "game_name" },
-				{ "data" : "game_datetime" },
-				{ "data" : "winner" },
-				{ "data" : "loser" },
-				{ "data" : "pdf" }
-			]
-		});
+				"pageLength": 25,
+				"order": [1,'desc'],
+				"data" : data,
+				"columns" : [
+					{ "data" : "game_name" },
+					{ "data" : "game_datetime" },
+					{ "data" : "winner" },
+					{ "data" : "loser" },
+					{ 
+						data: function ( row, type, val, meta) {
+							var date = new Date(null);
+							date.setSeconds(row.game_length);
+							var result = date.toISOString().substr(14, 5);
+
+							if (type === 'display') {
+								return result;
+							}
+							return row.game_length;
+						}
+					},
+					{ "data" : "pdf" }
+				]
+			});
 		});
 	});
 </script>
