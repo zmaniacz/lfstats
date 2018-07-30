@@ -406,8 +406,22 @@
 						return row.Player.player_name;
 					}
 				},
-				{ "data" : "Scorecard.final_score" },
-				{ "data" : "Scorecard.mvp_points" },
+				{ 
+					data: function ( row, type, val, meta) {
+						if (type === 'display') {
+							return `<a href="/games/view/${row.Scorecard.game_id}?${params.toString()}">${row.Scorecard.final_score}</a>`;
+						}
+						return row.Scorecard.final_score;
+					}
+				},
+				{ 
+					data: function ( row, type, val, meta) {
+						if (type === 'display') {
+							return `<a href="/games/view/${row.Scorecard.game_id}?${params.toString()}">${row.Scorecard.mvp_points}</a>`;
+						}
+						return row.Scorecard.mvp_points;
+					}
+				}
 			]
 		});
 		$("div[id$='_scores_table_processing']").show();
