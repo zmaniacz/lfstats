@@ -373,8 +373,8 @@ class Game extends AppModel {
 			)
 		));
 		
-		if(isset($scores['Match']['id'])) {
-			$this->Match->updatePoints($scores['Match']['id']);
+		if(isset($game['Match']['id'])) {
+			$this->Match->updatePoints($game['Match']['id']);
 		}
 	}
 
