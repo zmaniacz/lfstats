@@ -32,7 +32,7 @@
 					<thead>
 						<tr>
 							<th rowspan="2">Name</th>
-							<th colspan="5">Overall</th>
+							<th colspan="6">Overall</th>
 							<th colspan="3">Commander</th>
 							<th colspan="3">Heavy Weapons</th>
 							<th colspan="3">Scout</th>
@@ -40,7 +40,8 @@
 							<th colspan="3">Medic</th>
 						</tr>
 						<tr>
-							<th>MVP</th>
+							<th>Avg MVP</th>
+							<th>MVP/m</th>
 							<th>Total MVP</th>
 							<th>Accuracy</th>
 							<th>Hit Diff</th>
@@ -252,6 +253,14 @@
 			"columns" : [
 				{ "data" : "name", },
 				{ "data" : "avg_avg_mvp" },
+				{ "data" : function ( row, type, val, meta ) {
+						if (type === 'display') {
+							let display = Math.round(row.mvp_per_minute * 100) / 100;
+							return display;
+						}
+						return row.mvp_per_minute;
+					}
+				},
 				{ "data" : "total_mvp" },
 				{ "data" : "avg_avg_acc" },
 				{ "data" : function ( row, type, val, meta ) {

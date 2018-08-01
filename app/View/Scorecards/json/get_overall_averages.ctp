@@ -9,6 +9,7 @@
 			'avg_avg_mvp' => round($value['avg_avg_mvp'],2),
 			'total_mvp' => round($value['total_mvp'],2),
 			'avg_avg_acc' => round($value['avg_avg_acc']*100,2),
+			'mvp_per_minute' => $value['mvp_per_second']*60,
 			'hit_diff' => round($value['hit_diff'],2),
 			'games_won' => round($value['total_games_won'],2),
 			'games_played' => round($value['total_games'],2),
