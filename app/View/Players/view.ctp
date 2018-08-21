@@ -1507,45 +1507,60 @@ $(document).ready(function(){
 			{ "data" : "position" },
 			{ 
 				data: function ( row, type, val, meta) {
-					if (type === 'display') {
+					if (type === 'display' && row.overall != 'n/a') {
 						result = Math.round(row.overall * 1000) / 1000;
-						return result
+						if(result == 1)
+							return '1.000'
+						else
+							return result
 					}
 					return row.overall;
 				}
 			},
 			{ 
 				data: function ( row, type, val, meta) {
-					if (type === 'display') {
+					if (type === 'display' && row.survives != 'n/a') {
 						result = Math.round(row.survives * 1000) / 1000;
-						return result
+						if(result == 1)
+							return '1.000'
+						else
+							return result
 					}
 					return row.survives;
 				}
 			},
 			{ 
 				data: function ( row, type, val, meta) {
-					if (type === 'display') {
+					if (type === 'display' && row.survivesElim != 'n/a') {
 						result = Math.round(row.survivesElim * 1000) / 1000;
-						return result
+						if(result == 1)
+							return '1.000'
+						else
+							return result
 					}
 					return row.survivesElim;
 				}
 			},
 			{ 
 				data: function ( row, type, val, meta) {
-					if (type === 'display') {
+					if (type === 'display' && row.dieElim != 'n/a') {
 						result = Math.round(row.dieElim * 1000) / 1000;
-						return result
+						if(result == 1)
+							return '1.000'
+						else
+							return result
 					}
 					return row.dieElim;
 				}
 			},
 			{ 
 				data: function ( row, type, val, meta) {
-					if (type === 'display') {
+					if (type === 'display' && row.elim != 'n/a') {
 						result = Math.round(row.elim * 1000) / 1000;
-						return result
+						if(result == 1)
+							return '1.000'
+						else
+							return result
 					}
 					return row.elim;
 				}
