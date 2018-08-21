@@ -1505,11 +1505,51 @@ $(document).ready(function(){
 		},
 		columns : [
 			{ "data" : "position" },
-			{ "data" : "overall" },
-			{ "data" : "survives" },
-			{ "data" : "survivesElim" },
-			{ "data" : "dieElim" },
-			{ "data" : "elim" }
+			{ 
+				data: function ( row, type, val, meta) {
+					if (type === 'display') {
+						result = Math.round(row.overall * 1000) / 1000;
+						return result
+					}
+					return row.overall;
+				}
+			},
+			{ 
+				data: function ( row, type, val, meta) {
+					if (type === 'display') {
+						result = Math.round(row.survives * 1000) / 1000;
+						return result
+					}
+					return row.survives;
+				}
+			},
+			{ 
+				data: function ( row, type, val, meta) {
+					if (type === 'display') {
+						result = Math.round(row.survivesElim * 1000) / 1000;
+						return result
+					}
+					return row.survivesElim;
+				}
+			},
+			{ 
+				data: function ( row, type, val, meta) {
+					if (type === 'display') {
+						result = Math.round(row.dieElim * 1000) / 1000;
+						return result
+					}
+					return row.dieElim;
+				}
+			},
+			{ 
+				data: function ( row, type, val, meta) {
+					if (type === 'display') {
+						result = Math.round(row.elim * 1000) / 1000;
+						return result
+					}
+					return row.elim;
+				}
+			}
 		],
 		order: [[ 0, "asc" ]]
 	});
