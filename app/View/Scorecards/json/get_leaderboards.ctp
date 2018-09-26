@@ -12,7 +12,9 @@
         "own_nuke_cancels_total",
         "elim_other_team_total",
         "team_elim_total",
-        "shots_fired_total"
+        "shots_fired_total",
+        "medic_on_medic_hits_total",
+        "penalties_total"
     );
 
     foreach($stats as $stat) {
@@ -30,6 +32,7 @@
         }
     }
 
+    $medic_on_medic_hits_total = array();
     foreach($medic_on_medic as $item) {
         if($item[0]['medic_hits_total'] > 0) {
             $medic_on_medic_hits_total[] = array(
@@ -39,6 +42,7 @@
         }
     }
 
+    $penalties_total = array();
     foreach($penalties as $item) {
         if($item[0]['penalties'] > 0) {
             $penalties_total[] = array(
