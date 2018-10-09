@@ -78,13 +78,13 @@
 					{ "data" : "loser" },
 					{ 
 						data: function ( row, type, val, meta) {
-							var date = new Date(null);
+							/*var date = new Date(null);
 							date.setSeconds(row.game_length);
 							var result = date.toISOString().substr(14, 5);
 
 							if (type === 'display') {
 								return result;
-							}
+							}*/
 							return row.game_length;
 						}
 					},
