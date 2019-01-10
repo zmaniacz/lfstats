@@ -1,9 +1,8 @@
 <div class="row">
     <div class="jumbotron">
-        <h3>2018 Internationals</h3>
-        <p>The annual Internationals featuring teams from Australia, New Zealand, and the USA.  Hosted at LaserForce HQ in Brisbane, Australia, July 30th - August 3rd, 2018.</p>
-        <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=507&amp;centerID=5&amp;isComp=1">Details <i class="fas fa-caret-right"></i></a></p>
-        <p><a class="btn btn-primary btn-lg" href="https://docs.google.com/spreadsheets/d/1TLN-1bidtzrVJy3wG08HB1PZrQbjk8yKo0P-zNjN2Ak/edit?usp=sharing">Schedule <i class="fas fa-caret-right"></i></a></p>
+        <h3>2019 Syracuse Random Draw</h3>
+        <p><a class="btn btn-primary btn-lg" href="/leagues/standings?gametype=league&amp;leagueID=687&amp;centerID=8&amp;isComp=1">Details
+                <i class="fas fa-caret-right"></i></a></p>
     </div>
 </div>
 <div class="row">
@@ -17,9 +16,9 @@
                 <?php
                     $sorted_centers = $centers;
                     asort($sorted_centers);
-                    foreach($sorted_centers as $key => $value) {
+                    foreach ($sorted_centers as $key => $value) {
                         echo "<li>".$this->Html->link($value, array(
-                            'controller' => 'scorecards', 
+                            'controller' => 'scorecards',
                             'action' => 'nightly',
                             implode(",", $this->request->pass),
                             '?' => array(
@@ -41,9 +40,9 @@
             <ul class="dropdown-menu">
                 <li class="dropdown-header">Competitions</li>
                 <?php
-                    foreach($league_details as $league) {
+                    foreach ($league_details as $league) {
                         echo "<li>".$this->Html->link($league['Event']['name'], array(
-                            'controller' => 'leagues', 
+                            'controller' => 'leagues',
                             'action' => 'standings',
                             implode(",", $this->request->pass),
                             '?' => array(
@@ -80,17 +79,20 @@
         let events = <?= json_encode($events, JSON_NUMERIC_CHECK, JSON_FORCE_OBJECT); ?>;
         let table = $('#events_list tbody');
 
-        events.forEach( function(item) {
+        events.forEach(function(item) {
             params.set('gametype', item.Event.type);
             params.set('centerID', item.Center.id);
             params.set('leagueID', (item.Event.is_comp) ? item.Event.id : 0);
             params.set('isComp', (item.Event.is_comp) ? 1 : 0);
 
-            let eventName = (item.Event.is_comp) ? item.Event.name : `${item.Center.name} - <span class="text-capitalize">${item.Event.type}`;
+            let eventName = (item.Event.is_comp) ? item.Event.name :
+                `${item.Center.name} - <span class="text-capitalize">${item.Event.type}`;
 
-            let eventLink = `<a href="/scorecards/nightly/${item.Event.last_gamedate}?${params.toString()}">${eventName}</a>`;
-            
-            let row = `<tr>
+            let eventLink =
+                `<a href="/scorecards/nightly/${item.Event.last_gamedate}?${params.toString()}">${eventName}</a>`;
+
+            let row =
+                `<tr>
                         <td>${eventLink}</td>
                         <td class="text-right">${item.Event.last_gamedate}</td>
                         <td class="text-right">${item.Event.games_played}</td>
