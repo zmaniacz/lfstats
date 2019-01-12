@@ -509,7 +509,7 @@
             }
             table.ajax.url(url).load();
 
-            setTimeout(update_standings, 30000);
+            setTimeout(update_standings(table, round), 30000);
         }
 
         $("#round_radio :input").change(function() {
