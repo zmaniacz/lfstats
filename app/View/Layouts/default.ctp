@@ -348,7 +348,7 @@
     <script>
         $(document).ready(function() {
             $.ajax({
-                url: 'https://api.twitch.tv/kraken/streams/laserforce_brisbane?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
+                url: 'https://api.twitch.tv/kraken/streams/laserforcetournaments?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
                 dataType: 'jsonp',
             }).done(function(channel) {
                 if (channel["stream"] == null) {
