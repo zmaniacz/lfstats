@@ -25,6 +25,7 @@
 				'Chasing' => 'Chasing',
 				'Shoulder Tilting' => 'Shoulder Tilting',
 				'Unsportsmanlike Conduct' => 'Unsportsmanlike Conduct',
+				'Game Misconduct' => 'Game Misconduct',
 				'Non-LaserForce Equipment' => 'Non-LaserForce Equipment',
 				'Penalty Removed' => 'Penalty Removed',
 				'Unknown' => 'Unknown'
