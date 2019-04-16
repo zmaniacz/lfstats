@@ -181,6 +181,40 @@ class PenaltiesController extends AppController
         return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
     }
 
+    public function common($id = null)
+    {
+        if (!$this->Penalty->exists($id)) {
+            throw new NotFoundException(__('Invalid penalty'));
+        }
+        
+        $penalty = $this->Penalty->findById($id);
+        $scorecard = $this->Penalty->Scorecard->find('first', array(
+                'contain' => array(
+                    'Game' => array(
+                        'Match'
+                    )
+                ),
+                'conditions' => array('Scorecard.id' => $penalty['Penalty']['scorecard_id'])
+            ));
+            
+        $penalty['Penalty']['type'] = "Common Foul";
+        $penalty['Penalty']['value'] = 0;
+        $penalty['Penalty']['mvp_value'] = 0;
+
+        if ($this->Penalty->save($penalty)) {
+            $this->Penalty->Scorecard->save($scorecard);
+            $this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['game_id']);
+                
+            $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
+                
+            $this->Session->setFlash(__('The penalty has been marked common.'), 'default', array('class' => 'alert-success'));
+        } else {
+            $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
+        }
+        
+        return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
+    }
+
     /**
      * delete method
      *
