@@ -133,7 +133,7 @@ class PenaltiesController extends AppController
                 $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
                 
                 $this->Session->setFlash(__('The penalty has been saved.'));
-                return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
+                $this->redirect($this->referer());
             } else {
                 $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
             }
@@ -178,7 +178,7 @@ class PenaltiesController extends AppController
             $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
         }
         
-        return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
+        $this->redirect($this->referer());
     }
 
     public function common($id = null)
@@ -212,7 +212,7 @@ class PenaltiesController extends AppController
             $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
         }
         
-        return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
+        $this->redirect($this->referer());
     }
 
     /**
@@ -257,7 +257,7 @@ class PenaltiesController extends AppController
         
         $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
 
-        return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
+        $this->redirect($this->referer());
     }
     
     public function getPenalty($id)
