@@ -9,6 +9,7 @@
         <?= $this->Form->input('id', array('class' => 'form-control', 'div' => array('class' => 'form-group'))); ?>
         <?= $this->Form->input('type', array(
                 'options' => array(
+                    'Common Foul' => 'Common Foul',
                     'Illegal Language' => 'Illegal Language',
                     'Leaving Starting Area' => 'Leaving Starting Area',
                     'Leaving Playing Arena' => 'Leaving Playing Arena',
