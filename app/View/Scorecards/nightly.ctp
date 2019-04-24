@@ -1,12 +1,9 @@
 <?= $this->element('breadcrumbs'); ?>
 <hr>
-<form class="form-inline" action="/scorecards/nightly" id="nightlyNightlyForm" method="post" accept-charset="utf-8">
-    <div style="display:none;">
-        <input type="hidden" name="_method" value="POST" />
-    </div>
+<form id="nightlyNightlyForm">
     <div class="form-group">
-        <label for="nightlySelectDate">Select Date</label>
-        <select class="form-control" name="data[nightly][selectDate]" id="nightlySelectDate">
+        <label for="nightlySelectDate">Select Date:</label>
+        <select class="form-control-sm" id="nightlySelectDate">
             <?php foreach ($game_dates as $game_date): ?>
             <option value="<?= $game_date ?>" <?=($game_date==$current_date) ? "selected" : "" ; ?>>
                 <?= $game_date ?>
@@ -15,11 +12,9 @@
         </select>
     </div>
 </form>
-<h4>Games Played</h4>
-<div id="game_list_group" class="list-group"></div>
 <h4>Overall</h4>
 <div>
-    <table class="table table-striped table-bordered table-hover table-condensed nowrap" id="overall">
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="overall">
         <thead>
             <th>#</th>
             <th>Name</th>
@@ -34,9 +29,10 @@
         </thead>
     </table>
 </div>
+<hr>
 <h4>Summary Stats</h4>
 <div>
-    <table class="table table-striped table-bordered table-hover table-condensed nowrap" id="summary_stats">
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="summary_stats">
         <thead>
             <th>#</th>
             <th>Name</th>
@@ -54,9 +50,10 @@
         </thead>
     </table>
 </div>
+<hr>
 <h4>Medic Hits</h4>
 <div>
-    <table class="table table-striped table-bordered table-hover table-condensed nowrap" id="medic_hits">
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="medic_hits">
         <thead>
             <th>#</th>
             <th>Name</th>
@@ -69,6 +66,9 @@
         </thead>
     </table>
 </div>
+<hr>
+<h4>Games Played</h4>
+<ul id="game_list_group" class="list-group"></ul>
 <script type="text/javascript">
 $(document).ready(function() {
     const params = new URLSearchParams(location.search);
@@ -81,33 +81,33 @@ $(document).ready(function() {
             $('#game_list_group').empty();
 
             response.data.forEach(function(element) {
-                var $wrapper = $('<div>', {
+                let $wrapper = $('<div>', {
                     class: 'list-group-item'
                 });
-                var $heading = $('<div>', {
+                let $heading = $('<div>', {
                     class: 'list-group-item-heading'
                 });
-                var $body = $('<div>', {
+                let $body = $('<div>', {
                     class: 'list-group-item-text'
                 });
-                var $gameLink = $('<a>', {
+                let $gameLink = $('<a>', {
                     href: '/games/view/' + element.Game.id + '?' + params.toString()
                 });
-                var $pdfLink = $('<a>', {
+                let $pdfLink = $('<a>', {
                     href: 'http://lfstatsscorecards.objects-us-east-1.dream.io/' +
                         element.Game.pdf_id + '.pdf'
                 }).text('PDF');
 
-                $gameLink.html('<strong>' + element.Game.game_name + ' - ' + element.Game
+                $gameLink.html('<h5>' + element.Game.game_name + ' - ' + element.Game
                     .game_datetime +
-                    '</strong>');
+                    '</h5>');
                 $heading.append($gameLink);
 
-                var red_team = '<span class="text-danger">Red Team: ' + (element.Game
+                let red_team = '<span class="text-danger">Red Team: ' + (element.Game
                         .red_score +
                         element.Game.red_adj) +
                     '</span>';
-                var green_team = '<span class="text-success">Green Team: ' + (element.Game
+                let green_team = '<span class="text-success">Green Team: ' + (element.Game
                         .green_score +
                         element.Game.green_adj) +
                     '</span>';
