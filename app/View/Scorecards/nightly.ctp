@@ -485,15 +485,7 @@ $(document).ready(function() {
     $('#nightlySelectDate').change(function() {
         const params = new URLSearchParams(location.search);
         params.set('date', $(this).val());
-        history.pushState(null, "", `${location.pathname}?${params.toString()}`);
-
-        updateGameList(params);
-        $('#overall').DataTable().ajax.url(
-            `/scorecards/nightlyScorecards.json?${params.toString()}`).load();
-        $('#summary_stats').DataTable().ajax.url(
-            `/scorecards/nightlySummaryStats.json?${params.toString()}`).load();
-        $('#medic_hits').DataTable().ajax.url(
-            `/scorecards/nightlyMedicHits.json?${params.toString()}`).load();
+        window.location = `${location.pathname}?${params.toString()}`;
     });
 });
 </script>
