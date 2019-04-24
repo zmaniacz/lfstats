@@ -149,11 +149,11 @@
         }).done(function(channel) {
             if (channel["stream"] == null) {
                 $("#twitch_status").append(
-                    " <span class=\"badge badge-secondary\">Offline</span>"
+                    " <span class=\"badge badge-secondary py-1\">Offline</span>"
                 );
             } else {
                 $("#twitch_status").append(
-                    " <span class=\"badge badge-danger\">LIVE</span>");
+                    " <span class=\"badge badge-danger py-1\">LIVE</span>");
             }
         });
 
