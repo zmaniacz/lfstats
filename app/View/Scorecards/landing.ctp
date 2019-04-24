@@ -1,25 +1,24 @@
-<div class="row">
-    <div class="jumbotron">
-        <h3>2019 Syracuse Random Draw</h3>
+<div class="jumbotron jumbotron-fluid">
+    <div class="container">
+        <h1 class="display-4">2019 Syracuse Random Draw</h1>
+        <hr class="my-4">
         <p><a class="btn btn-primary btn-lg"
                 href="/leagues/standings?gametype=league&amp;leagueID=687&amp;centerID=8&amp;isComp=1">Details
                 <i class="fas fa-caret-right"></i></a></p>
     </div>
 </div>
 <div class="row">
-    <div class="col-xs-8 col-xs-offset-2 col-sm-3 col-sm-offset-3">
+    <div class="col-8 offset-2 col-sm-3 offset-sm-3">
         <div class="dropdown">
-            <button class="btn btn-default btn-block dropdown-toggle" type="button" id="socialDropDown"
-                data-toggle="dropdown">
-                Jump to social games <i class="fas fa-caret-down"></i>
-            </button>
-            <ul class="dropdown-menu">
-                <li class="dropdown-header">Centers</li>
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="socialDropDown"
+                data-toggle="dropdown">Jump to social games</button>
+            <div class="dropdown-menu">
+                <h6 class="dropdown-header">Centers</h6>
                 <?php
                     $sorted_centers = $centers;
                     asort($sorted_centers);
                     foreach ($sorted_centers as $key => $value) {
-                        echo "<li>".$this->Html->link($value, array(
+                        echo $this->Html->link($value, array(
                             'controller' => 'scorecards',
                             'action' => 'nightly',
                             implode(",", $this->request->pass),
@@ -28,23 +27,21 @@
                                 'centerID' => $key,
                                 'leagueID' => 0
                             )
-                        ))."</li>";
+                        ), array('class' => 'dropdown-item'));
                     }
                 ?>
-            </ul>
+            </div>
         </div>
     </div>
-    <div class="col-xs-8 col-xs-offset-2 col-sm-3 col-sm-offset-0">
+    <div class="col-8 offset-2 col-sm-3 offset-sm-0">
         <div class="dropdown">
-            <button class="btn btn-default btn-block dropdown-toggle" type="button" id="compDropDown"
-                data-toggle="dropdown">
-                Jump to competition <i class="fas fa-caret-down"></i>
-            </button>
-            <ul class="dropdown-menu">
-                <li class="dropdown-header">Competitions</li>
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="compDropDown"
+                data-toggle="dropdown">Jump to competition</button>
+            <div class="dropdown-menu">
+                <h6 class="dropdown-header">Competitions</h6>
                 <?php
                     foreach ($league_details as $league) {
-                        echo "<li>".$this->Html->link($league['Event']['name'], array(
+                        echo $this->Html->link($league['Event']['name'], array(
                             'controller' => 'leagues',
                             'action' => 'standings',
                             implode(",", $this->request->pass),
@@ -53,17 +50,17 @@
                                 'centerID' => $league['Event']['center_id'],
                                 'leagueID' => $league['Event']['id']
                             )
-                        ))."</li>";
+                        ), array('class' => 'dropdown-item'));
                     }
                 ?>
-            </ul>
+            </div>
         </div>
     </div>
 </div>
-<hr>
+<hr class="my-4">
 <div class="row">
-    <div class="col-xs-12 col-sm-8 col-sm-offset-2">
-        <table class="table table-striped table-condensed table-bordered table-hover" id="events_list">
+    <div class="col-12 col-sm-8 offset-sm-2">
+        <table class="table table-striped table-sm table-bordered table-hover" id="events_list">
             <thead>
                 <tr>
                     <th class="col-xs-4">Center</th>
@@ -98,10 +95,10 @@ $(document).ready(function() {
 
         let row =
             `<tr>
-                        <td>${eventLink}</td>
-                        <td class="text-right">${item.Event.last_gamedate}</td>
-                        <td class="text-right">${item.Event.games_played}</td>
-                    </tr>`;
+                <td>${eventLink}</td>
+                <td class="text-right">${item.Event.last_gamedate}</td>
+                <td class="text-right">${item.Event.games_played}</td>
+            </tr>`;
         table.append(row);
     });
 });
