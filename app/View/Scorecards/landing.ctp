@@ -10,7 +10,7 @@
 <div class="row">
     <div class="col-8 offset-2 col-sm-3 offset-sm-3">
         <div class="dropdown">
-            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="socialDropDown"
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="socialDropDown"
                 data-toggle="dropdown">Jump to social games</button>
             <div class="dropdown-menu">
                 <h6 class="dropdown-header">Centers</h6>
@@ -35,7 +35,7 @@
     </div>
     <div class="col-8 offset-2 col-sm-3 offset-sm-0">
         <div class="dropdown">
-            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="compDropDown"
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="compDropDown"
                 data-toggle="dropdown">Jump to competition</button>
             <div class="dropdown-menu">
                 <h6 class="dropdown-header">Competitions</h6>
