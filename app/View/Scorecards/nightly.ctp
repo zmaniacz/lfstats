@@ -72,6 +72,7 @@
 <script type="text/javascript">
 $(document).ready(function() {
     const params = new URLSearchParams(location.search);
+    params.set('date', '<?= $current_date; ?>');
 
     function updateGameList(params) {
         $.ajax({
