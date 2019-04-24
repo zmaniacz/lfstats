@@ -1,3 +1,5 @@
+<?= $this->element('breadcrumbs'); ?>
+<hr>
 <form class="form-inline" action="/scorecards/nightly" id="nightlyNightlyForm" method="post" accept-charset="utf-8">
     <div style="display:none;">
         <input type="hidden" name="_method" value="POST" />
