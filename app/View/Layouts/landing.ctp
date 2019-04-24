@@ -19,90 +19,106 @@
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-	<meta name="viewport" content="width=device-width, initial-scale=1" http-equiv="Content-Type" content="text/html; charset=utf-8">
-	<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
-	<script defer src="https://use.fontawesome.com/releases/v5.0.6/js/all.js"></script>
-	<script defer src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js'></script>
-	<script defer src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/js/jquery.dataTables.min.js'></script>
-	<script defer src='https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/js/dataTables.bootstrap.min.js'></script>
-	<script defer src='https://cdn.datatables.net/responsive/2.2.1/js/dataTables.responsive.min.js'></script>
-	<script defer src='https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js'></script>
-	<script defer src='https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.js'></script>
-	<script defer src='https://cdnjs.cloudflare.com/ajax/libs/highcharts/6.0.4/highcharts.js'></script>
-	<script defer src='https://cdnjs.cloudflare.com/ajax/libs/highcharts/6.0.4/highcharts-more.js'></script>
-	<?php
-		echo $this->Html->css('https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/paper/bootstrap.min.css');
-		echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.16/css/dataTables.bootstrap.min.css');
-		echo $this->Html->css('https://cdn.datatables.net/responsive/2.2.1/css/responsive.dataTables.min.css');
-		echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css');
-		echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.css');
-		echo $this->Html->css('laserforce');
-	?>
-	<title>
-		<?php echo $title_for_layout; ?>
-	</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous">
+    </script>
+    <script defer src="https://use.fontawesome.com/releases/v5.8.1/js/all.js"
+        integrity="sha384-g5uSoOSBd7KkhAMlnQILrecXvzst9TdC09/VM+pjDTCM+1il8RHz5fKANTFFb+gQ" crossorigin="anonymous">
+    </script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.18/r-2.2.2/datatables.min.js">
+    </script>
+
+    <script defer src='https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js'></script>
+    <script defer src='https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.js'></script>
+    <script defer src='https://code.highcharts.com/stock/highstock.js'></script>
+    <script defer src='https://code.highcharts.com/stock/highcharts-more.js'></script>
+    <script defer src='https://code.highcharts.com/stock/indicators/indicators.js'></script>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css"
+        href="https://cdn.datatables.net/v/bs4/dt-1.10.18/r-2.2.2/datatables.min.css" />
+    <?php
+        echo $this->Html->css('laserforce');
+        echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css');
+        echo $this->Html->css('https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.css');
+    ?>
+    <title>
+        <?php echo $title_for_layout; ?>
+    </title>
 </head>
+
 <body>
-	<div class="container" id="container">
-		<div id="header">
-			<nav class="navbar navbar-inverse navbar-fixed-top">
-				<div class="container-fluid">
-					<div class="navbar-header">
-						<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-						</button>
-						<a class="navbar-brand" href="/scorecards/landing"><span class="glyphicon glyphicon-home"></span></a>
-					</div>
-					<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-						<ul class="nav navbar-nav">
-							<li><?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5')); ?></li>
-							<li><a id="twitch_status" href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
-						</ul>
-						<ul class="nav navbar-nav navbar-right">
-							<li>
-							<?php if (AuthComponent::user('id')): ?>
-								<a class="btn btn-sm" href="/users/logout" role="button"><?= AuthComponent::user('username') ?> Logout</a>
-							<?php else: ?>
-								<a class="btn btn-sm" href="/users/login" role="button">Login</a>
-							<?php endif; ?>
-							</li>
-						</ul>
-					</div>
-				</div>
-			</nav>
-		</div>
-		<div id="content">
-			<?php echo $this->Session->flash(); ?>
-			<?php echo $this->fetch('content'); ?>
-		</div>
-		<div id="footer">
-			<h6 class="text-center">
-				<small>
-					Players have shot each other <?=$scorecard_stats[0]['total_hits']; ?> times in <?=$game_stats[0]['total_games']; ?> games with <?=$scorecard_stats[0]['total_scorecards']; ?> individual scorecards.
-				</small>
-			</h6>
-		</div>
-	</div>
-	<script>
-		$(document).ready(function() {
-			$.ajax({ 
-				url:'https://api.twitch.tv/kraken/streams/laserforce_brisbane?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
-				dataType:'jsonp',
-				success:function(channel) { 
-					if(channel["stream"] == null) {
-						$("#twitch_status").append(" <span class='label label-default'>Offline</span>");
-					} else {
-						$("#twitch_status").append(" <span class='label label-danger'>LIVE</span>");
-					}
-				},
-				error:function() {
-					//request failed
-				}
-			});
-		});
-	</script>
+    <div class="container" id="container">
+        <div id="header">
+            <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-primary">
+                <a class="navbar-brand" href="/scorecards/landing"><i class="fas fa-home"></i></a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse"
+                    data-target="#navbarSupportedContent">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item">
+                            <?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5'), array('class' => 'nav-link')); ?>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" id="twitch_status"
+                                href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
+                    </ul>
+                    <form class="form-inline">
+                        <?php if (AuthComponent::user('id')): ?>
+                        <a class="btn btn-sm btn-outline-danger mr-2" href="/users/logout"
+                            role="button"><?= AuthComponent::user('username') ?>
+                            Logout</a>
+                        <?php else: ?>
+                        <a class="btn btn-sm btn-outline-success mr-2" href="/users/login" role="button">Login</a>
+                        <?php endif; ?>
+                    </form>
+                    </ul>
+                </div>
+            </nav>
+            <div id="content">
+                <?php echo $this->Session->flash(); ?>
+                <?php echo $this->fetch('content'); ?>
+            </div>
+            <div id="footer">
+                <h6 class="text-center">
+                    <small>
+                        Players have shot each other <?=$scorecard_stats[0]['total_hits']; ?>
+                        times in <?=$game_stats[0]['total_games']; ?>
+                        games with <?=$scorecard_stats[0]['total_scorecards']; ?>
+                        individual scorecards.
+                    </small>
+                </h6>
+            </div>
+        </div>
+        <script>
+        $(document).ready(function() {
+            $.ajax({
+                url: 'https://api.twitch.tv/kraken/streams/laserforce_brisbane?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
+                dataType: 'jsonp',
+                success: function(channel) {
+                    if (channel["stream"] == null) {
+                        $("#twitch_status").append(
+                            " <span class='label label-default'>Offline</span>");
+                    } else {
+                        $("#twitch_status").append(" <span class='label label-danger'>LIVE</span>");
+                    }
+                },
+                error: function() {
+                    //request failed
+                }
+            });
+        });
+        </script>
 </body>
+
 </html>
