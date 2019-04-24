@@ -108,9 +108,11 @@
                 success: function(channel) {
                     if (channel["stream"] == null) {
                         $("#twitch_status").append(
-                            " <span class='label label-default'>Offline</span>");
+                            " <span class=\"badge badge-secondary\">Offline</span>"
+                        );
                     } else {
-                        $("#twitch_status").append(" <span class='label label-danger'>LIVE</span>");
+                        $("#twitch_status").append(
+                            " <span class=\"badge badge-danger\">LIVE</span>");
                     }
                 },
                 error: function() {
