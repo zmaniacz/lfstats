@@ -26,15 +26,15 @@
 
 <body>
     <script>
-    $(document).ready(function() {
-        Highcharts.setOptions({
-            chart: {
-                style: {
-                    fontFamily: '"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif'
+        $(document).ready(function() {
+            Highcharts.setOptions({
+                chart: {
+                    style: {
+                        fontFamily: '"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif'
+                    }
                 }
-            }
+            });
         });
-    });
     </script>
     <div class="container">
         <div id="container">
@@ -44,87 +44,22 @@
             <div id="content">
                 <?php echo $this->Session->flash(); ?>
                 <?php echo $this->fetch('content'); ?>
-                <div class="modal fade" id="mvpModal" tabindex="-1">
-                    <div class="modal-dialog modal-sm">
+                <div class="modal" id="genericModal" tabindex="-1">
+                    <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">
+                                <h4 class="modal-title"></h4>
                                 <button type="button" class="close" data-dismiss="modal"><span
                                         aria-hidden="true">&times;</span></button>
-                                <h4 class="modal-title" id="mvpModalLabel">MVP Details</h4>
                             </div>
                             <div class="modal-body">
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal fade" id="penaltyModal" tabindex="-1">
-                    <div class="modal-dialog modal-sm">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <button type="button" class="close" data-dismiss="modal"><span
-                                        aria-hidden="true">&times;</span></button>
-                                <h4 class="modal-title" id="penaltyModalLabel">Penalty Details</h4>
-                            </div>
-                            <div class="modal-body">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal fade" id="teamPenaltyModal" tabindex="-1">
-                    <div class="modal-dialog modal-sm">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <button type="button" class="close" data-dismiss="modal"><span
-                                        aria-hidden="true">&times;</span></button>
-                                <h4 class="modal-title" id="penaltyModalLabel">Team Penalty Details</h4>
-                            </div>
-                            <div class="modal-body">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal fade" id="hitModal" tabindex="-1">
-                    <div class="modal-dialog modal-md">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <button type="button" class="close" data-dismiss="modal"><span
-                                        aria-hidden="true">&times;</span></button>
-                                <h4 class="modal-title" id="hitModalLabel">Hit Details</h4>
-                            </div>
-                            <div class="modal-body">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal fade" id="matchModal" tabindex="-1">
-                    <div class="modal-dialog modal-md">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <button type="button" class="close" data-dismiss="modal"><span
-                                        aria-hidden="true">&times;</span></button>
-                                <h4 class="modal-title" id="matchModalLabel">Match Details</h4>
-                            </div>
-                            <div class="modal-body">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
             <div id="footer">
                 <h6 class="text-center">
@@ -142,48 +77,30 @@
         </div>
     </div>
     <script>
-    $(document).ready(function() {
-        $.ajax({
-            url: 'https://api.twitch.tv/kraken/streams/laserforcetournaments?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
-            dataType: 'jsonp',
-        }).done(function(channel) {
-            if (channel["stream"] == null) {
-                $("#twitch_status").append(
-                    " <span class=\"badge badge-secondary badge-pill py-1\">Offline</span>"
-                );
-            } else {
-                $("#twitch_status").append(
-                    " <span class=\"badge badge-danger py-1\">LIVE</span>");
-            }
-        });
+        $(document).ready(function() {
+            $.ajax({
+                url: 'https://api.twitch.tv/kraken/streams/laserforcetournaments?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
+                dataType: 'jsonp',
+            }).done(function(channel) {
+                if (channel["stream"] == null) {
+                    $("#twitch_status").append(
+                        " <span class=\"badge badge-secondary badge-pill py-1\">Offline</span>"
+                    );
+                } else {
+                    $("#twitch_status").append(
+                        " <span class=\"badge badge-danger py-1\">LIVE</span>");
+                }
+            });
 
-        //global handlers for the various modals
-        $('#penaltyModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            $(this).find(".modal-body").text("Loading...");
-            $(this).find(".modal-body").load(button.attr("target"));
+            $('#genericModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                $(this).find(".modal-dialog").removeClass("modal-sm modal-lg modal-xl");
+                $(this).find(".modal-dialog").addClass(button.data("modalsize"));
+                $(this).find(".modal-title").text(button.data("title"));
+                $(this).find(".modal-body").text("Loading...");
+                $(this).find(".modal-body").load(button.attr("target"));
+            }).modal('handleUpdate');
         });
-        $('#teamPenaltyModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            $(this).find(".modal-body").text("Loading...");
-            $(this).find(".modal-body").load(button.attr("target"));
-        });
-        $('#hitModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            $(this).find(".modal-body").text("Loading...");
-            $(this).find(".modal-body").load(button.attr("target"));
-        });
-        $('#matchModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            $(this).find(".modal-body").text("Loading...");
-            $(this).find(".modal-body").load(button.attr("target"));
-        });
-        $('#mvpModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            $(this).find(".modal-body").text("Loading...");
-            $(this).find(".modal-body").load(button.attr("target"));
-        });
-    });
     </script>
 </body>
 

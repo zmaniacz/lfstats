@@ -12,7 +12,7 @@
         </select>
     </div>
 </form>
-<h4>Overall</h4>
+<h4 class="my-4">Overall</h4>
 <div>
     <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
         <thead>
@@ -30,7 +30,7 @@
     </table>
 </div>
 <hr>
-<h4>Summary Stats</h4>
+<h4 class="my-4">Summary Stats</h4>
 <div>
     <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="summary_stats">
         <thead>
@@ -51,7 +51,7 @@
     </table>
 </div>
 <hr>
-<h4>Medic Hits</h4>
+<h4 class="my-4">Medic Hits</h4>
 <div>
     <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="medic_hits">
         <thead>
@@ -67,7 +67,7 @@
     </table>
 </div>
 <hr>
-<h4>Games Played</h4>
+<h4 class="my-4">Games Played</h4>
 <ul id="game_list_group" class="list-group"></ul>
 <script type="text/javascript">
 $(document).ready(function() {
@@ -152,9 +152,9 @@ $(document).ready(function() {
                     let gameLink =
                         `<a href="/games/view/${element.Game.id}?${params.toString()}" class="${gameClass}">${element.Game.game_name}</a>`;
                     let mvpLink =
-                        `<a href="#" data-toggle="modal" data-target="#mvpModal" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${element.Scorecard.mvp_points} <span class="glyphicon glyphicon-stats"></span></a>`;
+                        `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${element.Scorecard.mvp_points} <i class="far fa-chart-bar"></i></a>`;
                     let hitDiffLink =
-                        `<a href="#" data-toggle="modal" data-target="#hitModal" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <span class="glyphicon glyphicon-stats"></span></a>`;
+                        `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="far fa-chart-bar"></i></a>`;
                     let positionElement =
                         `<span class="${positionClass}">${element.Scorecard.position}</span>`;
 
@@ -306,15 +306,9 @@ $(document).ready(function() {
                         overall_avg_mvp = Math.round(row.overall_avg_mvp * 100) / 100;
 
                         if (row.overall_avg_mvp >= row.avg_mvp) {
-                            return avg_mvp +
-                                '<span class="glyphicon glyphicon-arrow-down text-danger" title="' +
-                                overall_avg_mvp +
-                                '"></span>'
+                            return `${avg_mvp}<i class="fas fa-long-arrow-alt-down text-danger" title="${overall_avg_mvp}"></i>`
                         } else {
-                            return avg_mvp +
-                                '<span class="glyphicon glyphicon-arrow-up text-success" title="' +
-                                overall_avg_mvp +
-                                '"></span>'
+                            return `${avg_mvp}<i class="fas fa-long-arrow-alt-up text-success" title="${overall_avg_mvp}"></i>`
                         }
                     }
 
@@ -335,15 +329,9 @@ $(document).ready(function() {
                         overall_avg_acc = Math.round(row.overall_avg_acc * 100) / 100;
 
                         if (row.overall_avg_acc >= row.avg_acc) {
-                            return avg_acc +
-                                '%<span class="glyphicon glyphicon-arrow-down text-danger" title="' +
-                                overall_avg_acc +
-                                '"></span>'
+                            return `${avg_acc}%<i class="fas fa-long-arrow-alt-down text-danger" title="${overall_avg_acc}"></i>`
                         } else {
-                            return avg_acc +
-                                '%<span class="glyphicon glyphicon-arrow-up text-success" title="' +
-                                overall_avg_acc +
-                                '"></span>'
+                            return `${avg_acc}%<i class="fas fa-long-arrow-alt-up text-success" title="${overall_avg_acc}"></i>`
                         }
                     }
 

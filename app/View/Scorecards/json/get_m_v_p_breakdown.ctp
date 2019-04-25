@@ -55,22 +55,22 @@
         }
     }
 ?>
-<dl class="dl-horizontal">
+<dl class="row">
     <?php foreach ($mvp as $key => $value): ?>
     <?php if ($value > 0): ?>
-    <dt><?= $key; ?>
+    <dt class="col-sm-9 text-nowrap"><?= $key; ?>
     </dt>
-    <dd class="text-success"><?= $value; ?>
+    <dd class="col-sm-3 text-success text-right"><?= $value; ?>
     </dd>
     <?php elseif ($value < 0): ?>
     <dt><?= $key; ?>
     </dt>
-    <dd class="text-danger"><?= $value; ?>
+    <dd class="col-sm-3 text-danger text-right"><?= $value; ?>
     </dd>
     <?php endif; ?>
     <?php endforeach; ?>
     <hr>
-    <dt>Total</dt>
-    <dd class="text-primary"><?= $score['Scorecard']['mvp_points']; ?>
+    <dt class="col-sm-9">Total</dt>
+    <dd class="col-sm-3 text-primary text-right"><?= $score['Scorecard']['mvp_points']; ?>
     </dd>
 </dl>
