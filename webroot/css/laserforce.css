@@ -11,6 +11,10 @@
 	font-style: normal;
 }
 
+body {
+	margin-top: 70px;
+}
+
 .noUi-connect {
 	background-color: #5bc0de;
 }
