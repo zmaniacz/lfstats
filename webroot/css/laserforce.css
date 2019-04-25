@@ -11,15 +11,6 @@
 	font-style: normal;
 }
 
-body {
-	padding-top: 70px;
-	padding-bottom: 70px;
-}
-
-.panel-heading {
-	cursor: pointer;
-}
-
 .noUi-connect {
 	background-color: #5bc0de;
 }

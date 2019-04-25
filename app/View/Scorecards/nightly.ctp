@@ -14,7 +14,7 @@
 </form>
 <h4>Overall</h4>
 <div>
-    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="overall">
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
         <thead>
             <th>#</th>
             <th>Name</th>
@@ -32,7 +32,7 @@
 <hr>
 <h4>Summary Stats</h4>
 <div>
-    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="summary_stats">
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="summary_stats">
         <thead>
             <th>#</th>
             <th>Name</th>
@@ -53,7 +53,7 @@
 <hr>
 <h4>Medic Hits</h4>
 <div>
-    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="medic_hits">
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="medic_hits">
         <thead>
             <th>#</th>
             <th>Name</th>
@@ -131,7 +131,10 @@ $(document).ready(function() {
 
     var overall = $('#overall').DataTable({
         orderCellsTop: true,
-        responsive: true,
+        scrollX: true,
+        fixedColumns: {
+            leftColumns: 2
+        },
         ajax: {
             url: `/scorecards/nightlyScorecards.json?${params.toString()}`,
             dataSrc: function(response) {
@@ -257,14 +260,16 @@ $(document).ready(function() {
 
     var summary_stats = $('#summary_stats').DataTable({
         orderCellsTop: true,
-        responsive: true,
+        scrollX: true,
+        fixedColumns: {
+            leftColumns: 2
+        },
         ajax: {
             url: `/scorecards/nightlySummaryStats.json?${params.toString()}`
         },
         columns: [{
                 defaultContent: '',
-                orderable: false,
-                responsivePriority: 1
+                orderable: false
             },
             {
                 data: function(row, type, val, meta) {
@@ -272,8 +277,7 @@ $(document).ready(function() {
                         return `<a href="/players/view/${row.player_id}?${params.toString()}">${row.player_name}</a>`;
                     }
                     return row.player_name;
-                },
-                responsivePriority: 2
+                }
             },
             {
                 data: "min_score",
@@ -317,8 +321,7 @@ $(document).ready(function() {
                     return row.avg_mvp;
                 },
                 orderSequence: ["desc", "asc"],
-                className: "text-right",
-                responsivePriority: 3
+                className: "text-right"
             },
             {
                 data: "max_mvp",
@@ -347,8 +350,7 @@ $(document).ready(function() {
                     return row.avg_acc;
                 },
                 orderSequence: ["desc", "asc"],
-                className: "text-right",
-                responsivePriority: 4
+                className: "text-right"
             },
             {
                 data: function(row, type, val, meta) {
@@ -408,14 +410,16 @@ $(document).ready(function() {
 
     var medicHitsTable = $('#medic_hits').DataTable({
         orderCellsTop: true,
-        responsive: true,
+        scrollX: true,
+        fixedColumns: {
+            leftColumns: 2
+        },
         ajax: {
             url: `/scorecards/nightlyMedicHits.json?${params.toString()}`
         },
         columns: [{
                 defaultContent: '',
-                orderable: false,
-                responsivePriority: 1
+                orderable: false
             },
             {
                 data: function(row, type, val, meta) {
@@ -423,14 +427,12 @@ $(document).ready(function() {
                         return `<a href="/players/view/${row.player_id}?${params.toString()}">${row.player_name}</a>`;
                     }
                     return row.player_name;
-                },
-                responsivePriority: 2
+                }
             },
             {
                 data: "total_medic_hits",
                 orderSequence: ["desc", "asc"],
-                className: "text-right",
-                responsivePriority: 3
+                className: "text-right"
             },
             {
                 data: function(row, type, val, meta) {
@@ -441,8 +443,7 @@ $(document).ready(function() {
                     return row.medic_hits_per_game;
                 },
                 orderSequence: ["desc", "asc"],
-                className: "text-right",
-                responsivePriority: 4
+                className: "text-right"
             },
             {
                 data: "games_played",
@@ -463,8 +464,7 @@ $(document).ready(function() {
                     return row.non_resup_medic_hits_per_game;
                 },
                 orderSequence: ["desc", "asc"],
-                className: "text-right",
-                responsivePriority: 5
+                className: "text-right"
             },
             {
                 data: "non_resup_games_played",

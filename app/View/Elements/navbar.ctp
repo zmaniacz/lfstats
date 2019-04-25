@@ -61,7 +61,7 @@
                 role="button"><?= AuthComponent::user('username') ?>
                 Logout</a>
             <?php else: ?>
-            <a class="btn btn-sm btn-outline-success mr-2" href="/users/login" role="button">Login</a>
+            <a class="btn btn-sm btn-success mr-2" href="/users/login" role="button">Login</a>
             <?php endif; ?>
         </form>
         </ul>
