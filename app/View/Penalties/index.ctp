@@ -1,22 +1,20 @@
-<div id="penalties_list" class="panel panel-primary">
-    <div class="panel-heading" role="tab" id="overall_heading">
-        <h4 class="panel-title">
-            Penalties
-        </h4>
-    </div>
-    <div class="panel-body">
-        <table class="display table table-striped table-bordered table-hover" id="penalties_table">
-            <thead>
-                <th>Game</th>
-                <th>Date/Time</th>
-                <th>Player</th>
-                <th>Type</th>
-                <th>Value</th>
-                <th>MVP Value</th>
-                <th>Actions</th>
-            </thead>
-            <?php foreach ($penalties as $penalty): ?>
-            <?php
+<h4 class="panel-title">
+    Penalties
+</h4>
+
+<table class="display table table-striped table-bordered table-hover" id="penalties_table">
+    <thead>
+        <th>Game</th>
+        <th>Date/Time</th>
+        <th>Player</th>
+        <th>Type</th>
+        <th>Value</th>
+        <th>MVP Value</th>
+        <th>Actions</th>
+    </thead>
+    <tbody>
+        <?php foreach ($penalties as $penalty): ?>
+        <?php
                         if (!empty($penalty['Scorecard']['Game']['Match'])) {
                             if ($penalty['Scorecard']['Game']['Match']['Round']['is_finals']) {
                                 $game_name = "Finals ";
@@ -32,22 +30,22 @@
                             $game_name = $penalty['Scorecard']['Game']['game_name']." ".$penalty['Scorecard']['Game']['game_datetime'];
                         }
                     ?>
-            <tr>
-                <td><?php echo $this->Html->link($game_name, array('controller' => 'games', 'action' => 'view', $penalty['Scorecard']['Game']['id'])); ?>&nbsp;
-                </td>
-                <td><?php echo $penalty['Scorecard']['Game']['game_datetime']; ?>
-                </td>
-                <td>
-                    <?php echo $this->Html->link($penalty['Scorecard']['Player']['player_name'], array('controller' => 'players', 'action' => 'view', $penalty['Scorecard']['Player']['id'])); ?>
-                </td>
-                <td><?php echo h($penalty['Penalty']['type']); ?>&nbsp;
-                </td>
-                <td><?php echo h($penalty['Penalty']['value']); ?>&nbsp;
-                </td>
-                <td><?php echo h($penalty['Penalty']['mvp_value']); ?>&nbsp;
-                </td>
-                <td class="actions">
-                    <?php
+        <tr>
+            <td><?php echo $this->Html->link($game_name, array('controller' => 'games', 'action' => 'view', $penalty['Scorecard']['Game']['id'])); ?>&nbsp;
+            </td>
+            <td><?php echo $penalty['Scorecard']['Game']['game_datetime']; ?>
+            </td>
+            <td>
+                <?php echo $this->Html->link($penalty['Scorecard']['Player']['player_name'], array('controller' => 'players', 'action' => 'view', $penalty['Scorecard']['Player']['id'])); ?>
+            </td>
+            <td><?php echo h($penalty['Penalty']['type']); ?>&nbsp;
+            </td>
+            <td><?php echo h($penalty['Penalty']['value']); ?>&nbsp;
+            </td>
+            <td><?php echo h($penalty['Penalty']['mvp_value']); ?>&nbsp;
+            </td>
+            <td class="actions">
+                <?php
                         if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $penalty['Scorecard']['Game']['center_id'])) {
                             echo $this->Html->link("Rescind", array('controller' => 'penalties', 'action' => 'rescind', $penalty['Penalty']['id']), array('class' => 'btn btn-success'));
                             echo $this->Html->link("Common", array('controller' => 'penalties', 'action' => 'common', $penalty['Penalty']['id']), array('class' => 'btn btn-info'));
@@ -55,18 +53,17 @@
                             echo $this->Html->link("Delete", array('controller' => 'penalties', 'action' => 'delete', $penalty['Penalty']['id']), array('class' => 'btn btn-danger'), array('confirm' => 'Are you sure you want to delete this penalty?'));
                         }
                     ?>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        </table>
-    </div>
-</div>
-</div>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    <tbody>
+</table>
+
 <script type="text/javascript">
 $(document).ready(function() {
     $('.display').DataTable({
         "order": [
-            [1, "desc"]
+            [1, "asc"]
         ]
     });
 });
