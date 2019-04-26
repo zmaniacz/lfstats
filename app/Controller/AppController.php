@@ -47,6 +47,7 @@ class AppController extends Controller
     public $components = [
         'RequestHandler',
         'Session',
+        'Flash',
         'Auth' => array(
             'logoutRedirect' => array(
                 'controller' => 'scorecards',

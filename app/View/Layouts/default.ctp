@@ -42,7 +42,7 @@
                 <?= $this->element('navbar'); ?>
             </div>
             <div id="content">
-                <?php echo $this->Session->flash(); ?>
+                <?php echo $this->Flash->render() ?>
                 <?php echo $this->fetch('content'); ?>
                 <div class="modal" id="genericModal" tabindex="-1">
                     <div class="modal-dialog">
