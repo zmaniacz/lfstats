@@ -237,8 +237,8 @@ class ScorecardsController extends AppController
 
     public function getAllCenter()
     {
-        $min_games = (empty($this->request->query('min_games'))) ? 15 : $this->request->query('min_games');
-        $min_days = (empty($this->request->query('min_days'))) ? 365 : $this->request->query('min_days');
+        $min_games = ($this->request->query('min_games') !== null) ? $this->request->query('min_games') : 15;
+        $min_days = ($this->request->query('min_days') !== null) ? $this->request->query('min_days') : 365;
         $this->set('all_center', $this->Scorecard->getTopTeams($min_games, $min_days, $this->Session->read('state')));
     }
 
