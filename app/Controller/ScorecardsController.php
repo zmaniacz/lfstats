@@ -252,9 +252,9 @@ class ScorecardsController extends AppController
 
     public function getLeaderboards()
     {
-        $this->set('leaderboards', $this->Scorecard->getLeaderboards($this->Session->read('state')));
-        $this->set('penalties', $this->Scorecard->getPenaltyCount($this->Session->read('state')));
-        $this->set('medic_on_medic', $this->Scorecard->getMedicOnMedicHits($this->Session->read('state')));
+        $this->set('leaderboards', $this->Scorecard->getLeaderboards($this->request->query));
+        $this->set('penalties', $this->Scorecard->getPenaltyCount($this->request->query));
+        $this->set('medic_on_medic', $this->Scorecard->getMedicOnMedicHits($this->request->query));
     }
 
     public function getPositionLeaderboards()

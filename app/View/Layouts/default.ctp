@@ -61,7 +61,7 @@
                     </div>
                 </div>
             </div>
-            <div id="footer">
+            <div id="footer" class="my-4">
                 <h6 class="text-center">
                     <small>
                         Players have shot each other

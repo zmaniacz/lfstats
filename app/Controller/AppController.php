@@ -97,8 +97,22 @@ class AppController extends Controller
             $this->Session->write('state.isComp', 0);
         }
         
-        if (!$this->Session->check('state.show_rounds')) {
+        if (!is_null($this->request->query('show_rounds'))) {
+            $this->Session->write('state.show_rounds', $this->request->query('show_rounds'));
+        } elseif (!$this->Session->check('state.show_rounds')) {
             $this->Session->write('state.show_rounds', true);
+        }
+
+        if (!is_null($this->request->query('show_finals'))) {
+            $this->Session->write('state.show_finals', $this->request->query('show_finals'));
+        } elseif (!$this->Session->check('state.show_finals')) {
+            $this->Session->write('state.show_finals', false);
+        }
+
+        if (!is_null($this->request->query('show_subs'))) {
+            $this->Session->write('state.show_subs', $this->request->query('show_subs'));
+        } elseif (!$this->Session->check('state.show_subs')) {
+            $this->Session->write('state.show_subs', false);
         }
         
         //get a center and league object for use throughout the app
