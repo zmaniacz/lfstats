@@ -4,19 +4,26 @@
     <div class="card my-0">
         <div class="card-body">
             <?php if ($this->Session->read('state.isComp') > 0): ?>
-            <form class="form-inline">
-                <div class="checkbox">
+            <div class="btn-group-toggle" data-toggle="buttons">
+                <label
+                    class="btn btn-outline-info<?= (($this->Session->read('state.show_rounds') == 'true') ? " active" : "")?>">
                     <input type="checkbox" id="rounds_cbox"
-                        <?= (($this->Session->read('state.show_rounds') == 'true') ? "checked" : "")?>>
-                    <label for="rounds_cbox">Show Rounds</label>
+                        <?= (($this->Session->read('state.show_rounds') == 'true') ? "checked" : "")?>>Show
+                    Rounds
+                </label>
+                <label
+                    class="btn btn-outline-info<?= (($this->Session->read('state.show_finals') == 'true') ? " active" : "")?>">
                     <input type="checkbox" id="finals_cbox"
-                        <?= (($this->Session->read('state.show_finals') == 'true') ? "checked" : "")?>>
-                    <label for="finals_cbox">Show Finals</label>
+                        <?= (($this->Session->read('state.show_finals') == 'true') ? "checked" : "")?>>Show
+                    Finals
+                </label>
+                <label
+                    class="btn btn-outline-info<?= (($this->Session->read('state.show_subs') == 'true') ? " active" : "")?>">
                     <input type="checkbox" id="sub_cbox"
-                        <?= (($this->Session->read('state.show_subs') == 'true') ? "checked" : "")?>>
-                    <label for="sub_cbox">Show Subs</label>
-                </div>
-            </form>
+                        <?= (($this->Session->read('state.show_subs') == 'true') ? "checked" : "")?>>Show
+                    Subs
+                </label>
+            </div>
             <?php else: ?>
             <p>Min Games: <span id="min_games_slider_value"></span></p>
             <div class="col-xs-4">
@@ -182,6 +189,8 @@
 </table>
 <script type="text/javascript">
 $(document).ready(function() {
+    var min = 0;
+
     var overall_data
     var overall_table = $('#overall_averages_table').DataTable({
         deferRender: true,
