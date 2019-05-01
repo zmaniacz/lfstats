@@ -1232,7 +1232,9 @@ class Scorecard extends AppModel
                 'opponent_id' => $hit['hits']['player_id'],
                 'hit_by' => $hit[0]['hits'],
                 'missile_by' => $hit[0]['missiles'],
-                'games_played' => $hit[0]['games_played']
+                'games_played' => $hit[0]['games_played'],
+                'hits' => 0,
+                'missiles' => 0
             );
         }
 
@@ -1400,11 +1402,11 @@ class Scorecard extends AppModel
         );
 
         $response['all']['position'] = 'All Positions';
-        $response['all']['overall'] = $overall[0][0]['avg_targets'];
-        $response['all']['survives'] = $survives[0][0]['avg_targets'];
-        $response['all']['survivesElim'] = $survivesElim[0][0]['avg_targets'];
-        $response['all']['dieElim'] = $dieElim[0][0]['avg_targets'];
-        $response['all']['elim'] = $elim[0][0]['avg_targets'];
+        $response['all']['overall'] = isset($overall[0][0]['avg_targets']) ? $overall[0][0]['avg_targets'] : 'n/a';
+        $response['all']['survives'] = isset($survives[0][0]['avg_targets']) ? $survives[0][0]['avg_targets'] : 'n/a';
+        $response['all']['survivesElim'] = isset($survivesElim[0][0]['avg_targets']) ? $survivesElim[0][0]['avg_targets'] : 'n/a';
+        $response['all']['dieElim'] = isset($dieElim[0][0]['avg_targets']) ? $dieElim[0][0]['avg_targets'] : 'n/a';
+        $response['all']['elim'] = isset($elim[0][0]['avg_targets']) ? $elim[0][0]['avg_targets'] : 'n/a';
 
         foreach ($categories as $key => $value) {
             foreach ($value as $entry) {

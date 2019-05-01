@@ -63,7 +63,7 @@
     <dd class="col-sm-3 text-success text-right"><?= $value; ?>
     </dd>
     <?php elseif ($value < 0): ?>
-    <dt><?= $key; ?>
+    <dt class="col-sm-9 text-nowrap"><?= $key; ?>
     </dt>
     <dd class="col-sm-3 text-danger text-right"><?= $value; ?>
     </dd>

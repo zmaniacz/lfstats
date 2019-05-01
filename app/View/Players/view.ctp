@@ -1,3 +1,5 @@
+<?= $this->element('breadcrumbs'); ?>
+<hr>
 <?php
     $types = array("overall","commander","heavy","scout","ammo","medic");
 
@@ -47,213 +49,189 @@ foreach ($types as $type) {
         class="btn btn-success" role="button">Link</a>
     <?php endif; ?>
 </div>
-<ul class="nav nav-tabs" role="tablist" id="myTab">
-    <li role="presentation" class="active"><a href="#game_list_tab" role="tab" data-toggle="tab">Game List</a></li>
-    <li role="presentation"><a href="#overall_tab" role="tab" data-toggle="tab">Overall</a></li>
-    <li role="presentation"><a href="#head_to_head_tab" role="tab" data-toggle="tab">Head To Head</a></li>
+<ul class="nav nav-tabs" id="playerTab">
+    <li class="nav-item"><a class="nav-link active" id="game-list-tab" href="#game-list" data-toggle="tab">Game List</a>
+    </li>
+    <li class="nav-item"><a class="nav-link" id="overall-tab" href="#overall" data-toggle="tab">Overall</a></li>
+    <li class="nav-item"><a class="nav-link" id="head-to-head-tab" href="#head-to-head" data-toggle="tab">Head To
+            Head</a></li>
 </ul>
-<div class="tab-content" id="tabs">
-    <div role="tabpanel" class="tab-pane active" id="game_list_tab">
-        <div id="win_loss_bar_panel" class="panel panel-primary">
-            <div class="panel-heading">
-                <h4 class="panel-title">
-                    Recent Wins and Losses
-                </h4>
-            </div>
-            <div class="panel-body">
-                <div id="win_loss_bar"></div>
-            </div>
+<div class="tab-content" id="playerTabContent">
+    <div class="tab-pane fade show active" id="game-list">
+        <h4 class="my-4">
+            Recent Wins and Losses
+        </h4>
+        <div id="win_loss_bar">Loading...</div>
+        <h4 class="my-4">
+            Overall Wins and Losses
+        </h4>
+        <div id="win_loss_pie">Loading...</div>
+        <h4 class="my-4">
+            Games Played
+        </h4>
+        <div class="table-responsive">
+            <table id="game_list" class="table table-striped table-hover table-border table-sm nowrap">
+                <thead>
+                    <tr>
+                        <th>Game</th>
+                        <th>Time</th>
+                        <th>W/L</th>
+                        <th>Team</th>
+                        <th>Position</th>
+                        <th rowspan="2">Score</th>
+                        <th rowspan="2">Max Score</th>
+                        <th rowspan="2">Score Ratio</th>
+                        <th rowspan="2">Accuracy</th>
+                        <th rowspan="2">MVP Points</th>
+                        <th rowspan="2">Lives Left</th>
+                        <th rowspan="2">Shots Left</th>
+                        <th rowspan="2">Shot Opponent</th>
+                        <th rowspan="2">Got Shot</th>
+                        <th rowspan="2">Hit Diff</th>
+                        <th rowspan="2">Missiled</th>
+                        <th rowspan="2">Got Missiled</th>
+                        <th rowspan="2">Medic Hits</th>
+                        <th rowspan="2">Medic Nukes</th>
+                        <th rowspan="2">Shot 3-Hits</th>
+                        <th rowspan="2">Shot Team</th>
+                        <th rowspan="2">Missiled Team</th>
+                        <th rowspan="2">Shot Own Medic</th>
+                        <th rowspan="2">Nukes Activated</th>
+                        <th rowspan="2">Nukes Detonated</th>
+                        <th rowspan="2">Nuke Cancels</th>
+                        <th rowspan="2">Own Nuke Cancels</th>
+                        <th rowspan="2">Rapid Fires</th>
+                        <th rowspan="2">Boosts</th>
+                        <th rowspan="2">Resupplies</th>
+                        <th rowspan="2">PDF</th>
+                    </tr>
+                    <tr>
+                        <th class="searchable">Game</th>
+                        <th class="searchable">Time</th>
+                        <th class="searchable">W/L</th>
+                        <th class="searchable">Team</th>
+                        <th class="searchable">Position</th>
+                    </tr>
+                </thead>
+            </table>
         </div>
-        <div id="win_loss_pie_panel" class="panel panel-primary">
-            <div class="panel-heading">
-                <h4 class="panel-title">
-                    Overall Wins and Losses
-                </h4>
-            </div>
-            <div class="panel-body">
-                <div id="win_loss_pie"></div>
-            </div>
-        </div>
-        <div id="game_list_panel" class="panel panel-primary">
-            <div class="panel-heading">
-                <h4 class="panel-title">
-                    Games Played
-                </h4>
-            </div>
-            <div class="panel-body">
-                <div class="table-responsive">
-                    <table id="game_list" class="table table-striped table-hover table-border table-condensed">
-                        <thead>
-                            <tr>
-                                <th>Game</th>
-                                <th>Time</th>
-                                <th>W/L</th>
-                                <th>Team</th>
-                                <th>Position</th>
-                                <th rowspan="2">Score</th>
-                                <th rowspan="2">Max Score</th>
-                                <th rowspan="2">Score Ratio</th>
-                                <th rowspan="2">Accuracy</th>
-                                <th rowspan="2">MVP Points</th>
-                                <th rowspan="2">Lives Left</th>
-                                <th rowspan="2">Shots Left</th>
-                                <th rowspan="2">Shot Opponent</th>
-                                <th rowspan="2">Got Shot</th>
-                                <th rowspan="2">Hit Diff</th>
-                                <th rowspan="2">Missiled</th>
-                                <th rowspan="2">Got Missiled</th>
-                                <th rowspan="2">Medic Hits</th>
-                                <th rowspan="2">Medic Nukes</th>
-                                <th rowspan="2">Shot 3-Hits</th>
-                                <th rowspan="2">Shot Team</th>
-                                <th rowspan="2">Missiled Team</th>
-                                <th rowspan="2">Shot Own Medic</th>
-                                <th rowspan="2">Nukes Activated</th>
-                                <th rowspan="2">Nukes Detonated</th>
-                                <th rowspan="2">Nuke Cancels</th>
-                                <th rowspan="2">Own Nuke Cancels</th>
-                                <th rowspan="2">Rapid Fires</th>
-                                <th rowspan="2">Boosts</th>
-                                <th rowspan="2">Resupplies</th>
-                                <th rowspan="2">PDF</th>
-                            </tr>
-                            <tr>
-                                <th class="searchable">Game</th>
-                                <th class="searchable">Time</th>
-                                <th class="searchable">W/L</th>
-                                <th class="searchable">Team</th>
-                                <th class="searchable">Position</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div id="targets_destroyed_panel" class="panel panel-primary">
-            <div class="panel-heading">
-                <h4 class="panel-title">
-                    Bases Destroyed Average
-                </h4>
-            </div>
-            <div class="panel-body">
-                <div class="table-responsive">
-                    <table id="target_stats" class="table table-striped table-hover table-border table-condensed">
-                        <thead>
-                            <tr>
-                                <th>Position</th>
-                                <th>Overall</th>
-                                <th>Player Survives</th>
-                                <th>Survive and Elim Opp</th>
-                                <th>Die and Elim Opp</th>
-                                <th>Elimed</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-            </div>
+        <h4 class="my-4">
+            Bases Destroyed Average
+        </h4>
+        <div class="table-responsive">
+            <table id="target_stats" class="table table-striped table-hover table-border table-sm nowrap">
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>Overall</th>
+                        <th>Player Survives</th>
+                        <th>Survive and Elim Opp</th>
+                        <th>Die and Elim Opp</th>
+                        <th>Elimed</th>
+                    </tr>
+                </thead>
+            </table>
         </div>
     </div>
-    <div role="tabpanel" class="tab-pane" id="overall_tab">
-        <div id="spiderSelector" class="btn-group" data-toggle="buttons">
-            <label class="btn btn-primary active">
-                <input type="radio" name="options" id="option_mvp" autocomplete="off" checked>MVP
-            </label>
-            <label class="btn btn-primary">
-                <input type="radio" name="options" id="option_score" autocomplete="off">Score
-            </label>
+    <div class="tab-pane fade" id="overall">
+        <div class="row">
+            <div class="col-sm-4 offset-sm-4 text-center">
+                <div id="spiderSelector" class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-outline-info active">
+                        <input type="radio" name="options" id="option_mvp" autocomplete="off" checked>MVP
+                    </label>
+                    <label class="btn btn-outline-info">
+                        <input type="radio" name="options" id="option_score" autocomplete="off">Score
+                    </label>
+                </div>
+            </div>
         </div>
         <div id="position_spider"></div>
         <hr>
         <div id="position_box_plot"></div>
-        <br />
-        <br />
-        <br />
-        <p>The following graphs represent a simple rolling average for accuracy, score and MVP points both overall and
-            by
-            position.<br />
-            Individual lines can be turned on and off by clicking on the title in the legend.<br />
-            Clicking the legend items marked scatter will show all the points on the graph for the data set, if you
-            like that
-            sort of thing.<br />
-            These graphs are not affected by the filters above.</p>
-        <div id="acc_plot" style="display: inline-block;height:400px;width:800px; "></div>
-        <br />
-        <div id="mvp_plot" style="display: inline-block;height:400px;width:800px; "></div>
-        <br />
-        <div id="score_plot" style="display: inline-block;height:400px;width:800px; "></div>
-        <br />
-        <div id="hitdiff_plot" style="display: inline-block;height:400px;width:800px; "></div>
-        <br />
-        <div id="medic_plot" style="display: inline-block;height:400px;width:800px; "></div>
+        <div class="row mt-4">
+            <p>The following graphs represent a simple rolling average for accuracy, score and MVP points both overall
+                and
+                by
+                position.<br />
+                Individual lines can be turned on and off by clicking on the title in the legend.<br />
+                Clicking the legend items marked scatter will show all the points on the graph for the data set, if you
+                like that
+                sort of thing.<br />
+                These graphs are not affected by the filters above.</p>
+        </div>
+        <div id="acc_plot" class="my-4" style="display: inline-block;height:400px;width:800px; "></div>
+        <div id="mvp_plot" class="my-4" style="display: inline-block;height:400px;width:800px; "></div>
+        <div id="score_plot" class="my-4" style="display: inline-block;height:400px;width:800px; "></div>
+        <div id="hitdiff_plot" class="my-4" style="display: inline-block;height:400px;width:800px; "></div>
+        <div id="medic_plot" class="my-4" style="display: inline-block;height:400px;width:800px; "></div>
     </div>
-    <div role="tabpanel" class="tab-pane" id="head_to_head_tab">
-        <br />
-        <br />
-        <br />
-        <div class="row">
+    <div class="tab-pane fade" id="head-to-head">
+        <div class="row mt-4">
             <div class="col-sm-6">
                 <h4>Choose Hits</h4>
-                <div id="headTeamSelector" class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-primary active">
-                        <input type="radio" name="head_team_options" value="opponent" autocomplete="off" checked>Opponent
+                <div id="headTeamSelector" class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-outline-info active">
+                        <input type="radio" name="head_team_options" value="opponent" autocomplete="off"
+                            checked>Opponent
                     </label>
-                    <label class="btn btn-primary">
+                    <label class="btn btn-outline-info">
                         <input type="radio" name="head_team_options" value="all" autocomplete="off">All
                     </label>
-                    <label class="btn btn-primary">
+                    <label class="btn btn-outline-info">
                         <input type="radio" name="head_team_options" value="team" autocomplete="off">Team
                     </label>
                 </div>
             </div>
         </div>
-        <div class="row">
+        <div class="row mt-4">
             <div class="col-sm-4">
                 <h4>Player Positions</h4>
-                <div id="headPlayerPosSelector" class="btn-group lf-positions" data-toggle="buttons">
-                    <label class="btn btn-primary active">
+                <div id="headPlayerPosSelector" class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-outline-info active">
                         <input type="checkbox" name="head_player_pos_options" value="commander" autocomplete="off"
                             checked><span style="font-size:32px" class="icon-commander"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_player_pos_options" value="heavy" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-heavy"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_player_pos_options" value="heavy" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-heavy"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_player_pos_options" value="scout" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-scout"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_player_pos_options" value="scout" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-scout"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_player_pos_options" value="ammo" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-ammo"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_player_pos_options" value="ammo" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-ammo"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_player_pos_options" value="medic" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-medic"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_player_pos_options" value="medic" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-medic"></span>
                     </label>
                 </div>
             </div>
             <div class="col-sm-4">
                 <h4>Target Positions</h4>
-                <div id="headTargetPosSelector" class="btn-group lf-positions" data-toggle="buttons">
-                    <label class="btn btn-primary active">
+                <div id="headTargetPosSelector" class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-outline-info active">
                         <input type="checkbox" name="head_target_pos_options" value="commander" autocomplete="off"
                             checked><span style="font-size:32px" class="icon-commander"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_target_pos_options" value="heavy" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-heavy"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_target_pos_options" value="heavy" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-heavy"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_target_pos_options" value="scout" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-scout"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_target_pos_options" value="scout" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-scout"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_target_pos_options" value="ammo" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-ammo"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_target_pos_options" value="ammo" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-ammo"></span>
                     </label>
-                    <label class="btn btn-primary active">
-                        <input type="checkbox" name="head_target_pos_options" value="medic" autocomplete="off" checked><span
-                            style="font-size:32px" class="icon-medic"></span>
+                    <label class="btn btn-outline-info active">
+                        <input type="checkbox" name="head_target_pos_options" value="medic" autocomplete="off"
+                            checked><span style="font-size:32px" class="icon-medic"></span>
                     </label>
                 </div>
             </div>
@@ -265,29 +243,25 @@ foreach ($types as $type) {
             </div>
         </div>
         <br />
-        <div class="table-responsive">
-            <table id="head_to_head" class="table table-striped table-hover table-border table-condensed">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Shot</th>
-                        <th>Shot By</th>
-                        <th>Shot Ratio</th>
-                        <th>Missiles</th>
-                        <th>Missiled By</th>
-                        <th>Missile Ratio</th>
-                        <th>Games Played</th>
-                    </tr>
-                </thead>
-            </table>
-        </div>
+        <table id="head_to_head" class="table table-striped table-hover table-border table-sm">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Shot</th>
+                    <th>Shot By</th>
+                    <th>Shot Ratio</th>
+                    <th>Missiles</th>
+                    <th>Missiled By</th>
+                    <th>Missile Ratio</th>
+                    <th>Games Played</th>
+                </tr>
+            </thead>
+        </table>
     </div>
 </div>
 <script type="text/javascript">
 $(document).ready(function() {
-    $(".lf-positions > .btn").click(function() {
-        $(this).toggleClass('btn-primary btn-default');
-    });
+    const params = new URLSearchParams(location.search);
 
     function renderWinLossBar(data) {
         chartData = data.map(function(item, index) {
@@ -672,7 +646,8 @@ $(document).ready(function() {
     var medic_mvp_data = <?php echo $medic_mvp_json; ?>;
 
     var overall_score_data = <?php echo $overall_score_json; ?>;
-    var commander_score_data = <?php echo $commander_score_json; ?>;
+    var
+        commander_score_data = <?php echo $commander_score_json; ?>;
     var heavy_score_data = <?php echo $heavy_score_json; ?>;
     var scout_score_data = <?php echo $scout_score_json; ?>;
     var ammo_score_data = <?php echo $ammo_score_json; ?>;
@@ -686,14 +661,17 @@ $(document).ready(function() {
     var medic_acc_data = <?php echo $medic_acc_json; ?>;
 
     var overall_medic_data = <?php echo $overall_medic_json; ?>;
-    var commander_medic_data = <?php echo $commander_medic_json; ?>;
+    var
+        commander_medic_data = <?php echo $commander_medic_json; ?>;
     var heavy_medic_data = <?php echo $heavy_medic_json; ?>;
     var scout_medic_data = <?php echo $scout_medic_json; ?>;
     var ammo_medic_data = <?php echo $ammo_medic_json; ?>;
     var medic_medic_data = <?php echo $medic_medic_json; ?>;
 
-    var overall_hitdiff_data = <?php echo $overall_hitdiff_json; ?>;
-    var commander_hitdiff_data = <?php echo $commander_hitdiff_json; ?>;
+    var
+        overall_hitdiff_data = <?php echo $overall_hitdiff_json; ?>;
+    var
+        commander_hitdiff_data = <?php echo $commander_hitdiff_json; ?>;
     var heavy_hitdiff_data = <?php echo $heavy_hitdiff_json; ?>;
     var scout_hitdiff_data = <?php echo $scout_hitdiff_json; ?>;
     var ammo_hitdiff_data = <?php echo $ammo_hitdiff_json; ?>;
@@ -1631,11 +1609,21 @@ $(document).ready(function() {
     });
 
     var gameListTable = $('#game_list').DataTable({
-        "processing": true,
-        "orderCellsTop": true,
-        "dom": '<"H"lr>t<"F"ip>',
-        "columns": [{
-                "data": "game_name"
+        processing: true,
+        orderCellsTop: true,
+        scrollX: true,
+        fixedColumns: true,
+        dom: '<"H"lr>t<"F"ip>',
+        columns: [{
+                data: function(row, type, val, meta) {
+                    if (type === 'display') {
+                        if (row.game_winner == 'green')
+                            return `<span class="text-success">${row.game_name_link}</span>`;
+                        else
+                            return `<span class="text-danger">${row.game_name_link}</span>`;
+                    }
+                    return row.game_name;
+                }
             },
             {
                 "data": "game_datetime"
@@ -1644,7 +1632,21 @@ $(document).ready(function() {
                 "data": "winloss"
             },
             {
-                "data": "team"
+                data: function(row, type, val, meta) {
+                    if (type === 'display') {
+                        let team = row.team;
+
+                        if (row.team_name != null)
+                            team = `${team} - ${row.team_name}`;
+
+                        if (row.team == 'green')
+                            return `<span class="text-capitalize text-success">${team}</span>`;
+                        else
+                            return `<span class="text-capitalize text-danger">${team}</span>`;
+
+                    }
+                    return row.team;
+                }
             },
             {
                 "data": "position"
@@ -1662,7 +1664,12 @@ $(document).ready(function() {
                 "data": "accuracy"
             },
             {
-                "data": "mvp_points"
+                data: function(row, type, val, meta) {
+                    if (type === 'display') {
+                        return `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${row.scorecard_id}.json?${params.toString()}">${row.mvp_points} <i class="far fa-chart-bar"></i></a>`;
+                    }
+                    return row.mvp_points;
+                }
             },
             {
                 "data": "lives_left"
@@ -1677,7 +1684,12 @@ $(document).ready(function() {
                 "data": "times_zapped"
             },
             {
-                "data": "hit_diff"
+                data: function(row, type, val, meta) {
+                    if (type === 'display') {
+                        return `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${row.player_id}/${row.game_id}.json?${params.toString()}">${row.hit_diff} <i class="far fa-chart-bar"></i></a>`;
+                    }
+                    return row.hit_diff;
+                }
             },
             {
                 "data": "missile_hits"
@@ -1725,8 +1737,13 @@ $(document).ready(function() {
                 "data": "resupplies"
             },
             {
-                "data": "pdf"
-            }
+                data: function(row, type, val, meta) {
+                    if (type === 'display') {
+                        return `<a rel="noopener noreferrer" target="_blank" href="http://lfstatsscorecards.objects-us-east-1.dream.io/${row.pdf}.pdf">PDF</a>`;
+                    }
+                    return row.pdf;
+                }
+            },
         ],
         "order": [
             [1, "desc"]
@@ -1865,7 +1882,8 @@ $(document).ready(function() {
 
         params.set('team_flag', $("#headTeamSelector input:checked").val());
 
-        let hitUrl = '/Scorecards/getPlayerHitBreakdown/' + player_id + '.json?' + params.toString();
+        let hitUrl = '/Scorecards/getPlayerHitBreakdown/' + player_id + '.json?' + params
+            .toString();
 
         $('#head_to_head').DataTable().ajax.url(hitUrl).load();
     }

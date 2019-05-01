@@ -19,7 +19,7 @@ class PenaltiesController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow('index', 'view', 'getPenalty');
+        $this->Auth->allow('index', 'view', 'getPenalty', 'getPenaltyBreakdown');
         parent::beforeFilter();
     }
 
@@ -276,5 +276,12 @@ class PenaltiesController extends AppController
             )
         ));
         $this->set('penalty', $this->Penalty->find('first', $options));
+    }
+
+    public function getPenaltyBreakdown($scorecard_id)
+    {
+        $this->set('penalties', $this->Penalty->find('all', array(
+            'conditions' => array('Penalty.scorecard_id' => $scorecard_id)
+        )));
     }
 }
