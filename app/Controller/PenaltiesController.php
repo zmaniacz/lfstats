@@ -1,12 +1,6 @@
 <?php
 App::uses('AppController', 'Controller');
-/**
- * Penalties Controller
- *
- * @property Penalty $Penalty
- * @property PaginatorComponent $Paginator
- * @property SessionComponent $Session
- */
+
 class PenaltiesController extends AppController
 {
 
@@ -15,7 +9,7 @@ class PenaltiesController extends AppController
  *
  * @var array
  */
-    public $components = array('Paginator', 'Session');
+    public $components = array('Flash', 'Session');
 
     public function beforeFilter()
     {
@@ -74,7 +68,7 @@ class PenaltiesController extends AppController
         if ($this->request->is('post')) {
             $this->Penalty->create();
             if ($this->Penalty->save($this->request->data)) {
-                $this->Session->setFlash(__('The penalty has been saved.'));
+                $this->Flash->success('The penalty has been saved.');
 
                 $scorecard = $this->Penalty->Scorecard->find('first', array(
                     'contain' => array(
@@ -94,7 +88,7 @@ class PenaltiesController extends AppController
                 
                 return $this->redirect(array('controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id']));
             } else {
-                $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
+                $this->Flash->error('The penalty could not be saved. Please, try again.');
             }
         }
         
@@ -132,10 +126,10 @@ class PenaltiesController extends AppController
                 
                 $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
                 
-                $this->Session->setFlash(__('The penalty has been saved.'));
+                $this->Flash->success('The penalty has been saved.');
                 $this->redirect($this->referer());
             } else {
-                $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
+                $this->Flash->error('The penalty could not be saved. Please, try again.');
             }
         } else {
             $options = array('conditions' => array('Penalty.' . $this->Penalty->primaryKey => $id));
@@ -173,9 +167,9 @@ class PenaltiesController extends AppController
                 
             $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
                 
-            $this->Session->setFlash(__('The penalty has been rescinded.'), 'default', array('class' => 'alert-success'));
+            $this->Flash->success('The penalty has been rescinded.');
         } else {
-            $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
+            $this->Flash->error('The penalty could not be saved. Please, try again.');
         }
         
         $this->redirect($this->referer());
@@ -207,9 +201,9 @@ class PenaltiesController extends AppController
                 
             $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
                 
-            $this->Session->setFlash(__('The penalty has been marked common.'), 'default', array('class' => 'alert-success'));
+            $this->Flash->success('The penalty has been marked common.');
         } else {
-            $this->Session->setFlash(__('The penalty could not be saved. Please, try again.'));
+            $this->Flash->error('The penalty could not be saved. Please, try again.');
         }
         
         $this->redirect($this->referer());
@@ -240,7 +234,7 @@ class PenaltiesController extends AppController
         ));
 
         if ($this->Penalty->delete()) {
-            $this->Session->setFlash(__('The penalty has been deleted.'), 'default', array('class' => 'alert-success'));
+            $this->Flash->success('The penalty has been deleted.');
             
             //remove a penalty to the socrecard record and recalc MVP
             $scorecard['Scorecard']['penalties'] -= 1;
@@ -252,7 +246,7 @@ class PenaltiesController extends AppController
             $this->Penalty->Scorecard->save($scorecard);
             $this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['id']);
         } else {
-            $this->Session->setFlash(__('The penalty could not be deleted. Please, try again.'), 'default', array('class' => 'alert-danger'));
+            $this->Flash->error('The penalty could not be deleted. Please, try again.');
         }
         
         $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
@@ -281,6 +275,9 @@ class PenaltiesController extends AppController
     public function getPenaltyBreakdown($scorecard_id)
     {
         $this->set('penalties', $this->Penalty->find('all', array(
+            'contain' =>array(
+                'Scorecard'
+            ),
             'conditions' => array('Penalty.scorecard_id' => $scorecard_id)
         )));
     }

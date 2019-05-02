@@ -1,8 +1,9 @@
-<h4 class="panel-title">
+<?= $this->element('breadcrumbs'); ?>
+<hr>
+<h4 class="my-4">
     Penalties
 </h4>
-
-<table class="display table table-striped table-bordered table-hover" id="penalties_table">
+<table class="display table table-striped table-bordered table-hover table-sm nowrap" id="penalties_table">
     <thead>
         <th>Game</th>
         <th>Date/Time</th>
@@ -58,7 +59,6 @@
         <?php endforeach; ?>
     <tbody>
 </table>
-
 <script type="text/javascript">
 $(document).ready(function() {
     $('.display').DataTable({
