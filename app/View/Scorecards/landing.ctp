@@ -9,16 +9,13 @@
 </div>
 <div class="row">
     <div class="col-8 offset-2 col-sm-3 offset-sm-3">
-        <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="socialDropDown"
-                data-toggle="dropdown">Jump to social games</button>
-            <div class="dropdown-menu">
-                <h6 class="dropdown-header">Centers</h6>
-                <?php
+        <select id="jump-social" class="custom-select">
+            <option selected>Jump to social games</option>
+            <?php
                     $sorted_centers = $centers;
                     asort($sorted_centers);
                     foreach ($sorted_centers as $key => $value) {
-                        echo $this->Html->link($value, array(
+                        $link = $this->Html->url(array(
                             'controller' => 'scorecards',
                             'action' => 'nightly',
                             implode(",", $this->request->pass),
@@ -27,34 +24,33 @@
                                 'centerID' => $key,
                                 'leagueID' => 0
                             )
-                        ), array('class' => 'dropdown-item'));
+                        ));
+                        echo '<option value="'.$key.'" data-target="'.$link.'">'.$value.'</option>';
                     }
                 ?>
-            </div>
-        </div>
+        </select>
     </div>
     <div class="col-8 offset-2 col-sm-3 offset-sm-0">
-        <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="compDropDown"
-                data-toggle="dropdown">Jump to competition</button>
-            <div class="dropdown-menu">
-                <h6 class="dropdown-header">Competitions</h6>
-                <?php
-                    foreach ($league_details as $league) {
-                        echo $this->Html->link($league['Event']['name'], array(
-                            'controller' => 'leagues',
-                            'action' => 'standings',
-                            implode(",", $this->request->pass),
-                            '?' => array(
-                                'gametype' => 'league',
-                                'centerID' => $league['Event']['center_id'],
-                                'leagueID' => $league['Event']['id']
-                            )
-                        ), array('class' => 'dropdown-item'));
-                    }
+        <select id="jump-comp" class="custom-select">
+            <option selected>Jump to competition</option>
+            <?php
+                foreach ($league_details as $league) {
+                    debug($league);
+                    $link = $this->Html->url(array(
+                        'controller' => 'leagues',
+                        'action' => 'standings',
+                        implode(",", $this->request->pass),
+                        '?' => array(
+                            'gametype' => 'league',
+                            'centerID' => $league['Event']['center_id'],
+                            'leagueID' => $league['Event']['id']
+                        )
+                    ));
+                    echo '<option value="'.$league['Event']['id'].'" data-target="'.$link.'">'.$league['Event']['name'].'</option>';
+                }
                 ?>
-            </div>
-        </div>
+        </select>
+
     </div>
 </div>
 <hr class="my-4">
@@ -100,6 +96,18 @@ $(document).ready(function() {
                 <td class="text-right">${item.Event.games_played}</td>
             </tr>`;
         table.append(row);
+    });
+
+    $('#jump-social').change(function() {
+        $("select option:selected").each(function() {
+            window.location = $(this).data("target");
+        });
+    });
+
+    $('#jump-comp').change(function() {
+        $("select option:selected").each(function() {
+            window.location = $(this).data("target");
+        });
     });
 });
 </script>
