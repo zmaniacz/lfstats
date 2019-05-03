@@ -282,7 +282,7 @@ $(document).ready(function() {
         pagingType: "simple",
         processing: true,
         language: {
-            processing: '<span class="align-center"><i class="fas fa-circle-notch fa-spin fa-3x fa-fw"></i></span>'
+            processing: '<span class="align-center">Loading...</span>'
         }
     });
 

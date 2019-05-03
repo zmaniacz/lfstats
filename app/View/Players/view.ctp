@@ -1666,7 +1666,7 @@ $(document).ready(function() {
             {
                 data: function(row, type, val, meta) {
                     if (type === 'display') {
-                        return `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${row.scorecard_id}.json?${params.toString()}">${row.mvp_points} <i class="far fa-chart-bar"></i></a>`;
+                        return `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${row.scorecard_id}.json?${params.toString()}">${row.mvp_points} <i class="material-icons">bar_chart</i></a>`;
                     }
                     return row.mvp_points;
                 }
@@ -1686,7 +1686,7 @@ $(document).ready(function() {
             {
                 data: function(row, type, val, meta) {
                     if (type === 'display') {
-                        return `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${row.player_id}/${row.game_id}.json?${params.toString()}">${row.hit_diff} <i class="far fa-chart-bar"></i></a>`;
+                        return `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${row.player_id}/${row.game_id}.json?${params.toString()}">${row.hit_diff} <i class="material-icons">bar_chart</i></a>`;
                     }
                     return row.hit_diff;
                 }

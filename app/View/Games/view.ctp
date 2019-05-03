@@ -73,7 +73,7 @@
 <div class="d-flex justify-content-between">
     <?php
         if (!empty($neighbors['prev'])) {
-            echo $this->Html->link("<i class=\"fas fa-angle-double-left\"></i> Previous Game", array('controller' => 'games', 'action' => 'view', $neighbors['prev']['Game']['game_id']), array('escape' => false));
+            echo $this->Html->link('<i class="material-icons">skip_previous</i> Previous Game', array('controller' => 'games', 'action' => 'view', $neighbors['prev']['Game']['game_id']), array('escape' => false));
         }
         ?>
     <h3 class="text-center text-nowrap">
@@ -81,7 +81,7 @@
     </h3>
     <?php
         if (!empty($neighbors['next'])) {
-            echo $this->Html->link("Next Game <i class=\"fas fa-angle-double-right\"></i> ", array('controller' => 'games', 'action' => 'view', $neighbors['next']['Game']['game_id']), array('escape' => false));
+            echo $this->Html->link('Next Game <i class="material-icons">skip_next</i> ', array('controller' => 'games', 'action' => 'view', $neighbors['next']['Game']['game_id']), array('escape' => false));
         }
         ?>
 </div>
@@ -136,20 +136,20 @@
                     foreach ($score['Penalty'] as $penalty) {
                         $penalty_score += $penalty['value'];
                     }
-                    $penalty_string = '<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Penalty Details" data-modalsize="modal-lg" target="'.$this->Html->url(array('controller' => 'Penalties', 'action' => 'getPenaltyBreakdown', $score['id'], 'ext' => 'json')).'">'.count($score['Penalty']).' <i class="far fa-chart-bar"></i></a>';
+                    $penalty_string = '<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Penalty Details" data-modalsize="modal-lg" target="'.$this->Html->url(array('controller' => 'Penalties', 'action' => 'getPenaltyBreakdown', $score['id'], 'ext' => 'json')).'">'.count($score['Penalty']).' <i class="material-icons">bar_chart</i></a>';
                 }
 
                 if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $game['Game']['center_id'])) {
-                    $merc = "<td><form><input type=\"checkbox\" class=\"switch_sub_cbox\" id=".$score['id']." ".(($score['is_sub']) ? "checked" : "")."></form></td>";
+                    $merc = '<td><form><input type="checkbox" class="switch_sub_cbox" id='.$score['id'].' '.(($score['is_sub']) ? 'checked' : '').'></form></td>';
                 } else {
-                    $merc = (($score['is_sub']) ? "<td class=\"text-warning\"><i class=\"fas fa-asterisk\"></i></td>" : "<td></td>");
+                    $merc = (($score['is_sub']) ? '<td class="text-warning"><i class="material-icons">warning</i></td>' : '<td></td>');
                 }
 
                 if ($score['survived'] > 0) {
                     //We have a survival time so let's draw a pie chart
                     $alive = (($score['lives_left'] > 0) ? '<td class="text-success">' : '<td class="text-danger text-center">').'<svg class="timeLeft" data-percent="'.round($score['survived']/$game['Game']['game_length'], 2).'" viewBox="-1 -1 2 2" style="transform: rotate(-90deg);height:25px"><title>'.gmdate("i:s", $score['survived']).'</title></svg></td>';
                 } else {
-                    $alive = (($score['lives_left'] > 0) ? '<td class="text-success"><i class="fas fa-check"></i></span>' : '<td class="text-danger text-center"><i class="fas fa-times"></i></span>').'</td>';
+                    $alive = (($score['lives_left'] > 0) ? '<td class="text-success"><i class="material-icons">check</i></span>' : '<td class="text-danger text-center"><i class="material-icons">close</i></span>').'</td>';
                 }
                 
                 $score_line .= "<tr class=\"text-center\">";
@@ -158,10 +158,10 @@
                 $score_line .= $merc;
                 $score_line .= "<td>".$score['position']."</td>";
                 $score_line .= "<td>".($score['score']+$penalty_score).(($penalty_score != 0) ? " ($penalty_score)" : "")."</td>";
-                $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/'.$score['id'].'.json">'.$score['mvp_points'].' <i class="far fa-chart-bar"></i></a></td>';
+                $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/'.$score['id'].'.json">'.$score['mvp_points'].' <i class="material-icons">bar_chart</i></a></td>';
                 $score_line .= "<td>".$score['lives_left']."</td>";
                 $score_line .= "<td>".$score['shots_left']."</td>";
-                $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/'.$score['player_id'].'/'.$score['game_id'].'.json">'.round($score['shot_opponent']/max($score['times_zapped'], 1), 2)." (".$score['shot_opponent']."/".$score['times_zapped'].') <i class="far fa-chart-bar"></i></a></td>';
+                $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/'.$score['player_id'].'/'.$score['game_id'].'.json">'.round($score['shot_opponent']/max($score['times_zapped'], 1), 2)." (".$score['shot_opponent']."/".$score['times_zapped'].') <i class="material-icons">bar_chart</i></a></td>';
                 $score_line .= "<td>".$score['missiled_opponent']."</td>";
                 $score_line .= "<td>".$score['times_missiled']."</td>";
                 $score_line .= "<td>".$score['medic_hits'].($score['position'] == 'Commander' ? "/".$score['medic_nukes'] : "")."</td>";

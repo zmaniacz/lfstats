@@ -35,7 +35,7 @@
         )), array('class' => 'dropdown-item')); ?>
         </div>
     </div>
-    <span class="my-auto mx-2"><i class="fas fa-angle-double-right"></i></span>
+    <span class="my-auto mx-2"><i class="material-icons">chevron_right</i></span>
     <div class="dropdown">
         <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown"><?php
             if ($this->Session->read('state.isComp') > 0) {

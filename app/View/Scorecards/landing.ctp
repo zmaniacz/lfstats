@@ -4,7 +4,7 @@
         <hr class="my-4">
         <p><a class="btn btn-primary btn-lg"
                 href="/leagues/standings?gametype=league&amp;leagueID=687&amp;centerID=8&amp;isComp=1">Details
-                <i class="fas fa-caret-right"></i></a></p>
+                <i class="material-icons">chevron_right</i></a></p>
     </div>
 </div>
 <div class="row">
