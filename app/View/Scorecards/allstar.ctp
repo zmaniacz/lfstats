@@ -4,34 +4,30 @@
     <div class="card my-0">
         <div class="card-body">
             <?php if ($this->Session->read('state.isComp') > 0): ?>
-            <div class="btn-group-toggle" data-toggle="buttons">
-                <label
-                    class="btn btn-outline-info<?= (($this->Session->read('state.show_rounds') == 'true') ? " active" : "")?>">
-                    <input type="checkbox" id="rounds_cbox"
-                        <?= (($this->Session->read('state.show_rounds') == 'true') ? "checked" : "")?>>Show
-                    Rounds
-                </label>
-                <label
-                    class="btn btn-outline-info<?= (($this->Session->read('state.show_finals') == 'true') ? " active" : "")?>">
-                    <input type="checkbox" id="finals_cbox"
-                        <?= (($this->Session->read('state.show_finals') == 'true') ? "checked" : "")?>>Show
-                    Finals
-                </label>
-                <label
-                    class="btn btn-outline-info<?= (($this->Session->read('state.show_subs') == 'true') ? " active" : "")?>">
-                    <input type="checkbox" id="sub_cbox"
-                        <?= (($this->Session->read('state.show_subs') == 'true') ? "checked" : "")?>>Show
-                    Subs
-                </label>
+            <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="rounds_cbox"
+                    <?= (($this->Session->read('state.show_rounds') == 'true') ? "checked" : "")?>>
+                <label class="custom-control-label" for="rounds_cbox">Show Rounds</label>
             </div>
-            <?php else: ?>
-            <p>Min Games: <span id="min_games_slider_value"></span></p>
-            <div class="col-xs-4">
-                <div id="min_games_slider"></div>
+            <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="finals_cbox"
+                    <?= (($this->Session->read('state.show_finals') == 'true') ? "checked" : "")?>>
+                <label class="custom-control-label" for="finals_cbox">Show Finals</label>
             </div>
-            <?php endif; ?>
+            <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="sub_cbox"
+                    <?= (($this->Session->read('state.show_subs') == 'true') ? "checked" : "")?>>
+                <label class="custom-control-label" for="sub_cbox">Show Subs</label>
+            </div>
         </div>
+        <?php else: ?>
+        <p>Min Games: <span id="min_games_slider_value"></span></p>
+        <div class="col-xs-4">
+            <div id="min_games_slider"></div>
+        </div>
+        <?php endif; ?>
     </div>
+</div>
 </div>
 <?php
     $positions = array('commander','heavy','scout','ammo','medic');
@@ -64,7 +60,8 @@ $(document).ready(function() {
             },
             {
                 "data": function(row, type, val, meta) {
-                    var ratio = Math.round((row.games_played / row.total_games_played) * 100);
+                    var ratio = Math.round((row.games_played / row.total_games_played) *
+                        100);
                     if (type === 'display') {
                         return row.games_played + '/' + row.total_games_played;
                     }
@@ -88,7 +85,8 @@ $(document).ready(function() {
             },
             {
                 "data": function(row, type, val, meta) {
-                    var ratio = Math.round((row.games_played / row.total_games_played) * 100);
+                    var ratio = Math.round((row.games_played / row.total_games_played) *
+                        100);
                     if (type === 'display') {
                         return row.games_played + '/' + row.total_games_played;
                     }
@@ -112,7 +110,8 @@ $(document).ready(function() {
             },
             {
                 "data": function(row, type, val, meta) {
-                    var ratio = Math.round((row.games_played / row.total_games_played) * 100);
+                    var ratio = Math.round((row.games_played / row.total_games_played) *
+                        100);
                     if (type === 'display') {
                         return row.games_played + '/' + row.total_games_played;
                     }
@@ -136,7 +135,8 @@ $(document).ready(function() {
             },
             {
                 "data": function(row, type, val, meta) {
-                    var ratio = Math.round((row.games_played / row.total_games_played) * 100);
+                    var ratio = Math.round((row.games_played / row.total_games_played) *
+                        100);
                     if (type === 'display') {
                         return row.games_played + '/' + row.total_games_played;
                     }
@@ -160,7 +160,8 @@ $(document).ready(function() {
             },
             {
                 "data": function(row, type, val, meta) {
-                    var ratio = Math.round((row.games_played / row.total_games_played) * 100);
+                    var ratio = Math.round((row.games_played / row.total_games_played) *
+                        100);
                     if (type === 'display') {
                         return row.games_played + '/' + row.total_games_played;
                     }

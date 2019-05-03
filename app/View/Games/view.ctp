@@ -140,7 +140,7 @@
                 }
 
                 if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $game['Game']['center_id'])) {
-                    $merc = '<td><form><input type="checkbox" class="switch_sub_cbox" id='.$score['id'].' '.(($score['is_sub']) ? 'checked' : '').'></form></td>';
+                    $merc = '<td><div class="custom-control custom-switch"><input type="checkbox" class="custom-control-input switch_sub_cbox" data-scorecard-id="'.$score['id'].'" id="merc_switch_'.$score['id'].'" '.(($score['is_sub']) ? 'checked' : '').'><label class="custom-control-label" for="merc_switch_'.$score['id'].'"></label></div></td>';
                 } else {
                     $merc = (($score['is_sub']) ? '<td class="text-warning"><i class="material-icons">warning</i></td>' : '<td></td>');
                 }
@@ -355,7 +355,7 @@
 
         $('.switch_sub_cbox').change(function() {
             $.ajax({
-                url: "/scorecards/ajax_switchSub/" + $(this).prop('id') + ".json",
+                url: "/scorecards/ajax_switchSub/" + $(this).data('scorecardId') + ".json",
                 success: function(data) {
                     toastr.success('Set Merc Status')
                 }

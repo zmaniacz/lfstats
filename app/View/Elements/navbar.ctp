@@ -43,17 +43,17 @@
             <li class="nav-item">
                 <?= $this->Html->link('Syracuse 2019', array('controller' => 'leagues', 'action' => 'standings', '?' => array('gametype' => 'league', 'leagueID' => 687, 'centerID' => 8)), array('class' => 'nav-link')); ?>
             </li class="nav-item">
-            <?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
-            <li class="nav-item">
-                <?= $this->Html->link('Upload PDFs', array('controller' => 'uploads', 'action' => 'index'), array('class' => 'nav-link')); ?>
-            </li>
-            <?php endif; ?>
             <?php endif;?>
             <li class="nav-item">
                 <?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5'), array('class' => 'nav-link')); ?>
             </li>
             <li class="nav-item"><a class="nav-link" id="twitch_status"
                     href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
+            <?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
+            <li class="nav-item">
+                <?= $this->Html->link('Upload PDFs', array('controller' => 'uploads', 'action' => 'index'), array('class' => 'nav-link')); ?>
+            </li>
+            <?php endif; ?>
         </ul>
         <form class="form-inline">
             <?php if (AuthComponent::user('id')): ?>
