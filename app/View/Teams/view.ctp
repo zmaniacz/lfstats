@@ -80,8 +80,10 @@
     $player_positions = array();
     foreach ($scorecards as $scorecard) {
         if (!$scorecard['is_sub']) {
-            if (!isset($player_positions[$scorecard['player_name']])) {
-                $player_positions[$scorecard['player_name']] = array(
+            if (!isset($player_positions[$scorecard['player_id']])) {
+                $player_positions[$scorecard['player_id']] = array(
+                    'player_name' => $scorecard['player_name'],
+                    'games_played' => 0,
                     'Commander' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
                     'Heavy Weapons' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
                     'Scout' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
@@ -90,9 +92,10 @@
                 );
             }
 
-            $player_positions[$scorecard['player_name']][$scorecard['position']]['games_played'] += 1;
-            $player_positions[$scorecard['player_name']][$scorecard['position']]['total_mvp'] += $scorecard['mvp_points'];
-            $player_positions[$scorecard['player_name']][$scorecard['position']]['total_score'] += $scorecard['score'];
+            $player_positions[$scorecard['player_id']][$scorecard['position']]['games_played'] += 1;
+            $player_positions[$scorecard['player_id']]['games_played'] += 1;
+            $player_positions[$scorecard['player_id']][$scorecard['position']]['total_mvp'] += $scorecard['mvp_points'];
+            $player_positions[$scorecard['player_id']][$scorecard['position']]['total_score'] += $scorecard['score'];
 
             $team_mvp += $scorecard['mvp_points'];
             $team_shots_fired += $scorecard['shots_fired'];
@@ -107,280 +110,200 @@
     -
     <?= $team['EventTeam']['name']; ?>
 </h2>
-<div class="panel panel-primary">
-    <div class="panel-heading" data-toggle="collapse" data-parent="#win_loss_panel" data-target="#collapse_win_loss"
-        role="tab" id="positions_heading">
-        <h4 class="panel-title">
-            Wins/Losses
-        </h4>
-    </div>
-    <div id="collapse_win_loss" class="panel-collapse collapse" role="tabpanel">
-        <div class="panel-body">
-            <div id="win_loss_pie" style="height: 400px; width: 400px"></div>
-        </div>
-    </div>
-</div>
-<div class="panel panel-primary">
-    <div class="panel-heading" data-toggle="collapse" data-parent="#team_detail_panel" data-target="#collapse_team_detail"
-        role="tab" id="positions_heading">
-        <h4 class="panel-title">
-            Team Detail
-        </h4>
-    </div>
-    <div id="collapse_team_detail" class="panel-collapse collapse" role="tabpanel">
-        <div class="panel-body">
-            <dl class="dl-horizontal">
-                <dt>Games Played</dt>
-                <dd>
-                    <?= $team_games; ?>
-                </dd>
-            </dl>
-        </div>
-    </div>
-</div>
-<div id="positions_panel" class="panel panel-primary">
-    <div class="panel-heading" data-toggle="collapse" data-parent="#positions_panel" data-target="#collapse_positions"
-        role="tab" id="positions_heading">
-        <h4 class="panel-title">
-            Positions Detail
-        </h4>
-    </div>
-    <div id="collapse_positions" class="panel-collapse collapse" role="tabpanel">
-        <div class="panel-body">
-            <table class="table table-striped table-bordered table-hover table-condensed" id="positions_table">
-                <thead>
-                    <tr>
-                        <th class="col-xs-2">Player</th>
-                        <th colspan="3" class="col-xs-2">Commander</th>
-                        <th colspan="3" class="col-xs-2">Heavy Weapons</th>
-                        <th colspan="3" class="col-xs-2">Scout</th>
-                        <th colspan="3" class="col-xs-2">Ammo Carrier</th>
-                        <th colspan="3" class="col-xs-2">Medic</th>
-                    </tr>
-                    <tr>
-                        <th></th>
-                        <th>Games</th>
-                        <th>Avg. MVP</th>
-                        <th>Avg. Score</th>
-                        <th>Games</th>
-                        <th>Avg. MVP</th>
-                        <th>Avg. Score</th>
-                        <th>Games</th>
-                        <th>Avg. MVP</th>
-                        <th>Avg. Score</th>
-                        <th>Games</th>
-                        <th>Avg. MVP</th>
-                        <th>Avg. Score</th>
-                        <th>Games</th>
-                        <th>Avg. MVP</th>
-                        <th>Avg. Score</th>
-                    </tr>
-                </thead>
-                <tbody class="text-center">
-                    <?php foreach ($player_positions as $player => $position): ?>
-                    <tr>
-                        <td>
-                            <?= $player; ?>
-                        </td>
-                        <td>
-                            <?= $position['Commander']['games_played']; ?>
-                        </td>
-                        <td>
-                            <?= round($position['Commander']['total_mvp']/max($position['Commander']['games_played'], 1), 2); ?>
-                        </td>
-                        <td>
-                            <?= round($position['Commander']['total_score']/max($position['Commander']['games_played'], 1), 0); ?>
-                        </td>
-                        <td>
-                            <?= $position['Heavy Weapons']['games_played']; ?>
-                        </td>
-                        <td>
-                            <?= round($position['Heavy Weapons']['total_mvp']/max($position['Heavy Weapons']['games_played'], 1), 2); ?>
-                        </td>
-                        <td>
-                            <?= round($position['Heavy Weapons']['total_score']/max($position['Heavy Weapons']['games_played'], 1), 0); ?>
-                        </td>
-                        <td>
-                            <?= $position['Scout']['games_played']; ?>
-                        </td>
-                        <td>
-                            <?= round($position['Scout']['total_mvp']/max($position['Scout']['games_played'], 1), 2); ?>
-                        </td>
-                        <td>
-                            <?= round($position['Scout']['total_score']/max($position['Scout']['games_played'], 1), 0); ?>
-                        </td>
-                        <td>
-                            <?= $position['Ammo Carrier']['games_played']; ?>
-                        </td>
-                        <td>
-                            <?= round($position['Ammo Carrier']['total_mvp']/max($position['Ammo Carrier']['games_played'], 1), 2); ?>
-                        </td>
-                        <td>
-                            <?= round($position['Ammo Carrier']['total_score']/max($position['Ammo Carrier']['games_played'], 1), 0); ?>
-                        </td>
-                        <td>
-                            <?= $position['Medic']['games_played']; ?>
-                        </td>
-                        <td>
-                            <?= round($position['Medic']['total_mvp']/max($position['Medic']['games_played'], 1), 2); ?>
-                        </td>
-                        <td>
-                            <?= round($position['Medic']['total_score']/max($position['Medic']['games_played'], 1), 0); ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<h4 class="my-4">
+    Roster
+</h4>
+<table class="table table-striped table-bordered table-hover table-sm nowrap" id="positions_table">
+    <thead>
+        <tr>
+            <th rowspan="2">Player</th>
+            <th rowspan="2">Games Played</th>
+            <th colspan="3">Commander</th>
+            <th colspan="3">Heavy Weapons</th>
+            <th colspan="3">Scout</th>
+            <th colspan="3">Ammo Carrier</th>
+            <th colspan="3">Medic</th>
+        </tr>
+        <tr>
+            <th>Games</th>
+            <th>Avg. MVP</th>
+            <th>Avg. Score</th>
+            <th>Games</th>
+            <th>Avg. MVP</th>
+            <th>Avg. Score</th>
+            <th>Games</th>
+            <th>Avg. MVP</th>
+            <th>Avg. Score</th>
+            <th>Games</th>
+            <th>Avg. MVP</th>
+            <th>Avg. Score</th>
+            <th>Games</th>
+            <th>Avg. MVP</th>
+            <th>Avg. Score</th>
+        </tr>
+    </thead>
+    <tbody class="text-center">
+        <?php foreach ($player_positions as $player => $position): ?>
+        <tr>
+            <td>
+                <?= $this->Html->link($position['player_name'], array('controller' => 'players', 'action' => 'view', $player)); ?>
+            </td>
+            <td>
+                <?= $position['games_played']; ?>
+            </td>
+            <td>
+                <?= $position['Commander']['games_played']; ?>
+            </td>
+            <td>
+                <?= round($position['Commander']['total_mvp']/max($position['Commander']['games_played'], 1), 2); ?>
+            </td>
+            <td>
+                <?= round($position['Commander']['total_score']/max($position['Commander']['games_played'], 1), 0); ?>
+            </td>
+            <td>
+                <?= $position['Heavy Weapons']['games_played']; ?>
+            </td>
+            <td>
+                <?= round($position['Heavy Weapons']['total_mvp']/max($position['Heavy Weapons']['games_played'], 1), 2); ?>
+            </td>
+            <td>
+                <?= round($position['Heavy Weapons']['total_score']/max($position['Heavy Weapons']['games_played'], 1), 0); ?>
+            </td>
+            <td>
+                <?= $position['Scout']['games_played']; ?>
+            </td>
+            <td>
+                <?= round($position['Scout']['total_mvp']/max($position['Scout']['games_played'], 1), 2); ?>
+            </td>
+            <td>
+                <?= round($position['Scout']['total_score']/max($position['Scout']['games_played'], 1), 0); ?>
+            </td>
+            <td>
+                <?= $position['Ammo Carrier']['games_played']; ?>
+            </td>
+            <td>
+                <?= round($position['Ammo Carrier']['total_mvp']/max($position['Ammo Carrier']['games_played'], 1), 2); ?>
+            </td>
+            <td>
+                <?= round($position['Ammo Carrier']['total_score']/max($position['Ammo Carrier']['games_played'], 1), 0); ?>
+            </td>
+            <td>
+                <?= $position['Medic']['games_played']; ?>
+            </td>
+            <td>
+                <?= round($position['Medic']['total_mvp']/max($position['Medic']['games_played'], 1), 2); ?>
+            </td>
+            <td>
+                <?= round($position['Medic']['total_score']/max($position['Medic']['games_played'], 1), 0); ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+<h4 class="my-4">
+    Wins/Losses
+</h4>
+<div id="win_loss_pie" style="height: 400px; width: 400px">Loading...</div>
 <div>
-    <input class="pull-right" type="text" id="search-criteria" placeholder="Search Matches..." />
+    <input class="float-right" type="text" id="search-criteria" placeholder="Search Matches..." />
     <?php foreach ($details['Round'] as $round): ?>
-    <div class="page-header">
-        <h3>
-            <?= (($round['is_finals']) ? "Finals" : "Round ".$round['round']); ?>
-        </h3>
-    </div>
+    <h3 class="my-4">
+        <?= (($round['is_finals']) ? "Finals" : "Round ".$round['round']); ?>
+    </h3>
     <div class="row">
-        <?php foreach ($round['Match'] as $match) {
-    echo $this->element('MatchCard', array(
+        <?php
+        foreach ($round['Match'] as $match) {
+            echo $this->element('MatchCard', array(
                 "match" => $match
             ));
-}
+        }
         ?>
     </div>
     <?php endforeach; ?>
 </div>
 <script>
-    $(document).ready(function() {
-        $('#search-criteria').keyup(function() {
-            $('.match-panel').hide();
-            var txt = $('#search-criteria').val();
-            $('.match-panel').each(function() {
-                if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
-                    $(this).show();
-                }
-            });
+$(document).ready(function() {
+    $('#search-criteria').keyup(function() {
+        $('.match-panel').hide();
+        var txt = $('#search-criteria').val();
+        $('.match-panel').each(function() {
+            if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
+                $(this).show();
+            }
         });
-
-        function displayWinLossPie(data) {
-            var winloss = [{
-                    name: 'Wins',
-                    y: data['winloss']['wins'],
-                    drilldown: 'wins'
-                },
-                {
-                    name: 'Losses',
-                    y: data['winloss']['losses'],
-                    drilldown: 'losses'
-                },
-            ];
-            var winlossdetail = [{
-                    name: 'Wins',
-                    id: 'wins',
-                    data: [{
-                            name: 'Red Win - Elim',
-                            color: "#FF0000",
-                            distance: 0,
-                            y: data['winlossdetail']['elim_wins_from_red']
-                        },
-                        {
-                            name: 'Red Win - Non-Elim',
-                            color: "#CC0000",
-                            y: data['winlossdetail']['non_elim_wins_from_red']
-                        },
-                        {
-                            name: 'Green Win - Elim',
-                            color: "#00FF00",
-                            y: data['winlossdetail']['elim_wins_from_green']
-                        },
-                        {
-                            name: 'Green Win - Non-Elim',
-                            color: "#00CC00",
-                            y: data['winlossdetail']['non_elim_wins_from_green']
-                        }
-                    ]
-                },
-                {
-                    name: 'Losses',
-                    id: 'losses',
-                    data: [{
-                            name: 'Red Loss - Elim',
-                            color: "#FF0000",
-                            distance: 0,
-                            y: data['winlossdetail']['elim_losses_from_red']
-                        },
-                        {
-                            name: 'Red Loss - Non-Elim',
-                            color: "#CC0000",
-                            y: data['winlossdetail']['non_elim_losses_from_red']
-                        },
-                        {
-                            name: 'Green Loss - Elim',
-                            color: "#00FF00",
-                            y: data['winlossdetail']['elim_losses_from_green']
-                        },
-                        {
-                            name: 'Green Loss - Non-Elim',
-                            color: "#00CC00",
-                            y: data['winlossdetail']['non_elim_losses_from_green']
-                        }
-                    ]
-                }
-            ];
-
-            Highcharts.chart('win_loss_pie', {
-                chart: {
-                    type: 'pie'
-                },
-                title: {
-                    text: 'Wins & Losses'
-                },
-                subtitle: {
-                    text: 'Click the slices for details'
-                },
-                legend: {
-                    enabled: true,
-                    borderWidth: 1,
-                    borderColor: 'gray',
-                    align: 'left',
-                    verticalAlign: 'top',
-                    layout: 'vertical',
-                    x: 0,
-                    y: 50
-                },
-                yAxis: {
-                    title: {
-                        text: 'Wins'
-                    }
-                },
-                plotOptions: {
-                    pie: {
-                        allowPointSelect: true,
-                        cursor: 'pointer',
-                        dataLabels: {
-                            enabled: false
-                        },
-                        showInLegend: true
-                    }
-                },
-                series: [{
-                    name: 'Wins & Losses',
-                    data: winloss
-                }],
-                drilldown: {
-                    drillUpButton: {
-                        relativeTo: 'plotBox',
-                        position: {
-                            verticalAlign: 'top'
-                        }
-                    },
-                    series: winlossdetail
-                }
-            });
-        }
-
-        displayWinLossPie(<?= json_encode(compact('winloss', 'winlossdetail')); ?>);
     });
+
+    function renderWinLossPie(data) {
+        var winloss = [
+            ['Wins', data['winloss']['wins']],
+            ['Losses', data['winloss']['losses']]
+        ];
+        var winlossdetail = [
+            ['Red Elim Wins', data['winlossdetail']['elim_wins_from_red']],
+            ['Red Non-Elim Wins', data['winlossdetail']['non_elim_wins_from_red']],
+            ['Green Elim Wins', data['winlossdetail']['elim_wins_from_green']],
+            ['Green Non-Elim Wins', data['winlossdetail']['non_elim_wins_from_green']],
+            ['Red Elim Losses', data['winlossdetail']['elim_losses_from_red']],
+            ['Red Non-Elim Losses', data['winlossdetail']['non_elim_losses_from_red']],
+            ['Green Elim Losses', data['winlossdetail']['elim_losses_from_green']],
+            ['Green Non-Elim Losses', data['winlossdetail']['non_elim_losses_from_green']]
+        ];
+
+        $('#win_loss_pie').highcharts({
+            chart: {
+                type: 'pie',
+                height: 400
+            },
+            title: {
+                text: null
+            },
+            tooltip: {
+                headerFormat: '',
+                pointFormat: '{point.name}: <b>{point.y}</b>'
+            },
+            yAxis: {
+                title: {
+                    text: 'Wins'
+                }
+            },
+            plotOptions: {
+                pie: {
+                    shadow: false,
+                    center: ['50%', '50%']
+                }
+            },
+            series: [{
+                data: winloss,
+                colors: [
+                    '#5bc0de',
+                    '#008cba'
+                ],
+                size: '40%',
+                dataLabels: {
+                    formatter: function() {
+                        return this.point.name;
+                    },
+                    color: 'black',
+                    distance: -30
+                }
+            }, {
+                data: winlossdetail,
+                colors: [
+                    '#F04124',
+                    '#D7280B',
+                    '#43ac6a',
+                    '#2A9351'
+                ],
+                size: '80%',
+                innerSize: '60%',
+                dataLabels: {
+                    enabled: false
+                }
+            }]
+        });
+    }
+
+    renderWinLossPie
+        (<?= json_encode(compact('winloss', 'winlossdetail')); ?>);
+});
 </script>

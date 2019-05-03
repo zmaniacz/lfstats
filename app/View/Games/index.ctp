@@ -1,3 +1,5 @@
+<?= $this->element('breadcrumbs'); ?>
+<hr>
 <h4 class="my-4">
     Game List
 </h4>
@@ -35,7 +37,8 @@ $(document).ready(function() {
 
 
             let red_team = (element.Game.red_team_id === null) ? 'Red Team : ' + red_score :
-                '<a href="/teams/view/' + element.Game.red_team_id + '?' + params.toString() +
+                '<a href="/teams/view/' + element.Game.red_team_id + '?' + params
+                .toString() +
                 '" class="text-danger">' + element.Red_Team.name + ' : ' +
                 red_score + '</a>';
             let green_team = (element.Game.green_team_id === null) ? 'Green Team : ' +
@@ -59,7 +62,8 @@ $(document).ready(function() {
 
             let pdf = '';
             if (element.Game.pdf_id) {
-                pdf = '<a href="http://lfstatsscorecards.objects-us-east-1.dream.io/' + element
+                pdf = '<a href="http://lfstatsscorecards.objects-us-east-1.dream.io/' +
+                    element
                     .Game.pdf_id +
                     '.pdf" class="text-primary" target="_blank">PDF</a>';
             }

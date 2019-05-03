@@ -12,26 +12,25 @@
         $team2Game2Score = $match['Game_2']['red_score']+$match['Game_2']['red_adj'];
     }
 ?>
-<div class="col-md-6 match-panel">
-    <div class="panel panel-primary">
-        <div class="panel-body">
-            <table class="table table-condensed">
-                <caption>Match
-                    <?= $match['match']; ?>
-                </caption>
-                <thead>
-                    <tr>
-                        <th>Team</th>
-                        <th class="text-center">Match Points</th>
-                        <th class="text-center">Game 1</th>
-                        <th class="text-center">Game 2</th>
-                        <th class="text-center">Score Diff</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <?php
+<div class="card col-md-6">
+    <div class="card-body">
+        <table class="table table-sm nowrap">
+            <caption style="caption-side: top;">Match
+                <?= $match['match']; ?>
+            </caption>
+            <thead>
+                <tr>
+                    <th>Team</th>
+                    <th class="text-center">Match Points</th>
+                    <th class="text-center">Game 1</th>
+                    <th class="text-center">Game 2</th>
+                    <th class="text-center">Score Diff</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <?php
                     if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
                         echo "<select id=\"Match{$match['match']}Team1\" 
                                 class=\"match-select form-control\" 
@@ -56,14 +55,14 @@
                         }
                     }
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     echo " <strong>{$match['team_1_points']}</strong>";
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     if (!empty($match['Game_1'])) {
                         echo "<a href=\"$game1Url\">$team1Game1Score</a>";
                         if (($match['Game_1']['winner'] == 'red' && $match['team_1_id'] == $match['Game_1']['red_team_id']) || ($match['Game_1']['winner'] == 'green' && $match['team_1_id'] == $match['Game_1']['green_team_id'])) {
@@ -73,9 +72,9 @@
                         }
                     }
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     if (!empty($match['Game_2'])) {
                         echo "<a href=\"$game2Url\">$team1Game2Score</a>";
                         if (($match['Game_2']['winner'] == 'red' && $match['team_1_id'] == $match['Game_2']['red_team_id']) || ($match['Game_2']['winner'] == 'green' && $match['team_1_id'] == $match['Game_2']['green_team_id'])) {
@@ -85,9 +84,9 @@
                         }
                     }
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     $team1Diff = ($team1Game1Score+$team1Game2Score) - ($team2Game1Score+$team2Game2Score);
                     if ($team1Diff > 0) {
                         echo "<span class=\"text-success\">{$team1Diff}</span>";
@@ -95,11 +94,11 @@
                         echo "<span class=\"text-danger\">{$team1Diff}</span>";
                     }
                 ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <?php
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <?php
                     if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
                         echo "<select id=\"Match{$match['match']}Team2\" 
                                 class=\"match-select form-control\" 
@@ -124,14 +123,14 @@
                         }
                     }
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     echo " <strong>{$match['team_2_points']}</strong>";
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     if (!empty($match['Game_1'])) {
                         echo "<a href=\"$game1Url\">$team2Game1Score</a>";
                         if (($match['Game_1']['winner'] == 'red' && $match['team_2_id'] == $match['Game_1']['red_team_id']) || ($match['Game_1']['winner'] == 'green' && $match['team_2_id'] == $match['Game_1']['green_team_id'])) {
@@ -141,9 +140,9 @@
                         }
                     }
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     if (!empty($match['Game_2'])) {
                         echo "<a href=\"$game2Url\">$team2Game2Score</a>";
                         if (($match['Game_2']['winner'] == 'red' && $match['team_2_id'] == $match['Game_2']['red_team_id']) || ($match['Game_2']['winner'] == 'green' && $match['team_2_id'] == $match['Game_2']['green_team_id'])) {
@@ -153,9 +152,9 @@
                         }
                     }
                 ?>
-                        </td>
-                        <td class="text-center">
-                            <?php
+                    </td>
+                    <td class="text-center">
+                        <?php
                     $team2Diff = ($team2Game1Score+$team2Game2Score) - ($team1Game1Score+$team1Game2Score);
                     if ($team2Diff > 0) {
                         echo "<span class=\"text-success\">{$team2Diff}</span>";
@@ -163,10 +162,9 @@
                         echo "<span class=\"text-danger\">{$team2Diff}</span>";
                     }
                 ?>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
