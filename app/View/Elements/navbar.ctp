@@ -57,7 +57,7 @@
         </ul>
         <form class="form-inline">
             <?php if (AuthComponent::user('id')): ?>
-            <a class="btn btn-sm btn-outline-danger mr-2" href="/users/logout"
+            <a class="btn btn-sm btn-info mr-2" href="/users/logout"
                 role="button"><?= AuthComponent::user('username') ?>
                 Logout</a>
             <?php else: ?>
