@@ -42,6 +42,10 @@ function overallData(data) {
         ["Elim Wins", data['winlossdetail']['elim_wins_from_green']]
     ];
 
+    var total_games = data['winlossdetail']['non_elim_wins_from_red'] + data['winlossdetail'][
+        'non_elim_wins_from_green'
+    ] + data['winlossdetail']['elim_wins_from_red'] + data['winlossdetail']['elim_wins_from_green'];
+
     $('#win_loss_chart').highcharts({
         chart: {
             type: 'bar',
@@ -59,7 +63,10 @@ function overallData(data) {
             }
         },
         tooltip: {
-            pointFormat: "{point.y}"
+            pointFormatter: function() {
+                let winPercent = Math.round((this.y / total_games) * 100) + "%";
+                return this.y + " Wins (" + winPercent + ")";
+            }
         },
         legend: {
             enabled: false
