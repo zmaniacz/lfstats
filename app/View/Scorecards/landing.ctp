@@ -25,7 +25,7 @@
                                 'leagueID' => 0
                             )
                         ));
-                        echo '<option value="'.$key.'" data-target="'.$link.'">'.$value.'</option>';
+                        echo '<option value="'.$link.'">'.$value.'</option>';
                     }
                 ?>
         </select>
@@ -46,7 +46,7 @@
                             'leagueID' => $league['Event']['id']
                         )
                     ));
-                    echo '<option value="'.$league['Event']['id'].'" data-target="'.$link.'">'.$league['Event']['name'].'</option>';
+                    echo '<option value="'.$link.'">'.$league['Event']['name'].'</option>';
                 }
                 ?>
         </select>
@@ -99,15 +99,11 @@ $(document).ready(function() {
     });
 
     $('#jump-social').change(function() {
-        $("select option:selected").each(function() {
-            window.location = $(this).data("target");
-        });
+        window.location = $(this).val();
     });
 
     $('#jump-comp').change(function() {
-        $("select option:selected").each(function() {
-            window.location = $(this).data("target");
-        });
+        window.location = $(this).val();
     });
 });
 </script>
