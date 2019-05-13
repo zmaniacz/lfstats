@@ -1,3 +1,5 @@
+<?= $this->element('breadcrumbs'); ?>
+<hr>
 <?php
     echo $this->Html->css(array('JqueryFileUpload/jquery.fileupload','JqueryFileUpload/jquery.fileupload-ui'));
 ?>
