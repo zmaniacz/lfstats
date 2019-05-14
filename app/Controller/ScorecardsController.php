@@ -37,7 +37,8 @@ class ScorecardsController extends AppController
             'getStreaks',
             'getCurrentStreaks',
             'getPositionLeaderboards',
-            'getLeaderboards'
+            'getLeaderboards',
+            'getMissileLeaderBoards'
         );
         parent::beforeFilter();
     }
@@ -255,6 +256,11 @@ class ScorecardsController extends AppController
         $this->set('leaderboards', $this->Scorecard->getLeaderboards($this->request->query));
         $this->set('penalties', $this->Scorecard->getPenaltyCount($this->request->query));
         $this->set('medic_on_medic', $this->Scorecard->getMedicOnMedicHits($this->request->query));
+    }
+
+    public function getMissileLeaderBoards()
+    {
+        $this->set('data', $this->Scorecard->getMissileLeaderboards($this->request->query));
     }
 
     public function getPositionLeaderboards()

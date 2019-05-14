@@ -119,7 +119,7 @@
     Missile Malarkey
 </h4>
 <div class="row">
-    <div class="col-sm-4">
+    <div class="col-sm-6">
         <table class="table table-striped table-bordered table-hover table-sm nowrap"
             id="missiled_opponent_leader_table">
             <thead>
@@ -128,7 +128,25 @@
             </thead>
         </table>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-6">
+        <form>
+            <div class="form-group">
+                <label for="avg_missiles_min_games_range">Minimum Games: <span
+                        id="avg_missiles_min_games">25</span></label>
+                <input type="range" class="form-control-range" value="25" min="0" max="100"
+                    id="avg_missiles_min_games_range">
+            </div>
+        </form>
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="avg_missiles_table">
+            <thead>
+                <th>Name</th>
+                <th>Average Missiles as 3-Hit</th>
+            </thead>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="col-sm-6">
         <table class="table table-striped table-bordered table-hover table-sm nowrap" id="times_missiled_leader_table">
             <thead>
                 <th>Name</th>
@@ -136,7 +154,7 @@
             </thead>
         </table>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-6">
         <table class="table table-striped table-bordered table-hover table-sm nowrap" id="missiled_team_leader_table">
             <thead>
                 <th>Name</th>
@@ -261,6 +279,13 @@
     </div>
 </div>
 <script type="text/javascript">
+function update_table(table, filter, data) {
+    table.clear()
+    table.rows.add(data.filter(function(row) {
+        return row.Scorecard.games_played >= filter
+    })).draw()
+}
+
 $(document).ready(function() {
     const params = new URLSearchParams(location.search);
 
@@ -295,6 +320,16 @@ $(document).ready(function() {
     $('#show_subs_button').click(function() {
         params.set('show_subs', (params.get('show_subs') === 'true' ? 'false' : 'true'));
         window.location = `${location.pathname}?${params.toString()}`;
+    });
+
+    //handle the missiles slider jfc
+    $('#avg_missiles_min_games_range').on('input', function() {
+        $('#avg_missiles_min_games').text(this.value);
+    });
+
+    $('#avg_missiles_min_games_range').change(function() {
+        update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
+            avg_missiles_data);
     });
 
     //instantiate all the datatables
@@ -343,6 +378,32 @@ $(document).ready(function() {
     });
     $("div[id$='_scores_table_processing']").show();
 
+    var avg_missiles_data
+    var avg_missiles_table = $("#avg_missiles_table").DataTable({
+        columns: [{
+                data: function(row, type, val, meta) {
+                    if (type === 'display') {
+                        return `<a href="/players/view/${row.Player.id}?${params.toString()}">${row.Player.player_name}</a>`;
+                    }
+                    return row.Player.player_name;
+                }
+            },
+            {
+                data: function(row, type, val, meta) {
+                    let avg = (row.Scorecard.missiled_opponent_total + row.Scorecard
+                        .missiled_team_total) / row.Scorecard.games_played;
+
+                    if (type === 'display') {
+                        return avg.toFixed(2);
+                    }
+
+                    return avg;
+                }
+            },
+        ]
+    });
+    $("div[id$='_leader_table_processing']").show();
+
     $("table[id$='_streak_table']").DataTable({
         columns: [{
                 "data": "player_name"
@@ -368,7 +429,6 @@ $(document).ready(function() {
     $.ajax({
         url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getLeaderboards', 'ext' => 'json'))); ?>"
     }).done(function(response) {
-        console.log("got data");
         $("div[id$='_leader_table_processing']").hide();
         $('#games_played_leader_table').DataTable().clear().rows.add(response.data.games_played)
             .draw();
@@ -407,6 +467,14 @@ $(document).ready(function() {
         $('#penalties_total_leader_table').DataTable().clear().rows.add(response.data
                 .penalties_total)
             .draw();
+    })
+
+    $.ajax({
+        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getMissileLeaderboards', 'ext' => 'json'))); ?>"
+    }).done(function(response) {
+        avg_missiles_data = response.data;
+        update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
+            avg_missiles_data);
     })
 
     $.ajax({

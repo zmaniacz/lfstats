@@ -1560,6 +1560,64 @@ class Scorecard extends AppModel
         return $leaderboards;
     }
 
+    public function getMissileLeaderBoards($state)
+    {
+        $conditions = array();
+        
+        if (isset($state['centerID']) && $state['centerID'] > 0) {
+            $conditions[] = array('center_id' => $state['centerID']);
+        }
+        
+        if (isset($state['gametype']) && $state['gametype'] != 'all') {
+            $conditions[] = array('type' => $state['gametype']);
+        }
+        
+        if (isset($state['gametype']) && $state['gametype'] != 'all') {
+            $conditions[] = array('type' => $state['gametype']);
+            
+            if ($state['gametype'] == 'league') {
+                if (isset($state['show_subs']) && $state['show_subs'] == 'true') {
+                    $conditions[] = array('is_sub >=' => 0);
+                } else {
+                    $conditions[] = array('is_sub' => 0);
+                }
+                    
+                if (!isset($state['show_finals']) || $state['show_finals'] != 'true') {
+                    $subQuery = new stdClass();
+                    $subQuery->type = "expression";
+                    $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id='{$state['leagueID']}')";
+                    $conditions[] = $subQuery;
+                }
+            }
+        }
+        
+        if (isset($state['leagueID']) && $state['leagueID'] > 0) {
+            $conditions[] = array('event_id' => $state['leagueID']);
+        }
+
+        $conditions[] = array('position IN ("Heavy Weapons", "Commander")');
+
+        $leaderboards = $this->find('all', array(
+            'contain' => array(
+                'Player' => array(
+                    'fields' => array(
+                        'player_name'
+                    )
+                )
+            ),
+            'fields' => array(
+                'player_id',
+                'COUNT(game_datetime) as games_played',
+                'SUM(missiled_opponent) as missiled_opponent_total',
+                'SUM(missiled_team) as missiled_team_total'
+            ),
+            'conditions' => $conditions,
+            'group' => 'player_id'
+        ));
+
+        return $leaderboards;
+    }
+
     public function getPositionLeaderboards($position, $state)
     {
         $conditions = array();
