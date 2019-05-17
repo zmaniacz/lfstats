@@ -78,50 +78,133 @@ class Scorecard extends AppModel
         ));
 
         foreach ($scores as $score) {
+            $mvp_details = array(
+                'positionBonus' => array(
+                    'name' => 'Position Score Bonus',
+                    'value' => 0
+                ),
+                'missiledOpponent' => array(
+                    'name' => 'Missiled Opponent',
+                    'value' => 0
+                ),
+                'acc' => array(
+                    'name' => 'Accuracy',
+                    'value' => 0
+                ),
+                'nukesDetonated' => array(
+                    'name' => 'Nukes Detonated',
+                    'value' => 0
+                ),
+                'nukesCanceled' => array(
+                    'name' => 'Nukes Canceled',
+                    'value' => 0
+                ),
+                'medicHits' => array(
+                    'name' => 'Medic Hits',
+                    'value' => 0
+                ),
+                'ownMedicHits' => array(
+                    'name' => 'Own Medic Hits',
+                    'value' => 0
+                ),
+                'rapidFire' => array(
+                    'name' => 'Activate Rapid Fire',
+                    'value' => 0
+                ),
+                'shoot3Hit' => array(
+                    'name' => 'Shoot 3-Hit',
+                    'value' => 0
+                ),
+                'ammoBoost' => array(
+                    'name' => 'Ammo Boost',
+                    'value' => 0
+                ),
+                'lifeBoost' => array(
+                    'name' => 'Life Boost',
+                    'value' => 0
+                ),
+                'medicSurviveBonus' => array(
+                    'name' => 'Medic Survival Bonus',
+                    'value' => 0
+                ),
+                'medicScoreBonus' => array(
+                    'name' => 'Medic Score Bonus',
+                    'value' => 0
+                ),
+                'elimBonus' => array(
+                    'name' => 'Elimination Bonus',
+                    'value' => 0
+                ),
+                'timesMissiled' => array(
+                    'name' => 'Times Missiled',
+                    'value' => 0
+                ),
+                'missiledTeam' => array(
+                    'name' => 'Missiled Team',
+                    'value' => 0
+                ),
+                'ownNukesCanceled' => array(
+                    'name' => 'Your Nukes Canceled',
+                    'value' => 0
+                ),
+                'teamNukesCanceled' => array(
+                    'name' => 'Team Nukes Canceled',
+                    'value' => 0
+                ),
+                'elimPenalty' => array(
+                    'name' => 'Elimination Penalty',
+                    'value' => 0
+                ),
+                'penalties' => array(
+                    'name' => 'Penalties',
+                    'value' => 0
+                )
+            );
+
             $mvp = 0;
 
             //Position based point bonus
             switch ($score['Scorecard']['position']) {
                 case "Ammo Carrier":
-                    $mvp += max((floor(($score['Scorecard']['score']-3000)/10)*.01), 0);
+                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score']-3000)/10)*.01), 0);
                     break;
                 case "Commander":
-                    $mvp += max((floor(($score['Scorecard']['score']-10000)/10)*.01), 0);
+                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score']-10000)/10)*.01), 0);
                     break;
                 case "Heavy Weapons":
-                    $mvp += max((floor(($score['Scorecard']['score']-7000)/10)*.01), 0);
+                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score']-7000)/10)*.01), 0);
                     break;
                 case "Medic":
-                    $mvp += max((floor(($score['Scorecard']['score']-2000)/10)*.01), 0);
+                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score']-2000)/10)*.01), 0);
                     break;
                 case "Scout":
-                    $mvp += max((floor(($score['Scorecard']['score']-6000)/10)*.01), 0);
+                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score']-6000)/10)*.01), 0);
                     break;
             }
 
             //medic bonus point
             if ($score['Scorecard']['position'] == 'Medic' && $score['Scorecard']['score'] >= 3000) {
-                $mvp += 1;
+                $mvp_details['medicScoreBonus']['value'] += 1;
             }
             
             //accuracy bonus
-            $mvp += round($score['Scorecard']['accuracy'] * 10, 1);
+            $mvp_details['acc']['value'] += round($score['Scorecard']['accuracy'] * 10, 1);
             
             //don't get missiled dummy
-            $mvp += $score['Scorecard']['times_missiled'] * -1;
+            $mvp_details['timesMissiled']['value'] += $score['Scorecard']['times_missiled'] * -1;
             
             //missile other people instead
             switch ($score['Scorecard']['position']) {
                 case "Commander":
-                    $mvp += $score['Scorecard']['missiled_opponent'];
+                    $mvp_details['missiledOpponent']['value'] += $score['Scorecard']['missiled_opponent'];
                     break;
                 case "Heavy Weapons":
-                    $mvp += $score['Scorecard']['missiled_opponent'] * 2;
+                    $mvp_details['missiledOpponent']['value'] += $score['Scorecard']['missiled_opponent'] * 2;
                     break;
             }
             
             //get dat 5-chain
-            $mvp += $score['Scorecard']['nukes_detonated'];
+            $mvp_details['nukesDetonated']['value'] += $score['Scorecard']['nukes_detonated'];
             
             //maybe hide better
             if ($score['Scorecard']['nukes_activated'] - $score['Scorecard']['nukes_detonated'] > 0) {
@@ -146,31 +229,31 @@ class Scorecard extends AppModel
                 );
                 
                 if ($nukes[0][0]['all_nukes_canceled'] > 0) {
-                    $mvp += (int)$nukes[0][0]['all_nukes_canceled'] * -3;
+                    $mvp_details['ownNukesCanceled']['value'] += (int)$nukes[0][0]['all_nukes_canceled'] * -3;
                 }
             }
             
             //make commanders cry
-            $mvp += $score['Scorecard']['nukes_canceled'] *3;
+            $mvp_details['nukesCanceled']['value'] += $score['Scorecard']['nukes_canceled'] *3;
             
             //medic tears are scrumptious
-            $mvp += $score['Scorecard']['medic_hits'];
+            $mvp_details['medicHits']['value'] += $score['Scorecard']['medic_hits'];
             
             //dont be a venom
-            $mvp += $score['Scorecard']['own_medic_hits'] * -1;
+            $mvp_details['ownMedicHits']['value'] += $score['Scorecard']['own_medic_hits'] * -1;
             
             //push the little button
-            $mvp += $score['Scorecard']['scout_rapid'] * .5;
-            $mvp += $score['Scorecard']['life_boost'] * 2;
-            $mvp += $score['Scorecard']['ammo_boost'] * 3;
+            $mvp_details['rapidFire']['value'] += $score['Scorecard']['scout_rapid'] * .5;
+            $mvp_details['lifeBoost']['value'] += $score['Scorecard']['life_boost'] * 2;
+            $mvp_details['ammoBoost']['value'] += $score['Scorecard']['ammo_boost'] * 3;
             
             //survival bonuses/penalties
             if ($score['Scorecard']['lives_left'] > 0 && $score['Scorecard']['position'] == "Medic") {
-                $mvp += 2;
+                $mvp_details['medicSurviveBonus']['value'] += 2;
             }
             
             if ($score['Scorecard']['lives_left'] <= 0 && $score['Scorecard']['position'] != "Medic") {
-                $mvp += -1;
+                $mvp_details['elimPenalty']['value'] += -1;
             }
             
             //apply penalties based on value of the penalty
@@ -182,31 +265,35 @@ class Scorecard extends AppModel
             
             foreach ($penalties as $penalty) {
                 if ($penalty['Penalty']['type'] != 'Penalty Removed') {
-                    $mvp += $penalty['Penalty']['mvp_value'];
+                    $mvp_details['penalties']['value'] += $penalty['Penalty']['mvp_value'];
                 }
             }
             
             //raping 3hits.  the math looks weird, but it works and gets the desired result
-            $mvp += floor(($score['Scorecard']['shot_3hit']/6)*100) / 100;
+            $mvp_details['shoot3Hit']['value'] += floor(($score['Scorecard']['shot_3hit']/6)*100) / 100;
             
             //No.  Stahp.
-            $mvp += $score['Scorecard']['own_nuke_cancels'] * -3;
+            $mvp_details['teamNukesCanceled']['value'] += $score['Scorecard']['own_nuke_cancels'] * -3;
             
             //more venom points
-            $mvp += $score['Scorecard']['missiled_team'] * -3;
+            $mvp_details['missiledTeam']['value'] += $score['Scorecard']['missiled_team'] * -3;
             
             //WINNER
             //at least 1 MVP for an elim, increased by 1/60 for each second of time remaining over 60
             if ($score['Scorecard']['elim_other_team'] > 0) {
                 if (!is_null($score['Game']['game_length'])) {
-                    $mvp += max(1, ((900 - $score['Game']['game_length']) / 60));
+                    $mvp_details['elimBonus']['value'] += max(1, ((900 - $score['Game']['game_length']) / 60));
                 } else {
                     //default to 2
-                    $mvp += $score['Scorecard']['elim_other_team'] * 2;
+                    $mvp_details['elimBonus']['value'] += $score['Scorecard']['elim_other_team'] * 2;
                 }
             }
             
+            foreach($mvp_details as $item) {
+                $mvp += $item['value'];
+            }
             $score['Scorecard']['mvp_points'] = max(round($mvp, 2), 0);
+            $score['Scorecard']['mvp_details'] = json_encode($mvp_details);
 
             $this->save($score);
         }
