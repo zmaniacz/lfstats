@@ -426,6 +426,113 @@ class Scorecard extends AppModel
             return $player['PlayersName']['player_id'];
         }
     }
+
+    public function getMVPDetailsBySource($state) {
+        $conditions = array();
+
+        if (isset($state['centerID']) && $state['centerID'] > 0) {
+            $conditions[] = array('Scorecard.center_id' => $state['centerID']);
+        }
+        
+        if (isset($state['gametype']) && $state['gametype'] != 'all') {
+            $conditions[] = array('Scorecard.type' => $state['gametype']);
+            
+            if ($state['gametype'] == 'league') {
+                if (isset($state['show_subs']) && $state['show_subs'] == 'true') {
+                    $conditions[] = array('Scorecard.is_sub >=' => 0);
+                } else {
+                    $conditions[] = array('Scorecard.is_sub' => 0);
+                }
+                    
+                if (isset($state['show_finals']) && $state['show_finals'] == 'true' && isset($state['show_rounds']) && $state['show_rounds'] == 'true') {
+                    $subQuery = new stdClass();
+                    $subQuery->type = "expression";
+                    $subQuery->value = "Scorecard.game_id IN (SELECT game_id FROM league_games WHERE event_id='{$state['leagueID']}')";
+                    $conditions[] = $subQuery;
+                } elseif (isset($state['show_finals']) && $state['show_finals'] == 'true') {
+                    $subQuery = new stdClass();
+                    $subQuery->type = "expression";
+                    $subQuery->value = "Scorecard.game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id='{$state['leagueID']}')";
+                    $conditions[] = $subQuery;
+                } elseif (isset($state['show_rounds']) && $state['show_rounds'] == 'true') {
+                    $subQuery = new stdClass();
+                    $subQuery->type = "expression";
+                    $subQuery->value = "Scorecard.game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id='{$state['leagueID']}')";
+                    $conditions[] = $subQuery;
+                } else {
+                    $subQuery = new stdClass();
+                    $subQuery->type = "expression";
+                    $subQuery->value = "Scorecard.game_id IN (0)";
+                    $conditions[] = $subQuery;
+                }
+            }
+        }
+        
+        if (isset($state['leagueID']) && $state['leagueID'] > 0) {
+            $conditions[] = array('Scorecard.event_id' => $state['leagueID']);
+        }
+
+        $positions = $this->find('all', array(
+            'fields' => array(
+                'Scorecard.position',
+                'AVG(mvp_details->\'$.positionBonus.value\') as positionBonus',
+                'AVG(mvp_details->\'$.missiledOpponent.value\') as missiledOpponent',
+                'AVG(mvp_details->\'$.acc.value\') as acc',
+                'AVG(mvp_details->\'$.nukesDetonated.value\') as nukesDetonated',
+                'AVG(mvp_details->\'$.nukesCanceled.value\') as nukesCanceled',
+                'AVG(mvp_details->\'$.medicHits.value\') as medicHits',
+                'AVG(mvp_details->\'$.ownMedicHits.value\') as ownMedicHits',
+                'AVG(mvp_details->\'$.rapidFire.value\') as rapidFire',
+                'AVG(mvp_details->\'$.shoot3Hit.value\') as shoot3Hit',
+                'AVG(mvp_details->\'$.ammoBoost.value\') as ammoBoost',
+                'AVG(mvp_details->\'$.lifeBoost.value\') as lifeBoost',
+                'AVG(mvp_details->\'$.medicSurviveBonus.value\') as medicSurviveBonus',
+                'AVG(mvp_details->\'$.medicScoreBonus.value\') as medicScoreBonus',
+                'AVG(mvp_details->\'$.elimBonus.value\') as elimBonus',
+                'AVG(mvp_details->\'$.timesMissiled.value\') as timesMissiled',
+                'AVG(mvp_details->\'$.missiledTeam.value\') as missiledTeam',
+                'AVG(mvp_details->\'$.ownNukesCanceled.value\') as ownNukesCanceled',
+                'AVG(mvp_details->\'$.teamNukesCanceled.value\') as teamNukesCanceled',
+                'AVG(mvp_details->\'$.elimPenalty.value\') as elimPenalty',
+                'AVG(mvp_details->\'$.penalties.value\') as penalties'
+            ),
+            'conditions' => $conditions,
+            'group' => "Scorecard.position"
+        ));
+
+        $all = $this->find('all', array(
+            'fields' => array(
+                'AVG(mvp_details->\'$.positionBonus.value\') as positionBonus',
+                'AVG(mvp_details->\'$.missiledOpponent.value\') as missiledOpponent',
+                'AVG(mvp_details->\'$.acc.value\') as acc',
+                'AVG(mvp_details->\'$.nukesDetonated.value\') as nukesDetonated',
+                'AVG(mvp_details->\'$.nukesCanceled.value\') as nukesCanceled',
+                'AVG(mvp_details->\'$.medicHits.value\') as medicHits',
+                'AVG(mvp_details->\'$.ownMedicHits.value\') as ownMedicHits',
+                'AVG(mvp_details->\'$.rapidFire.value\') as rapidFire',
+                'AVG(mvp_details->\'$.shoot3Hit.value\') as shoot3Hit',
+                'AVG(mvp_details->\'$.ammoBoost.value\') as ammoBoost',
+                'AVG(mvp_details->\'$.lifeBoost.value\') as lifeBoost',
+                'AVG(mvp_details->\'$.medicSurviveBonus.value\') as medicSurviveBonus',
+                'AVG(mvp_details->\'$.medicScoreBonus.value\') as medicScoreBonus',
+                'AVG(mvp_details->\'$.elimBonus.value\') as elimBonus',
+                'AVG(mvp_details->\'$.timesMissiled.value\') as timesMissiled',
+                'AVG(mvp_details->\'$.missiledTeam.value\') as missiledTeam',
+                'AVG(mvp_details->\'$.ownNukesCanceled.value\') as ownNukesCanceled',
+                'AVG(mvp_details->\'$.teamNukesCanceled.value\') as teamNukesCanceled',
+                'AVG(mvp_details->\'$.elimPenalty.value\') as elimPenalty',
+                'AVG(mvp_details->\'$.penalties.value\') as penalties'
+            ),
+            'conditions' => $conditions,
+        ));
+
+        $data = array();
+        $data['all'] = $all[0][0];
+        foreach($positions as $result) {
+            $data[$result['Scorecard']['position']] = $result[0];
+        }
+        return $data;
+    }
     
     public function getGameDates($state)
     {

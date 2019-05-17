@@ -38,7 +38,8 @@ class ScorecardsController extends AppController
             'getCurrentStreaks',
             'getPositionLeaderboards',
             'getLeaderboards',
-            'getMissileLeaderBoards'
+            'getMissileLeaderBoards',
+            'getMVPDetailsBySource'
         );
         parent::beforeFilter();
     }
@@ -284,6 +285,11 @@ class ScorecardsController extends AppController
     public function getCurrentStreaks()
     {
         $this->set('data', $this->Scorecard->getCurrentStreaks($this->Session->read('state')));
+    }
+
+    public function getMVPDetailsBySource()
+    {
+        $this->set('data', $this->Scorecard->getMVPDetailsBySource($this->Session->read('state')));
     }
     
     public function getMVPBreakdown($id)
