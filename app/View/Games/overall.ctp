@@ -21,6 +21,7 @@
     </div>
 </div>
 <div id="mvp_box_plot"></div>
+<div id="mvp_breakdown_chart"></div>
 <h4 class="my-4">
     Average Team Scores
 </h4>
@@ -264,6 +265,129 @@ function updateBoxPlot(type) {
     });
 }
 
+function renderMVPChart(data) {
+    var allData = data.data.all;
+    var commanderData = data.data['Commander'];
+    var heavyData = data.data['Heavy Weapons'];
+    var scoutData = data.data['Scout'];
+    var ammoData = data.data['Ammo Carrier'];
+    var medicData = data.data['Medic'];
+
+    Highcharts.chart('mvp_breakdown_chart', {
+        chart: {
+            type: 'bar'
+        },
+        title: {
+            text: 'Rusty, where does MVP come from?'
+        },
+        xAxis: {
+            categories: ['All', 'Commander', 'Heavy Weapons', 'Scout', 'Ammo Carrier', 'Medic']
+        },
+        yAxis: {
+            min: 0,
+            title: {
+                text: 'Total MVP'
+            }
+        },
+        legend: {
+            reversed: true
+        },
+        plotOptions: {
+            series: {
+                stacking: 'normal'
+            }
+        },
+        series: [{
+            name: 'Missiled Opponent',
+            data: [allData.missiledOpponent, commanderData.missiledOpponent, heavyData
+                .missiledOpponent,
+                scoutData.missiledOpponent, ammoData.missiledOpponent, medicData
+                .missiledOpponent
+            ]
+        }, {
+            name: 'Nukes Detonated',
+            data: [allData.nukesDetonated, commanderData.nukesDetonated, heavyData
+                .nukesDetonated,
+                scoutData.nukesDetonated, ammoData.nukesDetonated, medicData
+                .nukesDetonated
+            ]
+        }, {
+            name: 'Nukes Canceled',
+            data: [allData.nukesCanceled, commanderData.nukesCanceled, heavyData
+                .nukesCanceled,
+                scoutData.nukesCanceled, ammoData.nukesCanceled, medicData
+                .nukesCanceled
+            ]
+        }, {
+            name: 'Medic Hits',
+            data: [allData.medicHits, commanderData.medicHits, heavyData
+                .medicHits,
+                scoutData.medicHits, ammoData.medicHits, medicData
+                .medicHits
+            ]
+        }, {
+            name: 'Rapid Fire',
+            data: [allData.rapidFire, commanderData.rapidFire, heavyData
+                .rapidFire,
+                scoutData.rapidFire, ammoData.rapidFire, medicData
+                .rapidFire
+            ]
+        }, {
+            name: 'Shoot 3-Hit',
+            data: [allData.shoot3Hit, commanderData.shoot3Hit, heavyData
+                .shoot3Hit,
+                scoutData.shoot3Hit, ammoData.shoot3Hit, medicData
+                .shoot3Hit
+            ]
+        }, {
+            name: 'Ammo Boost',
+            data: [allData.ammoBoost, commanderData.ammoBoost, heavyData
+                .ammoBoost,
+                scoutData.ammoBoost, ammoData.ammoBoost, medicData
+                .ammoBoost
+            ]
+        }, {
+            name: 'Life Boost',
+            data: [allData.lifeBoost, commanderData.lifeBoost, heavyData
+                .lifeBoost,
+                scoutData.lifeBoost, ammoData.lifeBoost, medicData
+                .lifeBoost
+            ]
+        }, {
+            name: 'Medic Survive Bonus',
+            data: [allData.medicSurviveBonus, commanderData.medicSurviveBonus, heavyData
+                .medicSurviveBonus,
+                scoutData.medicSurviveBonus, ammoData.medicSurviveBonus, medicData
+                .medicSurviveBonus
+            ]
+        }, {
+            name: 'Medic Score Bonus',
+            data: [allData.medicScoreBonus, commanderData.medicScoreBonus, heavyData
+                .medicScoreBonus,
+                scoutData.medicScoreBonus, ammoData.medicScoreBonus, medicData
+                .medicScoreBonus
+            ]
+        }, {
+            name: 'Elim Bonus',
+            data: [allData.elimBonus, commanderData.elimBonus, heavyData
+                .elimBonus,
+                scoutData.elimBonus, ammoData.elimBonus, medicData
+                .elimBonus
+            ]
+        }, {
+            name: 'Position Bonus',
+            data: [allData.positionBonus, commanderData.positionBonus, heavyData.positionBonus,
+                scoutData.positionBonus, ammoData.positionBonus, medicData.positionBonus
+            ]
+        }, {
+            name: 'Accuracy',
+            data: [allData.acc, commanderData.acc, heavyData.acc,
+                scoutData.acc, ammoData.acc, medicData.acc
+            ]
+        }]
+    });
+}
+
 $(document).ready(function() {
     $("#medianSelector :input").change(function() {
         if (this.id === 'option_mvp') {
@@ -279,6 +403,12 @@ $(document).ready(function() {
         url: '<?php echo html_entity_decode($this->Html->url(array('action' => 'overallWinLossDetail', 'ext' => 'json'))); ?>'
     }).done(function(response) {
         overallData(response);
+    });
+
+    $.ajax({
+        url: '<?php echo html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getMVPDetailsBySource', 'ext' => 'json'))); ?>'
+    }).done(function(response) {
+        renderMVPChart(response);
     });
 
     updateBoxPlot('mvp');
