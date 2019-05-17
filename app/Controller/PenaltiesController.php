@@ -244,7 +244,7 @@ class PenaltiesController extends AppController
             
             $scorecard['Scorecard']['mvp_points'] = null;
             $this->Penalty->Scorecard->save($scorecard);
-            $this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['id']);
+            $this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['game_id']);
         } else {
             $this->Flash->error('The penalty could not be deleted. Please, try again.');
         }
