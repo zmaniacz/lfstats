@@ -79,30 +79,30 @@
     //populate plyer positions
     $player_positions = array();
     foreach ($scorecards as $scorecard) {
-        if (!$scorecard['is_sub']) {
-            if (!isset($player_positions[$scorecard['player_id']])) {
-                $player_positions[$scorecard['player_id']] = array(
-                    'player_name' => $scorecard['player_name'],
-                    'games_played' => 0,
-                    'Commander' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
-                    'Heavy Weapons' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
-                    'Scout' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
-                    'Ammo Carrier' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
-                    'Medic' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0)
-                );
-            }
-
-            $player_positions[$scorecard['player_id']][$scorecard['position']]['games_played'] += 1;
-            $player_positions[$scorecard['player_id']]['games_played'] += 1;
-            $player_positions[$scorecard['player_id']][$scorecard['position']]['total_mvp'] += $scorecard['mvp_points'];
-            $player_positions[$scorecard['player_id']][$scorecard['position']]['total_score'] += $scorecard['score'];
-
-            $team_mvp += $scorecard['mvp_points'];
-            $team_shots_fired += $scorecard['shots_fired'];
-            $team_shots_fired += $scorecard['shots_hit'];
-            $team_medic_hits += $scorecard['medic_hits'];
-            ;
+        if (!isset($player_positions[$scorecard['player_id']])) {
+            $player_positions[$scorecard['player_id']] = array(
+                'player_name' => $scorecard['player_name'],
+                'games_played' => 0,
+                'is_sub' => 0,
+                'Commander' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
+                'Heavy Weapons' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
+                'Scout' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
+                'Ammo Carrier' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
+                'Medic' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0)
+            );
         }
+
+        $player_positions[$scorecard['player_id']][$scorecard['position']]['games_played'] += 1;
+        $player_positions[$scorecard['player_id']]['games_played'] += 1;
+        $player_positions[$scorecard['player_id']]['is_sub'] += $scorecard['is_sub'];
+        $player_positions[$scorecard['player_id']][$scorecard['position']]['total_mvp'] += $scorecard['mvp_points'];
+        $player_positions[$scorecard['player_id']][$scorecard['position']]['total_score'] += $scorecard['score'];
+
+        $team_mvp += $scorecard['mvp_points'];
+        $team_shots_fired += $scorecard['shots_fired'];
+        $team_shots_fired += $scorecard['shots_hit'];
+        $team_medic_hits += $scorecard['medic_hits'];
+        ;
     }
 ?>
 <h2 class="text-warning">
@@ -116,6 +116,7 @@
 <table class="table table-striped table-bordered table-hover table-sm nowrap" id="positions_table">
     <thead>
         <tr>
+            <th rowspan="2">Merc</th>
             <th rowspan="2">Player</th>
             <th rowspan="2">Games Played</th>
             <th colspan="3">Commander</th>
@@ -145,6 +146,14 @@
     <tbody class="text-center">
         <?php foreach ($player_positions as $player => $position): ?>
         <tr>
+            <?php
+                if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $details['Event']['id'])) {
+                    $merc = '<td><div class="custom-control custom-switch"><input type="checkbox" class="custom-control-input switch_sub_cbox" data-player-id="'.$player.'" data-team-id="'.$team['EventTeam']['id'].'" data-toggle="'.(($position['is_sub'] < $position['games_played']) ? 1 : 0).'" id="merc_switch_'.$player.'" '.(($position['is_sub'] == $position['games_played']) ? 'checked' : '').'><label class="custom-control-label" for="merc_switch_'.$player.'"></label></div></td>';
+                } else {
+                    $merc = (($position['is_sub']) ? '<td class="text-warning"><i class="material-icons">warning</i></td>' : '<td></td>');
+                }
+                echo $merc;
+            ?>
             <td>
                 <?= $this->Html->link($position['player_name'], array('controller' => 'players', 'action' => 'view', $player)); ?>
             </td>
@@ -229,6 +238,16 @@ $(document).ready(function() {
         $('.match-panel').each(function() {
             if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
                 $(this).show();
+            }
+        });
+    });
+
+    $('.switch_sub_cbox').change(function() {
+        $.ajax({
+            url: "/scorecards/switchSubAll/" + $(this).data('playerId') + "/" + $(this)
+                .data('teamId') + "/" + $(this).data('toggle') + ".json",
+            success: function(data) {
+                toastr.success('Set Merc Status')
             }
         });
     });

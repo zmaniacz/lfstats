@@ -380,6 +380,36 @@ class ScorecardsController extends AppController
             return new CakeResponse(array('body' => json_encode(array('id' => $id, 'is_sub' => $is_sub))));
         }
     }
+
+    public function switchSubAll($player_id, $team_id, $toggle)
+    {
+        $db = $this->Game->getDataSource();
+        $subQuery = $db->buildStatement(
+            array(
+                'fields' => array('Game.id'),
+                'table' => $db->fullTableName($this->Game),
+                'alias' => 'Game',
+                'conditions' => array(
+                    "OR" => array(
+                        'Game.red_team_id' => $team_id,
+                        'Game.green_team_id' => $team_id
+                    )
+                )
+                    ),
+                    $this->Game
+        );
+        $subQuery = 'Scorecard.game_id IN (' . $subQuery . ') ';
+        $subQueryExpression = $db->expression($subQuery);
+        
+        $conditions[] = $subQueryExpression;
+        $conditions[] = array('Scorecard.player_id' => $player_id);
+
+        if ($this->Scorecard->updateAll(array('Scorecard.is_sub' => $toggle), $conditions)) {
+            $this->set('data', $this->Scorecard->getAffectedRows());
+        } else {
+            $this->set('data', 0);
+        }
+    }
     
     public function filterSub($showSubs = false)
     {
