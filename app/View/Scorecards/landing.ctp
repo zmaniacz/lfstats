@@ -20,9 +20,9 @@
                             'action' => 'nightly',
                             implode(",", $this->request->pass),
                             '?' => array(
-                                'gametype' => $this->Session->read('state.gametype'),
-                                'centerID' => $key,
-                                'leagueID' => 0
+                                'gametype' => 'social',
+                                'isComp' => 0,
+                                'centerID' => $key
                             )
                         ));
                         echo '<option value="'.$link.'">'.$value.'</option>';
@@ -42,6 +42,7 @@
                         implode(",", $this->request->pass),
                         '?' => array(
                             'gametype' => 'league',
+                            'isComp' => 1,
                             'centerID' => $league['Event']['center_id'],
                             'leagueID' => $league['Event']['id']
                         )

@@ -136,6 +136,7 @@ class AppController extends Controller
                 $this->Session->write('state.isComp', $event['Event']['is_comp']);
             } else {
                 $this->Session->write('state.leagueID', 0);
+                $this->Session->write('state.isComp', $event['Event']['is_comp']);
             }
         }
         
