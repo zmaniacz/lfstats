@@ -28,7 +28,9 @@
 <hr>
 <?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
 <a class="btn btn-success" href="<?= $this->Html->url(array('controller' => 'leagues', 'action' => 'addTeam')); ?>">New
-    Team</a>
+    Team</a> <a
+    href="<?= $this->Html->url(array('controller' => 'Events', 'action' => 'edit', $details['Event']['id'])); ?>"><i
+        class="material-icons">settings</i></a>
 <?php endif; ?>
 <div class="table-responsive">
     <table class="table table-striped table-bordered table-hover table-sm nowrap" id="team_standings">

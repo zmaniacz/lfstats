@@ -108,6 +108,8 @@ class UploadsController extends AppController
             $event_id = $this->Event->id;
         }
 
+        $event = $this->Event->findById($event_id);
+
         $path = "parser/pending/$center_id";
 
         $latest_ctime = 0;
@@ -227,9 +229,9 @@ class UploadsController extends AppController
                         for ($i=1; $i<=$player['penalties']; $i++) {
                             $this->Scorecard->Penalty->create();
                             $this->Scorecard->Penalty->set(array(
-                                'type' => 'Common Foul',
-                                'value' => 0,
-                                'mvp_value' => 0,
+                                'type' => $event['Event']['penalty_default_type'],
+                                'value' => $event['Event']['penalty_point_value'],
+                                'mvp_value' => $event['Event']['penalty_mvp_value'],
                                 'scorecard_id' => $scorecard_id
                             ));
                             $this->Scorecard->Penalty->save();
