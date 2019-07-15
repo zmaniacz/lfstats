@@ -1,85 +1,90 @@
-<div id="view_radio" class="btn-group" data-toggle="buttons">
-    <label class="btn btn-primary">
+<?= $this->element('breadcrumbs'); ?>
+<hr>
+<div id="view_radio" class="btn-group btn-group-toggle" data-toggle="buttons">
+    <label class="btn btn-outline-info">
         <input type="radio" name="rounds" id="rounds" value="0" autocomplete="off"> Round Play
     </label>
-    <label class="btn btn-primary active">
+    <label class="btn btn-outline-info active">
         <input type="radio" name="finals" id="finals" value="0" autocomplete="off" checked> Finals
     </label>
 </div>
-<hr>
-<iframe src="<?= $details['Event']['challonge_link']; ?>" width="100%" height="500" frameborder="0" scrolling="auto"
-    allowtransparency="true"></iframe>
+<h4 class="my-4">
+    Finals Bracket
+</h4>
 <div>
-    <input class="pull-right" type="text" id="search-criteria" placeholder="Search Matches..." />
+    <iframe src="<?= $details['Event']['challonge_link']; ?>" width="100%" height="500" frameborder="0" scrolling="auto"
+        allowtransparency="true"></iframe>
+</div>
+<hr>
+<div class="mt-4">
+    <input class="float-right" type="text" id="search-criteria" placeholder="Search Matches..." />
     <?php foreach ($details['Round'] as $round): ?>
     <?php if ($round['is_finals']): ?>
-    <div class="page-header">
-        <h3>
-            <?= (($round['is_finals']) ? "Finals" : "Round ".$round['round']); ?>
-        </h3>
-    </div>
+    <h3 class="my-4">
+        Finals
+    </h3>
     <?php
-                if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
-                    echo $this->Html->link('Add Match', array('controller' => 'leagues', 'action' => 'addMatch', $details['Event']['id'], $round['id']), array('class' => 'btn btn-success'));
-                }
-            ?>
+        if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
+            echo $this->Html->link('Add Match', array('controller' => 'leagues', 'action' => 'addMatch', $details['Event']['id'], $round['id']), array('class' => 'btn btn-success'));
+        }
+    ?>
     <div class="row">
         <?php foreach ($round['Match'] as $match) {
-                echo $this->element('MatchCard', array(
+        echo $this->element('MatchCard', array(
                 "match" => $match
             ));
-            }
+    }
         ?>
     </div>
     <?php endif; ?>
     <?php endforeach; ?>
 </div>
 <script>
-    $(document).ready(function() {
-        $('.match-select').change(function() {
-            toastr.options = {
-                "closeButton": false,
-                "debug": false,
-                "newestOnTop": false,
-                "progressBar": false,
-                "positionClass": "toast-top-right",
-                "preventDuplicates": false,
-                "onclick": null,
-                "showDuration": "300",
-                "hideDuration": "1000",
-                "timeOut": "3000",
-                "extendedTimeOut": "1000",
-                "showEasing": "swing",
-                "hideEasing": "linear",
-                "showMethod": "slideDown",
-                "hideMethod": "slideUp"
+$(document).ready(function() {
+    $('.match-select').change(function() {
+        toastr.options = {
+            "closeButton": false,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": false,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "3000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "slideDown",
+            "hideMethod": "slideUp"
+        }
+        $.ajax({
+            url: "/leagues/ajax_assignTeam/" + $(this).data('matchId') + "/" + $(this).data(
+                'team') + "/" + $(this).val() + ".json",
+            success: function(data) {
+                toastr.success('Assigned Team')
+            },
+            error: function(data) {
+                toastr.error('Assignment Failed')
             }
-            $.ajax({
-                url: "/leagues/ajax_assignTeam/" + $(this).data('matchId') + "/" + $(this).data(
-                    'team') + "/" + $(this).val() + ".json",
-                success: function(data) {
-                    toastr.success('Assigned Team')
-                },
-                error: function(data) {
-                    toastr.error('Assignment Failed')
-                }
-            });
-        });
-
-        $('#search-criteria').keyup(function() {
-            $('.match-panel').hide();
-            var txt = $('#search-criteria').val();
-            $('.match-panel').each(function() {
-                if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
-                    $(this).show();
-                }
-            });
-        });
-
-        $("#view_radio :input").change(function() {
-            var url =
-                "<?= html_entity_decode($this->Html->url(array('controller' => 'leagues', 'action' => 'standings'))); ?>"
-            document.location = url;
         });
     });
+
+    $('#search-criteria').keyup(function() {
+        $('.match-panel').hide();
+        var txt = $('#search-criteria').val();
+        $('.match-panel').each(function() {
+            if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
+                $(this).show();
+            }
+        });
+    });
+
+    $("#view_radio :input").change(function() {
+        var url =
+            "<?= html_entity_decode($this->Html->url(array('controller' => 'leagues', 'action' => 'standings'))); ?>"
+        document.location = url;
+    });
+});
 </script>
