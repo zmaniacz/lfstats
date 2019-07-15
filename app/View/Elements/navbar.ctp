@@ -41,7 +41,7 @@
             </li>
 
             <li class="nav-item">
-                <?= $this->Html->link('Syracuse 2019', array('controller' => 'leagues', 'action' => 'standings', '?' => array('gametype' => 'league', 'leagueID' => 687, 'centerID' => 8)), array('class' => 'nav-link')); ?>
+                <?= $this->Html->link('Internationals 2019', array('controller' => 'leagues', 'action' => 'standings', '?' => array('gametype' => 'league', 'leagueID' => 853, 'centerID' => 7, 'isComp' => 1)), array('class' => 'nav-link')); ?>
             </li class="nav-item">
             <?php endif;?>
             <li class="nav-item">
