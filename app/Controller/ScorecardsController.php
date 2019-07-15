@@ -294,21 +294,17 @@ class ScorecardsController extends AppController
     
     public function getMVPBreakdown($id)
     {
-        $this->request->allowMethod('ajax');
         $scorecard = $this->Scorecard->find(
             'first',
             array(
-                'contain' => array(
-                    'Penalty',
-                    'Game'
-                ),
+                'fields' => array('id','mvp_points','mvp_details'),
                 'conditions' => array(
                     'Scorecard.id' => $id
                 )
             )
         );
         
-        $this->set('score', $scorecard);
+        $this->set('data', $scorecard);
     }
     
     public function getHitBreakdown($player_id, $game_id)
