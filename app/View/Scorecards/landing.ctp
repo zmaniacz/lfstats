@@ -1,10 +1,18 @@
 <div class="jumbotron jumbotron-fluid">
     <div class="container">
-    <img src="img/2019-Detroit.jpg" class="img-fluid" alt="Responsive image">    
-        <hr class="my-4">
-        <p><a class="btn btn-primary btn-lg"
-                href="/leagues/standings?gametype=league&amp;leagueID=853&amp;centerID=7&amp;isComp=1">Details
-                <i class="material-icons">chevron_right</i></a></p>
+        <div class="row">
+            <div class="col-sm-3">
+                <img src="/img/LF-2019-Logo.png" style="height:200px" class="mx-auto d-block"
+                    alt="2019 Internationals Logo">
+            </div>
+            <div class="col-sm-9 my-auto">
+                <p>The 2019 LaserForce Space Marines Internationals, held July 22nd to July 26th, 2019, at Revolution
+                    Lasertag in Detroit, Michigan.</p>
+                <p><a class="btn btn-primary btn-lg"
+                        href="/leagues/standings?gametype=league&amp;leagueID=853&amp;centerID=7&amp;isComp=1">Details
+                        <i class="material-icons">chevron_right</i></a></p>
+            </div>
+        </div>
     </div>
 </div>
 <div class="row">
