@@ -1,9 +1,9 @@
 <div class="jumbotron jumbotron-fluid">
     <div class="container">
-        <h1 class="display-4">2019 Syracuse Random Draw</h1>
+    <img src="img/2019-Detroit.jpg" class="img-fluid" alt="Responsive image">    
         <hr class="my-4">
         <p><a class="btn btn-primary btn-lg"
-                href="/leagues/standings?gametype=league&amp;leagueID=687&amp;centerID=8&amp;isComp=1">Details
+                href="/leagues/standings?gametype=league&amp;leagueID=853&amp;centerID=7&amp;isComp=1">Details
                 <i class="material-icons">chevron_right</i></a></p>
     </div>
 </div>
