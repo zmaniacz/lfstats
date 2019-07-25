@@ -150,7 +150,7 @@
                 if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $details['Event']['id'])) {
                     $merc = '<td><div class="custom-control custom-switch"><input type="checkbox" class="custom-control-input switch_sub_cbox" data-player-id="'.$player.'" data-team-id="'.$team['EventTeam']['id'].'" data-toggle="'.(($position['is_sub'] < $position['games_played']) ? 1 : 0).'" id="merc_switch_'.$player.'" '.(($position['is_sub'] == $position['games_played']) ? 'checked' : '').'><label class="custom-control-label" for="merc_switch_'.$player.'"></label></div></td>';
                 } else {
-                    $merc = (($position['is_sub']) ? '<td class="text-warning"><i class="material-icons">warning</i></td>' : '<td></td>');
+                    $merc = (($position['is_sub'] > 0) ? '<td class="text-warning"><i class="material-icons">warning</i></td>' : '<td></td>');
                 }
                 echo $merc;
             ?>
