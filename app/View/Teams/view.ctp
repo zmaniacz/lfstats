@@ -248,11 +248,6 @@ $(document).ready(function() {
                 .data('teamId') + "/" + $(this).data('toggle') + ".json",
             success: function(data) {
                 toastr.success('Set Merc Status')
-                if($(this).data('toggle') === 0) {
-                    $(this).data('toggle', 1)
-                } else {
-                    $(this).data('toggle', 0)
-                }
             }
         });
     });
