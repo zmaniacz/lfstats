@@ -26,15 +26,15 @@
 
 <body>
     <script>
-        $(document).ready(function() {
-            Highcharts.setOptions({
-                chart: {
-                    style: {
-                        fontFamily: '"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif'
-                    }
+    $(document).ready(function() {
+        Highcharts.setOptions({
+            chart: {
+                style: {
+                    fontFamily: '"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif'
                 }
-            });
+            }
         });
+    });
     </script>
     <div class="container">
         <div id="container">
@@ -77,30 +77,33 @@
         </div>
     </div>
     <script>
-        $(document).ready(function() {
-            $.ajax({
-                url: 'https://api.twitch.tv/helix/streams?user_login=laserforcetournaments',
-                headers: {'Client-ID': '5shofd1neum3sel2bzbaskcvyohfgz'},
-            }).done(function(channel) {
-                if (channel["data"] == null) {
-                    $("#twitch_status").append(
-                        " <span class=\"badge badge-secondary badge-pill py-1\">Offline</span>"
-                    );
-                } else {
-                    $("#twitch_status").append(
-                        " <span class=\"badge badge-danger py-1\">LIVE</span>");
-                }
-            });
-
-            $('#genericModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                $(this).find(".modal-dialog").removeClass("modal-sm modal-lg modal-xl");
-                $(this).find(".modal-dialog").addClass(button.data("modalsize"));
-                $(this).find(".modal-title").text(button.data("title"));
-                $(this).find(".modal-body").text("Loading...");
-                $(this).find(".modal-body").load(button.attr("target"));
-            }).modal('handleUpdate');
+    $(document).ready(function() {
+        $.ajax({
+            url: 'https://api.twitch.tv/helix/streams?user_login=laserforcetournaments',
+            headers: {
+                'Client-ID': '5shofd1neum3sel2bzbaskcvyohfgz'
+            },
+        }).done(function(channel) {
+            if (typeof channel["data"] != "undefined" && channel["data"] != null && channel["data"]
+                .length != null && channel["data"].length > 0) {
+                $("#twitch_status").append(
+                    " <span class=\"badge badge-secondary badge-pill py-1\">Offline</span>"
+                );
+            } else {
+                $("#twitch_status").append(
+                    " <span class=\"badge badge-danger py-1\">LIVE</span>");
+            }
         });
+
+        $('#genericModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            $(this).find(".modal-dialog").removeClass("modal-sm modal-lg modal-xl");
+            $(this).find(".modal-dialog").addClass(button.data("modalsize"));
+            $(this).find(".modal-title").text(button.data("title"));
+            $(this).find(".modal-body").text("Loading...");
+            $(this).find(".modal-body").load(button.attr("target"));
+        }).modal('handleUpdate');
+    });
     </script>
 </body>
 
