@@ -79,10 +79,10 @@
     <script>
         $(document).ready(function() {
             $.ajax({
-                url: 'https://api.twitch.tv/kraken/streams/laserforcetournaments?client_id=5shofd1neum3sel2bzbaskcvyohfgz',
-                dataType: 'jsonp',
+                url: 'https://api.twitch.tv/helix/streams?user_login=laserforcetournaments',
+                headers: {'Client-ID': '5shofd1neum3sel2bzbaskcvyohfgz'},
             }).done(function(channel) {
-                if (channel["stream"] == null) {
+                if (channel["data"] == null) {
                     $("#twitch_status").append(
                         " <span class=\"badge badge-secondary badge-pill py-1\">Offline</span>"
                     );
