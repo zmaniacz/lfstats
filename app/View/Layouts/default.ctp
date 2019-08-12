@@ -87,11 +87,12 @@
             if (typeof channel["data"] != "undefined" && channel["data"] != null && channel["data"]
                 .length != null && channel["data"].length > 0) {
                 $("#twitch_status").append(
+                    " <span class=\"badge badge-danger py-1\">LIVE</span>");
+            } else {
+
+                $("#twitch_status").append(
                     " <span class=\"badge badge-secondary badge-pill py-1\">Offline</span>"
                 );
-            } else {
-                $("#twitch_status").append(
-                    " <span class=\"badge badge-danger py-1\">LIVE</span>");
             }
         });
 
