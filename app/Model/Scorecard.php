@@ -593,7 +593,7 @@ class Scorecard extends AppModel
     {
         $conditions = array();
         
-        $conditions[] = array("DATE(Scorecard.game_datetime) BETWEEN DATE($start) AND DATE($end)");
+        $conditions[] = array("DATE(Scorecard.game_datetime) BETWEEN DATE('$start') AND DATE('$end')");
         
         if (isset($state['centerID']) && $state['centerID'] > 0) {
             $conditions[] = array('Scorecard.center_id' => $state['centerID']);
