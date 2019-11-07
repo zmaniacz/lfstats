@@ -613,7 +613,7 @@ class Scorecard extends AppModel
                 'Game' => array()
             )
         ));
-        
+        debug($conditions);
         return $scorecards;
     }
 
