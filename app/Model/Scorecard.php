@@ -613,7 +613,7 @@ class Scorecard extends AppModel
                 'Game' => array()
             )
         ));
-        
+        debug($this->Scorecard->getDataSource()->getLog(false, false));
         return $scorecards;
     }
 
