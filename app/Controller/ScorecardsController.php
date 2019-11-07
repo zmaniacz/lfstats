@@ -150,6 +150,7 @@ class ScorecardsController extends AppController
     public function getScorecardsByDateRange()
     {
         $this->set('response', $this->Scorecard->getScorecardsByDateRange($this->request->query('start'),$this->request->query('end'),$this->Session->read('state')));
+        debug($this->Scorecard->getDataSource()->getLog(false, false));
     }
     
     public function nightly()
