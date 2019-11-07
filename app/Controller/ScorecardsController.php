@@ -39,7 +39,8 @@ class ScorecardsController extends AppController
             'getPositionLeaderboards',
             'getLeaderboards',
             'getMissileLeaderBoards',
-            'getMVPDetailsBySource'
+            'getMVPDetailsBySource',
+            'getScorecardsByDateRange'
         );
         parent::beforeFilter();
     }
@@ -144,6 +145,11 @@ class ScorecardsController extends AppController
     public function getOverallMedicHits()
     {
         $this->set('response', $this->Scorecard->getMedicHitStats($this->Session->read('state')));
+    }
+
+    public function getScorecardsByDateRange()
+    {
+        $this->set('response', $this->Scorecard->getScorecardsByDateRange($this->request->query('start'),$this->request->query('end'),$this->Session->read('state')));
     }
     
     public function nightly()
