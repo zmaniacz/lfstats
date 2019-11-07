@@ -1,3 +1,3 @@
 <?php
-	echo json_encode(compact('data'), JSON_NUMERIC_CHECK);
+	echo json_encode(compact('response'), JSON_NUMERIC_CHECK);
 ?>
