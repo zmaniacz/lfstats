@@ -589,6 +589,34 @@ class Scorecard extends AppModel
         return $scorecards;
     }
 
+    public function getScorecardsByDateRange($start, $end, $state)
+    {
+        $conditions = array();
+        
+        $conditions[] = array("DATE(Scorecard.game_datetime) BETWEEN $start AND $end");
+        
+        if (isset($state['centerID']) && $state['centerID'] > 0) {
+            $conditions[] = array('Scorecard.center_id' => $state['centerID']);
+        }
+        
+        if (isset($state['gametype']) && $state['gametype'] != 'all') {
+            $conditions[] = array('Scorecard.type' => $state['gametype']);
+        }
+        
+        if (isset($state['leagueID']) && $state['leagueID'] > 0) {
+            $conditions[] = array('Scorecard.event_id' => $state['leagueID']);
+        }
+    
+        $scorecards = $this->find('all', array(
+            'conditions' => $conditions,
+            'contain' => array(
+                'Game' => array()
+            )
+        ));
+        
+        return $scorecards;
+    }
+
     public function getNightlyStatsByDate($date, $state)
     {
         $conditions = array();
