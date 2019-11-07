@@ -608,12 +608,9 @@ class Scorecard extends AppModel
         }
     
         $scorecards = $this->find('all', array(
-            'conditions' => $conditions,
-            'contain' => array(
-                'Game' => array()
-            )
+            'conditions' => $conditions
         ));
-        
+
         return $scorecards;
     }
 
