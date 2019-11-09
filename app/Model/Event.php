@@ -57,8 +57,8 @@ class Event extends AppModel
                 'Center.id',
                 'Center.name',
                 'Center.short_name',
-                'DATE(MAX(Game.game_datetime)) as Event__last_gamedate',
-                'COUNT(Game.game_datetime) as Event__games_played'
+                'DATE(MAX(Game.game_datetime)) AS "Event__last_gamedate"',
+                'COUNT(Game.id) AS "Event__games_played"'
             ),
             'joins' => array(
                 array(
@@ -79,8 +79,8 @@ class Event extends AppModel
                 )
             ),
             'conditions' => $conditions,
-            'group' => 'Event.id',
-            'order' => 'Event__last_gamedate DESC'
+            'group' => 'Event.id, Center.id',
+            'order' => 'Event__last_gamedate DESC NULLS LAST'
         );
 
         if (isset($limit)) {
