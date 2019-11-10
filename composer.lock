@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5827dd3f655f72781d83bd145ae1da5e",
+    "content-hash": "fbb550a07036863e0d0acb60d26d8657",
     "packages": [
         {
             "name": "ad7six/dsn",
@@ -94,6 +94,58 @@
                 "framework"
             ],
             "time": "2019-07-25T01:32:25+00:00"
+        },
+        {
+            "name": "cakephp/debug_kit",
+            "version": "2.2.x-dev",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cakephp/debug_kit.git",
+                "reference": "80d87655dcbb8313a1816889f550714d179b01b7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cakephp/debug_kit/zipball/80d87655dcbb8313a1816889f550714d179b01b7",
+                "reference": "80d87655dcbb8313a1816889f550714d179b01b7",
+                "shasum": ""
+            },
+            "require": {
+                "composer/installers": "^1.0.0",
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "cakephp/cakephp-codesniffer": "^1.0.0"
+            },
+            "type": "cakephp-plugin",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.2.x-dev"
+                },
+                "installer-name": "DebugKit"
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mark Story",
+                    "homepage": "http://mark-story.com",
+                    "role": "Author"
+                },
+                {
+                    "name": "CakePHP Community",
+                    "homepage": "https://github.com/cakephp/debug_kit/graphs/contributors"
+                }
+            ],
+            "description": "CakePHP Debug Kit",
+            "homepage": "https://github.com/cakephp/debug_kit",
+            "keywords": [
+                "cakephp",
+                "debug",
+                "kit"
+            ],
+            "time": "2018-11-18T00:58:39+00:00"
         },
         {
             "name": "composer/installers",
@@ -329,60 +381,7 @@
             "time": "2018-06-19T18:55:08+00:00"
         }
     ],
-    "packages-dev": [
-        {
-            "name": "cakephp/debug_kit",
-            "version": "2.2.x-dev",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/cakephp/debug_kit.git",
-                "reference": "80d87655dcbb8313a1816889f550714d179b01b7"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/cakephp/debug_kit/zipball/80d87655dcbb8313a1816889f550714d179b01b7",
-                "reference": "80d87655dcbb8313a1816889f550714d179b01b7",
-                "shasum": ""
-            },
-            "require": {
-                "composer/installers": "^1.0.0",
-                "php": ">=5.3.0"
-            },
-            "require-dev": {
-                "cakephp/cakephp-codesniffer": "^1.0.0"
-            },
-            "type": "cakephp-plugin",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "2.2.x-dev"
-                },
-                "installer-name": "DebugKit"
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Mark Story",
-                    "homepage": "http://mark-story.com",
-                    "role": "Author"
-                },
-                {
-                    "name": "CakePHP Community",
-                    "homepage": "https://github.com/cakephp/debug_kit/graphs/contributors"
-                }
-            ],
-            "description": "CakePHP Debug Kit",
-            "homepage": "https://github.com/cakephp/debug_kit",
-            "keywords": [
-                "cakephp",
-                "debug",
-                "kit"
-            ],
-            "time": "2018-11-18T00:58:39+00:00"
-        }
-    ],
+    "packages-dev": [],
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": [],
