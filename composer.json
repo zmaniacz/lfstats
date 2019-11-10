@@ -10,7 +10,9 @@
     "composer/installers": "~1.0",
     "cakephp/cakephp": "~2.10.11",
     "josegonzalez/dotenv": "~3.2.0",
-    "ad7six/dsn": "~0.4.0",
+    "ad7six/dsn": "~0.4.0"
+  },
+  "require-dev": {
     "cakephp/debug_kit": "~2.2.8"
   },
   "minimum-stability": "dev",
