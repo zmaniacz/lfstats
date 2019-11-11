@@ -47,7 +47,7 @@ class ScorecardsController extends AppController
 
     public function index()
     {
-        $this->redirect(array('controller' => 'scorecards', 'action' => 'nightly', '?' => array('gametype' => $this->Session->read('state.gametype'), 'centerID' => $this->Session->read('state.centerID'), 'leagueID' => $this->Session->read('state.leagueID'))));
+        $this->redirect(['controller' => 'scorecards', 'action' => 'nightly', '?' => ['gametype' => $this->Session->read('state.gametype'), 'centerID' => $this->Session->read('state.centerID'), 'leagueID' => $this->Session->read('state.leagueID')]]);
     }
 
     public function landing()
@@ -55,41 +55,41 @@ class ScorecardsController extends AppController
         $events = $this->Event->getEventList(null, 10, null);
         $this->set('events', $events);
     }
-    
+
     public function setState($gametype, $league_id, $center_id)
     {
         $this->Session->write('state', '');
-        
+
         $this->Session->write('state.gametype', $gametype);
-        
+
         if (!is_null($league_id)) {
             $this->Session->write('state.leagueID', $league_id);
         }
-            
+
         if (!is_null($center_id)) {
             $this->Session->write('state.centerID', $center_id);
         }
-        
-        if ($gametype == 'all' || $gametype == 'social') {
-            $this->redirect(array('controller' => 'scorecards', 'action' => 'nightly'));
+
+        if ('all' == $gametype || 'social' == $gametype) {
+            $this->redirect(['controller' => 'scorecards', 'action' => 'nightly']);
         }
-            
-        if ($gametype == 'league') {
-            $this->redirect(array('controller' => 'leagues', 'action' => 'standings'));
+
+        if ('league' == $gametype) {
+            $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
         }
     }
-    
+
     public function phpview()
     {
     }
-    
+
     public function overall()
     {
     }
 
     public function getComparison($player1_id, $player2_id)
     {
-        App::import('Vendor', 'CosineSimilarity', array('file' => 'CosineSimilarity/CosineSimilarity.php'));
+        App::import('Vendor', 'CosineSimilarity', ['file' => 'CosineSimilarity/CosineSimilarity.php']);
         $compare = new CosineSimilarity();
 
         $player1_stats = $this->Scorecard->getComparableMVP($player1_id);
@@ -110,24 +110,29 @@ class ScorecardsController extends AppController
 
         $this->set('response', $distance);
     }
-    
+
     public function getOverallStats($position)
     {
         switch ($position) {
             case 'commander':
                 $this->set('response', $this->Scorecard->getPositionStats('Commander', $this->Session->read('state')));
+
                 break;
             case 'heavy':
                 $this->set('response', $this->Scorecard->getPositionStats('Heavy Weapons', $this->Session->read('state')));
+
                 break;
             case 'scout':
                 $this->set('response', $this->Scorecard->getPositionStats('Scout', $this->Session->read('state')));
+
                 break;
             case 'ammo':
                 $this->set('response', $this->Scorecard->getPositionStats('Ammo Carrier', $this->Session->read('state')));
+
                 break;
             case 'medic':
                 $this->set('response', $this->Scorecard->getPositionStats('Medic', $this->Session->read('state')));
+
                 break;
         }
     }
@@ -136,12 +141,12 @@ class ScorecardsController extends AppController
     {
         $this->set('response', $this->Scorecard->getAllAvgMVP($this->Session->read('state')));
     }
-    
+
     public function getOverallAverages()
     {
         $this->set('response', $this->Scorecard->getAllAvgMVP($this->Session->read('state')));
     }
-    
+
     public function getOverallMedicHits()
     {
         $this->set('response', $this->Scorecard->getMedicHitStats($this->Session->read('state')));
@@ -149,20 +154,20 @@ class ScorecardsController extends AppController
 
     public function getScorecardsByDateRange()
     {
-        $this->set('response', $this->Scorecard->getScorecardsByDateRange($this->request->query('start'),$this->request->query('end'),$this->Session->read('state')));
+        $this->set('response', $this->Scorecard->getScorecardsByDateRange($this->request->query('start'), $this->request->query('end'), $this->Session->read('state')));
     }
-    
+
     public function nightly()
     {
         $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
 
         if ($this->Session->read('state.isComp') > 0) {
-            $this->redirect(array('controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query));
+            $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
         }
-        
+
         $game_dates = $this->Scorecard->getGameDates($this->Session->read('state'));
         $this->set('game_dates', $game_dates);
-        
+
         if ($this->request->isPost()) {
             $date = $this->request->data['Scorecard']['date'];
         }
@@ -173,7 +178,7 @@ class ScorecardsController extends AppController
 
         $this->set('current_date', $date);
     }
-    
+
     public function nightlyScorecards()
     {
         $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
@@ -192,26 +197,26 @@ class ScorecardsController extends AppController
         $nightly = $this->Scorecard->getNightlyStatsByDate($date, $this->Session->read('state'));
         $overall = $this->Scorecard->getAllAvgMVP($this->Session->read('state'));
 
-        $data = array();
+        $data = [];
         foreach ($nightly as $score) {
-            $response[$score['Player']['id']] = array(
+            $response[$score['Player']['id']] = [
                 'player_name' => $score['Player']['player_name'],
                 'player_id' => $score['Player']['id'],
                 'min_score' => $score[0]['min_score'],
                 'avg_score' => $score[0]['avg_score'],
                 'max_score' => $score[0]['max_score'],
-                'min_mvp' =>  $score[0]['min_mvp'],
-                'avg_mvp' =>  $score[0]['avg_mvp'],
-                'max_mvp' =>  $score[0]['max_mvp'],
+                'min_mvp' => $score[0]['min_mvp'],
+                'avg_mvp' => $score[0]['avg_mvp'],
+                'max_mvp' => $score[0]['max_mvp'],
                 'avg_acc' => $score[0]['avg_acc'],
                 'hit_diff' => $score[0]['hit_diff'],
                 'medic_hits' => $score[0]['medic_hits'],
                 'elim_rate' => $score[0]['elim_rate'],
                 'games_played' => $score[0]['games_played'],
-                'games_won' => $score[0]['games_won']
-            );
+                'games_won' => $score[0]['games_won'],
+            ];
         }
-    
+
         foreach ($overall as $key => $value) {
             if (isset($response[$key])) {
                 $response[$key]['overall_avg_mvp'] = $value['avg_avg_mvp'];
@@ -226,7 +231,7 @@ class ScorecardsController extends AppController
     {
         $this->set('scorecards', $this->Scorecard->getPlayerGamesScorecardsById($id, $this->Session->read('state')));
     }
-    
+
     public function rebuild()
     {
         //$mvps = $this->Scorecard->generateMVP();
@@ -234,19 +239,19 @@ class ScorecardsController extends AppController
         //$players = $this->Scorecard->generatePlayers($this->Session->read('center.Center.id'), $this->Session->read('filter'));
         //$existing = $players['existing'];
         //$new = $players['new'];
-        
+
         //$this->Session->setFlash("Added $mvps MVP entries"); //, $games game entries, games for $existing players and $new new players");
-        $this->redirect(array('controller' => 'scorecards', 'action' => 'nightly'));
+        $this->redirect(['controller' => 'scorecards', 'action' => 'nightly']);
     }
-    
+
     public function allcenter()
     {
     }
 
     public function getAllCenter()
     {
-        $min_games = ($this->request->query('min_games') !== null) ? $this->request->query('min_games') : 15;
-        $min_days = ($this->request->query('min_days') !== null) ? $this->request->query('min_days') : 365;
+        $min_games = (null !== $this->request->query('min_games')) ? $this->request->query('min_games') : 15;
+        $min_days = (null !== $this->request->query('min_days')) ? $this->request->query('min_days') : 365;
         $this->set('all_center', $this->Scorecard->getTopTeams($min_games, $min_days, $this->Session->read('state')));
     }
 
@@ -281,38 +286,29 @@ class ScorecardsController extends AppController
 
     public function getStreaks($type)
     {
-        if ($type == "wins") {
-            $this->set('data', $this->Scorecard->getWinStreaks($this->Session->read('state')));
-        } elseif ($type == "loss") {
-            $this->set('data', $this->Scorecard->getLossStreaks($this->Session->read('state')));
-        }
-    }
-
-    public function getCurrentStreaks()
-    {
-        $this->set('data', $this->Scorecard->getCurrentStreaks($this->Session->read('state')));
+        $this->set('data', $this->Scorecard->getStreaks($type, $this->Session->read('state')));
     }
 
     public function getMVPDetailsBySource()
     {
         $this->set('data', $this->Scorecard->getMVPDetailsBySource($this->Session->read('state')));
     }
-    
+
     public function getMVPBreakdown($id)
     {
         $scorecard = $this->Scorecard->find(
             'first',
-            array(
-                'fields' => array('id','mvp_points','mvp_details'),
-                'conditions' => array(
-                    'Scorecard.id' => $id
-                )
-            )
+            [
+                'fields' => ['id', 'mvp_points', 'mvp_details'],
+                'conditions' => [
+                    'Scorecard.id' => $id,
+                ],
+            ]
         );
-        
+
         $this->set('data', $scorecard);
     }
-    
+
     public function getHitBreakdown($player_id, $game_id)
     {
         $this->set('hits', $this->Scorecard->getHitDetails($player_id, $game_id));
@@ -321,7 +317,7 @@ class ScorecardsController extends AppController
 
     public function getPlayerHitBreakdown($player_id, $teamFlag = 'opponent')
     {
-        $positions = array('player','target');
+        $positions = ['player', 'target'];
 
         if (isset($this->request->query['player_commander'])) {
             $positions['player']['commander'] = 'Commander';
@@ -362,12 +358,12 @@ class ScorecardsController extends AppController
         $this->set('data', $this->Scorecard->getPlayerHitDetails($player_id, $positions, $teamFlag, $this->Session->read('state')));
         $this->set('players', $this->Scorecard->Player->find('list'));
     }
-    
+
     public function getPlayerTargetsBreakdown($player_id)
     {
         $this->set('data', $this->Scorecard->getPlayerTargetsBreakdown($player_id, $this->Session->read('state')));
     }
-    
+
     public function ajax_switchSub($id)
     {
         $this->request->onlyAllow('ajax');
@@ -375,11 +371,11 @@ class ScorecardsController extends AppController
         $scorecard = $this->Scorecard->read(null, $id);
 
         $is_sub = ($scorecard['Scorecard']['is_sub']) ? 0 : 1;
-        
+
         $this->Scorecard->set('is_sub', $is_sub);
-        
+
         if ($this->Scorecard->save()) {
-            return new CakeResponse(array('body' => json_encode(array('id' => $id, 'is_sub' => $is_sub))));
+            return new CakeResponse(['body' => json_encode(['id' => $id, 'is_sub' => $is_sub])]);
         }
     }
 
@@ -387,44 +383,44 @@ class ScorecardsController extends AppController
     {
         $db = $this->Game->getDataSource();
         $subQuery = $db->buildStatement(
-            array(
-                'fields' => array('Game.id'),
+            [
+                'fields' => ['Game.id'],
                 'table' => $db->fullTableName($this->Game),
                 'alias' => 'Game',
-                'conditions' => array(
-                    "OR" => array(
+                'conditions' => [
+                    'OR' => [
                         'Game.red_team_id' => $team_id,
-                        'Game.green_team_id' => $team_id
-                    )
-                )
-                    ),
-                    $this->Game
+                        'Game.green_team_id' => $team_id,
+                    ],
+                ],
+            ],
+            $this->Game
         );
-        $subQuery = 'Scorecard.game_id IN (' . $subQuery . ') ';
+        $subQuery = 'Scorecard.game_id IN ('.$subQuery.') ';
         $subQueryExpression = $db->expression($subQuery);
-        
-        $conditions[] = $subQueryExpression;
-        $conditions[] = array('Scorecard.player_id' => $player_id);
 
-        if ($this->Scorecard->updateAll(array('Scorecard.is_sub' => $toggle), $conditions)) {
+        $conditions[] = $subQueryExpression;
+        $conditions[] = ['Scorecard.player_id' => $player_id];
+
+        if ($this->Scorecard->updateAll(['Scorecard.is_sub' => $toggle], $conditions)) {
             $this->set('data', $this->Scorecard->getAffectedRows());
         } else {
             $this->set('data', 0);
         }
     }
-    
+
     public function filterSub($showSubs = false)
     {
         $this->Session->write('state.show_subs', $showSubs);
         $this->redirect($this->request->referer());
     }
-    
+
     public function filterFinals($showFinals = false)
     {
         $this->Session->write('state.show_finals', $showFinals);
         $this->redirect($this->request->referer());
     }
-    
+
     public function filterRounds($showRounds = false)
     {
         $this->Session->write('state.show_rounds', $showRounds);

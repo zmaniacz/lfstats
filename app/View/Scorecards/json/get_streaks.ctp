@@ -1,15 +1,20 @@
 <?php
-	$results = array();
 
-	foreach($data as $item) {
-		$results[] = array(
-			'player_id' => $item['streakset']['player_id'],
-			'player_name' => $item['players']['player_name'],
-			'maxstreak' => $item[0]['maxstreak']
-		);
-	}
+    $results = [];
 
-	$data = $results;
+    foreach ($data as $item) {
+        $load = [
+            'player_id' => $item[0]['player_id'],
+            'player_name' => $item[0]['player_name'],
+            'maxstreak' => $item[0]['max'], ];
 
-	echo json_encode(compact('data'), JSON_NUMERIC_CHECK);
-?>
+        if ('W' == $item[0]['result']) {
+            $results['win'][] = $load;
+        } else {
+            $results['loss'][] = $load;
+        }
+    }
+
+    $data = $results;
+
+    echo json_encode(compact('data'), JSON_NUMERIC_CHECK);

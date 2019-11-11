@@ -1,13 +1,13 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
-<?php if ($this->Session->read('state.gametype') == 'league'): ?>
+<?php if ('league' == $this->Session->read('state.gametype')) { ?>
 <button type="button" class="btn btn-outline-primary" data-toggle="button" id="show_finals_button">
     Show Finals
 </button>
 <button type="button" class="btn btn-outline-primary" data-toggle="button" id="show_subs_button">
     Show Mercs
 </button>
-<?php endif; ?>
+<?php } ?>
 <h4 class="my-4">
     Positions
 </h4>
@@ -416,7 +416,7 @@ $(document).ready(function() {
     $("div[id$='_streak_table_processing']").show();
 
     $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getPositionLeaderboards', 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getPositionLeaderboards', 'ext' => 'json'])); ?>"
     }).done(function(response) {
         $("div[id$='_scores_table_processing']").hide();
         $('#commander_scores_table').DataTable().clear().rows.add(response.data.commander).draw();
@@ -427,7 +427,7 @@ $(document).ready(function() {
     })
 
     $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getLeaderboards', 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getLeaderboards', 'ext' => 'json'])); ?>"
     }).done(function(response) {
         $("div[id$='_leader_table_processing']").hide();
         $('#games_played_leader_table').DataTable().clear().rows.add(response.data.games_played)
@@ -470,7 +470,7 @@ $(document).ready(function() {
     })
 
     $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getMissileLeaderboards', 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getMissileLeaderboards', 'ext' => 'json'])); ?>"
     }).done(function(response) {
         avg_missiles_data = response.data;
         update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
@@ -478,27 +478,22 @@ $(document).ready(function() {
     })
 
     $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getStreaks', 'wins', 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'max', 'ext' => 'json'])); ?>"
     }).done(function(response) {
         $('#longest_win_streak_table_processing').hide();
-        $('#longest_win_streak_table').DataTable().clear().rows.add(response.data).draw();
-    })
-
-    $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getStreaks', 'loss', 'ext' => 'json'))); ?>"
-    }).done(function(response) {
         $('#longest_loss_streak_table_processing').hide();
-        $('#longest_loss_streak_table').DataTable().clear().rows.add(response.data).draw();
+        $('#longest_win_streak_table').DataTable().clear().rows.add(response.data.win).draw();
+        $('#longest_loss_streak_table').DataTable().clear().rows.add(response.data.loss).draw();
     })
 
     $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getCurrentStreaks', 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'current', 'ext' => 'json'])); ?>"
     }).done(function(response) {
         $('#current_win_streak_table_processing').hide();
         $('#current_loss_streak_table_processing').hide();
-        $('#current_win_streak_table').DataTable().clear().rows.add(response.data.winStreaks)
+        $('#current_win_streak_table').DataTable().clear().rows.add(response.data.win)
             .draw();
-        $('#current_loss_streak_table').DataTable().clear().rows.add(response.data.lossStreaks)
+        $('#current_loss_streak_table').DataTable().clear().rows.add(response.data.loss)
             .draw();
     })
 });
