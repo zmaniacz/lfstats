@@ -644,7 +644,7 @@ class Scorecard extends AppModel
                 'AVG(Scorecard.mvp_points) as avg_mvp',
                 'MAX(Scorecard.mvp_points) as max_mvp',
                 'AVG(Scorecard.accuracy) as avg_acc',
-                '(SUM(Scorecard.shot_opponent)/SUM(Scorecard.times_zapped)) as hit_diff',
+                '(SUM(Scorecard.shot_opponent)/GREATEST(SUM(Scorecard.times_zapped),1)) as hit_diff',
                 'SUM(Scorecard.medic_hits) as medic_hits',
                 '(SUM(Scorecard.team_elim)/COUNT(Scorecard.game_datetime)) as elim_rate',
                 'COUNT(Scorecard.game_datetime) as games_played',
@@ -773,7 +773,7 @@ class Scorecard extends AppModel
         
         $scores = $this->find('all', array(
             'fields' => array(
-                'player_id',
+                'Scorecard.player_id',
                 'MIN(Scorecard.score) as min_score',
                 'ROUND(AVG(Scorecard.score)) as avg_score',
                 'MAX(Scorecard.score) as max_score',
@@ -784,8 +784,8 @@ class Scorecard extends AppModel
                 'MIN(Scorecard.accuracy) as min_acc',
                 'AVG(Scorecard.accuracy) as avg_acc',
                 'MAX(Scorecard.accuracy) as max_acc',
-                '(SUM(Scorecard.nukes_detonated)/SUM(Scorecard.nukes_activated)) as nuke_ratio',
-                '(SUM(Scorecard.shot_opponent)/SUM(Scorecard.times_zapped)) as hit_diff',
+                '(SUM(Scorecard.nukes_detonated)/GREATEST(SUM(Scorecard.nukes_activated),1)) as nuke_ratio',
+                '(SUM(Scorecard.shot_opponent)/GREATEST(SUM(Scorecard.times_zapped),1)) as hit_diff',
                 'AVG(Scorecard.missiled_opponent) as avg_missiles',
                 'AVG(Scorecard.medic_hits) as avg_medic_hits',
                 'AVG(Scorecard.shot_3hit) as avg_3hit',
@@ -812,7 +812,7 @@ class Scorecard extends AppModel
                 )
             ),
             'conditions' => $conditions,
-            'group' => "Scorecard.player_id".(($min_games > 0) ? " HAVING Scorecard.games_played >= $min_games" : ""),
+            'group' => "Scorecard.player_id, Player.id".(($min_games > 0) ? " HAVING COUNT(Scorecard.game_datetime) >= $min_games" : ""),
             'order' => 'avg_mvp DESC'
         ));
         
