@@ -2,122 +2,120 @@
 
 class Game extends AppModel
 {
-    public $hasMany = array(
-        'Scorecard' => array(
-            'className' => 'Scorecard',
-            'foreignkey' => 'game_id'
-        ),
-        'Red_Scorecard' => array(
+    public $hasMany = [
+        'Scorecard' => [
             'className' => 'Scorecard',
             'foreignkey' => 'game_id',
-            'conditions' => array('Red_Scorecard.team' => 'red')
-        ),
-        'Green_Scorecard' => array(
+        ],
+        'Red_Scorecard' => [
             'className' => 'Scorecard',
             'foreignkey' => 'game_id',
-            'conditions' => array('Green_Scorecard.team' => 'green')
-        ),
-        'GameResult' => array(
+            'conditions' => ['Red_Scorecard.team' => 'red'],
+        ],
+        'Green_Scorecard' => [
+            'className' => 'Scorecard',
+            'foreignkey' => 'game_id',
+            'conditions' => ['Green_Scorecard.team' => 'green'],
+        ],
+        'GameResult' => [
             'className' => 'GameResult',
-            'foreignKey' => 'game_id'
-        ),
-        'TeamPenalties' => array(
+            'foreignKey' => 'game_id',
+        ],
+        'TeamPenalties' => [
             'className' => 'TeamPenalties',
-            'foreignKey' => 'game_id'
-        ),
-        'Red_TeamPenalties' => array(
-            'className' => 'TeamPenalties',
-            'foreignkey' => 'game_id',
-            'conditions' => array('Red_TeamPenalties.team_color' => 'red')
-        ),
-        'Green_TeamPenalties' => array(
+            'foreignKey' => 'game_id',
+        ],
+        'Red_TeamPenalties' => [
             'className' => 'TeamPenalties',
             'foreignkey' => 'game_id',
-            'conditions' => array('Green_TeamPenalties.team_color' => 'green')
-        ),
-    );
+            'conditions' => ['Red_TeamPenalties.team_color' => 'red'],
+        ],
+        'Green_TeamPenalties' => [
+            'className' => 'TeamPenalties',
+            'foreignkey' => 'game_id',
+            'conditions' => ['Green_TeamPenalties.team_color' => 'green'],
+        ],
+    ];
 
-    public $belongsTo = array(
-        'Center' => array(
+    public $belongsTo = [
+        'Center' => [
             'className' => 'Center',
-            'foreignKey' => 'center_id'
-        ),
-        'Red_Team' => array(
+            'foreignKey' => 'center_id',
+        ],
+        'Red_Team' => [
             'className' => 'EventTeam',
-            'foreignKey' => 'red_team_id'
-        ),
-        'Green_Team' => array(
+            'foreignKey' => 'red_team_id',
+        ],
+        'Green_Team' => [
             'className' => 'EventTeam',
-            'foreignKey' => 'green_team_id'
-        ),
-        'Match' => array(
+            'foreignKey' => 'green_team_id',
+        ],
+        'Match' => [
             'className' => 'Match',
-            'foreignKey' => 'match_id'
-        ),
-        'Event' => array(
+            'foreignKey' => 'match_id',
+        ],
+        'Event' => [
             'className' => 'Event',
-            'foreignKey' => 'event_id'
-        )
-    );
+            'foreignKey' => 'event_id',
+        ],
+    ];
 
-    public $validate = array(
-        'game_datetime' => array(
-            'rule' => array('isUnique', array('game_datetime', 'center_id'), false),
-            'message' => "Non-Unique center/game combination"
-        )
-    );
-    
+    public $validate = [
+        'game_datetime' => [
+            'rule' => ['isUnique', ['game_datetime', 'center_id'], false],
+            'message' => 'Non-Unique center/game combination',
+        ],
+    ];
+
     public function getOverallStats($state)
     {
-        $conditions = array();
-        
+        $conditions = [];
+
         if (isset($state['centerID']) && $state['centerID'] > 0) {
-            $conditions[] = array('Game.center_id' => $state['centerID']);
+            $conditions[] = ['Game.center_id' => $state['centerID']];
         }
-        
-        if (isset($state['gametype']) && $state['gametype'] != 'all') {
-            $conditions[] = array('Game.type' => $state['gametype']);
+
+        if (isset($state['gametype']) && 'all' != $state['gametype']) {
+            $conditions[] = ['Game.type' => $state['gametype']];
         }
-        
+
         if (isset($state['leagueID']) && $state['leagueID'] > 0) {
-            $conditions[] = array('Game.event_id' => $state['leagueID']);
+            $conditions[] = ['Game.event_id' => $state['leagueID']];
         }
-    
-        $overall = $this->find('all', array(
-            'fields' => array(
+
+        return $this->find('all', [
+            'fields' => [
                 'winner',
                 'red_eliminated',
                 'green_eliminated',
-                'COUNT(game_datetime) as Total',
+                'COUNT(game_datetime) as total',
                 'AVG(red_score) as red_avg_score',
-                'AVG(green_score) as green_avg_score'
-            ),
+                'AVG(green_score) as green_avg_score',
+            ],
             'conditions' => $conditions,
-            'group' => array(
+            'group' => [
                 'winner',
                 'red_eliminated',
-                'green_eliminated'
-            )
-        ));
-
-        return $overall;
+                'green_eliminated',
+            ],
+        ]);
     }
 
     public function getGameDetails($id)
     {
-        $conditions[] = array('Game.id' => $id);
+        $conditions[] = ['Game.id' => $id];
 
-        $result = $this->find('first', array(
-            'contain' => array(
-                'Scorecard' => array(
+        return $this->find('first', [
+            'contain' => [
+                'Scorecard' => [
                     'Penalty',
-                    'Hit'
-                ),
-                'Match' => array(
-                    'Round'
-                ),
-                'Red_Scorecard' => array(
-                    'fields' => array(
+                    'Hit',
+                ],
+                'Match' => [
+                    'Round',
+                ],
+                'Red_Scorecard' => [
+                    'fields' => [
                         'SUM(medic_hits) as medic_hits',
                         'SUM(missile_hits) as missile_hits',
                         'SUM(nukes_detonated) as nukes_detonated',
@@ -127,11 +125,11 @@ class Game extends AppModel
                         'SUM(resupplies) as resupplies',
                         'SUM(bases_destroyed) as bases_destroyed',
                         'AVG(accuracy) as accuracy',
-                        'SUM(mvp_points) as mvp_points'
-                    )
-                ),
-                'Green_Scorecard' => array(
-                    'fields' => array(
+                        'SUM(mvp_points) as mvp_points',
+                    ],
+                ],
+                'Green_Scorecard' => [
+                    'fields' => [
                         'SUM(medic_hits) as medic_hits',
                         'SUM(missile_hits) as missile_hits',
                         'SUM(nukes_detonated) as nukes_detonated',
@@ -141,151 +139,148 @@ class Game extends AppModel
                         'SUM(resupplies) as resupplies',
                         'SUM(bases_destroyed) as bases_destroyed',
                         'AVG(accuracy) as accuracy',
-                        'SUM(mvp_points) as mvp_points'
-                    )
-                ),
+                        'SUM(mvp_points) as mvp_points',
+                    ],
+                ],
                 'Red_TeamPenalties',
-                'Green_TeamPenalties'
-            ),
-            'conditions' => $conditions
-        ));
-
-        return $result;
+                'Green_TeamPenalties',
+            ],
+            'conditions' => $conditions,
+        ]);
     }
 
     public function getMatchups($id)
     {
-        $conditions[] = array('Game.id' => $id);
+        $conditions[] = ['Game.id' => $id];
 
-        $red_team = $this->find('first', array(
-            'fields' => array('id'),
-            'contain' => array(
-                'Red_Scorecard' => array(
-                    'fields' => array(
+        $red_team = $this->find('first', [
+            'fields' => ['id'],
+            'contain' => [
+                'Red_Scorecard' => [
+                    'fields' => [
                         'player_id',
                         'player_name',
                         'position',
-                        'mvp_points'
-                    ),
-                    'order' => 'position ASC, mvp_points DESC'
-                )
-            ),
-            'conditions' => $conditions
-        ));
-        
-        $green_team = $this->find('first', array(
-            'fields' => array('id'),
-            'contain' => array(
-                'Green_Scorecard' => array(
-                    'fields' => array(
+                        'mvp_points',
+                    ],
+                    'order' => 'position ASC, mvp_points DESC',
+                ],
+            ],
+            'conditions' => $conditions,
+        ]);
+
+        $green_team = $this->find('first', [
+            'fields' => ['id'],
+            'contain' => [
+                'Green_Scorecard' => [
+                    'fields' => [
                         'player_id',
                         'player_name',
                         'position',
-                        'mvp_points'
-                    ),
-                    'order' => 'position ASC, mvp_points DESC'
-                )
-            ),
-            'conditions' => $conditions
-        ));
+                        'mvp_points',
+                    ],
+                    'order' => 'position ASC, mvp_points DESC',
+                ],
+            ],
+            'conditions' => $conditions,
+        ]);
 
         $scout_counter = 1;
         foreach ($red_team['Red_Scorecard'] as &$score) {
-            if ($score['position'] == 'Scout') {
+            if ('Scout' == $score['position']) {
                 $score['position'] = 'Scout'.$scout_counter;
-                $scout_counter++;
+                ++$scout_counter;
             }
         }
 
         $scout_counter = 1;
         foreach ($green_team['Green_Scorecard'] as &$score) {
-            if ($score['position'] == 'Scout') {
+            if ('Scout' == $score['position']) {
                 $score['position'] = 'Scout'.$scout_counter;
-                $scout_counter++;
+                ++$scout_counter;
             }
         }
-        $data = array();
+        $data = [];
         foreach ($red_team['Red_Scorecard'] as $red_score) {
             foreach ($green_team['Green_Scorecard'] as $green_score) {
                 if ($red_score['position'] == $green_score['position']) {
-                    $data[] = array(
+                    $data[] = [
                         'position' => $red_score['position'],
                         'red_player_id' => $red_score['player_id'],
                         'red_player_name' => $red_score['player_name'],
                         'green_player_id' => $green_score['player_id'],
                         'green_player_name' => $green_score['player_name'],
-                        'matchup' => $this->Scorecard->getComparison($red_score['player_id'], $green_score['player_id'])
-                    );
+                        'matchup' => $this->Scorecard->getComparison($red_score['player_id'], $green_score['player_id']),
+                    ];
                 }
             }
         }
+
         return $data;
     }
 
     public function getGameList($date = null, $state)
     {
-        $conditions = array();
-        
+        $conditions = [];
+
         if (isset($state['centerID']) && $state['centerID'] > 0) {
-            $conditions[] = array('Game.center_id' => $state['centerID']);
-        }
-        
-        if (isset($state['gametype']) && $state['gametype'] != 'all') {
-            $conditions[] = array('Game.type' => $state['gametype']);
-        }
-        
-        if (isset($state['leagueID']) && $state['leagueID'] > 0) {
-            $conditions[] = array('Game.event_id' => $state['leagueID']);
-        }
-            
-        if (!is_null($date)) {
-            $conditions[] = array('DATE(Game.game_datetime)' => $date);
+            $conditions[] = ['Game.center_id' => $state['centerID']];
         }
 
-        $games = $this->find('all', array(
-            'contain' => array(
+        if (isset($state['gametype']) && 'all' != $state['gametype']) {
+            $conditions[] = ['Game.type' => $state['gametype']];
+        }
+
+        if (isset($state['leagueID']) && $state['leagueID'] > 0) {
+            $conditions[] = ['Game.event_id' => $state['leagueID']];
+        }
+
+        if (!is_null($date)) {
+            $conditions[] = ['DATE(Game.game_datetime)' => $date];
+        }
+
+        return $this->find('all', [
+            'contain' => [
                 'Red_Team',
                 'Green_Team',
-                'Match' => array(
-                    'Round'
-                )
-            ),
+                'Match' => [
+                    'Round',
+                ],
+            ],
             'conditions' => $conditions,
-            'order' => 'Game.game_datetime ASC'
-        ));
-        return $games;
+            'order' => 'Game.game_datetime ASC',
+        ]);
     }
-    
+
     public function updateGameWinner($id)
     {
-        $scores = $this->find('first', array(
-            'fields' => array(
-                'Game.id'
-            ),
-            'contain' => array(
-                'Scorecard' => array(
-                    'fields' => array(
+        $scores = $this->find('first', [
+            'fields' => [
+                'Game.id',
+            ],
+            'contain' => [
+                'Scorecard' => [
+                    'fields' => [
                         'score',
                         'team_elim',
                         'team',
-                        'survived'
-                    ),
-                    'Penalty'
-                ),
+                        'survived',
+                    ],
+                    'Penalty',
+                ],
                 'Red_TeamPenalties',
-                'Green_TeamPenalties'
-            ),
-            'conditions' => array(
-                'Game.id' => $id
-            )
-            
-        ));
+                'Green_TeamPenalties',
+            ],
+            'conditions' => [
+                'Game.id' => $id,
+            ],
+        ]);
 
         if (count($scores['Scorecard']) < 1) {
             //This is a manually edited game with no scorecards and we're going to skip it
             return;
         }
-        
+
         $elim_bonus = 10000;
         $red_raw = 0;
         $red_bonus = 0;
@@ -301,7 +296,7 @@ class Game extends AppModel
         $max_time = 0;
 
         foreach ($scores['Scorecard'] as $scorecard) {
-            if ($scorecard['team'] == 'red') {
+            if ('red' == $scorecard['team']) {
                 $red_raw += $scorecard['score'];
                 $red_elim += $scorecard['team_elim'];
             } else {
@@ -313,7 +308,7 @@ class Game extends AppModel
 
             if (!empty($scorecard['Penalty'])) {
                 foreach ($scorecard['Penalty'] as $penalty) {
-                    if ($scorecard['team'] == 'red') {
+                    if ('red' == $scorecard['team']) {
                         $red_pens += $penalty['value'];
                     } else {
                         $green_pens += $penalty['value'];
@@ -322,13 +317,12 @@ class Game extends AppModel
             }
         }
 
-        
         //Apply the elim bonus if the opposing team was eliminated...both teams can get the bonus
         if ($red_elim > 0) {
             $green_bonus += $elim_bonus;
             $red_elim = 1;
         }
-        
+
         if ($green_elim > 0) {
             $red_bonus += $elim_bonus;
             $green_elim = 1;
@@ -342,7 +336,7 @@ class Game extends AppModel
         foreach ($scores['Green_TeamPenalties'] as $team_penalty) {
             $green_team_pens += $team_penalty['value'];
         }
-        
+
         //calc the scores and assign the winner
         if ($red_raw + $red_bonus + $red_pens + $red_team_pens > $green_raw + $green_bonus + $green_pens + $green_team_pens) {
             $winner = 'red';
@@ -354,7 +348,7 @@ class Game extends AppModel
         if ($red_elim > 0) {
             $winner = 'green';
         }
-        
+
         if ($green_elim > 0) {
             $winner = 'red';
         }
@@ -363,8 +357,8 @@ class Game extends AppModel
         if ($max_time <= 0) {
             $max_time = null;
         }
-            
-        $data = array('id' => $id,
+
+        $data = ['id' => $id,
             'green_score' => $green_raw,
             'red_score' => $red_raw,
             'red_adj' => $red_bonus + $red_pens + $red_team_pens,
@@ -372,20 +366,20 @@ class Game extends AppModel
             'red_eliminated' => $red_elim,
             'green_eliminated' => $green_elim,
             'winner' => $winner,
-            'game_length' => $max_time
-        );
-        
+            'game_length' => $max_time,
+        ];
+
         $this->save($data);
 
-        $game = $this->find('first', array(
-            'contain' => array(
-                'Match'
-            ),
-            'conditions' => array(
-                'Game.id' => $id
-            )
-        ));
-        
+        $game = $this->find('first', [
+            'contain' => [
+                'Match',
+            ],
+            'conditions' => [
+                'Game.id' => $id,
+            ],
+        ]);
+
         if (isset($game['Match']['id'])) {
             $this->Match->updatePoints($game['Match']['id']);
         }
@@ -395,28 +389,29 @@ class Game extends AppModel
     {
         $game = $this->findById($game_id);
 
-        if ($game['Game']['type'] == 'league' || $game['Game']['type'] == 'tournament') {
+        if ('league' == $game['Game']['type'] || 'tournament' == $game['Game']['type']) {
             App::import('Model', 'LeagueGame');
             $leagueGame = new LeagueGame();
             $results = $leagueGame->getPrevNextGame($game_id, $game['Game']['event_id']);
 
             $results = array_map(function ($position) {
                 if (isset($position['LeagueGame'])) {
-                    return array(
-                        'Game' => $position['LeagueGame']
-                    );
+                    return [
+                        'Game' => $position['LeagueGame'],
+                    ];
                 }
             }, $results);
         } else {
-            $results = $this->find('neighbors', array(
+            $results = $this->find('neighbors', [
                 'field' => 'id',
                 'value' => $game_id,
-                'order' => 'game_datetime DESC'
-            ));
+                'order' => 'game_datetime DESC',
+            ]);
 
             $results = array_map(function ($position) {
                 if (isset($position['Game'])) {
                     $position['Game']['game_id'] = $position['Game']['id'];
+
                     return $position;
                 }
             }, $results);
@@ -427,31 +422,29 @@ class Game extends AppModel
 
     public function getDatabaseStats()
     {
-        $stats = $this->find('first', array(
-            'fields' => array(
-                'COUNT(id) as total_games'
-            )
-        ));
-
-        return $stats;
+        return $this->find('first', [
+            'fields' => [
+                'COUNT(id) as total_games',
+            ],
+        ]);
     }
 
     public function fixSocialGameNames($date, $center_id)
     {
         //christ
-        $games = $this->find('all', array(
-            'conditions' => array(
+        $games = $this->find('all', [
+            'conditions' => [
                 'center_id' => $center_id,
-                'DATE(game_datetime)' => $date
-            ),
-            'order' => 'game_datetime ASC'
-        ));
+                'DATE(game_datetime)' => $date,
+            ],
+            'order' => 'game_datetime ASC',
+        ]);
 
-        $game_counter=1;
+        $game_counter = 1;
         foreach ($games as $game) {
             $game['Game']['game_name'] = "G{$game_counter}";
             $this->save($game);
-            $game_counter++;
+            ++$game_counter;
         }
     }
 }

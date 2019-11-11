@@ -1,4 +1,4 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <h4 class="my-4">
     Wins By Color
@@ -272,6 +272,7 @@ function renderMVPChart(data) {
     var scoutData = data.data['Scout'];
     var ammoData = data.data['Ammo Carrier'];
     var medicData = data.data['Medic'];
+    console.log(data);
 
     Highcharts.chart('mvp_breakdown_chart', {
         chart: {
@@ -299,85 +300,85 @@ function renderMVPChart(data) {
         },
         series: [{
             name: 'Missiled Opponent',
-            data: [allData.missiledOpponent, commanderData.missiledOpponent, heavyData
-                .missiledOpponent,
-                scoutData.missiledOpponent, ammoData.missiledOpponent, medicData
-                .missiledOpponent
+            data: [allData.missiled_opponent, commanderData.missiled_opponent, heavyData
+                .missiled_opponent,
+                scoutData.missiled_opponent, ammoData.missiled_opponent, medicData
+                .missiled_opponent
             ]
         }, {
             name: 'Nukes Detonated',
-            data: [allData.nukesDetonated, commanderData.nukesDetonated, heavyData
-                .nukesDetonated,
-                scoutData.nukesDetonated, ammoData.nukesDetonated, medicData
-                .nukesDetonated
+            data: [allData.nukes_detonated, commanderData.nukes_detonated, heavyData
+                .nukes_detonated,
+                scoutData.nukes_detonated, ammoData.nukes_detonated, medicData
+                .nukes_detonated
             ]
         }, {
             name: 'Nukes Canceled',
-            data: [allData.nukesCanceled, commanderData.nukesCanceled, heavyData
-                .nukesCanceled,
-                scoutData.nukesCanceled, ammoData.nukesCanceled, medicData
-                .nukesCanceled
+            data: [allData.nukes_canceled, commanderData.nukes_canceled, heavyData
+                .nukes_canceled,
+                scoutData.nukes_canceled, ammoData.nukes_canceled, medicData
+                .nukes_canceled
             ]
         }, {
             name: 'Medic Hits',
-            data: [allData.medicHits, commanderData.medicHits, heavyData
-                .medicHits,
-                scoutData.medicHits, ammoData.medicHits, medicData
-                .medicHits
+            data: [allData.medic_hits, commanderData.medic_hits, heavyData
+                .medic_hits,
+                scoutData.medic_hits, ammoData.medic_hits, medicData
+                .medic_hits
             ]
         }, {
             name: 'Rapid Fire',
-            data: [allData.rapidFire, commanderData.rapidFire, heavyData
-                .rapidFire,
-                scoutData.rapidFire, ammoData.rapidFire, medicData
-                .rapidFire
+            data: [allData.rapid_fire, commanderData.rapid_fire, heavyData
+                .rapid_fire,
+                scoutData.rapid_fire, ammoData.rapid_fire, medicData
+                .rapid_fire
             ]
         }, {
             name: 'Shoot 3-Hit',
-            data: [allData.shoot3Hit, commanderData.shoot3Hit, heavyData
-                .shoot3Hit,
-                scoutData.shoot3Hit, ammoData.shoot3Hit, medicData
-                .shoot3Hit
+            data: [allData.shoot_3_hit, commanderData.shoot_3_hit, heavyData
+                .shoot_3_hit,
+                scoutData.shoot_3_hit, ammoData.shoot_3_hit, medicData
+                .shoot_3_hit
             ]
         }, {
             name: 'Ammo Boost',
-            data: [allData.ammoBoost, commanderData.ammoBoost, heavyData
-                .ammoBoost,
-                scoutData.ammoBoost, ammoData.ammoBoost, medicData
-                .ammoBoost
+            data: [allData.ammo_boost, commanderData.ammo_boost, heavyData
+                .ammo_boost,
+                scoutData.ammo_boost, ammoData.ammo_boost, medicData
+                .ammo_boost
             ]
         }, {
             name: 'Life Boost',
-            data: [allData.lifeBoost, commanderData.lifeBoost, heavyData
-                .lifeBoost,
-                scoutData.lifeBoost, ammoData.lifeBoost, medicData
-                .lifeBoost
+            data: [allData.life_boost, commanderData.life_boost, heavyData
+                .life_boost,
+                scoutData.life_boost, ammoData.life_boost, medicData
+                .life_boost
             ]
         }, {
             name: 'Medic Survive Bonus',
-            data: [allData.medicSurviveBonus, commanderData.medicSurviveBonus, heavyData
-                .medicSurviveBonus,
-                scoutData.medicSurviveBonus, ammoData.medicSurviveBonus, medicData
-                .medicSurviveBonus
+            data: [allData.medic_survive_bonus, commanderData.medic_survive_bonus, heavyData
+                .medic_survive_bonus,
+                scoutData.medic_survive_bonus, ammoData.medic_survive_bonus, medicData
+                .medic_survive_bonus
             ]
         }, {
             name: 'Medic Score Bonus',
-            data: [allData.medicScoreBonus, commanderData.medicScoreBonus, heavyData
-                .medicScoreBonus,
-                scoutData.medicScoreBonus, ammoData.medicScoreBonus, medicData
-                .medicScoreBonus
+            data: [allData.medic_score_bonus, commanderData.medic_score_bonus, heavyData
+                .medic_score_bonus,
+                scoutData.medic_score_bonus, ammoData.medic_score_bonus, medicData
+                .medic_score_bonus
             ]
         }, {
             name: 'Elim Bonus',
-            data: [allData.elimBonus, commanderData.elimBonus, heavyData
-                .elimBonus,
-                scoutData.elimBonus, ammoData.elimBonus, medicData
-                .elimBonus
+            data: [allData.elim_bonus, commanderData.elim_bonus, heavyData
+                .elim_bonus,
+                scoutData.elim_bonus, ammoData.elim_bonus, medicData
+                .elim_bonus
             ]
         }, {
             name: 'Position Bonus',
-            data: [allData.positionBonus, commanderData.positionBonus, heavyData.positionBonus,
-                scoutData.positionBonus, ammoData.positionBonus, medicData.positionBonus
+            data: [allData.position_bonus, commanderData.position_bonus, heavyData.position_bonus,
+                scoutData.position_bonus, ammoData.position_bonus, medicData.position_bonus
             ]
         }, {
             name: 'Accuracy',
@@ -400,13 +401,13 @@ $(document).ready(function() {
     });
 
     $.ajax({
-        url: '<?php echo html_entity_decode($this->Html->url(array('action' => 'overallWinLossDetail', 'ext' => 'json'))); ?>'
+        url: '<?php echo html_entity_decode($this->Html->url(['action' => 'overallWinLossDetail', 'ext' => 'json'])); ?>'
     }).done(function(response) {
         overallData(response);
     });
 
     $.ajax({
-        url: '<?php echo html_entity_decode($this->Html->url(array('controller' => 'scorecards', 'action' => 'getMVPDetailsBySource', 'ext' => 'json'))); ?>'
+        url: '<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getMVPDetailsBySource', 'ext' => 'json'])); ?>'
     }).done(function(response) {
         renderMVPChart(response);
     });
