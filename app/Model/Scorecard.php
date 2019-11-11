@@ -2241,7 +2241,7 @@ class Scorecard extends AppModel
         }
 
         if ($min_days > 0 && isset($state['gametype']) && ('all' == $state['gametype'] || 'social' == $state['gametype'])) {
-            $conditions['DATEDIFF(DATE(NOW()),DATE(game_datetime)) <='] = $min_days;
+            $conditions['DATE_PART(\'day\', NOW() - game_datetime) <='] = $min_days;
         }
 
         $results = $this->find('all', [
@@ -2252,7 +2252,7 @@ class Scorecard extends AppModel
                 'COUNT(game_datetime) as games_played',
             ],
             'conditions' => $conditions,
-            'group' => "player_id, position HAVING games_played >= {$min_games}",
+            'group' => "player_id, position HAVING COUNT(game_datetime) >= {$min_games}",
         ]);
 
         $matrix = [];
