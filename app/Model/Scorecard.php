@@ -483,57 +483,37 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.event_id' => $state['leagueID']];
         }
 
+        $fields = [
+            'AVG(CAST(mvp_details -> \'positionBonus\' ->> \'value\' AS FLOAT)) as positionBonus',
+            'AVG(CAST(mvp_details -> \'missiledOpponent\' ->> \'value\' AS INTEGER)) as missiledOpponent',
+            'AVG(CAST(mvp_details -> \'acc\' ->> \'value\' AS FLOAT)) as acc',
+            'AVG(CAST(mvp_details -> \'nukesDetonated\' ->> \'value\' AS INTEGER)) as nukesDetonated',
+            'AVG(CAST(mvp_details -> \'nukesCanceled\' ->> \'value\' AS INTEGER)) as nukesCanceled',
+            'AVG(CAST(mvp_details -> \'medicHits\' ->> \'value\' AS INTEGER)) as medicHits',
+            'AVG(CAST(mvp_details -> \'ownMedicHits\' ->> \'value\' AS INTEGER)) as ownMedicHits',
+            'AVG(CAST(mvp_details -> \'rapidFire\' ->> \'value\' AS FLOAT)) as rapidFire',
+            'AVG(CAST(mvp_details -> \'shoot3Hit\' ->> \'value\' AS FLOAT)) as shoot3Hit',
+            'AVG(CAST(mvp_details -> \'ammoBoost\' ->> \'value\' AS INTEGER)) as ammoBoost',
+            'AVG(CAST(mvp_details -> \'lifeBoost\' ->> \'value\' AS INTEGER)) as lifeBoost',
+            'AVG(CAST(mvp_details -> \'medicSurviveBonus\' ->> \'value\' AS INTEGER)) as medicSurviveBonus',
+            'AVG(CAST(mvp_details -> \'medicScoreBonus\' ->> \'value\' AS INTEGER)) as medicScoreBonus',
+            'AVG(CAST(mvp_details -> \'elimBonus\' ->> \'value\' AS FLOAT)) as elimBonus',
+            'AVG(CAST(mvp_details -> \'timesMissiled\' ->> \'value\' AS INTEGER)) as timesMissiled',
+            'AVG(CAST(mvp_details -> \'missiledTeam\' ->> \'value\' AS INTEGER)) as missiledTeam',
+            'AVG(CAST(mvp_details -> \'ownNukesCanceled\' ->> \'value\' AS INTEGER)) as ownNukesCanceled',
+            'AVG(CAST(mvp_details -> \'teamNukesCanceled\' ->> \'value\' AS INTEGER)) as teamNukesCanceled',
+            'AVG(CAST(mvp_details -> \'elimPenalty\' ->> \'value\' AS INTEGER)) as elimPenalty',
+            'AVG(CAST(mvp_details -> \'penalties\' ->> \'value\' AS INTEGER)) as penalties',
+        ];
+
         $positions = $this->find('all', [
-            'fields' => [
-                'Scorecard.position',
-                'AVG(mvp_details->\'$.positionBonus.value\') as positionBonus',
-                'AVG(mvp_details->\'$.missiledOpponent.value\') as missiledOpponent',
-                'AVG(mvp_details->\'$.acc.value\') as acc',
-                'AVG(mvp_details->\'$.nukesDetonated.value\') as nukesDetonated',
-                'AVG(mvp_details->\'$.nukesCanceled.value\') as nukesCanceled',
-                'AVG(mvp_details->\'$.medicHits.value\') as medicHits',
-                'AVG(mvp_details->\'$.ownMedicHits.value\') as ownMedicHits',
-                'AVG(mvp_details->\'$.rapidFire.value\') as rapidFire',
-                'AVG(mvp_details->\'$.shoot3Hit.value\') as shoot3Hit',
-                'AVG(mvp_details->\'$.ammoBoost.value\') as ammoBoost',
-                'AVG(mvp_details->\'$.lifeBoost.value\') as lifeBoost',
-                'AVG(mvp_details->\'$.medicSurviveBonus.value\') as medicSurviveBonus',
-                'AVG(mvp_details->\'$.medicScoreBonus.value\') as medicScoreBonus',
-                'AVG(mvp_details->\'$.elimBonus.value\') as elimBonus',
-                'AVG(mvp_details->\'$.timesMissiled.value\') as timesMissiled',
-                'AVG(mvp_details->\'$.missiledTeam.value\') as missiledTeam',
-                'AVG(mvp_details->\'$.ownNukesCanceled.value\') as ownNukesCanceled',
-                'AVG(mvp_details->\'$.teamNukesCanceled.value\') as teamNukesCanceled',
-                'AVG(mvp_details->\'$.elimPenalty.value\') as elimPenalty',
-                'AVG(mvp_details->\'$.penalties.value\') as penalties',
-            ],
+            'fields' => array_merge($fields, ['Scorecard.position']),
             'conditions' => $conditions,
             'group' => 'Scorecard.position',
         ]);
 
         $all = $this->find('all', [
-            'fields' => [
-                'AVG(mvp_details->\'$.positionBonus.value\') as positionBonus',
-                'AVG(mvp_details->\'$.missiledOpponent.value\') as missiledOpponent',
-                'AVG(mvp_details->\'$.acc.value\') as acc',
-                'AVG(mvp_details->\'$.nukesDetonated.value\') as nukesDetonated',
-                'AVG(mvp_details->\'$.nukesCanceled.value\') as nukesCanceled',
-                'AVG(mvp_details->\'$.medicHits.value\') as medicHits',
-                'AVG(mvp_details->\'$.ownMedicHits.value\') as ownMedicHits',
-                'AVG(mvp_details->\'$.rapidFire.value\') as rapidFire',
-                'AVG(mvp_details->\'$.shoot3Hit.value\') as shoot3Hit',
-                'AVG(mvp_details->\'$.ammoBoost.value\') as ammoBoost',
-                'AVG(mvp_details->\'$.lifeBoost.value\') as lifeBoost',
-                'AVG(mvp_details->\'$.medicSurviveBonus.value\') as medicSurviveBonus',
-                'AVG(mvp_details->\'$.medicScoreBonus.value\') as medicScoreBonus',
-                'AVG(mvp_details->\'$.elimBonus.value\') as elimBonus',
-                'AVG(mvp_details->\'$.timesMissiled.value\') as timesMissiled',
-                'AVG(mvp_details->\'$.missiledTeam.value\') as missiledTeam',
-                'AVG(mvp_details->\'$.ownNukesCanceled.value\') as ownNukesCanceled',
-                'AVG(mvp_details->\'$.teamNukesCanceled.value\') as teamNukesCanceled',
-                'AVG(mvp_details->\'$.elimPenalty.value\') as elimPenalty',
-                'AVG(mvp_details->\'$.penalties.value\') as penalties',
-            ],
+            'fields' => $fields,
             'conditions' => $conditions,
         ]);
 
@@ -2238,7 +2218,7 @@ class Scorecard extends AppModel
         return $this->find('first', [
             'fields' => [
                 'COUNT(id) as total_scorecards',
-                'SUM(shot_opponent) as total_hits',
+                'SUM(shots_hit) as total_hits',
             ],
         ]);
     }
