@@ -1012,27 +1012,24 @@ class Scorecard extends AppModel
             
         $subQueryConditions = $conditions;
 
-        $subQueryConditions[] = array('position NOT IN ("Medic", "Ammo Carrier")');
+        $subQueryConditions[] = array('position NOT IN (\'Medic\', \'Ammo Carrier\')');
+
+        $fields = array(
+            'player_id',
+            'SUM(Scorecard.medic_hits) AS total_medic_hits',
+            '(SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) AS medic_hits_per_game',
+            'COUNT(Scorecard.game_datetime) AS games_played'
+        );
 
         $non_resup_scores = $this->find('all', array(
-            'fields' => array(
-                'player_id',
-                'SUM(Scorecard.medic_hits) as total_medic_hits',
-                '(SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) as medic_hits_per_game',
-                'COUNT(Scorecard.game_datetime) as games_played'
-            ),
+            'fields' => $fields,
             'conditions' => $subQueryConditions,
-            'group' => 'player_id HAVING total_medic_hits > 0',
-            'order' => 'player_id DESC'
+            'group' => 'Scorecard.player_id HAVING (SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) > 0',
+            'order' => 'Scorecard.player_id DESC'
         ));
 
         $scores = $this->find('all', array(
-            'fields' => array(
-                'player_id',
-                'SUM(Scorecard.medic_hits) as total_medic_hits',
-                '(SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) as medic_hits_per_game',
-                'COUNT(Scorecard.game_datetime) as games_played'
-            ),
+            'fields' => $fields,
             'contain' => array(
                 'Player' => array(
                     'fields' => array(
@@ -1042,8 +1039,8 @@ class Scorecard extends AppModel
                 )
             ),
             'conditions' => $conditions,
-            'group' => 'player_id HAVING total_medic_hits > 0',
-            'order' => 'player_id DESC'
+            'group' => 'Scorecard.player_id, Player.id HAVING (SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) > 0',
+            'order' => 'Scorecard.player_id DESC'
         ));
 
         foreach ($scores as &$score) {
