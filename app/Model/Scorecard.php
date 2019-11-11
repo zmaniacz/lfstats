@@ -666,7 +666,7 @@ class Scorecard extends AppModel
                 )
             ),
             'conditions' => $conditions,
-            'group' => "Scorecard.player_id",
+            'group' => "Scorecard.player_id, Player.id",
             'order' => 'avg_mvp DESC'
         ));
 
@@ -886,7 +886,7 @@ class Scorecard extends AppModel
                 )
             ),
             'conditions' => $conditions,
-            'group' => 'player_id, position'
+            'group' => 'Scorecard.player_id, Scorecard.position'
         ));
         
         $players_overall = $this->find('all', array(
@@ -895,7 +895,7 @@ class Scorecard extends AppModel
                 'AVG(Scorecard.mvp_points) as avg_mvp',
                 'SUM(Scorecard.mvp_points) as total_mvp',
                 'AVG(Scorecard.accuracy) as avg_acc',
-                '(SUM(Scorecard.shot_opponent)/SUM(Scorecard.times_zapped)) as hit_diff',
+                '(SUM(Scorecard.shot_opponent)/GREATEST(SUM(Scorecard.times_zapped),1)) as hit_diff',
                 'COUNT(Scorecard.game_datetime) as games_played',
                 'SUM(GameResult.won) as games_won',
                 'SUM(Scorecard.mvp_points)/SUM(Scorecard.survived) as mvp_per_second'
@@ -911,7 +911,7 @@ class Scorecard extends AppModel
                 )
             ),
             'conditions' => $conditions,
-            'group' => 'player_id'
+            'group' => 'Scorecard.player_id'
         ));
         
         $players = $this->Player->find('list');
