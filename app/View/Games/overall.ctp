@@ -272,7 +272,6 @@ function renderMVPChart(data) {
     var scoutData = data.data['Scout'];
     var ammoData = data.data['Ammo Carrier'];
     var medicData = data.data['Medic'];
-    console.log(data);
 
     Highcharts.chart('mvp_breakdown_chart', {
         chart: {
