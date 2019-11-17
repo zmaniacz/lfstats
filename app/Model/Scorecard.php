@@ -1344,9 +1344,9 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.event_id' => $state['leagueID']];
         }
 
-        $playerPos = implode('","', $positions['player']);
-        $targetPos = implode('","', $positions['target']);
-        $conditions[] = ["Scorecard.position IN (\"{$playerPos}\")"];
+        $playerPos = "'".implode('\',\'', $positions['player'])."'";
+        $targetPos = "'".implode('\',\'', $positions['target'])."'";
+        $conditions[] = ['"Scorecard".position IN ('.$playerPos.')'];
 
         $scorecards = $this->find('list', [
             'fields' => ['game_id'],
@@ -1366,7 +1366,7 @@ class Scorecard extends AppModel
             $whereFlag = ' AND scorecards.team != targets.team';
         }
 
-        $playerHitsQuery = "
+        $playerHitsQuery = '
 			SELECT 
 				hits.player_id,
 				hits.target_id,
@@ -1381,15 +1381,16 @@ class Scorecard extends AppModel
 				scorecards AS targets ON targets.game_id = scorecards.game_id
 					AND targets.player_id = hits.target_id
 			WHERE
-				hits.player_id = {$player_id}
-					AND scorecards.position IN (\"{$playerPos}\")
-					AND targets.position IN (\"{$targetPos}\")
-					{$whereFlag}
-					AND scorecards.game_id IN ({$games_ids})
-			GROUP BY hits.target_id
-		";
+				hits.player_id = '.$player_id.'
+					AND scorecards.position IN ('.$playerPos.')
+					AND targets.position IN ('.$targetPos.')
+					'.$whereFlag.'
+					AND scorecards.game_id IN ('.$games_ids.')
+			GROUP BY hits.target_id, hits.player_id
+		';
 
-        $playerHitByQuery = "
+        $playerHitByQuery =
+        '
 			SELECT 
 				hits.player_id,
 				hits.target_id,
@@ -1404,13 +1405,13 @@ class Scorecard extends AppModel
 				scorecards AS targets ON targets.game_id = scorecards.game_id
 					AND targets.player_id = hits.target_id
 			WHERE
-				hits.target_id = {$player_id}
-					AND scorecards.position IN (\"{$targetPos}\")
-					AND targets.position IN (\"{$playerPos}\")
-					{$whereFlag}
-					AND scorecards.game_id IN ({$games_ids})
-			GROUP BY hits.player_id
-		";
+				hits.target_id = '.$player_id.'
+					AND scorecards.position IN ('.$targetPos.')
+					AND targets.position IN ('.$playerPos.')
+					'.$whereFlag.'
+					AND scorecards.game_id IN ('.$games_ids.')
+			GROUP BY hits.player_id, hits.target_id
+		';
 
         $db = $this->getDataSource();
 
@@ -1420,8 +1421,8 @@ class Scorecard extends AppModel
         $hits = [];
 
         foreach ($playerHitBy as $hit) {
-            $hits[$hit['hits']['player_id']] = [
-                'opponent_id' => $hit['hits']['player_id'],
+            $hits[$hit[0]['player_id']] = [
+                'opponent_id' => $hit[0]['player_id'],
                 'hit_by' => $hit[0]['hits'],
                 'missile_by' => $hit[0]['missiles'],
                 'games_played' => $hit[0]['games_played'],
@@ -1431,9 +1432,9 @@ class Scorecard extends AppModel
         }
 
         foreach ($playerHits as $hit) {
-            if (isset($hits[$hit['hits']['target_id']])) {
-                $hits[$hit['hits']['target_id']]['hits'] = $hit[0]['hits'];
-                $hits[$hit['hits']['target_id']]['missiles'] = $hit[0]['missiles'];
+            if (isset($hits[$hit[0]['target_id']])) {
+                $hits[$hit[0]['target_id']]['hits'] = $hit[0]['hits'];
+                $hits[$hit[0]['target_id']]['missiles'] = $hit[0]['missiles'];
             }
         }
 
