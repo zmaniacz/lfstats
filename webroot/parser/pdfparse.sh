@@ -11,7 +11,7 @@ teamColorsKeyWords=green,red,blue,yellow,Fire,Earth,Ice" > LFScoreParser.propert
 	mkdir -p output/$1/
 	mkdir -p pending/$1/
 	java -jar LFScoreParser.jar
-	aws s3 cp output/$1/*.pdf s3://lfstats-lfstatsscorecards/ --exclude "*" --include "*.pdf" --recursive >> s3.log 2>&1
+	aws s3 cp output/$1/ s3://lfstats-lfstatsscorecards/ --exclude "*" --include "*.pdf" >> s3.log 2>&1
 	#mv output/$1/*.pdf ../pdf/
 	mv output/$1/*.xml pending/$1/
 	rm output/$1/*
