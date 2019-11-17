@@ -1140,25 +1140,25 @@ class Scorecard extends AppModel
         $conditions['player_id'] = $player_id;
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
-            $conditions[] = ['Scorecard.center_id' => $state['centerID']];
+            $conditions += ['Scorecard.center_id' => $state['centerID']];
         }
 
         if (isset($state['gametype']) && 'all' != $state['gametype']) {
-            $conditions[] = ['Scorecard.type' => $state['gametype']];
+            $conditions += ['Scorecard.type' => $state['gametype']];
         }
 
         if (isset($state['leagueID']) && $state['leagueID'] > 0) {
-            $conditions[] = ['Scorecard.event_id' => $state['leagueID']];
+            $conditions += ['Scorecard.event_id' => $state['leagueID']];
         }
 
         return $this->find('all', [
             'fields' => [
                 'Scorecard.*',
                 'Game.*',
-                'Match.*',
-                'Round.*',
-                'RedTeam.*',
-                'GreenTeam.*',
+                'Match.id',
+                'Match.match',
+                'Red_Team.name',
+                'Green_Team.name',
             ],
             'conditions' => $conditions,
             'order' => 'Scorecard.game_datetime DESC',
@@ -1183,15 +1183,15 @@ class Scorecard extends AppModel
                 ],
                 [
                     'table' => 'event_teams',
-                    'alias' => 'RedTeam',
+                    'alias' => 'Red_Team',
                     'type' => 'LEFT',
-                    'conditions' => ['RedTeam.id = Game.red_team_id'],
+                    'conditions' => ['Red_Team.id = Game.red_team_id'],
                 ],
                 [
                     'table' => 'event_teams',
-                    'alias' => 'GreenTeam',
+                    'alias' => 'Green_Team',
                     'type' => 'LEFT',
-                    'conditions' => ['GreenTeam.id = Game.green_team_id'],
+                    'conditions' => ['Green_Team.id = Game.green_team_id'],
                 ],
             ],
         ]);
