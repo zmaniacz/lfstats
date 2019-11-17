@@ -1,9 +1,10 @@
 <?php
+
 App::uses('AppController', 'Controller', 'Xml', 'Utility');
 
 class UploadsController extends AppController
 {
-    public $uses = array('Scorecard', 'Game', 'Event');
+    public $uses = ['Scorecard', 'Game', 'Event'];
 
     public function index()
     {
@@ -12,28 +13,31 @@ class UploadsController extends AppController
 
     public function handleUploads()
     {
-        App::import('Vendor', 'UploadHandler', array('file' => 'UploadHandler/UploadHandler.php'));
+        App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandler.php']);
 
-        $options = array(
-                'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
-                'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
-                'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
-                'delete_type' => 'POST',
-                'print_response' => false,
-                'image_versions' => array()
-            );
+        $options = [
+            'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
+            'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
+            'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
+            'delete_type' => 'POST',
+            'print_response' => false,
+            'image_versions' => [],
+        ];
         if ($this->request->is('post')) {
             $upload_handler = new UploadHandler($options, $initialize = false);
             switch ($_SERVER['REQUEST_METHOD']) {
                 case 'HEAD':
                 case 'GET':
                 $upload_handler->get();
+
                 break;
                 case 'POST':
                 $upload_handler->post();
+
                 break;
                 case 'DELETE':
                 $upload_handler->delete();
+
                 break;
                 default:
                 header('HTTP/1.0 405 Method Not Allowed');
@@ -44,12 +48,15 @@ class UploadsController extends AppController
                 case 'HEAD':
                 case 'GET':
                 $upload_handler->get();
+
                 break;
                 case 'POST':
                 $upload_handler->post();
+
                 break;
                 case 'DELETE':
                 $upload_handler->delete();
+
                 break;
                 default:
                 header('HTTP/1.0 405 Method Not Allowed');
@@ -63,14 +70,14 @@ class UploadsController extends AppController
     public function parse()
     {
         $center_id = $this->Session->read('state.centerID');
-        $command = "nohup sh -c 'parser/pdfparse.sh $center_id' > /dev/null 2>&1 & echo $!";
+        $command = "nohup sh -c 'parser/pdfparse.sh {$center_id}' > /dev/null 2>&1 & echo $!";
         $this->set('pid', exec($command, $output));
         $this->set('selectedEvent', (isset($this->request->data['Event']) ? $this->request->data['Event'] : 0));
     }
 
     public function checkPid($pid)
     {
-        $cmd = "ps $pid";
+        $cmd = "ps {$pid}";
         exec($cmd, $output, $result);
         if (count($output) >= 2) {
             $this->set('alive', true);
@@ -87,30 +94,30 @@ class UploadsController extends AppController
         $selectedEvent = json_decode($this->request->query['selectedEvent'], true);
 
         //make sure we default to social
-        if ($type == 'all') {
+        if ('all' == $type) {
             $type = 'social';
         }
 
         $event_id = null;
-        if ($type == 'league' || $type == 'tournament') {
+        if ('league' == $type || 'tournament' == $type) {
             $event_id = $this->Session->read('state.leagueID');
         } elseif ($selectedEvent['id'] > 0) {
             $event_id = $selectedEvent['id'];
         } else {
             $this->Event->create();
-            $this->Event->set(array(
+            $this->Event->set([
                 'name' => $selectedEvent['name'],
                 'type' => $type,
-                'is_comp' => (($type == 'league' || $type == 'tournament') ? 1 : 0),
-                'center_id' => $center_id
-            ));
+                'is_comp' => (('league' == $type || 'tournament' == $type) ? 1 : 0),
+                'center_id' => $center_id,
+            ]);
             $this->Event->save();
             $event_id = $this->Event->id;
         }
 
         $event = $this->Event->findById($event_id);
 
-        $path = "parser/pending/$center_id";
+        $path = "parser/pending/{$center_id}";
 
         $latest_ctime = 0;
         $latest_filename = '';
@@ -124,67 +131,67 @@ class UploadsController extends AppController
             }
         }
 
-        $row=0;
+        $row = 0;
         $xmlString = file_get_contents($path.DS.$latest_filename);
         $xml = Xml::toArray(Xml::build($xmlString));
-        
+
         //jesus fuck this shit right here.  I mean really cakephp, what the goddamned fuck
         //fix your fucking xml class fuck off
-        $xml['games']['game'] = isset($xml['games']['game'][0]) ? $xml['games']['game'] : array($xml['games']['game']);
-        
+        $xml['games']['game'] = isset($xml['games']['game'][0]) ? $xml['games']['game'] : [$xml['games']['game']];
+
         $game_counter = 1;
         $datetime = null;
         foreach ($xml['games']['game'] as $game) {
             //Start Syracuse hack
             //format sample:  9:03pm Jul-5-2015
             $datetime = preg_replace('/(\d{1,2}:\d{2}(am|pm))\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{1})-(\d{4})/', '$1 $3-0$4-$5', $game['date']);
-            
+
             $this->Game->create();
-            $this->Game->set(array(
+            $this->Game->set([
                 'game_name' => "G{$game_counter}",
-                'game_description' => "",
-                'game_datetime' => date("Y-m-d H-i-s", strtotime($datetime)),
+                'game_description' => '',
+                'game_datetime' => date(DATE_ATOM, strtotime($datetime)),
                 'type' => $type,
                 'pdf_id' => (isset($game['file']) ? str_replace('.pdf', '', $game['file']) : null),
                 'event_id' => $event_id,
-                'center_id' => $center_id
-            ));
-            
+                'center_id' => $center_id,
+            ]);
+
             if ($this->Game->save()) {
-                $game_counter++;
-                
+                ++$game_counter;
+
                 foreach ($game['player'] as $player) {
                     $player_id = $this->Scorecard->generatePlayer($player['name']);
 
                     //blue or yellow team gets autoconverted to green
                     $team = strtolower($player['team']);
-                    if ($team == 'yellow' || $team == 'blue' || $team == 'ice' || $team == 'earth') {
+                    if ('yellow' == $team || 'blue' == $team || 'ice' == $team || 'earth' == $team) {
                         $team = 'green';
                     }
 
-                    if ($team == 'fire') {
+                    if ('fire' == $team) {
                         $team = 'red';
                     }
 
                     if (!empty($player['survived'])) {
-                        $survived = explode(":", $player['survived']);
+                        $survived = explode(':', $player['survived']);
                         $survivedSeconds = (($survived[0] * 60) + $survived[1]);
                     } else {
                         $survivedSeconds = null;
                     }
-                    
+
                     $this->Scorecard->create();
-                    $this->Scorecard->set(array(
-                        'player_name' => "$player[name]",
-                        'game_datetime' => date("Y-m-d H-i-s", strtotime($datetime)),
+                    $this->Scorecard->set([
+                        'player_name' => "{$player['name']}",
+                        'game_datetime' => date(DATE_ATOM, strtotime($datetime)),
                         'team' => $team,
                         'position' => $player['position'],
-                        'score' => ($player['score']+(1000*$player['penalties'])),
+                        'score' => ($player['score'] + (1000 * $player['penalties'])),
                         'survived' => $survivedSeconds,
                         'max_score' => 0,
                         'shots_hit' => $player['shotsHit'],
                         'shots_fired' => $player['shotsFired'],
-                        'accuracy' => (($player['shotsFired'] > 0) ? ($player['shotsHit']/$player['shotsFired']) : 0),
+                        'accuracy' => (($player['shotsFired'] > 0) ? ($player['shotsHit'] / $player['shotsFired']) : 0),
                         'times_zapped' => $player['timesZapped'],
                         'times_missiled' => $player['timesMissled'],
                         'missile_hits' => $player['missleHits'],
@@ -211,32 +218,32 @@ class UploadsController extends AppController
                         'resupplies' => $player['resupplies'],
                         'rank' => $player['rank'],
                         'bases_destroyed' => $player['basesDestroyed'],
-                        'sp_earned' => ($player['shotOpponent'] + ($player['missiledOpponent']*2) + ($player['basesDestroyed']*5)),
-                        'sp_spent' => (($player['nukesActivated']*20) + ($player['lifeBoost']*10) + ($player['ammoBoost']*15)),
+                        'sp_earned' => ($player['shotOpponent'] + ($player['missiledOpponent'] * 2) + ($player['basesDestroyed'] * 5)),
+                        'sp_spent' => (($player['nukesActivated'] * 20) + ($player['lifeBoost'] * 10) + ($player['ammoBoost'] * 15)),
                         'pdf_id' => (isset($game['file']) ? str_replace('.pdf', '', $game['file']) : null),
                         'player_id' => $player_id,
                         'center_id' => $center_id,
                         'game_id' => $this->Game->id,
                         'type' => $type,
-                        'event_id' => $event_id
-                    ));
+                        'event_id' => $event_id,
+                    ]);
 
                     if ($this->Scorecard->save()) {
-                        $row++;
-                        
+                        ++$row;
+
                         $scorecard_id = $this->Scorecard->id;
 
-                        for ($i=1; $i<=$player['penalties']; $i++) {
+                        for ($i = 1; $i <= $player['penalties']; ++$i) {
                             $this->Scorecard->Penalty->create();
-                            $this->Scorecard->Penalty->set(array(
+                            $this->Scorecard->Penalty->set([
                                 'type' => $event['Event']['penalty_default_type'],
                                 'value' => $event['Event']['penalty_point_value'],
                                 'mvp_value' => $event['Event']['penalty_mvp_value'],
-                                'scorecard_id' => $scorecard_id
-                            ));
+                                'scorecard_id' => $scorecard_id,
+                            ]);
                             $this->Scorecard->Penalty->save();
                         }
-                            
+
                         foreach ($player['playerTarget'] as $hits) {
                             $this->Scorecard->generatePlayer($hits['name']);
                             $this->Scorecard->Hit->storeHits($player['name'], $scorecard_id, $hits);
@@ -250,11 +257,11 @@ class UploadsController extends AppController
             }
         }
 
-        if ($type == "social") {
-            $this->Game->fixSocialGameNames(date("Y-m-d", strtotime($datetime)), $center_id);
+        if ('social' == $type) {
+            $this->Game->fixSocialGameNames(date('Y-m-d', strtotime($datetime)), $center_id);
         }
-        
-        $this->Session->setFlash("Added $row scorecards");
-        $this->redirect(array('controller' => 'scorecards', 'action' => 'nightly'));
+
+        $this->Session->setFlash("Added {$row} scorecards");
+        $this->redirect(['controller' => 'scorecards', 'action' => 'nightly']);
     }
 }
