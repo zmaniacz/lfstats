@@ -1,4 +1,4 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <h4 class="my-4">
     Game List
@@ -18,7 +18,7 @@ $(document).ready(function() {
     const params = new URLSearchParams(location.search);
 
     $.ajax({
-        url: "<?= html_entity_decode($this->Html->url(array('controller' => 'games', 'action' => 'getGameList', 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'games', 'action' => 'getGameList', 'ext' => 'json'])); ?>"
     }).done(function(response) {
 
         var data = response.data.map(function(element) {
@@ -62,7 +62,7 @@ $(document).ready(function() {
 
             let pdf = '';
             if (element.Game.pdf_id) {
-                pdf = '<a href="http://lfstatsscorecards.objects-us-east-1.dream.io/' +
+                pdf = '<a href="https://lfstats-scorecards.s3.amazonaws.com/' +
                     element
                     .Game.pdf_id +
                     '.pdf" class="text-primary" target="_blank">PDF</a>';

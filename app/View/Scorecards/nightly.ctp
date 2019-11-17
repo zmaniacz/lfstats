@@ -1,14 +1,14 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <form id="nightlyNightlyForm">
     <div class="form-group">
         <label for="nightlySelectDate">Select Date:</label>
         <select class="form-control-sm" id="nightlySelectDate">
-            <?php foreach ($game_dates as $game_date): ?>
-            <option value="<?= $game_date ?>" <?=($game_date==$current_date) ? "selected" : "" ; ?>>
-                <?= $game_date ?>
+            <?php foreach ($game_dates as $game_date) { ?>
+            <option value="<?php echo $game_date; ?>" <?php echo ($game_date == $current_date) ? 'selected' : ''; ?>>
+                <?php echo $game_date; ?>
             </option>
-            <?php endforeach; ?>
+            <?php } ?>
         </select>
     </div>
 </form>
@@ -72,7 +72,7 @@
 <script type="text/javascript">
     $(document).ready(function() {
         const params = new URLSearchParams(location.search);
-        params.set('date', '<?= $current_date; ?>');
+        params.set('date', '<?php echo $current_date; ?>');
 
         function updateGameList(params) {
             $.ajax({
@@ -94,7 +94,7 @@
                         href: '/games/view/' + element.Game.id + '?' + params.toString()
                     });
                     let $pdfLink = $('<a>', {
-                        href: 'http://lfstatsscorecards.objects-us-east-1.dream.io/' +
+                        href: 'https://lfstats-scorecards.s3.amazonaws.com/' +
                             element.Game.pdf_id + '.pdf'
                     }).text('PDF');
 

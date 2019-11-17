@@ -1,53 +1,52 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <?php
-    $types = array("overall","commander","heavy","scout","ammo","medic");
+    $types = ['overall', 'commander', 'heavy', 'scout', 'ammo', 'medic'];
 
 foreach ($types as $type) {
-    ${$type."_acc_plot"} = array();
-    ${$type."_score_plot"} = array();
-    ${$type."_mvp_plot"} = array();
-    ${$type."_medic_plot"} = array();
-    ${$type."_hitdiff_plot"} = array();
+    ${$type.'_acc_plot'} = [];
+    ${$type.'_score_plot'} = [];
+    ${$type.'_mvp_plot'} = [];
+    ${$type.'_medic_plot'} = [];
+    ${$type.'_hitdiff_plot'} = [];
 
     foreach (${$type}[0]['Scorecard'] as $key => $val) {
-        ${$type."_acc_plot"}[] = ((float)$val['shots_hit']/max((float)$val['shots_fired'], 1))*100;
-        ${$type."_score_plot"}[] = (float)$val['score'];
-        ${$type."_mvp_plot"}[] = (float)$val['mvp_points'];
-        ${$type."_medic_plot"}[] = (float)$val['medic_hits'];
-        ${$type."_hitdiff_plot"}[] = ((float)$val['shot_opponent']/max((float)$val['times_zapped'], 1));
+        ${$type.'_acc_plot'}[] = ((float) $val['shots_hit'] / max((float) $val['shots_fired'], 1)) * 100;
+        ${$type.'_score_plot'}[] = (float) $val['score'];
+        ${$type.'_mvp_plot'}[] = (float) $val['mvp_points'];
+        ${$type.'_medic_plot'}[] = (float) $val['medic_hits'];
+        ${$type.'_hitdiff_plot'}[] = ((float) $val['shot_opponent'] / max((float) $val['times_zapped'], 1));
     }
-    ${$type."_acc_json"} = json_encode(${$type."_acc_plot"});
-    ${$type."_score_json"} = json_encode(${$type."_score_plot"});
-    ${$type."_mvp_json"} = json_encode(${$type."_mvp_plot"});
-    ${$type."_medic_json"} = json_encode(${$type."_medic_plot"});
-    ${$type."_hitdiff_json"} = json_encode(${$type."_hitdiff_plot"});
+    ${$type.'_acc_json'} = json_encode(${$type.'_acc_plot'});
+    ${$type.'_score_json'} = json_encode(${$type.'_score_plot'});
+    ${$type.'_mvp_json'} = json_encode(${$type.'_mvp_plot'});
+    ${$type.'_medic_json'} = json_encode(${$type.'_medic_plot'});
+    ${$type.'_hitdiff_json'} = json_encode(${$type.'_hitdiff_plot'});
 }
-
 
 ?>
 <h1 class="text-primary">
-    <?= $overall[0]['Player']['player_name']; ?>
+    <?php echo $overall[0]['Player']['player_name']; ?>
 </h1>
-<?php if (sizeof($aliases) > 1): ?>
+<?php if (sizeof($aliases) > 1) { ?>
 <p>
     Aliases:
     <ul>
-        <?php foreach ($aliases as $alias): ?>
-        <?php if ($alias['PlayersName']['player_name'] != $overall[0]['Player']['player_name']): ?>
+        <?php foreach ($aliases as $alias) { ?>
+        <?php if ($alias['PlayersName']['player_name'] != $overall[0]['Player']['player_name']) { ?>
         <li>
             <?php echo $alias['PlayersName']['player_name']; ?>
         </li>
-        <?php endif; ?>
-        <?php endforeach; ?>
+        <?php } ?>
+        <?php } ?>
     </ul>
 </p>
-<?php endif; ?>
+<?php } ?>
 <div>
-    <?php if (AuthComponent::user('role') === 'admin'): ?>
-    <a href="<?= $this->Html->url(array('controller' => 'players', 'action' => 'link', $overall[0]['Player']['id'])); ?>"
+    <?php if ('admin' === AuthComponent::user('role')) { ?>
+    <a href="<?php echo $this->Html->url(['controller' => 'players', 'action' => 'link', $overall[0]['Player']['id']]); ?>"
         class="btn btn-success" role="button">Link</a>
-    <?php endif; ?>
+    <?php } ?>
 </div>
 <ul class="nav nav-tabs" id="playerTab">
     <li class="nav-item"><a class="nav-link active" id="game-list-tab" href="#game-list" data-toggle="tab">Game List</a>
@@ -531,7 +530,7 @@ $(document).ready(function() {
 
         var allUrl = '/players/getPlayerMedians.json?' + params.toString();
 
-        params.set('player_id', <?= $id; ?>);
+        params.set('player_id', <?php echo $id; ?>);
         var allPlayerUrl = '/players/getPlayerMedians.json?' + params.toString();
 
         params.set('team', 'red');
@@ -614,7 +613,7 @@ $(document).ready(function() {
 
     function updateWinLossPie() {
         const params = new URLSearchParams(location.search);
-        const player_id = <?= $id; ?>;
+        const player_id = <?php echo $id; ?>;
 
         let hitUrl = '/Players/playerWinLossDetail/' + player_id + '.json?' + params.toString();
 
@@ -1739,7 +1738,7 @@ $(document).ready(function() {
             {
                 data: function(row, type, val, meta) {
                     if (type === 'display') {
-                        return `<a rel="noopener noreferrer" target="_blank" href="http://lfstatsscorecards.objects-us-east-1.dream.io/${row.pdf}.pdf">PDF</a>`;
+                        return `<a rel="noopener noreferrer" target="_blank" href="https://lfstats-scorecards.s3.amazonaws.com/${row.pdf}.pdf">PDF</a>`;
                     }
                     return row.pdf;
                 }
@@ -1754,7 +1753,7 @@ $(document).ready(function() {
         processing: true,
         orderCellsTop: true,
         ajax: {
-            url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'getPlayerTargetsBreakdown', $id, 'ext' => 'json'))); ?>"
+            url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getPlayerTargetsBreakdown', $id, 'ext' => 'json'])); ?>"
         },
         columns: [{
                 "data": "position"
@@ -1858,7 +1857,7 @@ $(document).ready(function() {
     });
 
     $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(array('controller' => 'Scorecards', 'action' => 'playerScorecards', $id, 'ext' => 'json'))); ?>"
+        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'playerScorecards', $id, 'ext' => 'json'])); ?>"
     }).done(function(response) {
         $('#game_list').DataTable().clear().rows.add(response.data).draw();
 
@@ -1868,7 +1867,7 @@ $(document).ready(function() {
 
     function updateHeadTable() {
         const params = new URLSearchParams(location.search);
-        const player_id = <?= $id; ?>
+        const player_id = <?php echo $id; ?>
 
         $.each($("#headPlayerPosSelector input:checked"), function() {
             let position = this.value
