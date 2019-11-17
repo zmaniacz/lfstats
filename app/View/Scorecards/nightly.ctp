@@ -95,7 +95,8 @@
                     });
                     let $pdfLink = $('<a>', {
                         href: 'https://lfstats-scorecards.s3.amazonaws.com/' +
-                            element.Game.pdf_id + '.pdf'
+                            element.Game.pdf_id + '.pdf',
+                            target: '_blank'
                     }).text('PDF');
 
                     $gameLink.html('<h5>' + element.Game.game_name + ' - ' + element.Game
