@@ -149,7 +149,7 @@
     <ul>
         <li>Accuracy: .1 point for every 1% of accuracy, rounded up (ie 75% = 7.5 pts).</li>
         <li>Medic Hits: 1 point for each hit on an enemy Medic. -1 for hitting your own Medic.</li>
-        <li>Elimination: 2 points if your team eliminates the other team.</li>
+        <li>Elimination: Minimum 1 point if your team eliminates the other team, increased by 1/60 for each of second of game time remaining above 1 minute.</li>
         <li>Cancel opponent's nuke: 3 points.</li>
         <li>Cancel own team's nuke: -3 points.</li>
         <li>Get missiled: -1 point.</li>
