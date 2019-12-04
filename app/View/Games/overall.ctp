@@ -134,10 +134,10 @@ function renderBoxPlot(type, all, red, green) {
         tooltip: {
             pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}<br />' +
                 'Maximum: {point.high}<br />' +
-                'Upper quartile: {point.q1}<br />' +
+                'Upper quartile: {point.q3}<br />' +
                 'Median: {point.median}<br />' +
                 'Mean: {point.mean}<br />' +
-                'Lower quartile: {point.q3}<br />' +
+                'Lower quartile: {point.q1}<br />' +
                 'Minimum: {point.low}<br />'
         },
         yAxis: {
