@@ -5,10 +5,12 @@
         </h4>
     </div>
     <div class="panel-body">
-        <?= $this->Form->create('Penalty'); ?>
-        <?= $this->Form->input('type', array(
-            'options' => array(
+        <?php echo $this->Form->create('Penalty'); ?>
+        <?php echo $this->Form->input('type', [
+            'options' => [
                 'Common Foul' => 'Common Foul',
+                'Shielding' => 'Shielding',
+                'Chasing' => 'Chasing',
                 'Illegal Language' => 'Illegal Language',
                 'Leaving Starting Area' => 'Leaving Starting Area',
                 'Leaving Playing Arena' => 'Leaving Playing Arena',
@@ -21,23 +23,20 @@
                 'Swapping Guns' => 'Swapping Guns',
                 'Loitering' => 'Loitering',
                 'Illegal Interaction' => 'Illegal Interaction',
-                'Shielding' => 'Shielding',
                 'Illegal Targeting' => 'Illegal Targeting',
-                'Chasing' => 'Chasing',
                 'Shoulder Tilting' => 'Shoulder Tilting',
                 'Unsportsmanlike Conduct' => 'Unsportsmanlike Conduct',
                 'Game Misconduct' => 'Game Misconduct',
-                'Non-LaserForce Equipment' => 'Non-LaserForce Equipment',
                 'Penalty Removed' => 'Penalty Removed',
-                'Unknown' => 'Unknown'
-            ),
+                'Unknown' => 'Unknown',
+            ],
             'class' => 'form-control',
-            'div' => array('class' => 'form-group')
-        )); ?>
-        <?= $this->Form->input('description', array('class' => 'form-control','div' => array('class' => 'form-group'))); ?>
-        <?= $this->Form->input('value', array('default' => '-1000', 'class' => 'form-control', 'div' => array('class' => 'form-group'))); ?>
-        <?= $this->Form->input('mvp_value', array('default' => '-5', 'class' => 'form-control', 'div' => array('class' => 'form-group'))); ?>
-        <?= $this->Form->input('scorecard_id', array('class' => 'form-control', 'div' => array('class' => 'form-group'))); ?>
-        <?= $this->Form->end(array('value' => 'Submit', 'class' => 'btn btn-success')); ?>
+            'div' => ['class' => 'form-group'],
+        ]); ?>
+        <?php echo $this->Form->input('description', ['class' => 'form-control', 'div' => ['class' => 'form-group']]); ?>
+        <?php echo $this->Form->input('value', ['default' => '-1000', 'class' => 'form-control', 'div' => ['class' => 'form-group']]); ?>
+        <?php echo $this->Form->input('mvp_value', ['default' => '-5', 'class' => 'form-control', 'div' => ['class' => 'form-group']]); ?>
+        <?php echo $this->Form->input('scorecard_id', ['class' => 'form-control', 'div' => ['class' => 'form-group']]); ?>
+        <?php echo $this->Form->end(['value' => 'Submit', 'class' => 'btn btn-success']); ?>
     </div>
 </div>
