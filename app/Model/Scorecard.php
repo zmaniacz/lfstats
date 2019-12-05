@@ -1262,7 +1262,7 @@ class Scorecard extends AppModel
 
     public function getHitDetails($player_id, $game_id)
     {
-        $hits = $this->find('all', [
+        $scorecards = $this->find('all', [
             'fields' => [
                 'id',
                 'player_name',
@@ -1291,28 +1291,24 @@ class Scorecard extends AppModel
 
         $results = [];
 
-        foreach ($hits as $hit) {
-            foreach ($hit['Hit'] as $record) {
+        //init the results array for each other player and set hits to 0
+        foreach ($scorecards as $scorecard) {
+            $results[$scorecard['Scorecard']['player_id']] = $scorecard['Scorecard'];
+            $results[$scorecard['Scorecard']['player_id']]['hit'] = 0;
+            $results[$scorecard['Scorecard']['player_id']]['hitBy'] = 0;
+            $results[$scorecard['Scorecard']['player_id']]['missile'] = 0;
+            $results[$scorecard['Scorecard']['player_id']]['missileBy'] = 0;
+        }
+
+        foreach ($scorecards as $scorecard) {
+            foreach ($scorecard['Hit'] as $record) {
                 if ($record['Player']['id'] == $player_id) {
                     $results[$record['Target']['id']]['hit'] = $record['hits'];
                     $results[$record['Target']['id']]['missile'] = $record['missiles'];
                 } else {
-                    $results[$record['Player']['id']]['id'] = $record['Player']['id'];
-                    $results[$record['Player']['id']]['name'] = $record['Player']['player_name'];
-                    $results[$record['Player']['id']]['position'] = $hit['Scorecard']['position'];
-                    $results[$record['Player']['id']]['score'] = $hit['Scorecard']['score'];
-                    $results[$record['Player']['id']]['team'] = $hit['Scorecard']['team'];
                     $results[$record['Player']['id']]['hitBy'] = $record['hits'];
                     $results[$record['Player']['id']]['missileBy'] = $record['missiles'];
                 }
-            }
-
-            if ($hit['Scorecard']['player_id'] == $player_id) {
-                $results[$player_id]['id'] = $hit['Scorecard']['player_id'];
-                $results[$player_id]['name'] = $hit['Scorecard']['player_name'];
-                $results[$player_id]['position'] = $hit['Scorecard']['position'];
-                $results[$player_id]['team'] = $hit['Scorecard']['team'];
-                $results[$player_id]['score'] = $hit['Scorecard']['score'];
             }
         }
 
