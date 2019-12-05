@@ -1,41 +1,41 @@
 <?php
     if (!empty($hits)) {
-        $green_table = "";
-        $red_table = "";
+        $green_table = '';
+        $red_table = '';
         foreach ($hits as $hit) {
-            if ($hit['id'] != $player_id) {
-                if ($hit['team'] == 'green') {
-                    $green_line = "<tr>";
-                    
-                    $green_line .= "<td>".$hit['name']."</td>";
-                    $green_line .= "<td>".$hit['position']."</td>";
-                    $green_line .= "<td>".$hit['hit']."</td>";
-                    $green_line .= "<td>".$hit['hitBy']."</td>";
-                    $green_line .= "<td>".$hit['missile']."</td>";
-                    $green_line .= "<td>".$hit['missileBy']."</td>";
-            
-                    $green_line .= "</tr>";
-                    
+            if ($hit['player_id'] != $player_id) {
+                if ('green' == $hit['team']) {
+                    $green_line = '<tr>';
+
+                    $green_line .= '<td>'.$hit['player_name'].'</td>';
+                    $green_line .= '<td>'.$hit['position'].'</td>';
+                    $green_line .= '<td>'.$hit['hit'].'</td>';
+                    $green_line .= '<td>'.$hit['hitBy'].'</td>';
+                    $green_line .= '<td>'.$hit['missile'].'</td>';
+                    $green_line .= '<td>'.$hit['missileBy'].'</td>';
+
+                    $green_line .= '</tr>';
+
                     $green_table .= $green_line;
                 } else {
-                    $red_line = "<tr>";
-                    
-                    $red_line .= "<td>".$hit['name']."</td>";
-                    $red_line .= "<td>".$hit['position']."</td>";
-                    $red_line .= "<td>".$hit['hit']."</td>";
-                    $red_line .= "<td>".$hit['hitBy']."</td>";
-                    $red_line .= "<td>".$hit['missile']."</td>";
-                    $red_line .= "<td>".$hit['missileBy']."</td>";
-            
-                    $red_line .= "</tr>";
-                    
+                    $red_line = '<tr>';
+
+                    $red_line .= '<td>'.$hit['player_name'].'</td>';
+                    $red_line .= '<td>'.$hit['position'].'</td>';
+                    $red_line .= '<td>'.$hit['hit'].'</td>';
+                    $red_line .= '<td>'.$hit['hitBy'].'</td>';
+                    $red_line .= '<td>'.$hit['missile'].'</td>';
+                    $red_line .= '<td>'.$hit['missileBy'].'</td>';
+
+                    $red_line .= '</tr>';
+
                     $red_table .= $red_line;
                 }
             } else {
-                $title_line = $hit['name']." - <span class=\"text-".(($hit['team'] == 'red') ? "danger" : "success")." text-capitalize\">".$hit['team']." ".$hit['position']."</span>";
+                $title_line = $hit['player_name'].' - <span class="text-'.(('red' == $hit['team']) ? 'danger' : 'success').' text-capitalize">'.$hit['team'].' '.$hit['position'].'</span>';
             }
         } ?>
-<h4 class="my-2"><?=$title_line; ?>
+<h4 class="my-2"><?php echo $title_line; ?>
 </h4>
 <div class="card">
     <div class="card-body p-0 mb-2">
@@ -53,7 +53,7 @@
                     <th>Missiled By</th>
                 </thead>
                 <tbody>
-                    <?= $green_table; ?>
+                    <?php echo $green_table; ?>
                 </tbody>
             </table>
         </div>
@@ -73,7 +73,7 @@
                     <th>Missiled By</th>
                 </thead>
                 <tbody>
-                    <?= $red_table; ?>
+                    <?php echo $red_table; ?>
                 </tbody>
             </table>
         </div>
@@ -81,5 +81,5 @@
 </div>
 <?php
     } else {
-        echo "No data available";
+        echo 'No data available';
     }
