@@ -14,9 +14,10 @@
     "cakephp/debug_kit": "~2.2.8"
   },
   "require-dev": {
-    "cakephp/debug_kit": "~2.2.8"
+    "cakephp/debug_kit": "~2.2.8",
+    "laravel/homestead": "dev-master"
   },
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "config": {
     "preferred-install": "dist"
   },
