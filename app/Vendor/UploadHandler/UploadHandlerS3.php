@@ -50,7 +50,6 @@ class UploadHandler
     public function __construct($options = null, $initialize = true, $error_messages = null)
     {
         $this->s3 = new Aws\S3\S3Client([
-            'profile' => 'default',
             'version' => 'latest',
             'region' => 'us-east-1',
         ]);
