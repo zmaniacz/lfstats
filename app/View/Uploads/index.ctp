@@ -1,7 +1,7 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <?php
-    echo $this->Html->css(array('JqueryFileUpload/jquery.fileupload','JqueryFileUpload/jquery.fileupload-ui'));
+    echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
 <div>
     <ol>
@@ -12,13 +12,13 @@
     </ol>
 </div>
 <form class="form-inline"
-    action="<?= $this->Html->url(array('controller' => 'uploads', 'action' => 'parse')); ?>"
+    action="<?php echo $this->Html->url(['controller' => 'uploads', 'action' => 'parse']); ?>"
     id="uploadForm" method="post" accept-charset="utf-8">
     <select class="form-control" name="data[Event][id]" id="uploadSelectEvent">
         <?php
-        if ($this->Session->read('state.gametype') == 'social' || $this->Session->read('state.gametype') == 'all') {
+        if ('social' == $this->Session->read('state.gametype') || 'all' == $this->Session->read('state.gametype')) {
             //Options should be 'Create New Social Event' or list of all previous Social events at the center
-            echo "<option value=\"0\">Create New Social Event</option>";
+            echo '<option value="0">Create New Social Event</option>';
             foreach ($social_events as $event) {
                 echo "<option value=\"{$event['Event']['id']}\">{$event['Event']['name']}</option>";
             }
@@ -28,14 +28,14 @@
     ?>
     </select>
     <input class="form-control" type="text" name="data[Event][name]" id="textEventName"
-        value="Socials <?= date('Y-m-d');?>">
+        value="Socials <?php echo date('Y-m-d'); ?>">
     <button class="btn btn-primary form-control" type="submit">Process <span
             class="glyphicon glyphicon-play"></span></button>
 </form>
 <hr>
 <!-- The file upload form used as target for the file upload widget -->
 <!--<form id="fileupload" action="uploads/upload" method="POST" enctype="multipart/form-data">-->
-<?php echo $this->Form->create('fileupload', array('type' => 'file', 'id' => 'fileupload')); ?>
+<?php echo $this->Form->create('fileupload', ['type' => 'file', 'id' => 'fileupload']); ?>
 <!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
 <div class="row fileupload-buttonbar">
     <div class="col-lg-7">
@@ -43,7 +43,7 @@
         <span class="btn btn-success fileinput-button">
             <i class="glyphicon glyphicon-plus"></i>
             <span>Add files...</span>
-            <input type="file" name="files[]" multiple>
+            <input type="file" name="files[]" accept="application/pdf" multiple>
         </span>
         <button type="submit" class="btn btn-primary start">
             <i class="glyphicon glyphicon-upload"></i>
@@ -175,7 +175,7 @@
             $('#fileupload').fileupload({
                 // Uncomment the following to send cross-domain cookies:
                 //xhrFields: {withCredentials: true},
-                url: '<?= html_entity_decode($this->Html->url(array('action' => 'handleUploads'))); ?>'
+                url: '<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads'])); ?>'
             });
 
             // Enable iframe cross-domain access via redirect option:

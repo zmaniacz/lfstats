@@ -20,6 +20,7 @@ class UploadsController extends AppController
             'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
             'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
             'delete_type' => 'POST',
+            'accept_file_types' => '/\.(pdf)$/i',
             'print_response' => false,
             'image_versions' => [],
         ];
