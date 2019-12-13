@@ -3,6 +3,9 @@
 <?php
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
+<div class="alert alert-danger" role="alert">
+  I know you don't know what this page is or what it does. So don't click anything.
+</div>
 <div>
     <ol>
         <li>Choose to add these scorecards to a new or an existing event (in most cases, you'll just want a new event)
