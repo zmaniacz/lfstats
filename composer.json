@@ -11,12 +11,14 @@
     "cakephp/cakephp": "~2.10.11",
     "josegonzalez/dotenv": "~3.2.0",
     "ad7six/dsn": "~0.4.0",
-    "cakephp/debug_kit": "~2.2.8"
+    "cakephp/debug_kit": "~2.2.8",
+    "aws/aws-sdk-php": "^3.128"
   },
   "require-dev": {
-    "cakephp/debug_kit": "~2.2.8"
+    "cakephp/debug_kit": "~2.2.8",
+    "laravel/homestead": "dev-master"
   },
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "config": {
     "preferred-install": "dist"
   },

@@ -3,6 +3,9 @@
 <?php
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
+<div class="alert alert-danger" role="alert">
+  I know you don't know what this page is or what it does. So don't click anything.
+</div>
 <div>
     <ol>
         <li>Choose to add these scorecards to a new or an existing event (in most cases, you'll just want a new event)
@@ -43,7 +46,7 @@
         <span class="btn btn-success fileinput-button">
             <i class="glyphicon glyphicon-plus"></i>
             <span>Add files...</span>
-            <input type="file" name="files[]" accept="application/pdf" multiple>
+            <input type="file" name="files[]" accept="text/tab-separated-values" multiple>
         </span>
         <button type="submit" class="btn btn-primary start">
             <i class="glyphicon glyphicon-upload"></i>
@@ -175,7 +178,7 @@
             $('#fileupload').fileupload({
                 // Uncomment the following to send cross-domain cookies:
                 //xhrFields: {withCredentials: true},
-                url: '<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads'])); ?>'
+                url: '<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads', 'TDF'])); ?>'
             });
 
             // Enable iframe cross-domain access via redirect option:

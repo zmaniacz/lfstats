@@ -10,6 +10,9 @@
  * https://opensource.org/licenses/MIT
  */
 
+use Aws\Exception\AwsException;
+use Aws\S3\S3Client;
+
 class UploadHandler
 {
     const IMAGETYPE_GIF = 1;
@@ -46,10 +49,20 @@ class UploadHandler
 
     public function __construct($options = null, $initialize = true, $error_messages = null)
     {
+        $this->s3 = new Aws\S3\S3Client([
+            'profile' => 'default',
+            'version' => 'latest',
+            'region' => 'us-east-1',
+        ]);
+
+        $this->s3->registerStreamWrapper();
+
+        $this->prefix = '';
+        $this->bucket = 'lfstats-incoming';
         $this->options = [
             'script_url' => $this->get_full_url().'/'.$this->basename($this->get_server_var('SCRIPT_NAME')),
-            'upload_dir' => dirname($this->get_server_var('SCRIPT_FILENAME')).'/files/',
-            'upload_url' => $this->get_full_url().'/files/',
+            'upload_dir' => 's3://'.$this->bucket.'/'.$this->prefix,
+            'upload_url' => 'https://'.$this->bucket.'.s3.amazonaws.com/'.$this->prefix,
             'input_stream' => 'php://input',
             'user_dirs' => false,
             'mkdir_mode' => 0755,
@@ -552,7 +565,36 @@ class UploadHandler
     {
         $upload_dir = $this->get_upload_path();
         if (!is_dir($upload_dir)) {
-            return [];
+            try {
+                //http://docs.aws.amazon.com/aws-sdk-php/latest/class-Aws.S3.S3Client.html#_listObjects
+                $result = $this->s3->listObjects([
+                    // Bucket is required
+                    'Bucket' => $this->bucket,
+                    'Prefix' => $this->prefix,
+                ]);
+
+                if (isset($result['Contents']) && count($result['Contents']) > 0) {
+                    foreach ($result['Contents'] as $obj) {
+                        if ($obj['Key'] != $this->prefix && false === strpos($obj['Key'], '/thumbnail/')) { //if Key is a full file path and not just a "directory"
+                            $a = pathinfo($obj['Key']);
+                            $file_names_arr[] = $a['basename'];
+                        }
+                    }
+                }
+            } catch (AwsException $e) {
+                $data['status'] = 0;
+                $data['message'] = $e;
+                //echo "There was an error uploading the file.\n";
+            }
+
+            if (!isset($file_names_arr)) {
+                $file_names_arr = [];
+            }
+
+            return array_values(array_filter(array_map(
+                [$this, $iteration_method],
+                $file_names_arr
+            )));
         }
 
         return array_values(array_filter(array_map(
@@ -833,7 +875,7 @@ class UploadHandler
             if (!is_dir($version_dir)) {
                 mkdir($version_dir, $this->options['mkdir_mode'], true);
             }
-            $new_file_path = $version_dir.'/'.$file_name;
+            $new_file_path = $version_dir.$file_name;
         } else {
             $new_file_path = $file_path;
         }

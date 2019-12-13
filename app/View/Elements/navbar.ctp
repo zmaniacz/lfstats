@@ -5,64 +5,67 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
-            <?php if ($this->request->action != 'landing'): ?>
+            <?php if ('landing' != $this->request->action) { ?>
             <li class="nav-item">
                 <?php
                                         if ($this->Session->read('state.isComp') > 0) {
-                                            echo $this->Html->link('Standings', array('controller' => 'leagues', 'action' => 'standings'), array('class' => 'nav-link'));
+                                            echo $this->Html->link('Standings', ['controller' => 'leagues', 'action' => 'standings'], ['class' => 'nav-link']);
                                         } else {
-                                            echo $this->Html->link('Nightly Stats', array('controller' => 'scorecards', 'action' => 'nightly'), array('class' => 'nav-link'));
+                                            echo $this->Html->link('Nightly Stats', ['controller' => 'scorecards', 'action' => 'nightly'], ['class' => 'nav-link']);
                                         }
                                     ?>
             </li>
             <li class="nav-item">
-                <?= $this->Html->link('Top Players', array('controller' => 'scorecards', 'action' => 'overall'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Top Players', ['controller' => 'scorecards', 'action' => 'overall'], ['class' => 'nav-link']); ?>
             </li>
             <li class="nav-item">
-                <?= $this->Html->link('Game List', array('controller' => 'games', 'action' => 'index'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Game List', ['controller' => 'games', 'action' => 'index'], ['class' => 'nav-link']); ?>
             </li>
             <li class="nav-item">
-                <?= $this->Html->link('Leader(Loser)boards', array('controller' => 'scorecards', 'action' => 'leaderboards'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Leader(Loser)boards', ['controller' => 'scorecards', 'action' => 'leaderboards'], ['class' => 'nav-link']); ?>
             </li>
             <li class="nav-item">
-                <?= $this->Html->link('Center Stats', array('controller' => 'games', 'action' => 'overall'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Center Stats', ['controller' => 'games', 'action' => 'overall'], ['class' => 'nav-link']); ?>
             </li>
             <li class="nav-item">
                 <?php
                                         if ($this->Session->read('state.isComp') > 0) {
-                                            echo $this->Html->link('All Star Rankings', array('controller' => 'scorecards', 'action' => 'allstar'), array('class' => 'nav-link'));
+                                            echo $this->Html->link('All Star Rankings', ['controller' => 'scorecards', 'action' => 'allstar'], ['class' => 'nav-link']);
                                         } else {
-                                            echo $this->Html->link('All-Center Teams', array('controller' => 'scorecards', 'action' => 'allcenter'), array('class' => 'nav-link'));
+                                            echo $this->Html->link('All-Center Teams', ['controller' => 'scorecards', 'action' => 'allcenter'], ['class' => 'nav-link']);
                                         }
                                     ?>
             </li>
             <li class="nav-item">
-                <?= $this->Html->link('Penalties', array('controller' => 'penalties', 'action' => 'index'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Penalties', ['controller' => 'penalties', 'action' => 'index'], ['class' => 'nav-link']); ?>
             </li>
 
             <li class="nav-item">
-                <?= $this->Html->link('Internationals 2019', array('controller' => 'leagues', 'action' => 'standings', '?' => array('gametype' => 'league', 'leagueID' => 853, 'centerID' => 7, 'isComp' => 1)), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Internationals 2019', ['controller' => 'leagues', 'action' => 'standings', '?' => ['gametype' => 'league', 'leagueID' => 853, 'centerID' => 7, 'isComp' => 1]], ['class' => 'nav-link']); ?>
             </li class="nav-item">
-            <?php endif;?>
+            <?php }?>
             <li class="nav-item">
-                <?= $this->Html->link('About SM5', array('controller' => 'pages', 'action' => 'aboutSM5'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('About SM5', ['controller' => 'pages', 'action' => 'aboutSM5'], ['class' => 'nav-link']); ?>
             </li>
             <li class="nav-item"><a class="nav-link" id="twitch_status"
                     href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
-            <?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
+            <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
             <li class="nav-item">
-                <?= $this->Html->link('Upload PDFs', array('controller' => 'uploads', 'action' => 'index'), array('class' => 'nav-link')); ?>
+                <?php echo $this->Html->link('Upload PDFs', ['controller' => 'uploads', 'action' => 'index'], ['class' => 'nav-link']); ?>
             </li>
-            <?php endif; ?>
+            <li class="nav-item">
+                <?php echo $this->Html->link('Upload TDFs', ['controller' => 'uploads', 'action' => 'uploadTdf'], ['class' => 'nav-link']); ?>
+            </li>
+            <?php } ?>
         </ul>
         <form class="form-inline">
-            <?php if (AuthComponent::user('id')): ?>
+            <?php if (AuthComponent::user('id')) { ?>
             <a class="btn btn-sm btn-info mr-2" href="/users/logout"
-                role="button"><?= AuthComponent::user('username') ?>
+                role="button"><?php echo AuthComponent::user('username'); ?>
                 Logout</a>
-            <?php else: ?>
+            <?php } else { ?>
             <a class="btn btn-sm btn-success mr-2" href="/users/login" role="button">Login</a>
-            <?php endif; ?>
+            <?php } ?>
         </form>
         </ul>
     </div>

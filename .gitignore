@@ -5,4 +5,4 @@
 app/Config/.env
 webroot/parser/s3.log
 *.jar
-.vagrant/*
+.vagrant/

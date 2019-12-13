@@ -11,18 +11,34 @@ class UploadsController extends AppController
         $this->set('social_events', $this->Event->getEventList('social', null, $this->Session->read('state.centerID')));
     }
 
-    public function handleUploads()
+    public function uploadTdf()
     {
-        App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandler.php']);
+        $this->set('social_events', $this->Event->getEventList('social', null, $this->Session->read('state.centerID')));
+    }
 
-        $options = [
-            'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
-            'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
-            'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
-            'delete_type' => 'POST',
-            'print_response' => false,
-            'image_versions' => [],
-        ];
+    public function handleUploads($type = 'PDF')
+    {
+        if ('PDF' == $type) {
+            App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandler.php']);
+            $options = [
+                'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
+                'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
+                'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
+                'delete_type' => 'POST',
+                'accept_file_types' => '/\.(pdf)$/i',
+                'print_response' => false,
+                'image_versions' => [],
+            ];
+        } elseif ('TDF' == $type) {
+            App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandlerS3.php']);
+            $options = [
+                'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
+                'accept_file_types' => '/\.(tdf)$/i',
+                'print_response' => false,
+                'image_versions' => [],
+            ];
+        }
+
         if ($this->request->is('post')) {
             $upload_handler = new UploadHandler($options, $initialize = false);
             switch ($_SERVER['REQUEST_METHOD']) {
