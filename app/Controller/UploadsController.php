@@ -20,6 +20,11 @@ class UploadsController extends AppController
     {
     }
 
+    public function getImportList($limit = 100)
+    {
+        $this->set('import_list', $this->Upload->getImportList($limit, $this->Session->read('state.centerID')));
+    }
+
     public function handleUploads($type = 'PDF')
     {
         if ('PDF' == $type) {
