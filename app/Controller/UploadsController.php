@@ -4,7 +4,7 @@ App::uses('AppController', 'Controller', 'Xml', 'Utility');
 
 class UploadsController extends AppController
 {
-    public $uses = ['Scorecard', 'Game', 'Event'];
+    public $uses = ['Scorecard', 'Game', 'Event', 'Upload'];
 
     public function index()
     {
@@ -22,7 +22,7 @@ class UploadsController extends AppController
 
     public function getImportList($limit = 100)
     {
-        $this->set('import_list', $this->getImportList($limit, $this->Session->read('state.centerID')));
+        $this->set('import_list', $this->Upload->getImportList($limit, $this->Session->read('state.centerID')));
     }
 
     public function handleUploads($type = 'PDF')
