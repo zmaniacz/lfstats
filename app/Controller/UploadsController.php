@@ -16,6 +16,10 @@ class UploadsController extends AppController
         $this->set('social_events', $this->Event->getEventList('social', null, $this->Session->read('state.centerID')));
     }
 
+    public function viewImports()
+    {
+    }
+
     public function handleUploads($type = 'PDF')
     {
         if ('PDF' == $type) {
