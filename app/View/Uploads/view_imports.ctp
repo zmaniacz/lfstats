@@ -42,14 +42,14 @@ $(document).ready(function() {
             },
             {
                 data: function(row, type, val, meta) {
-                    if(row.Game != null) {
+                    if(row.Upload.game_id != null) {
                         if (type === 'display') {
                             return `<a href="/games/view/${row.Upload.game_id}?${params.toString()}">${row.Game.game_name}</a>`;
                         }
                         return row.Game.game_name;
                     }
 
-                    return null;
+                    return "N/A";
                 }
             },
         ]
