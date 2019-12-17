@@ -4,7 +4,7 @@ App::uses('AppController', 'Controller', 'Xml', 'Utility');
 
 class UploadsController extends AppController
 {
-    public $uses = ['Scorecard', 'Game', 'Event'];
+    public $uses = ['Scorecard', 'Game', 'Event', 'Upload'];
 
     public function index()
     {
@@ -14,6 +14,15 @@ class UploadsController extends AppController
     public function uploadTdf()
     {
         $this->set('social_events', $this->Event->getEventList('social', null, $this->Session->read('state.centerID')));
+    }
+
+    public function viewImports()
+    {
+    }
+
+    public function getImportList($limit = 100)
+    {
+        $this->set('data', $this->Upload->getImportList($limit, $this->Session->read('state.centerID')));
     }
 
     public function handleUploads($type = 'PDF')

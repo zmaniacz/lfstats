@@ -50,11 +50,16 @@
             <li class="nav-item"><a class="nav-link" id="twitch_status"
                     href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
             <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
-            <li class="nav-item">
-                <?php echo $this->Html->link('Upload PDFs', ['controller' => 'uploads', 'action' => 'index'], ['class' => 'nav-link']); ?>
-            </li>
-            <li class="nav-item">
-                <?php echo $this->Html->link('Upload TDFs', ['controller' => 'uploads', 'action' => 'uploadTdf'], ['class' => 'nav-link']); ?>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarAdminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Admin
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <?php echo $this->Html->link('Upload PDFs', ['controller' => 'uploads', 'action' => 'index'], ['class' => 'dropdown-item']); ?>
+                    <?php echo $this->Html->link('Upload TDFs', ['controller' => 'uploads', 'action' => 'uploadTdf'], ['class' => 'dropdown-item']); ?>
+                    <div class="dropdown-divider"></div>
+                    <?php echo $this->Html->link('Import Log', ['controller' => 'uploads', 'action' => 'viewImports'], ['class' => 'dropdown-item']); ?>
+                </div>
             </li>
             <?php } ?>
         </ul>
