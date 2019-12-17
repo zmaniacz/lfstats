@@ -50,7 +50,7 @@ $(document).ready(function() {
         table.ajax.url(url).load();
 
         setTimeout(function() {
-            updateImportTable(table, round);
+            updateImportTable(table);
         }, 30000)
     }
 
