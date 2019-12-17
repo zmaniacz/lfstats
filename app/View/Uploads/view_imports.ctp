@@ -42,11 +42,11 @@ $(document).ready(function() {
             },
             {
                 data: function(row, type, val, meta) {
-                    if(row.Upload.Game != null) {
+                    if(row.Game != null) {
                         if (type === 'display') {
-                            return `<a href="/games/view/${row.Upload.game_id}?${params.toString()}">${row.Upload.Game.game_name}</a>`;
+                            return `<a href="/games/view/${row.Upload.game_id}?${params.toString()}">${row.Game.game_name}</a>`;
                         }
-                        return row.Upload.Game.game_name;
+                        return row.Game.game_name;
                     }
 
                     return null;
