@@ -6,7 +6,7 @@ class Upload extends AppModel
 {
     public $useTable = 'game_imports';
 
-    public $hasOne = [
+    public $belongsTo = [
         'Game' => [
             'className' => 'Game',
             'foreignKey' => 'game_id',
