@@ -20,27 +20,26 @@ $(document).ready(function() {
         paging: true,
         info: true,
         searching: true,
-        data: data,
         order: [
             [2, "desc"]
         ],
         columns: [{
-                data: "id"
+                data: "Upload.id"
             },
             {
-                data: "filename"   
+                data: "Upload.filename"   
             },
             {
-                data: "job_start"
+                data: "Upload.job_start"
             },
             {
-                data: "job_end"
+                data: "Upload.job_end"
             },
             {
-                data: "status"
+                data: "Upload.status"
             },
             {
-                data: "game_id"
+                data: "Upload.game_id"
             },
         ]
     });
