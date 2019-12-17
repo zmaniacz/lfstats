@@ -15,6 +15,8 @@
 </table>
 <script>
 $(document).ready(function() {
+    const params = new URLSearchParams(location.search);
+
     let importTable = $('#import_list').DataTable({
         processing: true,
         paging: true,
@@ -39,14 +41,23 @@ $(document).ready(function() {
                 data: "Upload.status"
             },
             {
-                data: "Upload.game_id"
+                data: function(row, type, val, meta) {
+                    if(row.Upload.Game != null) {
+                        if (type === 'display') {
+                            return `<a href="/games/view/${row.Upload.game_id}?${params.toString()}">${row.Upload.Game.game_name}</a>`;
+                        }
+                        return row.Upload.Game.game_name;
+                    }
+
+                    return null;
+                }
             },
         ]
     });
 
     function updateImportTable(table) {
         let url =
-            "<?= html_entity_decode($this->Html->url(array('controller' => 'uploads', 'action' => 'getImportList', 'ext' => 'json'))); ?>"
+            "<?php echo html_entity_decode($this->Html->url(['controller' => 'uploads', 'action' => 'getImportList', 'ext' => 'json'])); ?>"
         table.ajax.url(url).load();
 
         setTimeout(function() {
