@@ -20,6 +20,7 @@ $(document).ready(function() {
         paging: true,
         info: true,
         searching: true,
+        data: data,
         order: [
             [2, "desc"]
         ],
