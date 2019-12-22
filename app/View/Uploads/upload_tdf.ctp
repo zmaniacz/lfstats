@@ -1,65 +1,103 @@
 <?php echo $this->element('breadcrumbs'); ?>
 <hr>
+<?php if ('all' === $this->Session->read('state.gametype')) { ?>
+<div class="alert alert-warning" role="alert">
+    You must select either Social or Competitive games above
+</div>
+<?php } elseif ('social' == $this->Session->read('state.gametype') && 0 == $this->Session->read('state.centerID')) { ?>
+<div class="alert alert-warning" role="alert">
+    You must select a Center above.
+</div>
+<?php } elseif ('league' == $this->Session->read('state.gametype') && 0 == $this->Session->read('state.leagueID')) { ?>
+<div class="alert alert-warning" role="alert">
+    You must select a Competition above.
+</div>
+<?php } else { ?>
 <?php
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
 <div class="alert alert-danger" role="alert">
-  I know you don't know what this page is or what it does. So don't click anything.
+    I know you don't know what this page is or what it does. So don't click anything.
 </div>
 <div class="alert alert-warning" role="alert">
-  With the launch of (redacted), the upload process has changed. Pay attention to the new instructions.
+    With the launch of (redacted), the upload process has changed. Pay attention to the new instructions.
 </div>
 <div>
     <ol>
-        <li>Click Add Files to (duh) add files. Then click Start upload to start uploading them (also duh). Once they
-            are uploaded, the import will start automatically.</li>
-        <li>Go to the Game Queue to assign the newly uploaded games to an event.</li>
+        <li>For social games, choose to either add to an existing event or create a new one.</li>
+        <li>Click Add Files to (duh) add files</li>
+        <li>Click Start upload. The files will upload and the import will begin automatically</li>
     </ol>
 </div>
 <hr>
-<!-- The file upload form used as target for the file upload widget -->
-<!--<form id="fileupload" action="uploads/upload" method="POST" enctype="multipart/form-data">-->
-<?php echo $this->Form->create('fileupload', ['type' => 'file', 'id' => 'fileupload']); ?>
-<!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
-<div class="row fileupload-buttonbar">
-    <div class="col-lg-7">
-        <!-- The fileinput-button span is used to style the file input field as button -->
-        <span class="btn btn-success fileinput-button">
-            <i class="glyphicon glyphicon-plus"></i>
-            <span>Add files...</span>
-            <input type="file" name="files[]" accept="text/tab-separated-values" multiple>
-        </span>
-        <button type="submit" class="btn btn-primary start">
-            <i class="glyphicon glyphicon-upload"></i>
-            <span>Start upload</span>
-        </button>
-        <button type="reset" class="btn btn-warning cancel">
-            <i class="glyphicon glyphicon-ban-circle"></i>
-            <span>Cancel upload</span>
-        </button>
-        <button type="button" class="btn btn-danger delete">
-            <i class="glyphicon glyphicon-trash"></i>
-            <span>Delete</span>
-        </button>
-        <input type="checkbox" class="toggle">
-        <!-- The global file processing state -->
-        <span class="fileupload-process"></span>
-    </div>
-    <!-- The global progress state -->
-    <div class="col-lg-5 fileupload-progress fade">
-        <!-- The global progress bar -->
-        <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar progress-bar-success" style="width:0%;"></div>
-        </div>
-        <!-- The extended global progress state -->
-        <div class="progress-extended">&nbsp;</div>
-    </div>
-</div>
-<!-- The table listing the files available for upload/download -->
-<table role="presentation" class="table table-striped">
-    <tbody class="files"></tbody>
-</table>
+<form class="form-inline"
+    action="<?php echo $this->Html->url(['controller' => 'uploads', 'action' => 'parse']); ?>"
+    id="uploadForm" method="post" accept-charset="utf-8">
+    <select class="form-control" name="data[Event][id]" id="uploadSelectEvent">
+        <?php
+        if ('social' == $this->Session->read('state.gametype') || 'all' == $this->Session->read('state.gametype')) {
+            //Options should be 'Create New Social Event' or list of all previous Social events at the center
+            echo '<option value="0">Create New Social Event</option>';
+            foreach ($social_events as $event) {
+                echo "<option value=\"{$event['Event']['id']}\">{$event['Event']['name']}</option>";
+            }
+        } else {
+            echo "<option value=\"{$selected_league['Event']['id']}\">{$selected_league['Event']['name']}</option>";
+        }
+    ?>
+    </select>
+    <input class="form-control" type="text" name="data[Event][name]" id="textEventName"
+        value="Socials <?php echo date('Y-m-d'); ?>">
+    <button class="btn btn-primary form-control" type="submit">Process <span
+            class="glyphicon glyphicon-play"></span></button>
 </form>
+<hr>
+<div id="uploadForm" style="display:none">
+    <!-- The file upload form used as target for the file upload widget -->
+    <!--<form id="fileupload" action="uploads/upload" method="POST" enctype="multipart/form-data">-->
+    <?php echo $this->Form->create('fileupload', ['type' => 'file', 'id' => 'fileupload']); ?>
+    <!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
+    <div class="row fileupload-buttonbar">
+        <div class="col-lg-7">
+            <!-- The fileinput-button span is used to style the file input field as button -->
+            <span class="btn btn-success fileinput-button">
+                <i class="glyphicon glyphicon-plus"></i>
+                <span>Add files...</span>
+                <input type="file" name="files[]" accept="text/tab-separated-values" multiple>
+            </span>
+            <button type="submit" class="btn btn-primary start">
+                <i class="glyphicon glyphicon-upload"></i>
+                <span>Start upload</span>
+            </button>
+            <button type="reset" class="btn btn-warning cancel">
+                <i class="glyphicon glyphicon-ban-circle"></i>
+                <span>Cancel upload</span>
+            </button>
+            <button type="button" class="btn btn-danger delete">
+                <i class="glyphicon glyphicon-trash"></i>
+                <span>Delete</span>
+            </button>
+            <input type="checkbox" class="toggle">
+            <!-- The global file processing state -->
+            <span class="fileupload-process"></span>
+        </div>
+        <!-- The global progress state -->
+        <div class="col-lg-5 fileupload-progress fade">
+            <!-- The global progress bar -->
+            <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar progress-bar-success" style="width:0%;"></div>
+            </div>
+            <!-- The extended global progress state -->
+            <div class="progress-extended">&nbsp;</div>
+        </div>
+    </div>
+    <!-- The table listing the files available for upload/download -->
+    <table role="presentation" class="table table-striped">
+        <tbody class="files"></tbody>
+    </table>
+    </form>
+</div>
+<?php } ?>
 <!-- The template to display files available for upload -->
 <script id="template-upload" type="text/x-tmpl">
     {% for (var i=0, file; file=o.files[i]; i++) { %}
@@ -142,7 +180,7 @@
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-process.js'></script>
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-validate.js'></script>
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-ui.js'></script>
-<script>
+<script type="text/javascript">
     $(document).ready(function() {
         $('#uploadSelectEvent').change(function() {
             if ($(this).val() > 0) {
@@ -155,11 +193,15 @@
         $(function() {
             'use strict';
 
+            let
+                uploadHandler =
+                "<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads', 'TDF'])); ?>";
+
             // Initialize the jQuery File Upload widget:
             $('#fileupload').fileupload({
                 // Uncomment the following to send cross-domain cookies:
                 //xhrFields: {withCredentials: true},
-                url: '<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads', 'TDF'])); ?>'
+                url: uploadHandler
             });
 
             // Enable iframe cross-domain access via redirect option:

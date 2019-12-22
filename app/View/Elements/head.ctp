@@ -21,6 +21,7 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
 <link rel="stylesheet" type="text/css"
     href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.css" />
+<?php echo $this->fetch('css'); ?>
 
 <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js'></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
@@ -37,6 +38,7 @@
 <script defer src='https://code.highcharts.com/stock/highstock.js'></script>
 <script defer src='https://code.highcharts.com/stock/highcharts-more.js'></script>
 <script defer src='https://code.highcharts.com/stock/indicators/indicators.js'></script>
+<?php echo $this->fetch('script'); ?>
 <title>
     <?php echo $title_for_layout; ?>
 </title>
