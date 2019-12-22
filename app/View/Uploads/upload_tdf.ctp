@@ -30,27 +30,28 @@
     </ol>
 </div>
 <hr>
-<form class="form-inline"
-    action="<?php echo $this->Html->url(['controller' => 'uploads', 'action' => 'parse']); ?>"
-    id="uploadForm" method="post" accept-charset="utf-8">
-    <select class="form-control" name="data[Event][id]" id="uploadSelectEvent">
-        <?php
-        if ('social' == $this->Session->read('state.gametype') || 'all' == $this->Session->read('state.gametype')) {
-            //Options should be 'Create New Social Event' or list of all previous Social events at the center
-            echo '<option value="0">Create New Social Event</option>';
-            foreach ($social_events as $event) {
-                echo "<option value=\"{$event['Event']['id']}\">{$event['Event']['name']}</option>";
-            }
-        } else {
-            echo "<option value=\"{$selected_league['Event']['id']}\">{$selected_league['Event']['name']}</option>";
-        }
-    ?>
-    </select>
-    <input class="form-control" type="text" name="data[Event][name]" id="textEventName"
-        value="Socials <?php echo date('Y-m-d'); ?>">
-    <button class="btn btn-primary form-control" type="submit">Process <span
-            class="glyphicon glyphicon-play"></span></button>
-</form>
+<div id="eventChoices">
+    <div id="eventRadio" class="btn-group btn-group-toggle" data-toggle="buttons">
+        <label class="btn btn-outline-info active">
+            <input type="radio" name="rounds" id="newEvent" value="0" autocomplete="off" checked>Create New
+        </label>
+        <label class="btn btn-outline-info">
+            <input type="radio" name="rounds" id="existingEvent" value="1" autocomplete="off">Choose Existing
+        </label>
+    </div>
+    <div id="eventCreateForm">
+        <form class="form-inline p-2">
+            <label for="eventNameInput" class="mx-1">New Event Name:</label>
+            <input type="text" class="form-control mx-1" id="eventNameInput"
+                value="Socials <?php echo date('Y-m-d'); ?>">
+            <button type="submit" class="btn btn-info mx-1">Create</button>
+        </form>
+    </div>
+    <div id="eventExistingForm" style="display:none">
+    </div>
+</div>
+<div id="selectedEventInfo">
+</div>
 <hr>
 <div id="uploadForm" style="display:none">
     <!-- The file upload form used as target for the file upload widget -->
@@ -182,26 +183,19 @@
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-ui.js'></script>
 <script type="text/javascript">
     $(document).ready(function() {
-        $('#uploadSelectEvent').change(function() {
-            if ($(this).val() > 0) {
-                $('#textEventName').addClass('hidden');
-            } else {
-                $('#textEventName').removeClass('hidden');
-            }
+        $("#eventRadio :input").change(function() {
+            $("#eventCreateForm").toggle();
+            $("#eventExistingForm").toggle();
         });
 
         $(function() {
             'use strict';
 
-            let
-                uploadHandler =
-                "<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads', 'TDF'])); ?>";
-
             // Initialize the jQuery File Upload widget:
             $('#fileupload').fileupload({
                 // Uncomment the following to send cross-domain cookies:
                 //xhrFields: {withCredentials: true},
-                url: uploadHandler
+                url: "<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads', 'TDF'])); ?>"
             });
 
             // Enable iframe cross-domain access via redirect option:
