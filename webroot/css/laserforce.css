@@ -18,33 +18,6 @@
 	vertical-align: middle;
 }
 
-div.DTFC_LeftBodyWrapper table thead .sorting:before,
-div.DTFC_LeftBodyWrapper table thead .sorting:after,
-div.DTFC_LeftBodyWrapper table thead .sorting_asc:before,
-div.DTFC_LeftBodyWrapper table thead .sorting_asc:after,
-div.DTFC_LeftBodyWrapper table thead .sorting_desc:before,
-div.DTFC_LeftBodyWrapper table thead .sorting_desc:after,
-div.DTFC_LeftBodyWrapper table thead .sorting:before,
-div.DTFC_LeftBodyWrapper table thead .sorting:after,
-div.DTFC_LeftBodyWrapper table thead .sorting_asc:before,
-div.DTFC_LeftBodyWrapper table thead .sorting_asc:after,
-div.DTFC_LeftBodyWrapper table thead .sorting_desc:before,
-div.DTFC_LeftBodyWrapper table thead .sorting_desc:after,
-div.DTFC_RightBodyWrapper table thead .sorting:before,
-div.DTFC_RightBodyWrapper table thead .sorting:after,
-div.DTFC_RightBodyWrapper table thead .sorting_asc:before,
-div.DTFC_RightBodyWrapper table thead .sorting_asc:after,
-div.DTFC_RightBodyWrapper table thead .sorting_desc:before,
-div.DTFC_RightBodyWrapper table thead .sorting_desc:after,
-div.DTFC_RightBodyWrapper table thead .sorting:before,
-div.DTFC_RightBodyWrapper table thead .sorting:after,
-div.DTFC_RightBodyWrapper table thead .sorting_asc:before,
-div.DTFC_RightBodyWrapper table thead .sorting_asc:after,
-div.DTFC_RightBodyWrapper table thead .sorting_desc:before,
-div.DTFC_RightBodyWrapper table thead .sorting_desc:after {
-	display: none;
-}
-
 body {
 	margin-top: 70px;
 }
