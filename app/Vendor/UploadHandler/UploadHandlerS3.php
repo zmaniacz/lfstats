@@ -47,7 +47,7 @@ class UploadHandler
     protected $image_objects = [];
     protected $response = [];
 
-    public function __construct($options = null, $initialize = true, $error_messages = null)
+    public function __construct($options = null, $initialize = true, $error_messages = null, $prefix = '')
     {
         $this->s3 = new Aws\S3\S3Client([
             'version' => 'latest',
@@ -56,7 +56,7 @@ class UploadHandler
 
         $this->s3->registerStreamWrapper();
 
-        $this->prefix = '';
+        $this->prefix = $prefix;
         $this->bucket = 'lfstats-incoming';
         $this->options = [
             'script_url' => $this->get_full_url().'/'.$this->basename($this->get_server_var('SCRIPT_NAME')),

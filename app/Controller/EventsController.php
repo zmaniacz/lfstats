@@ -18,7 +18,7 @@ class EventsController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow('recent', 'index', 'view');
+        $this->Auth->allow('recent', 'index', 'view', 'socialEvents');
         parent::beforeFilter();
     }
 
@@ -146,5 +146,21 @@ class EventsController extends AppController
         }
 
         return $this->redirect(['action' => 'index']);
+    }
+
+    public function socialEvents()
+    {
+        $this->set('events', $this->Event->getEventList('social', null, $this->Session->read('state.centerID')));
+        $this->set('_serialize', ['events']);
+    }
+
+    public function getEvent($id = null)
+    {
+        if (!$this->Event->exists($id)) {
+            throw new NotFoundException(__('Invalid event'));
+        }
+        $options = ['conditions' => ['Event.'.$this->Event->primaryKey => $id]];
+        $this->set('event', $this->Event->find('first', $options));
+        $this->set('_serialize', ['event']);
     }
 }

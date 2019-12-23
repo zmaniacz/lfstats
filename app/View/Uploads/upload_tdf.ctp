@@ -1,3 +1,6 @@
+<div class="alert alert-danger" role="alert">
+    I know you don't know what this page is or what it does. So don't click anything.
+</div>
 <?php
     echo $this->Html->script('https://kit.fontawesome.com/9e4f8e5378.js', ['inline' => false]);
     echo $this->element('breadcrumbs');
@@ -19,9 +22,6 @@
 <?php
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
-<div class="alert alert-danger" role="alert">
-    I know you don't know what this page is or what it does. So don't click anything.
-</div>
 <div class="alert alert-warning" role="alert">
     With the launch of (redacted), the upload process has changed. Pay attention to the new instructions.
 </div>
@@ -33,7 +33,7 @@
     </ol>
 </div>
 <hr>
-<div id="eventChoicesSection">
+<div id="eventChoicesSection" style="display:none">
     <div id="eventRadio" class="btn-group btn-group-toggle" data-toggle="buttons">
         <label class="btn btn-outline-info active">
             <input type="radio" name="rounds" id="newEvent" value="0" autocomplete="off" checked>Create New
@@ -51,6 +51,12 @@
         </form>
     </div>
     <div id="eventExistingSection" style="display:none">
+        <form class="form-inline p-2" id="eventSelectForm">
+            <label for="eventNameInput" class="mx-1">Existing Event:</label>
+            <select class="form-control mx-1" id="eventSelect">
+            </select>
+            <button class="btn btn-info mx-1" id="eventSelectButton">Select</button>
+        </form>
     </div>
 </div>
 <div id="selectedEventInfo" class="alert alert-primary" style="display:none">
@@ -186,47 +192,104 @@
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-ui.js'></script>
 <script type="text/javascript">
     $(document).ready(function() {
+        const params = new URLSearchParams(location.search);
         var selectedEvent = {};
 
-        $("#eventRadio :input").change(function() {
-            $("#eventCreateSection").toggle();
-            $("#eventExistingSection").toggle();
-        });
-
-        $("#eventCreateForm").submit(function(event) {
-            event.preventDefault();
-            $("#eventCreateButton").append(' <i class="fas fa-spinner fa-spin"></i>');
-            selectedEvent = {
-                center_id: "<?php echo $this->Session->read('state.centerID'); ?>",
-                is_comp: 0,
-                type: "social",
-                name: $("#eventNameInput").val()
-            }
+        if (params.get('isComp') > 0 && params.get('leagueID') > 0) {
             $.ajax({
-                    url: `/events/ajaxAdd`,
-                    method: "POST",
-                    data: selectedEvent
-                })
-                .done(function(data) {
-                    if (data.status === 'success') {
-                        toastr.success("Event Created")
-                        selectedEvent.id = data.id;
-                        console.log(selectedEvent)
-                        $("#eventChoicesSection").toggle(false);
-                        $("#selectedEventInfo").html(
-                            `Games will be added to '${selectedEvent.name}'`).toggle(true);
-                        $("#uploadForm").toggle(true);
-                    } else {
-                        toastr.error("Event Save Failed")
-                    }
+                    url: `/events/getEvent/${params.get('leagueID')}.json`,
+                    method: "GET"
+                }).done(function(data) {
+                    selectedEvent = data.event.Event;
+                    $("#selectedEventInfo").html(
+                        `Games will be added to '${selectedEvent.name}'`
+                    ).toggle(true);
+                    $("#uploadForm").toggle(true);
                 })
                 .fail(function() {
-                    toastr.error("Create Request Failed")
+                    toastr.error("Failed to load event")
                 })
-                .always(function() {
-                    $("#eventCreateButton").html("Create")
+        } else {
+            $("#eventChoicesSection").toggle(true);
+
+            $("#eventRadio :input").change(function() {
+                $("#eventCreateSection").toggle();
+                $("#eventExistingSection").toggle();
+            });
+
+            //load up the existing social event box
+            $.ajax({
+                    url: `/events/socialEvents.json?${params.toString()}`,
+                    method: "GET"
                 })
-        });
+                .done(function(data) {
+                    data.events.forEach(event => {
+                        $("#eventSelect").append($('<option>', {
+                            value: event.Event.id,
+                            text: event.Event.name
+                        }));
+                    });
+                })
+                .fail(function() {
+                    toastr.error("Failed to get events")
+                })
+
+            //process selecting an existing event
+            $("#eventSelectForm").submit(function(event) {
+                event.preventDefault();
+                $.ajax({
+                        url: `/events/getEvent/${$("#eventSelect").val()}.json`,
+                        method: "GET"
+                    }).done(function(data) {
+                        selectedEvent = data.event.Event;
+                        $("#eventChoicesSection").toggle(false);
+                        $("#selectedEventInfo").html(
+                            `Games will be added to '${selectedEvent.name}'`
+                        ).toggle(true);
+                        $("#uploadForm").toggle(true);
+                    })
+                    .fail(function() {
+                        toastr.error("Failed to load event")
+                    })
+            });
+
+            //process creating a new event
+            $("#eventCreateForm").submit(function(event) {
+                event.preventDefault();
+                $("#eventCreateButton").append(' <i class="fas fa-spinner fa-spin"></i>');
+                selectedEvent = {
+                    center_id: "<?php echo $this->Session->read('state.centerID'); ?>",
+                    is_comp: 0,
+                    type: "social",
+                    name: $("#eventNameInput").val()
+                }
+                $.ajax({
+                        url: `/events/ajaxAdd`,
+                        method: "POST",
+                        data: selectedEvent
+                    })
+                    .done(function(data) {
+                        if (data.status === 'success') {
+                            toastr.success("Event Created")
+                            selectedEvent.id = data.id;
+                            console.log(selectedEvent)
+                            $("#eventChoicesSection").toggle(false);
+                            $("#selectedEventInfo").html(
+                                `Games will be added to '${selectedEvent.name}'`).toggle(
+                                true);
+                            $("#uploadForm").toggle(true);
+                        } else {
+                            toastr.error("Event Save Failed")
+                        }
+                    })
+                    .fail(function() {
+                        toastr.error("Create Request Failed")
+                    })
+                    .always(function() {
+                        $("#eventCreateButton").html("Create")
+                    })
+            });
+        }
 
         $(function() {
             'use strict';

@@ -25,7 +25,7 @@ class UploadsController extends AppController
         $this->set('data', $this->Upload->getImportList($limit, $this->Session->read('state.centerID')));
     }
 
-    public function handleUploads($type = 'PDF')
+    public function handleUploads($type = 'PDF', $prefix = '')
     {
         if ('PDF' == $type) {
             App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandler.php']);
@@ -49,7 +49,7 @@ class UploadsController extends AppController
         }
 
         if ($this->request->is('post')) {
-            $upload_handler = new UploadHandler($options, $initialize = false);
+            $upload_handler = new UploadHandler($options, $initialize = false, null, $prefix);
             switch ($_SERVER['REQUEST_METHOD']) {
                 case 'HEAD':
                 case 'GET':
@@ -68,7 +68,7 @@ class UploadsController extends AppController
                 header('HTTP/1.0 405 Method Not Allowed');
             }
         } else {
-            $upload_handler = new UploadHandler($options, $initialize = true);
+            $upload_handler = new UploadHandler($options, $initialize = true, null, $prefix);
             switch ($_SERVER['REQUEST_METHOD']) {
                 case 'HEAD':
                 case 'GET':
