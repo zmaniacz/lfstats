@@ -1,4 +1,7 @@
-<?php echo $this->element('breadcrumbs'); ?>
+<?php
+    echo $this->Html->script('https://kit.fontawesome.com/9e4f8e5378.js', ['inline' => false]);
+    echo $this->element('breadcrumbs');
+?>
 <hr>
 <?php if ('all' === $this->Session->read('state.gametype')) { ?>
 <div class="alert alert-warning" role="alert">
@@ -30,7 +33,7 @@
     </ol>
 </div>
 <hr>
-<div id="eventChoices">
+<div id="eventChoicesSection">
     <div id="eventRadio" class="btn-group btn-group-toggle" data-toggle="buttons">
         <label class="btn btn-outline-info active">
             <input type="radio" name="rounds" id="newEvent" value="0" autocomplete="off" checked>Create New
@@ -39,18 +42,18 @@
             <input type="radio" name="rounds" id="existingEvent" value="1" autocomplete="off">Choose Existing
         </label>
     </div>
-    <div id="eventCreateForm">
-        <form class="form-inline p-2">
+    <div id="eventCreateSection">
+        <form class="form-inline p-2" id="eventCreateForm">
             <label for="eventNameInput" class="mx-1">New Event Name:</label>
             <input type="text" class="form-control mx-1" id="eventNameInput"
                 value="Socials <?php echo date('Y-m-d'); ?>">
-            <button type="submit" class="btn btn-info mx-1">Create</button>
+            <button class="btn btn-info mx-1" id="eventCreateButton">Create</button>
         </form>
     </div>
-    <div id="eventExistingForm" style="display:none">
+    <div id="eventExistingSection" style="display:none">
     </div>
 </div>
-<div id="selectedEventInfo">
+<div id="selectedEventInfo" class="alert alert-primary" style="display:none">
 </div>
 <hr>
 <div id="uploadForm" style="display:none">
@@ -183,9 +186,46 @@
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-ui.js'></script>
 <script type="text/javascript">
     $(document).ready(function() {
+        var selectedEvent = {};
+
         $("#eventRadio :input").change(function() {
-            $("#eventCreateForm").toggle();
-            $("#eventExistingForm").toggle();
+            $("#eventCreateSection").toggle();
+            $("#eventExistingSection").toggle();
+        });
+
+        $("#eventCreateForm").submit(function(event) {
+            event.preventDefault();
+            $("#eventCreateButton").append(' <i class="fas fa-spinner fa-spin"></i>');
+            selectedEvent = {
+                center_id: "<?php echo $this->Session->read('state.centerID'); ?>",
+                is_comp: 0,
+                type: "social",
+                name: $("#eventNameInput").val()
+            }
+            $.ajax({
+                    url: `/events/ajaxAdd`,
+                    method: "POST",
+                    data: selectedEvent
+                })
+                .done(function(data) {
+                    if (data.status === 'success') {
+                        toastr.success("Event Created")
+                        selectedEvent.id = data.id;
+                        console.log(selectedEvent)
+                        $("#eventChoicesSection").toggle(false);
+                        $("#selectedEventInfo").html(
+                            `Games will be added to '${selectedEvent.name}'`).toggle(true);
+                        $("#uploadForm").toggle(true);
+                    } else {
+                        toastr.error("Event Save Failed")
+                    }
+                })
+                .fail(function() {
+                    toastr.error("Create Request Failed")
+                })
+                .always(function() {
+                    $("#eventCreateButton").html("Create")
+                })
         });
 
         $(function() {

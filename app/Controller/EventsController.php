@@ -1,13 +1,21 @@
 <?php
+
 App::uses('AppController', 'Controller');
 /**
- * Events Controller
+ * Events Controller.
  *
- * @property Event $Event
+ * @property Event              $Event
  * @property PaginatorComponent $Paginator
  */
 class EventsController extends AppController
 {
+    /**
+     * Components.
+     *
+     * @var array
+     */
+    public $components = ['Paginator'];
+
     public function beforeFilter()
     {
         $this->Auth->allow('recent', 'index', 'view');
@@ -17,18 +25,11 @@ class EventsController extends AppController
     public function recent()
     {
         $this->set('events', $this->Event->getEventList(null, 10, null));
-        $this->set('_serialize', array('events'));
+        $this->set('_serialize', ['events']);
     }
 
     /**
-     * Components
-     *
-     * @var array
-     */
-    public $components = array('Paginator');
-
-    /**
-     * index method
+     * index method.
      *
      * @return void
      */
@@ -39,10 +40,12 @@ class EventsController extends AppController
     }
 
     /**
-     * view method
+     * view method.
+     *
+     * @param string $id
      *
      * @throws NotFoundException
-     * @param string $id
+     *
      * @return void
      */
     public function view($id = null)
@@ -50,12 +53,12 @@ class EventsController extends AppController
         if (!$this->Event->exists($id)) {
             throw new NotFoundException(__('Invalid event'));
         }
-        $options = array('conditions' => array('Event.' . $this->Event->primaryKey => $id));
+        $options = ['conditions' => ['Event.'.$this->Event->primaryKey => $id]];
         $this->set('event', $this->Event->find('first', $options));
     }
 
     /**
-     * add method
+     * add method.
      *
      * @return void
      */
@@ -65,20 +68,39 @@ class EventsController extends AppController
             $this->Event->create();
             if ($this->Event->save($this->request->data)) {
                 $this->Flash->success(__('The event has been saved.'));
-                return $this->redirect(array('action' => 'index'));
-            } else {
-                $this->Flash->error(__('The event could not be saved. Please, try again.'));
+
+                return $this->redirect(['action' => 'index']);
             }
+            $this->Flash->error(__('The event could not be saved. Please, try again.'));
         }
         $centers = $this->Event->Center->find('list');
         $this->set(compact('centers'));
     }
 
+    public function ajaxAdd()
+    {
+        $this->autoRender = false;
+
+        if ($this->request->is('post')) {
+            $this->response->type('json');
+            $this->Event->create();
+            if ($this->Event->save($this->request->data)) {
+                $response = ['status' => 'success', 'id' => $this->Event->id];
+            } else {
+                $response = ['status' => 'failure'];
+            }
+
+            $this->response->body(json_encode($response));
+        }
+    }
+
     /**
-     * edit method
+     * edit method.
+     *
+     * @param string $id
      *
      * @throws NotFoundException
-     * @param string $id
+     *
      * @return void
      */
     public function edit($id = null)
@@ -86,15 +108,15 @@ class EventsController extends AppController
         if (!$this->Event->exists($id)) {
             throw new NotFoundException(__('Invalid event'));
         }
-        if ($this->request->is(array('post', 'put'))) {
+        if ($this->request->is(['post', 'put'])) {
             if ($this->Event->save($this->request->data)) {
                 $this->Flash->success(__('The event has been saved.'));
-                return $this->redirect(array('controller' => 'leagues', 'action' => 'standings'));
-            } else {
-                $this->Flash->error(__('The event could not be saved. Please, try again.'));
+
+                return $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
             }
+            $this->Flash->error(__('The event could not be saved. Please, try again.'));
         } else {
-            $options = array('conditions' => array('Event.' . $this->Event->primaryKey => $id));
+            $options = ['conditions' => ['Event.'.$this->Event->primaryKey => $id]];
             $this->request->data = $this->Event->find('first', $options);
         }
         $centers = $this->Event->Center->find('list');
@@ -102,10 +124,12 @@ class EventsController extends AppController
     }
 
     /**
-     * delete method
+     * delete method.
+     *
+     * @param string $id
      *
      * @throws NotFoundException
-     * @param string $id
+     *
      * @return void
      */
     public function delete($id = null)
@@ -120,6 +144,7 @@ class EventsController extends AppController
         } else {
             $this->Flash->error(__('The event could not be deleted. Please, try again.'));
         }
-        return $this->redirect(array('action' => 'index'));
+
+        return $this->redirect(['action' => 'index']);
     }
 }
