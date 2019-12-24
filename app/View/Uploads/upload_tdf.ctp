@@ -298,7 +298,7 @@
             $('#fileupload').fileupload({
                 // Uncomment the following to send cross-domain cookies:
                 //xhrFields: {withCredentials: true},
-                url: "<?php echo html_entity_decode($this->Html->url(['action' => 'handleUploads', 'TDF'])); ?>"
+                url: `/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`
             });
 
             // Enable iframe cross-domain access via redirect option:
