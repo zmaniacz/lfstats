@@ -191,6 +191,45 @@
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-validate.js'></script>
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-ui.js'></script>
 <script type="text/javascript">
+    function initUploads(uploadUrl) {
+        'use strict';
+
+        // Initialize the jQuery File Upload widget:
+        $('#fileupload').fileupload({
+            // Uncomment the following to send cross-domain cookies:
+            //xhrFields: {withCredentials: true},
+            url: uploadUrl
+        });
+
+        // Enable iframe cross-domain access via redirect option:
+        $('#fileupload').fileupload(
+            'option',
+            'redirect',
+            window.location.href.replace(
+                /\/[^\/]*$/,
+                '/cors/result.html?%s'
+            )
+        );
+
+        // Load existing files:
+        $('#fileupload').addClass('fileupload-processing');
+        $.ajax({
+            // Uncomment the following to send cross-domain cookies:
+            //xhrFields: {withCredentials: true},
+            url: $('#fileupload').fileupload('option', 'url'),
+            dataType: 'json',
+            context: $('#fileupload')[0]
+        }).always(function() {
+            $(this).removeClass('fileupload-processing');
+        }).done(function(result) {
+            $(this).fileupload('option', 'done')
+                .call(this, $.Event('done'), {
+                    result: result
+                });
+        });
+
+    }
+
     $(document).ready(function() {
         const params = new URLSearchParams(location.search);
         var selectedEvent = {};
@@ -205,6 +244,7 @@
                         `Games will be added to '${selectedEvent.name}'`
                     ).toggle(true);
                     $("#uploadForm").toggle(true);
+                    initUploads(`/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`);
                 })
                 .fail(function() {
                     toastr.error("Failed to load event")
@@ -247,6 +287,9 @@
                             `Games will be added to '${selectedEvent.name}'`
                         ).toggle(true);
                         $("#uploadForm").toggle(true);
+                        initUploads(
+                            `/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`
+                            );
                     })
                     .fail(function() {
                         toastr.error("Failed to load event")
@@ -278,6 +321,9 @@
                                 `Games will be added to '${selectedEvent.name}'`).toggle(
                                 true);
                             $("#uploadForm").toggle(true);
+                            initUploads(
+                                `/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`
+                                );
                         } else {
                             toastr.error("Event Save Failed")
                         }
@@ -291,43 +337,6 @@
             });
         }
 
-        $(function() {
-            'use strict';
 
-            // Initialize the jQuery File Upload widget:
-            $('#fileupload').fileupload({
-                // Uncomment the following to send cross-domain cookies:
-                //xhrFields: {withCredentials: true},
-                url: `/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`
-            });
-
-            // Enable iframe cross-domain access via redirect option:
-            $('#fileupload').fileupload(
-                'option',
-                'redirect',
-                window.location.href.replace(
-                    /\/[^\/]*$/,
-                    '/cors/result.html?%s'
-                )
-            );
-
-            // Load existing files:
-            $('#fileupload').addClass('fileupload-processing');
-            $.ajax({
-                // Uncomment the following to send cross-domain cookies:
-                //xhrFields: {withCredentials: true},
-                url: $('#fileupload').fileupload('option', 'url'),
-                dataType: 'json',
-                context: $('#fileupload')[0]
-            }).always(function() {
-                $(this).removeClass('fileupload-processing');
-            }).done(function(result) {
-                $(this).fileupload('option', 'done')
-                    .call(this, $.Event('done'), {
-                        result: result
-                    });
-            });
-
-        });
     });
 </script>
