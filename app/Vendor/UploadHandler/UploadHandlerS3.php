@@ -47,7 +47,7 @@ class UploadHandler
     protected $image_objects = [];
     protected $response = [];
 
-    public function __construct($options = null, $initialize = true, $error_messages = null, $prefix = '')
+    public function __construct($options = null, $initialize = true, $error_messages = null, $prefix)
     {
         $this->s3 = new Aws\S3\S3Client([
             'version' => 'latest',
@@ -56,7 +56,7 @@ class UploadHandler
 
         $this->s3->registerStreamWrapper();
 
-        $this->prefix = $prefix;
+        $this->prefix = $prefix.'/';
         $this->bucket = 'lfstats-incoming';
         $this->options = [
             'script_url' => $this->get_full_url().'/'.$this->basename($this->get_server_var('SCRIPT_NAME')),
@@ -872,7 +872,7 @@ class UploadHandler
         if (!empty($version)) {
             $version_dir = $this->get_upload_path(null, $version);
             if (!is_dir($version_dir)) {
-                mkdir($version_dir, $this->options['mkdir_mode'], true);
+                //mkdir($version_dir, $this->options['mkdir_mode'], true);
             }
             $new_file_path = $version_dir.$file_name;
         } else {
@@ -1505,7 +1505,7 @@ class UploadHandler
             $this->handle_form_data($file, $index);
             $upload_dir = $this->get_upload_path();
             if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, $this->options['mkdir_mode'], true);
+                //mkdir($upload_dir, $this->options['mkdir_mode'], true);
             }
             $file_path = $this->get_upload_path($file->name);
             $append_file = $content_range && is_file($file_path) &&

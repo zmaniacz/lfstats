@@ -191,14 +191,14 @@
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-validate.js'></script>
 <script defer src='/js/JqueryFileUpload/jquery.fileupload-ui.js'></script>
 <script type="text/javascript">
-    function initUploads(uploadUrl) {
+    function initUploads(eventId) {
         'use strict';
 
         // Initialize the jQuery File Upload widget:
         $('#fileupload').fileupload({
             // Uncomment the following to send cross-domain cookies:
             //xhrFields: {withCredentials: true},
-            url: uploadUrl
+            url: `/uploads/handleUploads/TDF/${eventId}`,
         });
 
         // Enable iframe cross-domain access via redirect option:
@@ -244,7 +244,7 @@
                         `Games will be added to '${selectedEvent.name}'`
                     ).toggle(true);
                     $("#uploadForm").toggle(true);
-                    initUploads(`/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`);
+                    initUploads(selectedEvent.id);
                 })
                 .fail(function() {
                     toastr.error("Failed to load event")
@@ -287,9 +287,7 @@
                             `Games will be added to '${selectedEvent.name}'`
                         ).toggle(true);
                         $("#uploadForm").toggle(true);
-                        initUploads(
-                            `/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`
-                            );
+                        initUploads(selectedEvent.id);
                     })
                     .fail(function() {
                         toastr.error("Failed to load event")
@@ -321,9 +319,7 @@
                                 `Games will be added to '${selectedEvent.name}'`).toggle(
                                 true);
                             $("#uploadForm").toggle(true);
-                            initUploads(
-                                `/uploads/handleUploads/TDF/${selectedEvent.id}?${params.toString()}`
-                                );
+                            initUploads(selectedEvent.id);
                         } else {
                             toastr.error("Event Save Failed")
                         }
