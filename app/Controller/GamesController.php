@@ -171,6 +171,10 @@ class GamesController extends AppController
     {
     }
 
+    public function queue()
+    {
+    }
+
     public function getGameList()
     {
         $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');

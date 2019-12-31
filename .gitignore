@@ -6,3 +6,6 @@ app/Config/.env
 webroot/parser/s3.log
 *.jar
 .vagrant/
+webroot/parser/incoming/*
+webroot/parser/pending/*
+webroot/parser/output/*
