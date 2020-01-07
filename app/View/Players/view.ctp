@@ -43,11 +43,18 @@ foreach ($types as $type) {
 </p>
 <?php } ?>
 <div>
-    <?php if ('admin' === AuthComponent::user('role')) { ?>
-    <a href="<?php echo $this->Html->url(['controller' => 'players', 'action' => 'link', $overall[0]['Player']['id']]); ?>"
-        class="btn btn-success" role="button">Link</a>
+    <?php if ('admin' === AuthComponent::user('role') && !isset($player['Player']['ipl_id'])) { ?>
+    <div class="card">
+        <div class="card-body">
+            This player does not currently have an iPLayLaserforce link. If this is an alias of a player, click 'Link'
+            to select the iPLayLaserforce account to link to.
+            <a href="<?php echo $this->Html->url(['controller' => 'players', 'action' => 'link', $player['Player']['id']]); ?>"
+                class="btn btn-success" role="button">Link</a>
+        </div>
+    </div>
     <?php } ?>
 </div>
+<hr>
 <ul class="nav nav-tabs" id="playerTab">
     <li class="nav-item"><a class="nav-link active" id="game-list-tab" href="#game-list" data-toggle="tab">Game List</a>
     </li>
