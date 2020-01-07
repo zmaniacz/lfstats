@@ -1,17 +1,18 @@
 <?php
 
-class Round extends AppModel {
-	public $hasMany = array(
-		'Match' => array(
-			'className' => 'Match',
-			'foreignkey' => 'round_id'
-		)
-	);
+class Round extends AppModel
+{
+    public $hasMany = [
+        'Match' => [
+            'className' => 'Match',
+            'foreignKey' => 'round_id',
+        ],
+    ];
 
-	public $belongsTo = array(
-		'Event' => array(
-			'className' => 'Event',
-			'foreignKey' => 'event_id'
-		)
-	);
+    public $belongsTo = [
+        'Event' => [
+            'className' => 'Event',
+            'foreignKey' => 'event_id',
+        ],
+    ];
 }

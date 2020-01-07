@@ -23,11 +23,11 @@ class Scorecard extends AppModel
     public $hasMany = [
         'Penalty' => [
             'className' => 'Penalty',
-            'foreignkey' => 'scorecard_id',
+            'foreignKey' => 'scorecard_id',
         ],
         'Hit' => [
             'className' => 'Hit',
-            'foreignkey' => 'scorecard_id',
+            'foreignKey' => 'scorecard_id',
         ],
     ];
 

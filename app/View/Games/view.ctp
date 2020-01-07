@@ -85,11 +85,22 @@
         }
         ?>
 </div>
-<h6 class="d-flex justify-content-between my-4">
-    <span>Numbers in parentheses are score adjustments due to penalties and elimination bonuses.</span>
-    <?php echo $this->Html->link('PDF', 'https://lfstats-scorecards.s3.amazonaws.com/'.$game['Game']['pdf_id'].'.pdf', ['target' => '_blank']); ?>
-</h6>
-<?php
+<ul class="nav nav-tabs" id="gameViewTab" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="scorecard-tab" data-toggle="tab" href="#scorecard-tab-content"
+            role="tab">Scorecard</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="chart-tab" data-toggle="tab" href="#actions-tab-content" role="tab">Actions</a>
+    </li>
+</ul>
+<div class="tab-content" id="gameViewContent">
+    <div class="tab-pane fade show active" id="scorecard-tab-content">
+        <h6 class="d-flex justify-content-between my-4">
+            <span>Numbers in parentheses are score adjustments due to penalties and elimination bonuses.</span>
+            <?php echo $this->Html->link('PDF', 'https://lfstats-scorecards.s3.amazonaws.com/'.$game['Game']['pdf_id'].'.pdf', ['target' => '_blank']); ?>
+        </h6>
+        <?php
         if ('green' == $game['Game']['winner']) {
             $winner = ((null != $game['Game']['green_team_id']) ? $teams[$game['Game']['green_team_id']] : 'Green Team');
             $winner_panel = 'bg-success';
@@ -186,24 +197,25 @@
                 }
             }
         ?>
-<div id="winner_card" class="card">
-    <h3 class="card-header text-light <?php echo $winner_panel; ?>">
-        <?php echo $winner; ?>
-    </h3>
-    <div class="card-body p-0">
-        <div class="d-flex justify-content-between">
-            <h3 class="text-primary m-2">
-                <?php echo 'Score: '.$winner_score.$winner_adj; ?>
+        <div id="winner_card" class="card">
+            <h3
+                class="card-header text-light <?php echo $winner_panel; ?>">
+                <?php echo $winner; ?>
             </h3>
-            <div class="align-self-center">
-                <?php
+            <div class="card-body p-0">
+                <div class="d-flex justify-content-between">
+                    <h3 class="text-primary m-2">
+                        <?php echo 'Score: '.$winner_score.$winner_adj; ?>
+                    </h3>
+                    <div class="align-self-center">
+                        <?php
                 if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $game['Game']['center_id'])) {
                     echo $this->Html->link('Add Team Penalty', ['controller' => 'TeamPenalties', 'action' => 'add', $game['Game']['id'], $game['Game']['winner']], ['class' => 'btn btn-warning']);
                 }
             ?>
-            </div>
-            <div class="list-group list-group-flush m-2">
-                <?php
+                    </div>
+                    <div class="list-group list-group-flush m-2">
+                        <?php
                     if ('green' == $game['Game']['winner']) {
                         if (isset($game['Green_TeamPenalties'])) {
                             foreach ($game['Green_TeamPenalties'] as $team_penalty) {
@@ -218,58 +230,59 @@
                         }
                     }
                 ?>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="gamelist table table-striped table-bordered table-hover table-sm text-nowrap">
+                        <thead>
+                            <th>Name</th>
+                            <th>Alive</th>
+                            <th>Merc</th>
+                            <th>Position</th>
+                            <th>Score</th>
+                            <th>MVP</th>
+                            <th>Lives Left</th>
+                            <th>Shots Left</th>
+                            <th>Hit Diff</th>
+                            <th>Missiled</th>
+                            <th>Got Missiled</th>
+                            <th>Medic Hits</th>
+                            <th>Shot Team</th>
+                            <th>Missiled Team</th>
+                            <th>Accuracy</th>
+                            <th>SP Spent/Earned</th>
+                            <th>Nukes</th>
+                            <th>Nuke Cancels</th>
+                            <th>Boosts</th>
+                            <th>Resupplies</th>
+                            <th>Penalties</th>
+                        </thead>
+                        <tbody>
+                            <?php echo $winner_table; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-        <div class="table-responsive">
-            <table class="gamelist table table-striped table-bordered table-hover table-sm text-nowrap">
-                <thead>
-                    <th>Name</th>
-                    <th>Alive</th>
-                    <th>Merc</th>
-                    <th>Position</th>
-                    <th>Score</th>
-                    <th>MVP</th>
-                    <th>Lives Left</th>
-                    <th>Shots Left</th>
-                    <th>Hit Diff</th>
-                    <th>Missiled</th>
-                    <th>Got Missiled</th>
-                    <th>Medic Hits</th>
-                    <th>Shot Team</th>
-                    <th>Missiled Team</th>
-                    <th>Accuracy</th>
-                    <th>SP Spent/Earned</th>
-                    <th>Nukes</th>
-                    <th>Nuke Cancels</th>
-                    <th>Boosts</th>
-                    <th>Resupplies</th>
-                    <th>Penalties</th>
-                </thead>
-                <tbody>
-                    <?php echo $winner_table; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-<div id="loser_card" class="card mt-3">
-    <h3 class="card-header text-light <?php echo $loser_panel; ?>">
-        <?php echo $loser; ?>
-    </h3>
-    <div class="card-body p-0">
-        <div class="d-flex justify-content-between">
-            <h3 class="text-primary align-self-center mx-2">
-                <?php echo 'Score: '.$loser_score.$loser_adj; ?>
+        <div id="loser_card" class="card mt-3">
+            <h3
+                class="card-header text-light <?php echo $loser_panel; ?>">
+                <?php echo $loser; ?>
             </h3>
-            <div class="align-self-center">
-                <?php
+            <div class="card-body p-0">
+                <div class="d-flex justify-content-between">
+                    <h3 class="text-primary align-self-center mx-2">
+                        <?php echo 'Score: '.$loser_score.$loser_adj; ?>
+                    </h3>
+                    <div class="align-self-center">
+                        <?php
                 if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $game['Game']['center_id'])) {
                     echo $this->Html->link('Add Team Penalty', ['controller' => 'TeamPenalties', 'action' => 'add', $game['Game']['id'], (('red' == $game['Game']['winner']) ? 'green' : 'red')], ['class' => 'btn btn-warning']);
                 }
             ?>
-            </div>
-            <div class="list-group list-group-flush align-self-center mx-2">
-                <?php
+                    </div>
+                    <div class="list-group list-group-flush align-self-center mx-2">
+                        <?php
                     if ('green' == $game['Game']['winner']) {
                         if (isset($game['Red_TeamPenalties'])) {
                             foreach ($game['Red_TeamPenalties'] as $team_penalty) {
@@ -284,40 +297,46 @@
                         }
                     }
                 ?>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="gamelist table table-striped table-bordered table-hover table-sm text-nowrap">
+                    <thead>
+                        <th>Name</th>
+                        <th>Alive</th>
+                        <th>Merc</th>
+                        <th>Position</th>
+                        <th>Score</th>
+                        <th>MVP Points</th>
+                        <th>Lives Left</th>
+                        <th>Shots Left</th>
+                        <th>Hit Diff</th>
+                        <th>Missiled</th>
+                        <th>Got Missiled</th>
+                        <th>Medic Hits</th>
+                        <th>Shot Team</th>
+                        <th>Missiled Team</th>
+                        <th>Accuracy</th>
+                        <th>SP Spent/Earned</th>
+                        <th>Nukes</th>
+                        <th>Nuke Cancels</th>
+                        <th>Boosts</th>
+                        <th>Resupplies</th>
+                        <th>Penalties</th>
+                    </thead>
+                    <tbody>
+                        <?php echo $loser_table; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-    <div class="table-responsive">
-        <table class="gamelist table table-striped table-bordered table-hover table-sm text-nowrap">
-            <thead>
-                <th>Name</th>
-                <th>Alive</th>
-                <th>Merc</th>
-                <th>Position</th>
-                <th>Score</th>
-                <th>MVP Points</th>
-                <th>Lives Left</th>
-                <th>Shots Left</th>
-                <th>Hit Diff</th>
-                <th>Missiled</th>
-                <th>Got Missiled</th>
-                <th>Medic Hits</th>
-                <th>Shot Team</th>
-                <th>Missiled Team</th>
-                <th>Accuracy</th>
-                <th>SP Spent/Earned</th>
-                <th>Nukes</th>
-                <th>Nuke Cancels</th>
-                <th>Boosts</th>
-                <th>Resupplies</th>
-                <th>Penalties</th>
-            </thead>
-            <tbody>
-                <?php echo $loser_table; ?>
-            </tbody>
-        </table>
+    <div class="tab-pane fade" id="actions-tab-content">
+        <div id="scoreChartContainer"></div>
     </div>
-    <script type="text/javascript">
+</div>
+<script type="text/javascript">
     function getCoordinatesForPercent(percent) {
         const x = Math.cos(2 * Math.PI * percent);
         const y = Math.sin(2 * Math.PI * percent);
@@ -325,6 +344,53 @@
     }
 
     $(document).ready(function() {
+        function renderGameScoreChart(data) {
+            let teams = [];
+            teams = data.GameTeam.filter(team => {
+                    return 'None' != team.color_desc
+                })
+                .map(team => {
+                    return {
+                        name: team.name,
+                        color_desc: team.color_desc,
+                        color: ('Fire' === team.color_desc) ? 'red' : 'green',
+                        data: null
+                    };
+                });
+
+            teams.forEach(team => {
+                team.data = data.TeamDelta.filter(delta => {
+                    return delta.color_desc === team.color_desc;
+                }).map(delta => {
+                    return [delta.score_time, delta.sum]
+                })
+            });
+
+            Highcharts.chart('scoreChartContainer', {
+                chart: {
+                    type: `line`
+                },
+                title: {
+                    text: `Game Score Over Time`
+                },
+                xAxis: {
+                    type: `datetime`,
+                    dateTimeLabelFormats: {
+                        minute: '%M:%S'
+                    },
+                    title: {
+                        text: `Time`
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: `Score`
+                    }
+                },
+                series: teams
+            })
+        }
+
         $('.gamelist').DataTable({
             searching: false,
             info: false,
@@ -361,5 +427,11 @@
                 }
             });
         });
+
+        $.ajax({
+            url: `/games/scoreChart/<?php echo $game['Game']['id']; ?>.json`
+        }).done(data => {
+            renderGameScoreChart(data.data);
+        });
     });
-    </script>
+</script>
