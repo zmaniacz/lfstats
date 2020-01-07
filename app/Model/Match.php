@@ -1,145 +1,148 @@
 <?php
+
 //we define team 1 to be the team that plays red in game 1 of the match
-class Match extends AppModel {
-	public $hasMany = array(
-		'Game' => array(
-			'className' => 'Game',
-			'foreignkey' => 'match_id'
-		)
-	);
-	
-	public $hasOne = array(
-		'Game_1' => array(
-			'className' => 'Game',
-			'foreignKey' => 'match_id',
-			'conditions' => array(
-				'Game_1.league_game' => 1
-			)
-		),
-		'Game_2' => array(
-			'className' => 'Game',
-			'foreignKey' => 'match_id',
-			'conditions' => array(
-				'Game_2.league_game' => 2
-			)
-		)
-	);
+class Match extends AppModel
+{
+    public $hasMany = [
+        'Game' => [
+            'className' => 'Game',
+            'foreignKey' => 'match_id',
+        ],
+    ];
 
-	public $belongsTo = array(
-		'Round' => array(
-			'className' => 'Round',
-			'foreignKey' => 'round_id'
-		),
-		'Team_1' => array(
-			'className' => 'EventTeam',
-			'foreignKey' => 'team_1_id'
-		),
-		'Team_2' => array(
-			'className' => 'EventTeam',
-			'foreignKey' => 'team_2_id'
-		)
-	);
-	
-	public function addGame($match_id, $game_number, $game_id) {
-		$game = $this->Game->findById($game_id);
+    public $hasOne = [
+        'Game_1' => [
+            'className' => 'Game',
+            'foreignKey' => 'match_id',
+            'conditions' => [
+                'Game_1.league_game' => 1,
+            ],
+        ],
+        'Game_2' => [
+            'className' => 'Game',
+            'foreignKey' => 'match_id',
+            'conditions' => [
+                'Game_2.league_game' => 2,
+            ],
+        ],
+    ];
 
-		if($match_id == 0) {
-			$old_match_id = $game['Game']['match_id'];
+    public $belongsTo = [
+        'Round' => [
+            'className' => 'Round',
+            'foreignKey' => 'round_id',
+        ],
+        'Team_1' => [
+            'className' => 'EventTeam',
+            'foreignKey' => 'team_1_id',
+        ],
+        'Team_2' => [
+            'className' => 'EventTeam',
+            'foreignKey' => 'team_2_id',
+        ],
+    ];
 
-			$game['Game']['match_id'] = null;
-			$game['Game']['red_team_id'] = null;
-			$game['Game']['green_team_id'] = null;
-			$game['Game']['league_game'] = null;
+    public function addGame($match_id, $game_number, $game_id)
+    {
+        $game = $this->Game->findById($game_id);
 
-			$this->Game->save($game);
-			$this->updatePoints($old_match_id);
-		} else {
-			$match = $this->find('first', array(
-				'contain' => array(
-					'Game_1',
-					'Game_2',
-					'Team_1',
-					'Team_2'
-				),
-				'conditions' => array(
-					'Match.id' => $match_id
-				)
-			));
+        if (0 == $match_id) {
+            $old_match_id = $game['Game']['match_id'];
 
-			$game['Game']['match_id'] = $match['Match']['id'];
+            $game['Game']['match_id'] = null;
+            $game['Game']['red_team_id'] = null;
+            $game['Game']['green_team_id'] = null;
+            $game['Game']['league_game'] = null;
 
-			if($game_number == 1) {
-				$game['Game']['red_team_id'] = $match['Team_1']['id'];
-				$game['Game']['green_team_id'] = $match['Team_2']['id'];
-				$game['Game']['league_game'] = 1;
-			} elseif($game_number == 2) {
-				$game['Game']['red_team_id'] = $match['Team_2']['id'];
-				$game['Game']['green_team_id'] = $match['Team_1']['id'];
-				$game['Game']['league_game'] = 2;
-			}
+            $this->Game->save($game);
+            $this->updatePoints($old_match_id);
+        } else {
+            $match = $this->find('first', [
+                'contain' => [
+                    'Game_1',
+                    'Game_2',
+                    'Team_1',
+                    'Team_2',
+                ],
+                'conditions' => [
+                    'Match.id' => $match_id,
+                ],
+            ]);
 
-			$this->Game->save($game);
-			$this->updatePoints($match_id);
-		}
-	}
-	
-	public function updatePoints($match_id) {
-		$match = $this->find('first', array(
-			'contain' => array(
-				'Game_1',
-				'Game_2',
-				'Team_1',
-				'Team_2'
-			),
-			'conditions' => array(
-				'Match.id' => $match_id
-			)
-		));
+            $game['Game']['match_id'] = $match['Match']['id'];
 
-		$team_1_points = 0;
-		$team_2_points = 0;
-		
-		if(!empty($match['Game_1']['id'])) {
-			if($match['Game_1']['winner'] == 'red') {
-				$team_1_points += 2;
-			} elseif($match['Game_1']['winner'] == 'green') {
-				$team_2_points += 2;
-			}
-		}
+            if (1 == $game_number) {
+                $game['Game']['red_team_id'] = $match['Team_1']['id'];
+                $game['Game']['green_team_id'] = $match['Team_2']['id'];
+                $game['Game']['league_game'] = 1;
+            } elseif (2 == $game_number) {
+                $game['Game']['red_team_id'] = $match['Team_2']['id'];
+                $game['Game']['green_team_id'] = $match['Team_1']['id'];
+                $game['Game']['league_game'] = 2;
+            }
 
-		if(!empty($match['Game_2']['id'])) {
-			if($match['Game_2']['winner'] == 'red') {
-				$team_2_points += 2;
-			} elseif($match['Game_2']['winner'] == 'green') {
-				$team_1_points += 2;
-			}
-		}
+            $this->Game->save($game);
+            $this->updatePoints($match_id);
+        }
+    }
 
-		//both games are logged
-		if(!empty($match['Game_1']['id']) && !empty($match['Game_2']['id'])) {
-			if($team_1_points == $team_2_points) {
-				//tie round, goes to score
-				$team_1_total_score = $match['Game_1']['red_score'] + $match['Game_1']['red_adj'] + $match['Game_2']['green_score'] + $match['Game_2']['green_adj'];
-				$team_2_total_score = $match['Game_1']['green_score'] + $match['Game_1']['green_adj'] + $match['Game_2']['red_score'] + $match['Game_2']['red_adj'];
-				
-				if($team_1_total_score > $team_2_total_score) {
-					$team_1_points += 2;
-				} elseif($team_1_total_score < $team_2_total_score) {
-					$team_2_points += 2;
-				} else {
-					$team_1_points += 1;
-					$team_2_points += 1;
-				}
-				
-			} elseif($team_1_points > $team_2_points) {
-				$team_1_points += 2;
-			} else {
-				$team_2_points += 2;
-			}
-		}
-		
-		$match['Match']['team_1_points'] = $team_1_points;
-		$match['Match']['team_2_points'] = $team_2_points;
-		$this->save($match);
-	}
+    public function updatePoints($match_id)
+    {
+        $match = $this->find('first', [
+            'contain' => [
+                'Game_1',
+                'Game_2',
+                'Team_1',
+                'Team_2',
+            ],
+            'conditions' => [
+                'Match.id' => $match_id,
+            ],
+        ]);
+
+        $team_1_points = 0;
+        $team_2_points = 0;
+
+        if (!empty($match['Game_1']['id'])) {
+            if ('red' == $match['Game_1']['winner']) {
+                $team_1_points += 2;
+            } elseif ('green' == $match['Game_1']['winner']) {
+                $team_2_points += 2;
+            }
+        }
+
+        if (!empty($match['Game_2']['id'])) {
+            if ('red' == $match['Game_2']['winner']) {
+                $team_2_points += 2;
+            } elseif ('green' == $match['Game_2']['winner']) {
+                $team_1_points += 2;
+            }
+        }
+
+        //both games are logged
+        if (!empty($match['Game_1']['id']) && !empty($match['Game_2']['id'])) {
+            if ($team_1_points == $team_2_points) {
+                //tie round, goes to score
+                $team_1_total_score = $match['Game_1']['red_score'] + $match['Game_1']['red_adj'] + $match['Game_2']['green_score'] + $match['Game_2']['green_adj'];
+                $team_2_total_score = $match['Game_1']['green_score'] + $match['Game_1']['green_adj'] + $match['Game_2']['red_score'] + $match['Game_2']['red_adj'];
+
+                if ($team_1_total_score > $team_2_total_score) {
+                    $team_1_points += 2;
+                } elseif ($team_1_total_score < $team_2_total_score) {
+                    $team_2_points += 2;
+                } else {
+                    ++$team_1_points;
+                    ++$team_2_points;
+                }
+            } elseif ($team_1_points > $team_2_points) {
+                $team_1_points += 2;
+            } else {
+                $team_2_points += 2;
+            }
+        }
+
+        $match['Match']['team_1_points'] = $team_1_points;
+        $match['Match']['team_2_points'] = $team_2_points;
+        $this->save($match);
+    }
 }

@@ -5,16 +5,16 @@ class Game extends AppModel
     public $hasMany = [
         'Scorecard' => [
             'className' => 'Scorecard',
-            'foreignkey' => 'game_id',
+            'foreignKey' => 'game_id',
         ],
         'Red_Scorecard' => [
             'className' => 'Scorecard',
-            'foreignkey' => 'game_id',
+            'foreignKey' => 'game_id',
             'conditions' => ['Red_Scorecard.team' => 'red'],
         ],
         'Green_Scorecard' => [
             'className' => 'Scorecard',
-            'foreignkey' => 'game_id',
+            'foreignKey' => 'game_id',
             'conditions' => ['Green_Scorecard.team' => 'green'],
         ],
         'GameResult' => [
@@ -27,13 +27,21 @@ class Game extends AppModel
         ],
         'Red_TeamPenalties' => [
             'className' => 'TeamPenalties',
-            'foreignkey' => 'game_id',
+            'foreignKey' => 'game_id',
             'conditions' => ['Red_TeamPenalties.team_color' => 'red'],
         ],
         'Green_TeamPenalties' => [
             'className' => 'TeamPenalties',
-            'foreignkey' => 'game_id',
+            'foreignKey' => 'game_id',
             'conditions' => ['Green_TeamPenalties.team_color' => 'green'],
+        ],
+        'TeamDelta' => [
+            'className' => 'TeamDelta',
+            'foreignKey' => 'game_id',
+        ],
+        'GameTeam' => [
+            'className' => 'GameTeam',
+            'foreignKey' => 'game_id',
         ],
     ];
 
@@ -446,5 +454,13 @@ class Game extends AppModel
             $this->save($game);
             ++$game_counter;
         }
+    }
+
+    public function getGameScoreChartData($id)
+    {
+        return $this->find('first', [
+            'contain' => ['GameTeam', 'TeamDelta'],
+            'conditions' => ['id' => $id],
+        ]);
     }
 }
