@@ -334,6 +334,8 @@
     </div>
     <div class="tab-pane fade" id="actions-tab-content">
         <div id="scoreChartContainer"></div>
+        <hr>
+        <div id="gameActionsContainer"></div>
     </div>
 </div>
 <script type="text/javascript">
