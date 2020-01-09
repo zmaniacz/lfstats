@@ -43,6 +43,16 @@ class Game extends AppModel
             'className' => 'GameTeam',
             'foreignKey' => 'game_id',
         ],
+        'GameAction' => [
+            'className' => 'GameAction',
+            'foreignKey' => 'game_id',
+            'order' => 'action_time ASC',
+        ],
+        'GameLog' => [
+            'className' => 'GameLog',
+            'foreignKey' => 'game_id',
+            'order' => 'action_time ASC',
+        ],
     ];
 
     public $belongsTo = [
@@ -460,6 +470,14 @@ class Game extends AppModel
     {
         return $this->find('first', [
             'contain' => ['GameTeam', 'TeamDelta'],
+            'conditions' => ['id' => $id],
+        ]);
+    }
+
+    public function getGameActionList($id)
+    {
+        return $this->find('first', [
+            'contain' => ['GameLog'],
             'conditions' => ['id' => $id],
         ]);
     }
