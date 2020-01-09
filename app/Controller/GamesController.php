@@ -21,7 +21,7 @@ class GamesController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow('index', 'view', 'overall', 'overallWinLossDetail', 'getGameList', 'getGameMatchups', 'scoreChart');
+        $this->Auth->allow('index', 'view', 'overall', 'overallWinLossDetail', 'getGameList', 'getGameMatchups', 'scoreChart', 'actionList');
         parent::beforeFilter();
     }
 
@@ -195,6 +195,17 @@ class GamesController extends AppController
         }
 
         $this->set('data', $this->Game->getGameScoreChartData($id));
+        $this->set('_serialize', ['data']);
+    }
+
+    public function actionList($id = null)
+    {
+        $this->Game->id = $id;
+        if (!$this->Game->exists()) {
+            throw new NotFoundException(__('Invalid game'));
+        }
+
+        $this->set('data', $this->Game->getGameActionList($id));
         $this->set('_serialize', ['data']);
     }
 }

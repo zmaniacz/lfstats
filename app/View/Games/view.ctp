@@ -335,7 +335,19 @@
     <div class="tab-pane fade" id="actions-tab-content">
         <div id="scoreChartContainer"></div>
         <hr>
-        <div id="gameActionsContainer"></div>
+        <div id="gameActionsContainer">
+
+            <table id="game-log-table" class="table table-bordered table-hover table-sm text-nowrap"
+                style="width: 100%">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+            </table>
+
+        </div>
     </div>
 </div>
 <script type="text/javascript">
@@ -343,6 +355,17 @@
         const x = Math.cos(2 * Math.PI * percent);
         const y = Math.sin(2 * Math.PI * percent);
         return [x, y];
+    }
+
+    function msToTime(duration) {
+        let milliseconds = parseInt((duration % 1000) / 10),
+            seconds = parseInt((duration / 1000) % 60),
+            minutes = parseInt((duration / (1000 * 60)) % 60);
+
+        minutes = (minutes < 10) ? "0" + minutes : minutes;
+        seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+        return minutes + ":" + seconds + "." + milliseconds;
     }
 
     $(document).ready(function() {
@@ -430,10 +453,45 @@
             });
         });
 
+        $('#game-log-table').DataTable({
+            sorting: false,
+            scrollY: 400,
+            deferRender: true,
+            scrollCollapse: true,
+            scroller: true,
+            ajax: {
+                url: `/games/actionList/<?php echo $game['Game']['id']; ?>.json`,
+                dataSrc: 'data.GameLog'
+            },
+            columns: [{
+                    data: function(row, type, val, meta) {
+                        return msToTime(row.action_time)
+                    }
+                },
+                {
+                    data: function(row, type, val, meta) {
+                        let player_name = null !== row.player_name ? row.player_name : '';
+                        let target_name = null !== row.target_name ? row.target_name : '';
+
+                        let player_color = "Red" == row.player_color || "Fire" == row
+                            .player_color ? "text-danger" : "text-success";
+                        let target_color = "Red" == row.target_color || "Fire" == row
+                            .target_color ? "text-danger" : "text-success";
+
+                        return `<span class="${player_color}">${player_name}</span> ${row.action_text} <span class="${target_color}">${target_name}</span>`
+                    }
+                },
+            ],
+        });
+
         $.ajax({
             url: `/games/scoreChart/<?php echo $game['Game']['id']; ?>.json`
         }).done(data => {
             renderGameScoreChart(data.data);
         });
+
+        $('#chart-tab').on('shown.bs.tab', function(e) {
+            $('#game-log-table').DataTable().columns.adjust().draw();
+        })
     });
 </script>

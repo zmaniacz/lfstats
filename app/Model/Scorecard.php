@@ -11,6 +11,10 @@ class Scorecard extends AppModel
             'className' => 'Game',
             'foreignKey' => 'game_id',
         ],
+        'GameTeam' => [
+            'className' => 'GameTeam',
+            'foreignKey' => 'game_id',
+        ],
     ];
 
     public $hasOne = [
