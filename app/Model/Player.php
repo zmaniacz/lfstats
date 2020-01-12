@@ -468,6 +468,13 @@ class Player extends AppModel
 
     public function linkPlayers($master_id, $target_id)
     {
+        //delete duplicate aliases
+        $this->query("
+        DELETE FROM players_names a
+            USING players_names b
+            WHERE a.player_name = b.player_name AND b.player_id = {$target_id}
+        ");
+
         //update the player_names table
         $this->PlayersName->updateAll(
             ['PlayersName.player_id' => $master_id],
@@ -507,14 +514,20 @@ class Player extends AppModel
 
         //delete the old player record
         $this->delete($target_id);
+    }
 
-        //delete duplicate aliases
-        $this->query('
-        DELETE FROM players_names a
-            USING players_names b
-            WHERE     a.id < b.id
-                    AND a.player_name = b.player_name
-                    AND a.player_id = b.player_id
+    public function findLinks()
+    {
+        return $this->query('
+        SELECT a.player_id AS master_id,
+            a.player_name AS master_name,
+            b.player_id AS target_id,
+            b.player_name AS target_name
+        FROM players_names a
+            INNER JOIN players_names b
+                ON a.player_name = b.player_name AND a.player_id <> b.player_id
+            INNER JOIN players ON a.player_id = players.id
+        WHERE players.ipl_id IS NOT NULL
         ');
     }
 }

@@ -34,7 +34,7 @@ class PlayersController extends AppController
         }
     }
 
-    public function link($id)
+    public function link($id = null)
     {
         if ($this->request->is('Post')) {
             $target_player = $this->Player->findById($id);
@@ -46,8 +46,25 @@ class PlayersController extends AppController
 
             return $this->redirect(['action' => 'view', $this->request->data['Player']['linked_id']]);
         }
-        $this->set('players', $this->Player->find('list', ['conditions' => ['ipl_id IS NOT NULL'], 'order' => 'player_name ASC']));
-        $this->set('target_player', $this->Player->findById($id));
+
+        if (isset($id)) {
+            $this->set('players', $this->Player->find('list', ['conditions' => ['ipl_id IS NOT NULL'], 'order' => 'player_name ASC']));
+            $this->set('target_player', $this->Player->findById($id));
+        } else {
+            $this->set('links', $this->Player->findLinks());
+        }
+    }
+
+    public function linkPlayers($master_id, $target_id)
+    {
+        $target_player = $this->Player->findById($target_id);
+        $master_player = $this->Player->findById($master_id);
+
+        $this->Player->linkPlayers($master_id, $target_id);
+
+        $this->Session->setFlash(__($target_player['Player']['player_name'].' has been set as an alias of '.$master_player['Player']['player_name']));
+
+        return $this->redirect(['action' => 'view', $master_id]);
     }
 
     public function playerWinLossDetail($id)
