@@ -36,6 +36,18 @@ class Player extends AppModel
             'className' => 'GameResult',
             'foreignKey' => 'player_id',
         ],
+        'GameAction' => [
+            'className' => 'GameAction',
+            'foreignKey' => 'player_id',
+        ],
+        'GameActionTarget' => [
+            'className' => 'GameAction',
+            'foreignKey' => 'target_id',
+        ],
+        'GameDelta' => [
+            'className' => 'GameDelta',
+            'foreignKey' => 'player_id',
+        ],
     ];
 
     public function getPlayerStats($id, $role = null, $state = null)
@@ -467,16 +479,42 @@ class Player extends AppModel
             ['Scorecard.player_id' => $target_id]
         );
 
+        //Update hits table
         $this->PlayerHits->updateAll(
             ['player_id' => $master_id],
             ['player_id' => $target_id]
         );
-
         $this->HitPlayer->updateAll(
             ['target_id' => $master_id],
             ['target_id' => $target_id]
         );
+
+        //update delta table
+        $this->GameDelta->updateAll(
+            ['player_id' => $master_id],
+            ['player_id' => $target_id]
+        );
+
+        //Update actions table
+        $this->GameAction->updateAll(
+            ['player_id' => $master_id],
+            ['player_id' => $target_id]
+        );
+        $this->GameActionTarget->updateAll(
+            ['target_id' => $master_id],
+            ['target_id' => $target_id]
+        );
+
         //delete the old player record
         $this->delete($target_id);
+
+        //delete duplicate aliases
+        $this->query('
+        DELETE FROM players_names a
+            USING players_names b
+            WHERE     a.id < b.id
+                    AND a.player_name = b.player_name
+                    AND a.player_id = b.player_id
+        ');
     }
 }

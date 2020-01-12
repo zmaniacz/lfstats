@@ -6,7 +6,7 @@ class PlayersController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow();
+        $this->Auth->allow('index', 'view', 'playerWinLossDetail', 'getPlayerMedians');
         parent::beforeFilter();
     }
 
@@ -46,7 +46,7 @@ class PlayersController extends AppController
 
             return $this->redirect(['action' => 'view', $this->request->data['Player']['linked_id']]);
         }
-        $this->set('players', $this->Player->find('list'));
+        $this->set('players', $this->Player->find('list', ['conditions' => ['ipl_id IS NOT NULL'], 'order' => 'player_name ASC']));
         $this->set('target_player', $this->Player->findById($id));
     }
 
