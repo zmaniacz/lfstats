@@ -484,8 +484,8 @@
                         } else if (null !== row.gen_id) {
                             let target_name = row.gen_name;
                             let target_color = "Red" == row.gen_color || "Fire" == row
-                                .gen_color ? "text-danger" : ("Fire" == row.gen_color:
-                                    "text-primary" ? "text-success");
+                                .gen_color ? "text-danger" : ("Fire" == row.gen_color ?
+                                    "text-primary" : "text-success");
                         }
 
                         return `<span class="${player_color}">${player_name}</span> ${row.action_text} <span class="${target_color}">${target_name}</span>`
