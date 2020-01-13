@@ -478,12 +478,12 @@
                             target_name = "";
 
                         if (null !== row.target_id) {
-                            let target_name = row.target_name;
-                            let target_color = "Red" == row.target_color || "Fire" == row
+                            target_name = row.target_name;
+                            target_color = "Red" == row.target_color || "Fire" == row
                                 .target_color ? "text-danger" : "text-success";
                         } else if (null !== row.gen_id) {
-                            let target_name = row.gen_name;
-                            let target_color = "Red" == row.gen_color || "Fire" == row
+                            target_name = row.gen_name;
+                            target_color = "Red" == row.gen_color || "Fire" == row
                                 .gen_color ? "text-danger" : ("Fire" == row.gen_color ?
                                     "text-primary" : "text-success");
                         }
