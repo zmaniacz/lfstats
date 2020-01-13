@@ -471,12 +471,22 @@
                 {
                     data: function(row, type, val, meta) {
                         let player_name = null !== row.player_name ? row.player_name : '';
-                        let target_name = null !== row.target_name ? row.target_name : '';
-
                         let player_color = "Red" == row.player_color || "Fire" == row
                             .player_color ? "text-danger" : "text-success";
-                        let target_color = "Red" == row.target_color || "Fire" == row
-                            .target_color ? "text-danger" : "text-success";
+
+                        let target_color = "",
+                            target_name = "";
+
+                        if (null !== row.target_id) {
+                            let target_name = row.target_name;
+                            let target_color = "Red" == row.target_color || "Fire" == row
+                                .target_color ? "text-danger" : "text-success";
+                        } else if (null !== row.gen_id) {
+                            let target_name = row.gen_name;
+                            let target_color = "Red" == row.gen_color || "Fire" == row
+                                .gen_color ? "text-danger" : ("Fire" == row.gen_color:
+                                    "text-primary" ? "text-success");
+                        }
 
                         return `<span class="${player_color}">${player_name}</span> ${row.action_text} <span class="${target_color}">${target_name}</span>`
                     }
