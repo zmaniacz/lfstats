@@ -484,7 +484,7 @@
                         } else if (null !== row.gen_id) {
                             target_name = row.gen_name;
                             target_color = "Red" == row.gen_color || "Fire" == row
-                                .gen_color ? "text-danger" : ("Fire" == row.gen_color ?
+                                .gen_color ? "text-danger" : ("None" == row.gen_color ?
                                     "text-primary" : "text-success");
                         }
 
