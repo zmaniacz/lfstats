@@ -149,7 +149,8 @@
     <ul>
         <li>Accuracy: .1 point for every 1% of accuracy, rounded up (ie 75% = 7.5 pts).</li>
         <li>Medic Hits: 1 point for each hit on an enemy Medic. -1 for hitting your own Medic.</li>
-        <li>Elimination: Minimum 1 point if your team eliminates the other team, increased by 1/60 for each of second of game time remaining above 1 minute.</li>
+        <li>Elimination: Minimum 1 point if your team eliminates the other team, increased by 1/60 for each of second of
+            game time remaining above 1 minute.</li>
         <li>Cancel opponent's nuke: 3 points.</li>
         <li>Cancel own team's nuke: -3 points.</li>
         <li>Get missiled: -1 point.</li>
@@ -169,9 +170,7 @@
     </ul>
     <li>Scout</li>
     <ul>
-        <li>Rapid fire: 0.5 points for each time you activate rapid fire.</li>
-        <li>Hits vs. Commander/Heavy: 1 point (applied fractionally) for every 6 hits on an enemy Heavy or Commander.
-        </li>
+        <li>Hits vs. Commander/Heavy: .2 points for every hit on an enemy Heavy or Commander.</li>
         <li>Score bonus: 1 point for every full 1000 points over 6000.</li>
     </ul>
     <li>Ammo Carrier</li>
