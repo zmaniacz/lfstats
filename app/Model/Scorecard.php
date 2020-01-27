@@ -779,6 +779,7 @@ class Scorecard extends AppModel
                 'AVG(Scorecard.missiled_opponent) as avg_missiles',
                 'AVG(Scorecard.medic_hits) as avg_medic_hits',
                 'AVG(Scorecard.shot_3hit) as avg_3hit',
+                'AVG(Scorecard.scout_rapid) as avg_rapid_fire',
                 'AVG(Scorecard.ammo_boost) as avg_ammo_boost',
                 'AVG(Scorecard.life_boost) as avg_life_boost',
                 'AVG(Scorecard.resupplies) as avg_resup',
