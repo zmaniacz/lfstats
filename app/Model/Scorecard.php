@@ -112,10 +112,10 @@ class Scorecard extends AppModel
                     'name' => 'Own Medic Hits',
                     'value' => 0,
                 ],
-                'rapidFire' => [
+                /*'rapidFire' => [
                     'name' => 'Activate Rapid Fire',
                     'value' => 0,
-                ],
+                ],*/
                 'shoot3Hit' => [
                     'name' => 'Shoot 3-Hit',
                     'value' => 0,
@@ -255,7 +255,7 @@ class Scorecard extends AppModel
             $mvp_details['ownMedicHits']['value'] += $score['Scorecard']['own_medic_hits'] * -1;
 
             //push the little button
-            $mvp_details['rapidFire']['value'] += $score['Scorecard']['scout_rapid'] * .5;
+            //$mvp_details['rapidFire']['value'] += $score['Scorecard']['scout_rapid'] * .5;
             $mvp_details['lifeBoost']['value'] += $score['Scorecard']['life_boost'] * 2;
             $mvp_details['ammoBoost']['value'] += $score['Scorecard']['ammo_boost'] * 3;
 
@@ -282,7 +282,7 @@ class Scorecard extends AppModel
             }
 
             //raping 3hits.  the math looks weird, but it works and gets the desired result
-            $mvp_details['shoot3Hit']['value'] += floor(($score['Scorecard']['shot_3hit'] / 6) * 100) / 100;
+            $mvp_details['shoot3Hit']['value'] += floor(($score['Scorecard']['shot_3hit'] / 5) * 100) / 100;
 
             //No.  Stahp.
             $mvp_details['teamNukesCanceled']['value'] += $score['Scorecard']['own_nuke_cancels'] * -3;
