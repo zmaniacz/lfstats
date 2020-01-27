@@ -784,7 +784,7 @@ class Scorecard extends AppModel
                 'AVG(Scorecard.life_boost) as avg_life_boost',
                 'AVG(Scorecard.resupplies) as avg_resup',
                 'AVG(Scorecard.lives_left) as avg_lives',
-                '(SUM(Scorecard.team_elim)/COUNT(Scorecard.game_datetime)) as elim_rate',
+                '(SUM(Scorecard.team_elim)::DOUBLE PRECISION/COUNT(Scorecard.id)::DOUBLE PRECISION) as elim_rate',
                 'SUM(GameResult.won) as games_won',
             ],
             'contain' => [
