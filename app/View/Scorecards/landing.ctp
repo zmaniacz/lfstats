@@ -1,18 +1,9 @@
-<div class="jumbotron jumbotron-fluid">
-    <div class="container">
-        <div class="row">
-            <div class="col-sm-3">
-                <img src="/img/LF-2019-Logo.png" style="height:200px" class="mx-auto d-block"
-                    alt="2019 Internationals Logo">
+<div class="row">
+    <div class="col-md-12">
+        <a href="/leagues/standings?gametype=league&amp;leagueID=959&amp;centerID=8&amp;isComp=1">
+            <div class="jumbotron bg-cover" style="background-image: url(/img/ECT-2020-Banner.png); height: 300px">
             </div>
-            <div class="col-sm-9 my-auto">
-                <p>The 2019 LaserForce Space Marines Internationals, held July 22nd to July 26th, 2019, at Revolution
-                    Lasertag in Detroit, Michigan.</p>
-                <p><a class="btn btn-primary btn-lg"
-                        href="/leagues/standings?gametype=league&amp;leagueID=853&amp;centerID=7&amp;isComp=1">Details
-                        <i class="material-icons">chevron_right</i></a></p>
-            </div>
-        </div>
+        </a>
     </div>
 </div>
 <div class="row">
@@ -23,16 +14,16 @@
                     $sorted_centers = $centers;
                     asort($sorted_centers);
                     foreach ($sorted_centers as $key => $value) {
-                        $link = $this->Html->url(array(
+                        $link = $this->Html->url([
                             'controller' => 'scorecards',
                             'action' => 'nightly',
-                            implode(",", $this->request->pass),
-                            '?' => array(
+                            implode(',', $this->request->pass),
+                            '?' => [
                                 'gametype' => 'social',
                                 'isComp' => 0,
-                                'centerID' => $key
-                            )
-                        ));
+                                'centerID' => $key,
+                            ],
+                        ]);
                         echo '<option value="'.$link.'">'.$value.'</option>';
                     }
                 ?>
@@ -44,17 +35,17 @@
             <?php
                 foreach ($league_details as $league) {
                     debug($league);
-                    $link = $this->Html->url(array(
+                    $link = $this->Html->url([
                         'controller' => 'leagues',
                         'action' => 'standings',
-                        implode(",", $this->request->pass),
-                        '?' => array(
+                        implode(',', $this->request->pass),
+                        '?' => [
                             'gametype' => 'league',
                             'isComp' => 1,
                             'centerID' => $league['Event']['center_id'],
-                            'leagueID' => $league['Event']['id']
-                        )
-                    ));
+                            'leagueID' => $league['Event']['id'],
+                        ],
+                    ]);
                     echo '<option value="'.$link.'">'.$league['Event']['name'].'</option>';
                 }
                 ?>
@@ -79,40 +70,40 @@
     </div>
 </div>
 <script type="text/javascript">
-$(document).ready(function() {
-    let params = new URLSearchParams();
-    let
-        events = <?= json_encode($events, JSON_NUMERIC_CHECK, JSON_FORCE_OBJECT); ?>;
-    let table = $('#events_list tbody');
+    $(document).ready(function() {
+        let params = new URLSearchParams();
+        let
+            events = <?php echo json_encode($events, JSON_NUMERIC_CHECK, JSON_FORCE_OBJECT); ?> ;
+        let table = $('#events_list tbody');
 
-    events.forEach(function(item) {
-        params.set('gametype', item.Event.type);
-        params.set('centerID', item.Center.id);
-        params.set('leagueID', (item.Event.is_comp) ? item.Event.id : 0);
-        params.set('isComp', (item.Event.is_comp) ? 1 : 0);
-        params.set('date', item.Event.last_gamedate);
+        events.forEach(function(item) {
+            params.set('gametype', item.Event.type);
+            params.set('centerID', item.Center.id);
+            params.set('leagueID', (item.Event.is_comp) ? item.Event.id : 0);
+            params.set('isComp', (item.Event.is_comp) ? 1 : 0);
+            params.set('date', item.Event.last_gamedate);
 
-        let eventName = (item.Event.is_comp) ? item.Event.name :
-            `${item.Center.name} - <span class="text-capitalize">${item.Event.type}`;
+            let eventName = (item.Event.is_comp) ? item.Event.name :
+                `${item.Center.name} - <span class="text-capitalize">${item.Event.type}`;
 
-        let eventLink =
-            `<a href="/scorecards/nightly?${params.toString()}">${eventName}</a>`;
+            let eventLink =
+                `<a href="/scorecards/nightly?${params.toString()}">${eventName}</a>`;
 
-        let row =
-            `<tr>
+            let row =
+                `<tr>
                 <td>${eventLink}</td>
                 <td class="text-right">${item.Event.last_gamedate}</td>
                 <td class="text-right">${item.Event.games_played}</td>
             </tr>`;
-        table.append(row);
-    });
+            table.append(row);
+        });
 
-    $('#jump-social').change(function() {
-        window.location = $(this).val();
-    });
+        $('#jump-social').change(function() {
+            window.location = $(this).val();
+        });
 
-    $('#jump-comp').change(function() {
-        window.location = $(this).val();
+        $('#jump-comp').change(function() {
+            window.location = $(this).val();
+        });
     });
-});
 </script>
