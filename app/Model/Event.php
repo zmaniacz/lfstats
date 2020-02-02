@@ -25,6 +25,7 @@ class Event extends AppModel
         'Round' => [
             'className' => 'Round',
             'foreignKey' => 'event_id',
+            'order' => 'Round.round ASC'
         ],
     ];
 

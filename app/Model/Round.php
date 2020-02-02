@@ -6,6 +6,7 @@ class Round extends AppModel
         'Match' => [
             'className' => 'Match',
             'foreignKey' => 'round_id',
+            'order' => 'Match.match ASC',
         ],
     ];
 
