@@ -217,6 +217,7 @@ class UploadsController extends AppController
                         'shots_hit' => $player['shotsHit'],
                         'shots_fired' => $player['shotsFired'],
                         'accuracy' => (($player['shotsFired'] > 0) ? ($player['shotsHit'] / $player['shotsFired']) : 0),
+                        'hit_diff' => ($player['shotOpponent'] / max($player['timesZapped'], 1)),
                         'times_zapped' => $player['timesZapped'],
                         'times_missiled' => $player['timesMissled'],
                         'missile_hits' => $player['missleHits'],
