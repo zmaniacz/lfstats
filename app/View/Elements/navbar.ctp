@@ -41,7 +41,7 @@
             </li>
 
             <li class="nav-item">
-                <?php echo $this->Html->link('Internationals 2019', ['controller' => 'leagues', 'action' => 'standings', '?' => ['gametype' => 'league', 'leagueID' => 853, 'centerID' => 7, 'isComp' => 1]], ['class' => 'nav-link']); ?>
+                <?php echo $this->Html->link('ECT 2020', ['controller' => 'leagues', 'action' => 'standings', '?' => ['gametype' => 'league', 'leagueID' => 959, 'centerID' => 8, 'isComp' => 1]], ['class' => 'nav-link']); ?>
             </li class="nav-item">
             <?php }?>
             <li class="nav-item">
@@ -51,7 +51,8 @@
                     href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
             <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarAdminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarAdminDropdown" role="button"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Admin
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -65,8 +66,7 @@
         </ul>
         <form class="form-inline">
             <?php if (AuthComponent::user('id')) { ?>
-            <a class="btn btn-sm btn-info mr-2" href="/users/logout"
-                role="button"><?php echo AuthComponent::user('username'); ?>
+            <a class="btn btn-sm btn-info mr-2" href="/users/logout" role="button"><?php echo AuthComponent::user('username'); ?>
                 Logout</a>
             <?php } else { ?>
             <a class="btn btn-sm btn-success mr-2" href="/users/login" role="button">Login</a>
