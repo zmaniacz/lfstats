@@ -1005,14 +1005,14 @@ class Scorecard extends AppModel
         $fields = [
             'player_id',
             'SUM(Scorecard.medic_hits) AS total_medic_hits',
-            '(SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) AS medic_hits_per_game',
+            '(SUM(Scorecard.medic_hits)::DECIMAL/COUNT(Scorecard.game_datetime)::DECIMAL) AS medic_hits_per_game',
             'COUNT(Scorecard.game_datetime) AS games_played',
         ];
 
         $non_resup_scores = $this->find('all', [
             'fields' => $fields,
             'conditions' => $subQueryConditions,
-            'group' => 'Scorecard.player_id HAVING (SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) > 0',
+            'group' => 'Scorecard.player_id HAVING (SUM(Scorecard.medic_hits)::DECIMAL/COUNT(Scorecard.game_datetime)::DECIMAL) > 0',
             'order' => 'Scorecard.player_id DESC',
         ]);
 
@@ -1027,7 +1027,7 @@ class Scorecard extends AppModel
                 ],
             ],
             'conditions' => $conditions,
-            'group' => 'Scorecard.player_id, Player.id HAVING (SUM(Scorecard.medic_hits)/COUNT(Scorecard.game_datetime)) > 0',
+            'group' => 'Scorecard.player_id, Player.id HAVING (SUM(Scorecard.medic_hits)::DECIMAL/COUNT(Scorecard.game_datetime)::DECIMAL) > 0',
             'order' => 'Scorecard.player_id DESC',
         ]);
 
