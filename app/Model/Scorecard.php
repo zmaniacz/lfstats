@@ -638,7 +638,7 @@ class Scorecard extends AppModel
                 'AVG(Scorecard.accuracy) as avg_acc',
                 '(SUM(Scorecard.shot_opponent)/GREATEST(SUM(Scorecard.times_zapped),1.0)) as hit_diff',
                 'SUM(Scorecard.medic_hits) as medic_hits',
-                '(SUM(Scorecard.team_elim)/COUNT(Scorecard.game_datetime)) as elim_rate',
+                '(SUM(Scorecard.team_elim)::DECIMAL/COUNT(Scorecard.game_datetime)::DECIMAL) as elim_rate',
                 'COUNT(Scorecard.game_datetime) as games_played',
                 'SUM(GameResult.won) as games_won',
             ],
