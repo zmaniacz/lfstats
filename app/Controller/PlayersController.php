@@ -12,13 +12,13 @@ class PlayersController extends AppController
 
     public function index()
     {
-        $this->redirect(['controller' => 'scorecards', 'action' => 'overall']);
+        $this->redirect(['controller' => 'scorecards', 'action' => 'overall', '?' => $this->request->query]]);
     }
 
     public function view($id = null)
     {
         if (null == $id || $id <= 0) {
-            $this->redirect(['controller' => 'Players', 'action' => 'index']);
+            $this->redirect(['controller' => 'Players', 'action' => 'index', '?' => $this->request->query]]);
         } else {
             $this->set('id', $id);
             $this->set('player', $this->Player->findById($id));
@@ -44,7 +44,7 @@ class PlayersController extends AppController
 
             $this->Session->setFlash(__($target_player['Player']['player_name'].' has been set as an alias of '.$master_player['Player']['player_name']));
 
-            return $this->redirect(['action' => 'view', $this->request->data['Player']['linked_id']]);
+            return $this->redirect(['action' => 'view', $this->request->data['Player']['linked_id'], '?' => $this->request->query]]);
         }
 
         if (isset($id)) {
@@ -64,7 +64,7 @@ class PlayersController extends AppController
 
         $this->Session->setFlash(__($target_player['Player']['player_name'].' has been set as an alias of '.$master_player['Player']['player_name']));
 
-        return $this->redirect(['action' => 'view', $master_id]);
+        return $this->redirect(['action' => 'view', $master_id, '?' => $this->request->query]]);
     }
 
     public function playerWinLossDetail($id)

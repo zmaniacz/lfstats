@@ -19,19 +19,19 @@ class LeaguesController extends AppController
      */
     public function index()
     {
-        $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
+        $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
     }
 
     public function standings()
     {
         if ($this->Session->read('state.isComp') < 1) {
-            $this->redirect(['controller' => 'scorecards', 'action' => 'nightly']);
+            $this->redirect(['controller' => 'scorecards', 'action' => 'landing', '?' => $this->request->query]);
         }
 
         $event = $this->Event->findById($this->Session->read('state.leagueID'));
 
         if ('solo' == $event['Event']['scoring']) {
-            $this->redirect(['controller' => 'leagues', 'action' => 'soloStandings']);
+            $this->redirect(['controller' => 'leagues', 'action' => 'soloStandings', '?' => $this->request->query]);
         }
 
         $this->set('teams', $this->Event->EventTeam->find('list', ['fields' => ['EventTeam.name'], 'conditions' => ['event_id' => $this->Session->read('state.leagueID')]]));
@@ -126,7 +126,7 @@ class LeaguesController extends AppController
             $this->Event->EventTeam->create();
             if ($this->Event->EventTeam->save($this->request->data)) {
                 $this->Session->setFlash(__('The team has been saved.'));
-                $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
+                $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
             }
         }
     }
@@ -176,7 +176,7 @@ class LeaguesController extends AppController
             $this->Event->Round->create();
             if ($this->Event->Round->save($this->request->data)) {
                 $this->Session->setFlash(__('The round has been created.'));
-                $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
+                $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
             }
         }
     }
@@ -200,7 +200,7 @@ class LeaguesController extends AppController
                 $this->Event->Round->Match->save();
             }
 
-            $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
+            $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
         } else {
             $this->set('league', $this->Event->findById($league_id));
             $this->set('round', $this->Event->Round->findById($round_id));
@@ -241,7 +241,7 @@ class LeaguesController extends AppController
         if ($this->request->is(['post', 'put'])) {
             if ($this->Event->Round->Match->save($this->request->data)) {
                 $this->Session->setFlash(__('Match saved'));
-                $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
+                $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
             }
         }
     }

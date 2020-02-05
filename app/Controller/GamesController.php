@@ -60,7 +60,7 @@ class GamesController extends AppController
 
                 $this->Flash->success('The game has been saved.');
 
-                return $this->redirect(['action' => 'view', $id]);
+                return $this->redirect(['action' => 'view', $id, '?' => $this->request->query]);
             }
             $this->Flash->error('The game could not be saved. Please, try again.');
         } else {
@@ -128,7 +128,7 @@ class GamesController extends AppController
             if ($this->Game->save($this->request->data)) {
                 $this->Session->setFlash(__('The game has been saved.'));
 
-                return $this->redirect(['action' => 'view', $id]);
+                return $this->redirect(['action' => 'view', $id, '?' => $this->request->query]);
             }
             $this->Session->setFlash(__('The game could not be saved. Please, try again.'));
         } else {
@@ -164,7 +164,7 @@ class GamesController extends AppController
             $this->Session->setFlash(__('The game could not be deleted. Please, try again.'));
         }
 
-        return $this->redirect(['controller' => 'Games', 'action' => 'index']);
+        return $this->redirect(['controller' => 'Games', 'action' => 'index', '?' => $this->request->query]);
     }
 
     public function overall()
