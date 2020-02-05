@@ -22,10 +22,14 @@ class Event extends AppModel
             'className' => 'EventTeam',
             'foreignKey' => 'event_id',
         ],
+        'EventPlayer' => [
+            'className' => 'EventPlayer',
+            'foreignKey' => 'event_id',
+        ],
         'Round' => [
             'className' => 'Round',
             'foreignKey' => 'event_id',
-            'order' => 'Round.round ASC'
+            'order' => 'Round.round ASC',
         ],
     ];
 

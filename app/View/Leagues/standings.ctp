@@ -1,4 +1,4 @@
-<?= $this->element('breadcrumbs'); ?>
+<?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <div id="view_radio" class="btn-group btn-group-toggle" data-toggle="buttons">
     <label class="btn btn-outline-info active">
@@ -15,23 +15,26 @@
     <label class="btn btn-outline-info active">
         <input type="radio" name="rounds" id="round_all" value="0" autocomplete="off" checked> All
     </label>
-    <?php foreach ($details['Round'] as $round): ?>
-    <?php if (!$round['is_finals']): ?>
+    <?php foreach ($details['Round'] as $round) { ?>
+    <?php if (!$round['is_finals']) { ?>
     <label class="btn btn-outline-info">
-        <input type="radio" name="rounds" id="round_<?= $round['round']; ?>" value="<?= $round['round']; ?>"
+        <input type="radio" name="rounds"
+            id="round_<?php echo $round['round']; ?>"
+            value="<?php echo $round['round']; ?>"
             autocomplete="off"> Round
-        <?= $round['round']; ?>
+        <?php echo $round['round']; ?>
     </label>
-    <?php endif; ?>
-    <?php endforeach; ?>
+    <?php } ?>
+    <?php } ?>
 </div>
 <hr>
-<?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
-<a class="btn btn-success" href="<?= $this->Html->url(array('controller' => 'leagues', 'action' => 'addTeam')); ?>">New
+<?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
+<a class="btn btn-success"
+    href="<?php echo $this->Html->url(['controller' => 'leagues', 'action' => 'addTeam']); ?>">New
     Team</a> <a
-    href="<?= $this->Html->url(array('controller' => 'Events', 'action' => 'edit', $details['Event']['id'])); ?>"><i
+    href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $details['Event']['id']]); ?>"><i
         class="material-icons">settings</i></a>
-<?php endif; ?>
+<?php } ?>
 <div class="table-responsive">
     <table class="table table-striped table-bordered table-hover table-sm nowrap" id="team_standings">
         <thead>
@@ -46,31 +49,31 @@
 </div>
 <hr>
 <div class="mt-4">
-    <?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
-    echo $this->Html->link('Add Round', array('controller' => 'leagues', 'action' => 'addRound'), array('class' => 'btn btn-success'));
+    <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
+    echo $this->Html->link('Add Round', ['controller' => 'leagues', 'action' => 'addRound'], ['class' => 'btn btn-success']);
 }
     ?>
     <input class="float-right" type="text" id="search-criteria" placeholder="Search Matches..." />
-    <?php foreach ($details['Round'] as $round): ?>
-    <?php if (!$round['is_finals']): ?>
+    <?php foreach ($details['Round'] as $round) { ?>
+    <?php if (!$round['is_finals']) { ?>
     <h3 class="my-4">
-        <?= (($round['is_finals']) ? "Finals" : "Round ".$round['round']); ?>
+        <?php echo (($round['is_finals']) ? 'Finals' : 'Round '.$round['round']); ?>
     </h3>
     <?php
-                if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
-                    echo $this->Html->link('Add Match', array('controller' => 'leagues', 'action' => 'addMatch', $details['Event']['id'], $round['id']), array('class' => 'btn btn-success'));
+                if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
+                    echo $this->Html->link('Add Match', ['controller' => 'leagues', 'action' => 'addMatch', $details['Event']['id'], $round['id']], ['class' => 'btn btn-success']);
                 }
             ?>
     <div class="row">
         <?php foreach ($round['Match'] as $match) {
-                echo $this->element('MatchCard', array(
-                "match" => $match
-            ));
+                echo $this->element('MatchCard', [
+                    'match' => $match,
+                ]);
             }
         ?>
     </div>
-    <?php endif; ?>
-    <?php endforeach; ?>
+    <?php } ?>
+    <?php } ?>
 </div>
 <div class="modal fade" id="teamNameModal" tabindex="-1" role="dialog">
     <div class="modal-dialog">
@@ -147,210 +150,209 @@
     </div>
 </div>
 <script>
-$(document).ready(function() {
-    <?php if (AuthComponent::user('role') === 'admin' || (AuthComponent::user('role') === 'center_admin' && AuthComponent::user('center') == $this->Session->read('state.centerID'))): ?>
-    const loggedIn = true;
-    <?php else: ?>
-    const loggedIn = false;
-    <?php endif; ?>
+    $(document).ready(function() {
+        <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
+        const loggedIn = true;
+        <?php } else { ?>
+        const loggedIn = false;
+        <?php } ?>
 
-    $('#teamNameModal').on('show.bs.modal', function(event) {
-        let button = $(event.relatedTarget)
-        let teamId = button.data('team-id')
-        let teamName = button.data('team-name')
-        let modal = $(this)
-        modal.find('#team-name').val(teamName)
-        modal.find('#team-id').val(teamId)
-    });
+        $('#teamNameModal').on('show.bs.modal', function(event) {
+            let button = $(event.relatedTarget)
+            let teamId = button.data('team-id')
+            let teamName = button.data('team-name')
+            let modal = $(this)
+            modal.find('#team-name').val(teamName)
+            modal.find('#team-id').val(teamId)
+        });
 
-    $('#teamNameModalSaveBtn').click(function() {
-        $.post('/teams/setName', $('#teamNameModalForm').serialize())
-            .done(function(data) {
-                toastr.success('Updated Name');
-                update_standings(standings_table, 0);
+        $('#teamNameModalSaveBtn').click(function() {
+            $.post('/teams/setName', $('#teamNameModalForm').serialize())
+                .done(function(data) {
+                    toastr.success('Updated Name');
+                    update_standings(standings_table, 0);
+                });
+
+            $('#teamNameModal').modal('hide');
+        });
+
+        $('#addTeamMatchPenaltyModal').on('show.bs.modal', function(event) {
+            let button = $(event.relatedTarget)
+            let teamId = button.data('team-id')
+            let modal = $(this)
+            $("#addTeamMatchPenaltyModalForm").trigger('reset')
+            modal.find('#match-penalty-team-id').val(teamId)
+        });
+
+        $('#addTeamMatchPenaltyModalFormSaveBtn').click(function() {
+            $.post('/teams/addMatchPenalty', $('#addTeamMatchPenaltyModalForm').serialize())
+                .done(function(data) {
+                    toastr.success('Added Penalty');
+                    update_standings(standings_table, 0);
+                });
+
+            $('#addTeamMatchPenaltyModal').modal('hide');
+        });
+
+        $('#viewTeamMatchPenaltyModal').on('show.bs.modal', function(event) {
+            let teamId = $(event.relatedTarget).data('team-id');
+
+            $('#teamMatchPenaltyTable').DataTable({
+                processing: true,
+                searching: false,
+                ajax: {
+                    url: `/teams/getMatchPenalties/${teamId}.json`
+                },
+                columns: [{
+                        data: "type"
+                    },
+                    {
+                        data: function(row, type, val, meta) {
+                            if (type === 'display' && loggedIn) {
+                                return row.value +
+                                    `<a class="pull-right delete-match-penalty-link" href="#" data-penalty-id=${row.id} data-dismiss="modal"><span class="glyphicon glyphicon-trash"></span></a>`;
+                            } else {
+                                return row.value;
+                            }
+                        }
+                    }
+                ]
             });
+        });
 
-        $('#teamNameModal').modal('hide');
-    });
+        $('#viewTeamMatchPenaltyModal').on('hidden.bs.modal', function(event) {
+            $('#teamMatchPenaltyTable').DataTable().destroy();
+        });
 
-    $('#addTeamMatchPenaltyModal').on('show.bs.modal', function(event) {
-        let button = $(event.relatedTarget)
-        let teamId = button.data('team-id')
-        let modal = $(this)
-        $("#addTeamMatchPenaltyModalForm").trigger('reset')
-        modal.find('#match-penalty-team-id').val(teamId)
-    });
+        $('#viewTeamMatchPenaltyModal').on('click', '.delete-match-penalty-link', function(event) {
+            let penaltyId = $(this).data('penalty-id');
+            $.post(`/teams/deleteMatchPenalty/${penaltyId}`)
+                .done(function(data) {
+                    toastr.success('Deleted Penalty');
+                    update_standings(standings_table, 0);
+                });
+        });
 
-    $('#addTeamMatchPenaltyModalFormSaveBtn').click(function() {
-        $.post('/teams/addMatchPenalty', $('#addTeamMatchPenaltyModalForm').serialize())
-            .done(function(data) {
-                toastr.success('Added Penalty');
-                update_standings(standings_table, 0);
-            });
-
-        $('#addTeamMatchPenaltyModal').modal('hide');
-    });
-
-    $('#viewTeamMatchPenaltyModal').on('show.bs.modal', function(event) {
-        let teamId = $(event.relatedTarget).data('team-id');
-
-        $('#teamMatchPenaltyTable').DataTable({
+        var standings_table = $('#team_standings').DataTable({
             processing: true,
+            paging: false,
+            info: false,
             searching: false,
-            ajax: {
-                url: `/teams/getMatchPenalties/${teamId}.json`
-            },
+            order: [
+                [1, "desc"]
+            ],
             columns: [{
-                    data: "type"
+                    data: function(row, type, val, meta) {
+                        if (type === 'display' && loggedIn) {
+                            return row.link +
+                                ' <a class="float-right" data-toggle="modal" data-team-id="' +
+                                row.id +
+                                '" data-team-name="' + row.name +
+                                '" href="#teamNameModal"><i class="material-icons">edit</i></a>';
+                        } else {
+                            return row.link;
+                        }
+                    }
                 },
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display' && loggedIn) {
-                            return row.value +
-                                `<a class="pull-right delete-match-penalty-link" href="#" data-penalty-id=${row.id} data-dismiss="modal"><span class="glyphicon glyphicon-trash"></span></a>`;
+                            let result = row.points;
+                            if (row.adjustment !== null) {
+                                result += ' <a data-toggle="modal" data-team-id="' + row.id +
+                                    '" href="#viewTeamMatchPenaltyModal">(' +
+                                    row.adjustment + ')</a>';
+                            }
+
+                            return result +
+                                ' <a class="float-right" data-toggle="modal" data-team-id="' +
+                                row.id +
+                                '" href="#addTeamMatchPenaltyModal"><i class="material-icons">edit</i></a>';
                         } else {
-                            return row.value;
+                            return row.points;
                         }
                     }
-                }
+                },
+                {
+                    data: "match_win_lose"
+                },
+                {
+                    data: "game_win_lose"
+                },
+                {
+                    data: "elims"
+                },
+                {
+                    data: "score_ratio"
+                },
             ]
         });
-    });
 
-    $('#viewTeamMatchPenaltyModal').on('hidden.bs.modal', function(event) {
-        $('#teamMatchPenaltyTable').DataTable().destroy();
-    });
-
-    $('#viewTeamMatchPenaltyModal').on('click', '.delete-match-penalty-link', function(event) {
-        let penaltyId = $(this).data('penalty-id');
-        $.post(`/teams/deleteMatchPenalty/${penaltyId}`)
-            .done(function(data) {
-                toastr.success('Deleted Penalty');
-                update_standings(standings_table, 0);
+        $('.match-select').change(function() {
+            toastr.options = {
+                "closeButton": false,
+                "debug": false,
+                "newestOnTop": false,
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "preventDuplicates": false,
+                "onclick": null,
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "3000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "slideDown",
+                "hideMethod": "slideUp"
+            }
+            $.ajax({
+                url: "/leagues/ajax_assignTeam/" + $(this).data('matchId') + "/" + $(this).data(
+                        'team') + "/" + $(this).val() +
+                    ".json",
+                success: function(data) {
+                    toastr.success('Assigned Team')
+                },
+                error: function(data) {
+                    toastr.error('Assignment Failed')
+                }
             });
-    });
-
-    var standings_data
-    var standings_table = $('#team_standings').DataTable({
-        processing: true,
-        paging: false,
-        info: false,
-        searching: false,
-        order: [
-            [1, "desc"]
-        ],
-        columns: [{
-                data: function(row, type, val, meta) {
-                    if (type === 'display' && loggedIn) {
-                        return row.link +
-                            ' <a class="float-right" data-toggle="modal" data-team-id="' +
-                            row.id +
-                            '" data-team-name="' + row.name +
-                            '" href="#teamNameModal"><i class="material-icons">edit</i></a>';
-                    } else {
-                        return row.link;
-                    }
-                }
-            },
-            {
-                data: function(row, type, val, meta) {
-                    if (type === 'display' && loggedIn) {
-                        let result = row.points;
-                        if (row.adjustment !== null) {
-                            result += ' <a data-toggle="modal" data-team-id="' + row.id +
-                                '" href="#viewTeamMatchPenaltyModal">(' +
-                                row.adjustment + ')</a>';
-                        }
-
-                        return result +
-                            ' <a class="float-right" data-toggle="modal" data-team-id="' +
-                            row.id +
-                            '" href="#addTeamMatchPenaltyModal"><i class="material-icons">edit</i></a>';
-                    } else {
-                        return row.points;
-                    }
-                }
-            },
-            {
-                data: "match_win_lose"
-            },
-            {
-                data: "game_win_lose"
-            },
-            {
-                data: "elims"
-            },
-            {
-                data: "score_ratio"
-            },
-        ]
-    });
-
-    $('.match-select').change(function() {
-        toastr.options = {
-            "closeButton": false,
-            "debug": false,
-            "newestOnTop": false,
-            "progressBar": false,
-            "positionClass": "toast-top-right",
-            "preventDuplicates": false,
-            "onclick": null,
-            "showDuration": "300",
-            "hideDuration": "1000",
-            "timeOut": "3000",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "slideDown",
-            "hideMethod": "slideUp"
-        }
-        $.ajax({
-            url: "/leagues/ajax_assignTeam/" + $(this).data('matchId') + "/" + $(this).data(
-                    'team') + "/" + $(this).val() +
-                ".json",
-            success: function(data) {
-                toastr.success('Assigned Team')
-            },
-            error: function(data) {
-                toastr.error('Assignment Failed')
-            }
         });
-    });
 
-    $('#search-criteria').keyup(function() {
-        $('.match-panel').hide();
-        var txt = $('#search-criteria').val();
-        $('.match-panel').each(function() {
-            if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
-                $(this).show();
-            }
+        $('#search-criteria').keyup(function() {
+            $('.match-panel').hide();
+            var txt = $('#search-criteria').val();
+            $('.match-panel').each(function() {
+                if ($(this).text().toUpperCase().indexOf(txt.toUpperCase()) != -1) {
+                    $(this).show();
+                }
+            });
         });
-    });
 
-    function update_standings(table, round) {
-        var url =
-            "<?= html_entity_decode($this->Html->url(array('controller' => 'leagues', 'action' => 'ajax_getTeamStandings', 'ext' => 'json'))); ?>"
+        function update_standings(table, round) {
+            var url =
+                "<?php echo html_entity_decode($this->Html->url(['controller' => 'leagues', 'action' => 'ajax_getTeamStandings', 'ext' => 'json'])); ?>"
 
-        if (round > 0) {
-            url = url.replace(".json", "/" + round + ".json")
+            if (round > 0) {
+                url = url.replace(".json", "/" + round + ".json")
+            }
+            table.ajax.url(url).load();
+
+            setTimeout(function() {
+                update_standings(table, round);
+            }, 30000)
         }
-        table.ajax.url(url).load();
 
-        setTimeout(function() {
-            update_standings(table, round);
-        }, 30000)
-    }
+        $("#round_radio :input").change(function() {
+            update_standings(standings_table, this.value)
+        });
 
-    $("#round_radio :input").change(function() {
-        update_standings(standings_table, this.value)
+        $("#view_radio :input").change(function() {
+            var url =
+                "<?php echo html_entity_decode($this->Html->url(['controller' => 'leagues', 'action' => 'bracket'])); ?>"
+            document.location = url;
+        });
+
+        update_standings(standings_table, 0)
     });
-
-    $("#view_radio :input").change(function() {
-        var url =
-            "<?= html_entity_decode($this->Html->url(array('controller' => 'leagues', 'action' => 'bracket'))); ?>"
-        document.location = url;
-    });
-
-    update_standings(standings_table, 0)
-});
 </script>

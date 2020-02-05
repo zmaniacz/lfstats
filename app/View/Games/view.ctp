@@ -369,9 +369,9 @@
     }
 
     $(document).ready(function() {
-        function renderGameScoreChart(data) {
+        function renderGameScoreChart(scoreData, actionData) {
             let teams = [];
-            teams = data.GameTeam.filter(team => {
+            teams = scoreData.GameTeam.filter(team => {
                     return 'None' != team.color_desc
                 })
                 .map(team => {
@@ -384,12 +384,18 @@
                 });
 
             teams.forEach(team => {
-                team.data = data.TeamDelta.filter(delta => {
+                team.data = scoreData.TeamDelta.filter(delta => {
                     return delta.color_desc === team.color_desc;
                 }).map(delta => {
                     return [delta.score_time, delta.sum]
                 })
             });
+
+            greenNukes = actionData.GameLog.filter(item => {
+                return item.action_type === "0405" && item.player_color != "Fire"
+            });
+
+            console.log(greenNukes);
 
             Highcharts.chart('scoreChartContainer', {
                 chart: {
@@ -414,6 +420,46 @@
                 },
                 series: teams
             })
+        }
+
+        function renderGameLogTable(data) {
+            $('#game-log-table').DataTable({
+                sorting: false,
+                scrollY: 400,
+                deferRender: true,
+                scrollCollapse: true,
+                scroller: true,
+                data: data.GameLog,
+                columns: [{
+                        data: function(row, type, val, meta) {
+                            return msToTime(row.action_time)
+                        }
+                    },
+                    {
+                        data: function(row, type, val, meta) {
+                            let player_name = null !== row.player_name ? row.player_name : '';
+                            let player_color = "Red" == row.player_color || "Fire" == row
+                                .player_color ? "text-danger" : "text-success";
+
+                            let target_color = "",
+                                target_name = "";
+
+                            if (null !== row.target_id) {
+                                target_name = row.target_name;
+                                target_color = "Red" == row.target_color || "Fire" == row
+                                    .target_color ? "text-danger" : "text-success";
+                            } else if (null !== row.gen_id) {
+                                target_name = row.gen_name;
+                                target_color = "Red" == row.gen_color || "Fire" == row
+                                    .gen_color ? "text-danger" : ("None" == row.gen_color ?
+                                        "text-primary" : "text-success");
+                            }
+
+                            return `<span class="${player_color}">${player_name}</span> ${row.action_text} <span class="${target_color}">${target_name}</span>`
+                        }
+                    },
+                ],
+            });
         }
 
         $('.gamelist').DataTable({
@@ -453,51 +499,16 @@
             });
         });
 
-        $('#game-log-table').DataTable({
-            sorting: false,
-            scrollY: 400,
-            deferRender: true,
-            scrollCollapse: true,
-            scroller: true,
-            ajax: {
-                url: `/games/actionList/<?php echo $game['Game']['id']; ?>.json`,
-                dataSrc: 'data.GameLog'
-            },
-            columns: [{
-                    data: function(row, type, val, meta) {
-                        return msToTime(row.action_time)
-                    }
-                },
-                {
-                    data: function(row, type, val, meta) {
-                        let player_name = null !== row.player_name ? row.player_name : '';
-                        let player_color = "Red" == row.player_color || "Fire" == row
-                            .player_color ? "text-danger" : "text-success";
-
-                        let target_color = "",
-                            target_name = "";
-
-                        if (null !== row.target_id) {
-                            target_name = row.target_name;
-                            target_color = "Red" == row.target_color || "Fire" == row
-                                .target_color ? "text-danger" : "text-success";
-                        } else if (null !== row.gen_id) {
-                            target_name = row.gen_name;
-                            target_color = "Red" == row.gen_color || "Fire" == row
-                                .gen_color ? "text-danger" : ("None" == row.gen_color ?
-                                    "text-primary" : "text-success");
-                        }
-
-                        return `<span class="${player_color}">${player_name}</span> ${row.action_text} <span class="${target_color}">${target_name}</span>`
-                    }
-                },
-            ],
-        });
-
-        $.ajax({
-            url: `/games/scoreChart/<?php echo $game['Game']['id']; ?>.json`
-        }).done(data => {
-            renderGameScoreChart(data.data);
+        $.when(
+            $.ajax(
+                `/games/scoreChart/<?php echo $game['Game']['id']; ?>.json`
+            ),
+            $.ajax(
+                `/games/actionList/<?php echo $game['Game']['id']; ?>.json`
+            )
+        ).done((data1, data2) => {
+            renderGameScoreChart(data1[0].data, data2[0].data);
+            renderGameLogTable(data2[0].data);
         });
 
         $('#chart-tab').on('shown.bs.tab', function(e) {
