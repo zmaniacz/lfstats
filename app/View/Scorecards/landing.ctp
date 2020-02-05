@@ -34,7 +34,6 @@
             <option selected>Jump to competition</option>
             <?php
                 foreach ($league_details as $league) {
-                    debug($league);
                     $link = $this->Html->url([
                         'controller' => 'leagues',
                         'action' => 'standings',
