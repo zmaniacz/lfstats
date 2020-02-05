@@ -33,7 +33,7 @@
 						<td>{$target}</td>
 						<td>{$linkAction}</td>
 					</tr>
-				HTML1;
+HTML1;
 } ?>
 		</tbody>
 	</table>
