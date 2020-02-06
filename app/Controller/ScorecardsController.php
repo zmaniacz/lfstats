@@ -85,6 +85,13 @@ class ScorecardsController extends AppController
 
     public function overall()
     {
+        if ($this->Session->check('state.leagueID')) {
+            $event = $this->Event->findById($this->Session->read('state.leagueID'));
+            if (!$event['Event']['enable_top_players']) {
+                $this->Flash->warning(__('Top Players is currently disabled for this event'));
+                $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
+            }
+        }
     }
 
     public function getComparison($player1_id, $player2_id)
@@ -257,10 +264,24 @@ class ScorecardsController extends AppController
 
     public function allstar()
     {
+        if ($this->Session->check('state.leagueID')) {
+            $event = $this->Event->findById($this->Session->read('state.leagueID'));
+            if (!$event['Event']['enable_allstar']) {
+                $this->Flash->warning(__('All Star Rankings are currently disabled for this event'));
+                $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
+            }
+        }
     }
 
     public function leaderboards()
     {
+        if ($this->Session->check('state.leagueID')) {
+            $event = $this->Event->findById($this->Session->read('state.leagueID'));
+            if (!$event['Event']['enable_leaderboards']) {
+                $this->Flash->warning(__('Leaderboards are currently disabled for this event'));
+                $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
+            }
+        }
     }
 
     public function getLeaderboards()

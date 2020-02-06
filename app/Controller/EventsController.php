@@ -112,7 +112,7 @@ class EventsController extends AppController
             if ($this->Event->save($this->request->data)) {
                 $this->Flash->success(__('The event has been saved.'));
 
-                return $this->redirect(['controller' => 'leagues', 'action' => 'standings']);
+                return $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
             }
             $this->Flash->error(__('The event could not be saved. Please, try again.'));
         } else {

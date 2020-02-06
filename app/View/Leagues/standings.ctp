@@ -57,7 +57,7 @@
     <?php foreach ($details['Round'] as $round) { ?>
     <?php if (!$round['is_finals']) { ?>
     <h3 class="my-4">
-        <?php echo (($round['is_finals']) ? 'Finals' : 'Round '.$round['round']); ?>
+        <?php echo ($round['is_finals']) ? 'Finals' : 'Round '.$round['round']; ?>
     </h3>
     <?php
                 if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {

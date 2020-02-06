@@ -12,14 +12,21 @@ class PlayersController extends AppController
 
     public function index()
     {
-        $this->redirect(['controller' => 'scorecards', 'action' => 'overall', '?' => $this->request->query]]);
+        $this->redirect(['controller' => 'scorecards', 'action' => 'overall', '?' => $this->request->query]);
     }
 
     public function view($id = null)
     {
         if (null == $id || $id <= 0) {
-            $this->redirect(['controller' => 'Players', 'action' => 'index', '?' => $this->request->query]]);
+            $this->redirect(['controller' => 'Players', 'action' => 'index', '?' => $this->request->query]);
         } else {
+            if ($this->Session->check('state.leagueID')) {
+                $event = $this->Event->findById($this->Session->read('state.leagueID'));
+                if (!$event['Event']['enable_player_stats']) {
+                    $this->Flash->warning(__('Player stats are currently disabled for this event'));
+                    $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
+                }
+            }
             $this->set('id', $id);
             $this->set('player', $this->Player->findById($id));
             $this->set('aliases', $this->Player->PlayersName->findAllByPlayerId($id));
@@ -44,7 +51,7 @@ class PlayersController extends AppController
 
             $this->Session->setFlash(__($target_player['Player']['player_name'].' has been set as an alias of '.$master_player['Player']['player_name']));
 
-            return $this->redirect(['action' => 'view', $this->request->data['Player']['linked_id'], '?' => $this->request->query]]);
+            return $this->redirect(['action' => 'view', $this->request->data['Player']['linked_id'], '?' => $this->request->query]);
         }
 
         if (isset($id)) {
@@ -64,7 +71,7 @@ class PlayersController extends AppController
 
         $this->Session->setFlash(__($target_player['Player']['player_name'].' has been set as an alias of '.$master_player['Player']['player_name']));
 
-        return $this->redirect(['action' => 'view', $master_id, '?' => $this->request->query]]);
+        return $this->redirect(['action' => 'view', $master_id, '?' => $this->request->query]);
     }
 
     public function playerWinLossDetail($id)
