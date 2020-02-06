@@ -85,7 +85,7 @@ class ScorecardsController extends AppController
 
     public function overall()
     {
-        if ($this->Session->check('state.leagueID')) {
+        if ($this->Session->read('state.leagueID') > 0) {
             $event = $this->Event->findById($this->Session->read('state.leagueID'));
             if (!$event['Event']['enable_top_players']) {
                 $this->Flash->warning(__('Top Players is currently disabled for this event'));
@@ -264,7 +264,7 @@ class ScorecardsController extends AppController
 
     public function allstar()
     {
-        if ($this->Session->check('state.leagueID')) {
+        if ($this->Session->read('state.leagueID') > 0) {
             $event = $this->Event->findById($this->Session->read('state.leagueID'));
             if (!$event['Event']['enable_allstar']) {
                 $this->Flash->warning(__('All Star Rankings are currently disabled for this event'));
@@ -275,7 +275,7 @@ class ScorecardsController extends AppController
 
     public function leaderboards()
     {
-        if ($this->Session->check('state.leagueID')) {
+        if ($this->Session->read('state.leagueID') > 0) {
             $event = $this->Event->findById($this->Session->read('state.leagueID'));
             if (!$event['Event']['enable_leaderboards']) {
                 $this->Flash->warning(__('Leaderboards are currently disabled for this event'));

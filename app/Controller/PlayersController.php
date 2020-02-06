@@ -20,7 +20,7 @@ class PlayersController extends AppController
         if (null == $id || $id <= 0) {
             $this->redirect(['controller' => 'Players', 'action' => 'index', '?' => $this->request->query]);
         } else {
-            if ($this->Session->check('state.leagueID')) {
+            if ($this->Session->read('state.leagueID') > 0) {
                 $event = $this->Event->findById($this->Session->read('state.leagueID'));
                 if (!$event['Event']['enable_player_stats']) {
                     $this->Flash->warning(__('Player stats are currently disabled for this event'));
