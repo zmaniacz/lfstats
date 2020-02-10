@@ -89,7 +89,7 @@ class PenaltiesController extends AppController
 
                 $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
 
-                return $this->redirect(['controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id'], '?' => $this->request->query]]);
+                return $this->redirect(['controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id'], '?' => $this->request->query]);
             }
             $this->Flash->error('The penalty could not be saved. Please, try again.');
         }
@@ -131,7 +131,7 @@ class PenaltiesController extends AppController
                 $this->Penalty->Scorecard->Game->updateGameWinner($scorecard['Scorecard']['game_id']);
 
                 $this->Flash->success('The penalty has been saved.');
-                $this->redirect(['controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id'], '?' => $this->request->query]]);
+                $this->redirect(['controller' => 'Games', 'action' => 'view', $scorecard['Scorecard']['game_id'], '?' => $this->request->query]);
             } else {
                 $this->Flash->error('The penalty could not be saved. Please, try again.');
             }
