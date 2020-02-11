@@ -405,7 +405,7 @@ class ScorecardsController extends AppController
         $db = $this->Game->getDataSource();
         $subQuery = $db->buildStatement(
             [
-                'fields' => ['Game.id'],
+                'fields' => ['"Game".id'],
                 'table' => $db->fullTableName($this->Game),
                 'alias' => 'Game',
                 'conditions' => [
@@ -417,7 +417,7 @@ class ScorecardsController extends AppController
             ],
             $this->Game
         );
-        $subQuery = 'Scorecard.game_id IN ('.$subQuery.') ';
+        $subQuery = '"Scorecard".game_id IN ('.$subQuery.') ';
         $subQueryExpression = $db->expression($subQuery);
 
         $conditions[] = $subQueryExpression;
