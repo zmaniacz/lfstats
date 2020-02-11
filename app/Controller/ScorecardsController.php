@@ -423,7 +423,7 @@ class ScorecardsController extends AppController
         $conditions[] = $subQueryExpression;
         $conditions[] = ['Scorecard.player_id' => $player_id];
 
-        $newToggle = $toggle ? true : false;
+        $toggle = $toggle ? true : false;
 
         if ($this->Scorecard->updateAll(['Scorecard.is_sub' => $toggle], $conditions)) {
             $this->set('data', $this->Scorecard->getAffectedRows());
