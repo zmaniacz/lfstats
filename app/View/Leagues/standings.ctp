@@ -283,8 +283,14 @@
                     data: "elims"
                 },
                 {
-                    data: "score_ratio"
-                },
+                    data: function(row, type, val, meta) {
+                        if(type === 'display') {
+                            return row.score_ratio;
+                        } else {
+                            return row.ratio;
+                        }
+                    }
+                }
             ]
         });
 
