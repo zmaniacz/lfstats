@@ -5,23 +5,22 @@
         <div class="card-body">
             <?php if ($this->Session->read('state.isComp') > 0) { ?>
             <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="rounds_cbox" <?php echo (('true' == $this->Session->read('state.show_rounds')) ? 'checked' : ''); ?>>
+                <input type="checkbox" class="custom-control-input" id="rounds_cbox" <?php echo ('true' == $this->Session->read('state.show_rounds')) ? 'checked' : ''; ?>>
                 <label class="custom-control-label" for="rounds_cbox">Show Rounds</label>
             </div>
             <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="finals_cbox" <?php echo (('true' == $this->Session->read('state.show_finals')) ? 'checked' : ''); ?>>
+                <input type="checkbox" class="custom-control-input" id="finals_cbox" <?php echo ('true' == $this->Session->read('state.show_finals')) ? 'checked' : ''; ?>>
                 <label class="custom-control-label" for="finals_cbox">Show Finals</label>
             </div>
             <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="sub_cbox" <?php echo (('true' == $this->Session->read('state.show_subs')) ? 'checked' : ''); ?>>
+                <input type="checkbox" class="custom-control-input" id="sub_cbox" <?php echo ('true' == $this->Session->read('state.show_subs')) ? 'checked' : ''; ?>>
                 <label class="custom-control-label" for="sub_cbox">Show Subs</label>
             </div>
-            <?php } else { ?>
+            <?php } ?>
             <p>Min Games: <span id="min_games_slider_value"></span></p>
             <div class="col-xs-4">
                 <div id="min_games_slider"></div>
             </div>
-            <?php } ?>
         </div>
     </div>
 </div>
@@ -676,7 +675,7 @@
             var slider = document.getElementById("min_games_slider")
 
             noUiSlider.create(slider, {
-                start: 25,
+                start: <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> ,
                 connect: [true, false],
                 step: 1,
                 range: {
