@@ -83,7 +83,7 @@
             $player_positions[$scorecard['player_id']] = array(
                 'player_name' => $scorecard['player_name'],
                 'games_played' => 0,
-                'is_sub' => 0,
+                'is_sub' => false,
                 'Commander' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
                 'Heavy Weapons' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
                 'Scout' => array('games_played' => 0, 'total_mvp' => 0, 'total_score' => 0),
@@ -94,7 +94,7 @@
 
         $player_positions[$scorecard['player_id']][$scorecard['position']]['games_played'] += 1;
         $player_positions[$scorecard['player_id']]['games_played'] += 1;
-        $player_positions[$scorecard['player_id']]['is_sub'] += $scorecard['is_sub'];
+        $player_positions[$scorecard['player_id']]['is_sub'] = $scorecard['is_sub'];
         $player_positions[$scorecard['player_id']][$scorecard['position']]['total_mvp'] += $scorecard['mvp_points'];
         $player_positions[$scorecard['player_id']][$scorecard['position']]['total_score'] += $scorecard['score'];
 
