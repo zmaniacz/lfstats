@@ -8,6 +8,10 @@
         echo $this->Form->input('description', [
             'class' => 'form-control',
         ]);
+        echo $this->Form->input('scoring', [
+            'class' => 'form-control',
+            'options' => ['solo' => 'solo', 'team' => 'team'],
+        ]);
         echo $this->Form->input('center_id', [
             'class' => 'form-control',
         ]);
