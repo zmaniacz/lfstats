@@ -4,7 +4,7 @@ App::uses('AppController', 'Controller');
 
 class LeaguesController extends AppController
 {
-    public $uses = ['Event', 'Scorecard', 'Game', 'Player'];
+    public $uses = ['Event', 'Scorecard', 'Game', 'Player', 'EventPlayer'];
 
     public function beforeFilter()
     {
@@ -166,8 +166,22 @@ class LeaguesController extends AppController
             throw new NotFoundException(__('Invalid event'));
         }
 
-        $this->set('data', $this->Event->EventPlayer->find('all', ['contain' => ['Player']]));
+        $this->set('data', $this->Event->getSoloStandings($eventId));
         $this->set('_serialize', ['data']);
+    }
+
+    public function setHandicap()
+    {
+        $this->EventPlayer->read(null, $this->request->data['event-player-id']);
+        $this->EventPlayer->set('handicap', $this->request->data['player-handicap']);
+
+        if ($this->EventPlayer->save()) {
+            $response = ['body' => 'success'];
+        } else {
+            $response = ['body' => 'failure'];
+        }
+
+        return new CakeResponse($response);
     }
 
     public function addRound()

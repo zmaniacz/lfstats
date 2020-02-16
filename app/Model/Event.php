@@ -31,6 +31,10 @@ class Event extends AppModel
             'foreignKey' => 'event_id',
             'order' => 'Round.round ASC',
         ],
+        'SoloStanding' => [
+            'className' => 'SoloStanding',
+            'foreignKey' => 'event_id',
+        ],
     ];
 
     public function getEventList($type = null, $limit = null, $center_id = null)
@@ -354,5 +358,85 @@ class Event extends AppModel
         }
 
         return $event;
+    }
+
+    public function getSoloStandings($eventId)
+    {
+        $standings = $this->SoloStanding->find('all', [
+            'fields' => [
+                'id',
+                'player_id',
+                'handicap',
+                'sum(games_played) as games_played',
+                'sum(mvp_total) as all_mvp_total',
+                'sum(raw_mvp_total) as raw_mvp_total',
+            ],
+            'contain' => [
+                'Player' => [
+                    'fields' => ['id', 'player_name'],
+                ],
+            ],
+            'conditions' => [
+                'event_id' => $eventId,
+            ],
+            'group' => 'SoloStanding.id, SoloStanding.player_id, SoloStanding.handicap, Player.id',
+        ]);
+
+        $averages = $this->find(
+            'all',
+            [
+                'fields' => [
+                    'Scorecard.player_id',
+                    'AVG(Scorecard.score) as avg_score',
+                    'AVG(Scorecard.mvp_points) as avg_mvp',
+                ],
+                'conditions' => [
+                    'Event.id' => $eventId,
+                ],
+                'joins' => [
+                    [
+                        'table' => 'games',
+                        'alias' => 'Game',
+                        'type' => 'LEFT',
+                        'conditions' => [
+                            'Game.event_id = Event.id',
+                        ],
+                    ],
+                    [
+                        'table' => 'scorecards',
+                        'alias' => 'Scorecard',
+                        'type' => 'LEFT',
+                        'conditions' => [
+                            'Scorecard.game_id = Game.id',
+                        ],
+                    ],
+                ],
+                'group' => 'Scorecard.player_id',
+            ]
+        );
+
+        $data = [];
+
+        foreach ($standings as $standing) {
+            foreach ($averages as $average) {
+                if ($standing['SoloStanding']['player_id'] == $average['Scorecard']['player_id']) {
+                    $data[] = [
+                        'id' => $standing['SoloStanding']['id'],
+                        'player_id' => $standing['SoloStanding']['player_id'],
+                        'player_name' => $standing['Player']['player_name'],
+                        'avg_score' => $average[0]['avg_score'],
+                        'avg_mvp' => $average[0]['avg_mvp'],
+                        'handicap' => $standing['SoloStanding']['handicap'],
+                        'games_played' => $standing[0]['games_played'],
+                        'all_mvp_total' => $standing[0]['all_mvp_total'],
+                        'raw_mvp_total' => $standing[0]['raw_mvp_total'],
+                    ];
+
+                    break;
+                }
+            }
+        }
+
+        return $data;
     }
 }
