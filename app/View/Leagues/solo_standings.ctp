@@ -18,7 +18,25 @@
             <th style="width: 10%">Handicap</th>
             <th style="width: 15%">Avg MVP</th>
             <th style="width: 15%">Avg Score</th>
-            <th style="width: 15%">Games Played</th>
+            <th style="width: 15%">Games Counted</th>
+        </thead>
+    </table>
+</div>
+<hr>
+<h4 class="my-4">Scorecards</h4>
+<div>
+    <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
+        <thead>
+            <th>#</th>
+            <th>Name</th>
+            <th>Game</th>
+            <th>Position</th>
+            <th>Score</th>
+            <th>MVP</th>
+            <th>Hit Diff</th>
+            <th>Medic Hits</th>
+            <th>Accuracy</th>
+            <th>Shot Team</th>
         </thead>
     </table>
 </div>
@@ -141,6 +159,135 @@
                 },
             ]
         });
+
+        let overall = $('#overall').DataTable({
+            orderCellsTop: true,
+            scrollX: true,
+            fixedColumns: {
+                leftColumns: 2
+            },
+            ajax: {
+                url: `/scorecards/eventScorecards/<?php echo $selected_league['Event']['id']; ?>.json`,
+                dataSrc: function(response) {
+                    var result = response.data.map(function(element) {
+                        let positionClass = (element.Scorecard.team === 'red') ?
+                            'text-danger' : 'text-success';
+                        let gameClass = (element.Game.winner === 'red') ? 'text-danger' :
+                            'text-success';
+                        let hitDiff = Math.round(element.Scorecard.shot_opponent / Math.max(
+                                element.Scorecard.times_zapped, 1) *
+                            100) / 100;
+
+                        let playerLink =
+                            `<a href="/players/view/${element.Scorecard.player_id}?${params.toString()}">${element.Scorecard.player_name}</a>`;
+                        let gameLink =
+                            `<a href="/games/view/${element.Game.id}?${params.toString()}" class="${gameClass}">${element.Game.game_name}</a>`;
+                        let mvpLink =
+                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${element.Scorecard.mvp_points} <i class="material-icons">bar_chart</i></a>`;
+                        let hitDiffLink =
+                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
+                        let positionElement =
+                            `<span class="${positionClass}">${element.Scorecard.position}</span>`;
+
+                        return {
+                            player_name: element.Scorecard.player_name,
+                            player_link: playerLink,
+                            game_name: element.Game.game_name,
+                            game_link: gameLink,
+                            position: element.Scorecard.position,
+                            position_element: positionElement,
+                            score: element.Scorecard.score,
+                            mvp_points: element.Scorecard.mvp_points,
+                            mvp_points_link: mvpLink,
+                            accuracy: (Math.round(element.Scorecard.accuracy * 100 * 100) /
+                                100),
+                            hit_diff: hitDiff,
+                            hit_diff_link: hitDiffLink,
+                            medic_hits: element.Scorecard.medic_hits,
+                            shot_team: element.Scorecard.shot_team
+                        };
+                    });
+                    return result;
+                }
+            },
+            columns: [{
+                    defaultContent: '',
+                    orderable: false,
+                    responsivePriority: 1
+                },
+                {
+                    data: null,
+                    render: {
+                        _: "player_name",
+                        display: "player_link"
+                    },
+                    responsivePriority: 2
+                },
+                {
+                    data: null,
+                    render: {
+                        _: "game_name",
+                        display: "game_link"
+                    }
+                },
+                {
+                    data: null,
+                    render: {
+                        _: "position",
+                        display: "position_element"
+                    },
+                    responsivePriority: 3
+                },
+                {
+                    data: "score",
+                    orderSequence: ["desc", "asc"],
+                    className: "text-right"
+                },
+                {
+                    data: null,
+                    render: {
+                        _: "mvp_points",
+                        display: "mvp_points_link"
+                    },
+                    className: "text-right",
+                    responsivePriority: 4
+                },
+                {
+                    data: null,
+                    render: {
+                        _: "hit_diff",
+                        display: "hit_diff_link"
+                    },
+                    className: "text-right"
+                },
+                {
+                    data: "medic_hits",
+                    orderSequence: ["desc", "asc"],
+                    className: "text-right"
+                },
+                {
+                    data: "accuracy",
+                    orderSequence: ["desc", "asc"],
+                    className: "text-right"
+                },
+                {
+                    data: "shot_team",
+                    orderSequence: ["desc", "asc"],
+                    className: "text-right"
+                },
+            ],
+            order: [
+                [5, "desc"]
+            ]
+        });
+
+        overall.on('order.dt', function() {
+            overall.column(0, {
+                order: 'applied'
+            }).nodes().each(function(cell, i) {
+                cell.innerHTML = i + 1;
+            });
+        }).draw();
 
         $('#addPlayerModal').on('show.bs.modal', function(event) {
             let modal = $(this)

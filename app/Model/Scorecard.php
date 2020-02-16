@@ -2043,12 +2043,9 @@ class Scorecard extends AppModel
                                 ORDER BY max (streakset.streak) DESC");
     }
 
-    public function getLeagueScorecardsByRound($round, $league_id)
+    public function getEventScorecards($event_id)
     {
-        //doesnt do shit with rounds yet, just pulls everything
-        $conditions = [];
-
-        $conditions[] = ['Scorecard.event_id' => $league_id];
+        $conditions[] = ['Scorecard.event_id' => $event_id];
 
         return $this->find('all', [
             'conditions' => $conditions,

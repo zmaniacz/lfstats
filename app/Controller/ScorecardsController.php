@@ -118,6 +118,12 @@ class ScorecardsController extends AppController
         $this->set('response', $distance);
     }
 
+    public function eventScorecards($eventId)
+    {
+        $this->set('data', $this->Scorecard->getEventScorecards($eventId));
+        $this->set('_serialize', ['data']);
+    }
+
     public function getOverallStats($position)
     {
         switch ($position) {
