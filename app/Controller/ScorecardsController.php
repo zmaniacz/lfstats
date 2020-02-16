@@ -40,7 +40,8 @@ class ScorecardsController extends AppController
             'getLeaderboards',
             'getMissileLeaderBoards',
             'getMVPDetailsBySource',
-            'getScorecardsByDateRange'
+            'getScorecardsByDateRange',
+            'eventScorecards'
         );
         parent::beforeFilter();
     }
