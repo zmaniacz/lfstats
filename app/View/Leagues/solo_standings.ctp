@@ -111,16 +111,7 @@
                         let link =
                             `<a href="/players/${row.player_id}?${params.toString()}">${row.player_name}</a>`;
                         if (type === 'display') {
-                            if (loggedIn) {
-                                return link +
-                                    ` <a class="float-right" data-toggle="modal" data-event-player-id="${row.id}" 
-                                    data-player-handicap="${row.handicap}" href="#playerHandicapModal">
-                                    <i class="material-icons">edit</i></a>`;
-                            } else {
-
-                                return link;
-                            }
-
+                            return link;
                         } else {
                             return row.player_name;
                         }
@@ -130,7 +121,15 @@
                     data: "all_mvp_total"
                 },
                 {
-                    data: "handicap"
+                    data: function(row, type, val, meta) {
+                        if (type === 'display' && loggedIn) {
+                            return `${row.handicap} <a class="float-right" data-toggle="modal" data-event-player-id="${row.id}" 
+                                    data-player-handicap="${row.handicap}" href="#playerHandicapModal">
+                                    <i class="material-icons">edit</i></a>`;
+                        } else {
+                            return row.handicap;
+                        }
+                    }
                 },
                 {
                     data: function(row, type, val, meta) {
