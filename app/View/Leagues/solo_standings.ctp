@@ -4,7 +4,7 @@
     Player Standings
 </h4>
 <p>Total MVP is calculated as the total of a player's top 5 games by MVP at each position (10 for Scout) with the
-    player's handicap added to eadch game.</p>
+    player's handicap added to each game.</p>
 <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
 <a class="btn btn-success my-2" data-toggle="modal" href="#addPlayerModal">Add Player</a> <a
     href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $selected_league['Event']['id']]); ?>"><i
