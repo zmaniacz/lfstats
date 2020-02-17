@@ -124,9 +124,9 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display' && loggedIn) {
-                            return `${row.handicap} <a class="float-right" data-toggle="modal" data-event-player-id="${row.id}" 
+                            return `<a class="float-left" data-toggle="modal" data-event-player-id="${row.id}" 
                                     data-player-handicap="${row.handicap}" href="#playerHandicapModal">
-                                    <i class="material-icons">edit</i></a>`;
+                                    <i class="material-icons">edit</i></a>${row.handicap} `;
                         } else {
                             return row.handicap;
                         }
