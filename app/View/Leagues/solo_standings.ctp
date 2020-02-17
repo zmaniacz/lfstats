@@ -118,7 +118,8 @@
                     }
                 },
                 {
-                    data: "all_mvp_total"
+                    data: "all_mvp_total",
+                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {
@@ -129,7 +130,8 @@
                         } else {
                             return row.handicap;
                         }
-                    }
+                    },
+                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {
@@ -140,7 +142,8 @@
 
                             return row.avg_mvp;
                         }
-                    }
+                    },
+                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {
@@ -151,10 +154,12 @@
 
                             return row.avg_score;
                         }
-                    }
+                    },
+                    className: "text-right"
                 },
                 {
-                    data: "games_played"
+                    data: "games_played",
+                    className: "text-right"
                 },
             ]
         });
@@ -168,7 +173,7 @@
             ajax: {
                 url: `/scorecards/eventScorecards/<?php echo $selected_league['Event']['id']; ?>.json`,
                 dataSrc: function(response) {
-                    var result = response.data.map(function(element) {
+                    return response.data.map(function(element) {
                         let positionClass = (element.Scorecard.team === 'red') ?
                             'text-danger' : 'text-success';
                         let gameClass = (element.Game.winner === 'red') ? 'text-danger' :
@@ -206,7 +211,6 @@
                             shot_team: element.Scorecard.shot_team
                         };
                     });
-                    return result;
                 }
             },
             columns: [{
