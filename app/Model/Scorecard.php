@@ -761,6 +761,16 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.event_id' => $state['leagueID']];
         }
 
+        if (isset($state['startDate'])) {
+            if (isset($state['endDate'])) {
+                $conditions[] = ["Scorecard.game_datetime BETWEEN '{$state['startDate']}' AND '{$state['endDate']}'"];
+            } else {
+                $conditions[] = ["Scorecard.game_datetime >= '{$state['startDate']}'"];
+            }
+        } elseif (isset($state['endDate'])) {
+            $conditions[] = ["Scorecard.game_datetime <= '{$state['endDate']}'"];
+        }
+
         return $this->find('all', [
             'fields' => [
                 'Scorecard.player_id',
@@ -852,6 +862,16 @@ class Scorecard extends AppModel
 
         if (isset($state['leagueID']) && $state['leagueID'] > 0) {
             $conditions[] = ['Scorecard.event_id' => $state['leagueID']];
+        }
+
+        if (isset($state['startDate'])) {
+            if (isset($state['endDate'])) {
+                $conditions[] = ["Scorecard.game_datetime BETWEEN '{$state['startDate']}' AND '{$state['endDate']}'"];
+            } else {
+                $conditions[] = ["Scorecard.game_datetime >= '{$state['startDate']}'"];
+            }
+        } elseif (isset($state['endDate'])) {
+            $conditions[] = ["Scorecard.game_datetime <= '{$state['endDate']}'"];
         }
 
         $players_position = $this->find('all', [
@@ -996,6 +1016,16 @@ class Scorecard extends AppModel
 
         if (isset($state['leagueID']) && $state['leagueID'] > 0) {
             $conditions[] = ['event_id' => $state['leagueID']];
+        }
+
+        if (isset($state['startDate'])) {
+            if (isset($state['endDate'])) {
+                $conditions[] = ["Scorecard.game_datetime BETWEEN '{$state['startDate']}' AND '{$state['endDate']}'"];
+            } else {
+                $conditions[] = ["Scorecard.game_datetime >= '{$state['startDate']}'"];
+            }
+        } elseif (isset($state['endDate'])) {
+            $conditions[] = ["Scorecard.game_datetime <= '{$state['endDate']}'"];
         }
 
         $subQueryConditions = $conditions;

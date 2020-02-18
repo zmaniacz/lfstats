@@ -1,4 +1,8 @@
-<?php echo $this->element('breadcrumbs'); ?>
+<?php
+    echo $this->Html->script('https://unpkg.com/gijgo@1.9.13/js/gijgo.min.js', ['inline' => false]);
+    echo $this->Html->css('https://unpkg.com/gijgo@1.9.13/css/gijgo.min.css', ['inline' => false]);
+    echo $this->element('breadcrumbs');
+?>
 <hr>
 <div style="position: sticky; top: 56px; z-index: 1">
     <div class="card my-0">
@@ -17,9 +21,21 @@
                 <label class="custom-control-label" for="sub_cbox">Show Subs</label>
             </div>
             <?php } ?>
-            <p>Min Games: <span id="min_games_slider_value"></span></p>
-            <div class="col-xs-4">
-                <input type="range" class="custom-range" id="min_games_range" min="0" max="100" />
+            <div class="col-xs-6">
+                <div class="form-group">
+                    <label for="min_games_range">Min Games: <span id="min_games_slider_value"></span></label>
+                    <input type="range" class="custom-range" id="min_games_range" min="0" max="100" />
+                </div>
+            </div>
+            <div class="col-xs-6">
+                <form class="form-inline">
+                    <label for="datepicker-start" class="mx-1">Start Date: </label>
+                    <input id="datepicker-start" width="270" />
+                    <label for="datepicker-end" class="mx-1">End Date: </label>
+                    <input id="datepicker-end" width="270" />
+                    <button id="applyDateButton" type="button" class="btn btn-sm btn-info mx-1">Apply</button>
+                    <button id="resetDateButton" type="button" class="btn btn-sm btn-warning mx-1">Reset</button>
+                </form>
             </div>
         </div>
     </div>
@@ -181,6 +197,7 @@
 </table>
 <script type="text/javascript">
     $(document).ready(function() {
+        const params = new URLSearchParams(location.search);
         var min = 0;
 
         var overall_data
@@ -679,7 +696,7 @@
 
         let slider = $('#min_games_range');
         slider
-        .val( <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> );
+            .val( <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> );
         $("#min_games_slider_value").text(slider.val())
 
         slider.on('input', function(event) {
@@ -695,6 +712,34 @@
             update_table(ammo_overall_table, minVal, ammo_overall_data)
             update_table(medic_overall_table, minVal, medic_overall_data)
         });
+
+        $('#datepicker-start').datepicker({
+            uiLibrary: 'bootstrap4',
+            format: 'yyyy-mm-dd',
+            value: params.get('startDate'),
+            change: function() {
+                params.set('startDate', $('#datepicker-start').val());
+                console.log(params.toString())
+            }
+        });
+        $('#datepicker-end').datepicker({
+            uiLibrary: 'bootstrap4',
+            format: 'yyyy-mm-dd',
+            value: params.get('endDate'),
+            change: function() {
+                params.set('endDate', $('#datepicker-end').val());
+                console.log(params.toString())
+            }
+        });
+
+        $('#applyDateButton').click(function(event) {
+            window.location = `/scorecards/overall?${params.toString()}`;
+        })
+        $('#resetDateButton').click(function(event) {
+            params.delete('startDate');
+            params.delete('endDate');
+            window.location = `/scorecards/overall?${params.toString()}`;
+        })
 
         $('#sub_cbox').change(function() {
             if ($('#sub_cbox').is(':checked')) {

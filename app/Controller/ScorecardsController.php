@@ -129,23 +129,23 @@ class ScorecardsController extends AppController
     {
         switch ($position) {
             case 'commander':
-                $this->set('response', $this->Scorecard->getPositionStats('Commander', $this->Session->read('state')));
+                $this->set('response', $this->Scorecard->getPositionStats('Commander', $this->request->query));
 
                 break;
             case 'heavy':
-                $this->set('response', $this->Scorecard->getPositionStats('Heavy Weapons', $this->Session->read('state')));
+                $this->set('response', $this->Scorecard->getPositionStats('Heavy Weapons', $this->request->query));
 
                 break;
             case 'scout':
-                $this->set('response', $this->Scorecard->getPositionStats('Scout', $this->Session->read('state')));
+                $this->set('response', $this->Scorecard->getPositionStats('Scout', $this->request->query));
 
                 break;
             case 'ammo':
-                $this->set('response', $this->Scorecard->getPositionStats('Ammo Carrier', $this->Session->read('state')));
+                $this->set('response', $this->Scorecard->getPositionStats('Ammo Carrier', $this->request->query));
 
                 break;
             case 'medic':
-                $this->set('response', $this->Scorecard->getPositionStats('Medic', $this->Session->read('state')));
+                $this->set('response', $this->Scorecard->getPositionStats('Medic', $this->request->query));
 
                 break;
         }
@@ -158,12 +158,12 @@ class ScorecardsController extends AppController
 
     public function getOverallAverages()
     {
-        $this->set('response', $this->Scorecard->getAllAvgMVP($this->Session->read('state')));
+        $this->set('response', $this->Scorecard->getAllAvgMVP($this->request->query));
     }
 
     public function getOverallMedicHits()
     {
-        $this->set('response', $this->Scorecard->getMedicHitStats($this->Session->read('state')));
+        $this->set('response', $this->Scorecard->getMedicHitStats($this->request->query));
     }
 
     public function getScorecardsByDateRange()
