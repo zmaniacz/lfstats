@@ -96,7 +96,7 @@
                     let $pdfLink = $('<a>', {
                         href: 'https://lfstats-scorecards.s3.amazonaws.com/' +
                             element.Game.pdf_id + '.pdf',
-                            target: '_blank'
+                        target: '_blank'
                     }).text('PDF');
 
                     $gameLink.html('<h5>' + element.Game.game_name + ' - ' + element.Game
@@ -131,11 +131,16 @@
         updateGameList(params);
 
         var overall = $('#overall').DataTable({
-            orderCellsTop: true,
+            deferRender: true,
             scrollX: true,
             fixedColumns: {
                 leftColumns: 2
             },
+            buttons: [{
+                extend: 'csvHtml5',
+                className: 'btn btn-info btn-sm',
+                text: 'Download CSV'
+            }],
             ajax: {
                 url: `/scorecards/nightlyScorecards.json?${params.toString()}`,
                 dataSrc: function(response) {
@@ -249,6 +254,10 @@
             order: [
                 [5, "desc"]
             ]
+        });
+
+        overall.on('draw.dt', function() {
+            overall.buttons().container().appendTo('#overall_wrapper');
         });
 
         overall.on('order.dt', function() {

@@ -185,13 +185,12 @@
 
         var overall_data
         var overall_table = $('#overall_averages_table').DataTable({
-            dom: 'Bfrtip',
             deferRender: true,
             scrollX: true,
             fixedColumns: true,
             buttons: [{
                 extend: 'csvHtml5',
-                className: 'btn btn-primary',
+                className: 'btn btn-info btn-sm',
                 text: 'Download CSV'
             }],
             order: [
@@ -335,6 +334,8 @@
                 },
             ]
         });
+
+        overall_table.buttons().container().appendTo('#overall_averages_table_wrapper');
 
         var commander_overall_data
         var commander_overall_table = $('#commander_overall_table').DataTable({
