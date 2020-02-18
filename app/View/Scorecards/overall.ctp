@@ -19,7 +19,7 @@
             <?php } ?>
             <p>Min Games: <span id="min_games_slider_value"></span></p>
             <div class="col-xs-4">
-                <div id="min_games_slider"></div>
+                <input type="range" class="custom-range" id="min_games_range" min="0" max="100" />
             </div>
         </div>
     </div>
@@ -335,7 +335,9 @@
             ]
         });
 
-        overall_table.buttons().container().appendTo('#overall_averages_table_wrapper');
+        overall_table.on('draw.dt', function() {
+            overall_table.buttons().container().appendTo('#overall_averages_table_wrapper');
+        });
 
         var commander_overall_data
         var commander_overall_table = $('#commander_overall_table').DataTable({
@@ -675,34 +677,24 @@
             update_table(medic_overall_table, min, medic_overall_data)
         })
 
-        //Init the slider to set the terms for the ajax filtering
-        if ($("#min_games_slider").length) {
-            var slider = document.getElementById("min_games_slider")
+        let slider = $('#min_games_range');
+        slider
+        .val( <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> );
+        $("#min_games_slider_value").text(slider.val())
 
-            noUiSlider.create(slider, {
-                start: <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> ,
-                connect: [true, false],
-                step: 1,
-                range: {
-                    'min': 0,
-                    'max': 100
-                }
-            });
+        slider.on('input', function(event) {
+            $("#min_games_slider_value").text(slider.val())
+        });
 
-            slider.noUiSlider.on('update', function(values, handle, unencoded) {
-                min = unencoded
-                $("#min_games_slider_value").text(min)
-            })
-
-            slider.noUiSlider.on('end', function(values, handle, unencoded) {
-                update_table(overall_table, min, overall_data)
-                update_table(commander_overall_table, min, commander_overall_data)
-                update_table(heavy_overall_table, min, heavy_overall_data)
-                update_table(scout_overall_table, min, scout_overall_data)
-                update_table(ammo_overall_table, min, ammo_overall_data)
-                update_table(medic_overall_table, min, medic_overall_data)
-            })
-        }
+        slider.on('change', function(event) {
+            let minVal = slider.val();
+            update_table(overall_table, minVal, overall_data)
+            update_table(commander_overall_table, minVal, commander_overall_data)
+            update_table(heavy_overall_table, minVal, heavy_overall_data)
+            update_table(scout_overall_table, minVal, scout_overall_data)
+            update_table(ammo_overall_table, minVal, ammo_overall_data)
+            update_table(medic_overall_table, minVal, medic_overall_data)
+        });
 
         $('#sub_cbox').change(function() {
             if ($('#sub_cbox').is(':checked')) {

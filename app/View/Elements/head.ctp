@@ -25,8 +25,6 @@
 <link rel="stylesheet" type="text/css"
     href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
 <link rel="stylesheet" type="text/css"
-    href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.css" />
-<link rel="stylesheet" type="text/css"
     href="https://cdn.datatables.net/scroller/2.0.1/css/scroller.bootstrap4.min.css" />
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.6.1/css/buttons.bootstrap4.min.css" />
 <?php echo $this->fetch('css'); ?>
@@ -45,7 +43,6 @@
 <script defer src="https://cdn.datatables.net/buttons/1.6.1/js/dataTables.buttons.min.js"></script>
 <script defer src="https://cdn.datatables.net/buttons/1.6.1/js/buttons.html5.min.js"></script>
 <script defer src='https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js'></script>
-<script defer src='https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/11.0.3/nouislider.min.js'></script>
 <script defer src='https://code.highcharts.com/stock/highstock.js'></script>
 <script defer src='https://code.highcharts.com/stock/highcharts-more.js'></script>
 <script defer src='https://code.highcharts.com/stock/indicators/indicators.js'></script>
