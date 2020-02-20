@@ -41,7 +41,8 @@ class ScorecardsController extends AppController
             'getMissileLeaderBoards',
             'getMVPDetailsBySource',
             'getScorecardsByDateRange',
-            'eventScorecards'
+            'eventScorecards',
+            'nightlyDetailed'
         );
         parent::beforeFilter();
     }
@@ -172,6 +173,28 @@ class ScorecardsController extends AppController
     }
 
     public function nightly()
+    {
+        $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
+
+        if ($this->Session->read('state.isComp') > 0) {
+            $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
+        }
+
+        $game_dates = $this->Scorecard->getGameDates($this->Session->read('state'));
+        $this->set('game_dates', $game_dates);
+
+        if ($this->request->isPost()) {
+            $date = $this->request->data['Scorecard']['date'];
+        }
+
+        if (empty($date)) {
+            $date = reset($game_dates);
+        }
+
+        $this->set('current_date', $date);
+    }
+
+    public function nightlyDetailed()
     {
         $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
 

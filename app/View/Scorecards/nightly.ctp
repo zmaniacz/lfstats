@@ -12,7 +12,8 @@
         </select>
     </div>
 </form>
-<h4 class="my-4">Overall</h4>
+<h4 class="my-4">Overall <?php echo $this->Html->link('(details)', ['controller' => 'scorecards', 'action' => 'nightlyDetailed'], ['class' => 'h6 text-muted']); ?>
+</h4>
 <div>
     <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
         <thead>
@@ -136,11 +137,6 @@
             fixedColumns: {
                 leftColumns: 2
             },
-            buttons: [{
-                extend: 'csvHtml5',
-                className: 'btn btn-info btn-sm',
-                text: 'Download CSV'
-            }],
             ajax: {
                 url: `/scorecards/nightlyScorecards.json?${params.toString()}`,
                 dataSrc: function(response) {
@@ -254,10 +250,6 @@
             order: [
                 [5, "desc"]
             ]
-        });
-
-        overall.on('draw.dt', function() {
-            overall.buttons().container().appendTo('#overall_wrapper');
         });
 
         overall.on('order.dt', function() {
