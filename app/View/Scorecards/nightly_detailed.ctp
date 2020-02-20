@@ -64,7 +64,8 @@
                             mvp_points_link: mvpLink,
                             acc: Number.parseFloat(element.Scorecard.accuracy * 100)
                                 .toFixed(2),
-                            hit_diff: hitDiff,
+                            hitDiff: Number.parseFloat(element.Scorecard.hit_diff)
+                                .toFixed(2),
                             hit_diff_link: hitDiffLink,
                             ...element.Scorecard
                         };
@@ -119,7 +120,7 @@
                     responsivePriority: 4
                 },
                 {
-                    data: "hit_diff",
+                    data: "hitDiff",
                     title: "Hit Diff",
                     className: "text-right"
                 },
