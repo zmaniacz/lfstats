@@ -453,10 +453,8 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['Scorecard.is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['Scorecard.is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
@@ -727,10 +725,8 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['Scorecard.is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['Scorecard.is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
@@ -830,10 +826,8 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['Scorecard.is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['Scorecard.is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
@@ -922,7 +916,6 @@ class Scorecard extends AppModel
             'conditions' => $conditions,
             'group' => 'Scorecard.player_id',
         ]);
-
         $players = $this->Player->find('list');
 
         $results = [];
@@ -984,10 +977,8 @@ class Scorecard extends AppModel
             $conditions[] = ['type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
@@ -1678,10 +1669,8 @@ class Scorecard extends AppModel
             $conditions[] = ['type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (!isset($state['show_finals']) || 'true' != $state['show_finals']) {
@@ -1743,10 +1732,8 @@ class Scorecard extends AppModel
             $conditions[] = ['type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (!isset($state['show_finals']) || 'true' != $state['show_finals']) {
@@ -1798,10 +1785,8 @@ class Scorecard extends AppModel
             $conditions[] = ['type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (!isset($state['show_finals']) || 'true' != $state['show_finals']) {
@@ -1855,10 +1840,8 @@ class Scorecard extends AppModel
             $conditions[] = ['type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (!isset($state['show_finals']) || 'true' != $state['show_finals']) {
@@ -1923,10 +1906,8 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.type' => $state['gametype']];
 
             if ('league' == $state['gametype']) {
-                if (isset($state['show_subs']) && 'true' == $state['show_subs']) {
-                    $conditions[] = ['Scorecard.is_sub >=' => 0];
-                } else {
-                    $conditions[] = ['Scorecard.is_sub' => 0];
+                if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
+                    $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
                 if (!isset($state['show_finals']) || 'true' != $state['show_finals']) {

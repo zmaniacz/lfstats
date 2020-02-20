@@ -9,16 +9,16 @@
         <div class="card-body">
             <?php if ($this->Session->read('state.isComp') > 0) { ?>
             <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="rounds_cbox" <?php echo ('true' == $this->Session->read('state.show_rounds')) ? 'checked' : ''; ?>>
+                <input type="checkbox" class="custom-control-input" id="rounds_cbox">
                 <label class="custom-control-label" for="rounds_cbox">Show Rounds</label>
             </div>
             <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="finals_cbox" <?php echo ('true' == $this->Session->read('state.show_finals')) ? 'checked' : ''; ?>>
+                <input type="checkbox" class="custom-control-input" id="finals_cbox">
                 <label class="custom-control-label" for="finals_cbox">Show Finals</label>
             </div>
             <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="sub_cbox" <?php echo ('true' == $this->Session->read('state.show_subs')) ? 'checked' : ''; ?>>
-                <label class="custom-control-label" for="sub_cbox">Show Subs</label>
+                <input type="checkbox" class="custom-control-input" id="subs_cbox">
+                <label class="custom-control-label" for="subs_cbox">Show Subs</label>
             </div>
             <?php } ?>
             <div class="col-xs-6">
@@ -27,6 +27,7 @@
                     <input type="range" class="custom-range" id="min_games_range" min="0" max="100" />
                 </div>
             </div>
+            <?php if ($this->Session->read('state.isComp') <= 0) { ?>
             <div class="col-xs-6">
                 <form class="form-inline">
                     <label for="datepicker-start" class="mx-1">Start Date: </label>
@@ -37,6 +38,7 @@
                     <button id="resetDateButton" type="button" class="btn btn-sm btn-warning mx-1">Reset</button>
                 </form>
             </div>
+            <?php } ?>
         </div>
     </div>
 </div>
@@ -197,8 +199,44 @@
 </table>
 <script type="text/javascript">
     $(document).ready(function() {
-        const params = new URLSearchParams(location.search);
-        var min = 0;
+        let params = new URLSearchParams(location.search);
+        let
+            min = <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> ;
+
+        if (!params.has('show_rounds'))
+            params.set('show_rounds', 'true');
+
+        if (!params.has('show_finals'))
+            params.set('show_finals', 'false');
+
+        if (!params.has('show_subs'))
+            params.set('show_subs', 'false');
+
+        if (params.get('show_rounds') === 'true')
+            $('#rounds_cbox').attr("checked", "checked")
+        if (params.get('show_finals') === 'true')
+            $('#finals_cbox').attr("checked", "checked")
+        if (params.get('show_subs') === 'true')
+            $('#subs_cbox').attr("checked", "checked")
+
+        function updateFilter(type) {
+            if ($(`#${type}_cbox`).is(':checked')) {
+                params.set(`show_${type}`, 'true');
+            } else {
+                params.set(`show_${type}`, 'false');
+            }
+
+            window.location = `/scorecards/overall?${params.toString()}`;
+        }
+        $('#subs_cbox').change(function() {
+            updateFilter('subs');
+        });
+        $('#rounds_cbox').change(function() {
+            updateFilter('rounds');
+        });
+        $('#finals_cbox').change(function() {
+            updateFilter('finals');
+        });
 
         var overall_data
         var overall_table = $('#overall_averages_table').DataTable({
@@ -617,7 +655,7 @@
                 [1, "desc"]
             ],
             "ajax": {
-                "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallMedicHits', 'ext' => 'json'])); ?>"
+                "url": `/scorecards/getOverallMedicHits.json?${params.toString()}`
             },
             "columns": [{
                     "data": "player_name_link",
@@ -653,7 +691,7 @@
 
         //AJAX calls to fetch raw datasets for the datatables
         $.ajax({
-            "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallAverages', 'ext' => 'json'])); ?>"
+            url: `/scorecards/getOverallAverages.json?${params.toString()}`
         }).done(function(response) {
             overall_data = response.data
             update_table(overall_table, min, overall_data)
@@ -695,8 +733,7 @@
         })
 
         let slider = $('#min_games_range');
-        slider
-            .val( <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> );
+        slider.val(min);
         $("#min_games_slider_value").text(slider.val())
 
         slider.on('input', function(event) {
@@ -740,33 +777,5 @@
             params.delete('endDate');
             window.location = `/scorecards/overall?${params.toString()}`;
         })
-
-        $('#sub_cbox').change(function() {
-            if ($('#sub_cbox').is(':checked')) {
-                window.location =
-                    "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'filterSub', 'true'])); ?>";
-            } else {
-                window.location =
-                    "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'filterSub', 'false'])); ?>";
-            }
-        });
-        $('#finals_cbox').change(function() {
-            if ($('#finals_cbox').is(':checked')) {
-                window.location =
-                    "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'filterFinals', 'true'])); ?>";
-            } else {
-                window.location =
-                    "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'filterFinals', 'false'])); ?>";
-            }
-        });
-        $('#rounds_cbox').change(function() {
-            if ($('#rounds_cbox').is(':checked')) {
-                window.location =
-                    "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'filterRounds', 'true'])); ?>";
-            } else {
-                window.location =
-                    "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'filterRounds', 'false'])); ?>";
-            }
-        });
     });
 </script>
