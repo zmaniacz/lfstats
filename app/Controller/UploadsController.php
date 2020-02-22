@@ -232,7 +232,7 @@ class UploadsController extends AppController
                         'ammo_boost' => $player['ammoBoost'],
                         'lives_left' => $player['livesLeft'],
                         'shots_left' => $player['shotsLeft'],
-                        'penalties' => $player['penalties'],
+                        'penalty_count' => $player['penalties'],
                         'shot_3hit' => $player['shot3hit'],
                         'elim_other_team' => $player['elimOtherTeam'],
                         'team_elim' => $player['teamElim'],

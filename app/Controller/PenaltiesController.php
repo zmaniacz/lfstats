@@ -83,7 +83,7 @@ class PenaltiesController extends AppController
                 ]);
 
                 //add a penalty to the scorecard record and recalc MVP
-                ++$scorecard['Scorecard']['penalties'];
+                ++$scorecard['Scorecard']['penalty_count'];
                 $this->Penalty->Scorecard->save($scorecard);
                 $this->Penalty->Scorecard->generateMVP($scorecard['Scorecard']['game_id']);
 
@@ -243,9 +243,9 @@ class PenaltiesController extends AppController
             $this->Flash->success('The penalty has been deleted.');
 
             //remove a penalty to the socrecard record and recalc MVP
-            --$scorecard['Scorecard']['penalties'];
-            if ($scorecard['Scorecard']['penalties'] < 0) {
-                $scorecard['Scorecard']['penalties'] = 0;
+            --$scorecard['Scorecard']['penalty_count'];
+            if ($scorecard['Scorecard']['penalty_count'] < 0) {
+                $scorecard['Scorecard']['penalty_count'] = 0;
             }
 
             $scorecard['Scorecard']['mvp_points'] = null;
