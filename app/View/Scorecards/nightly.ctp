@@ -168,7 +168,8 @@
                             position: element.Scorecard.position,
                             position_element: positionElement,
                             score: element.Scorecard.score,
-                            mvp_points: element.Scorecard.mvp_points,
+                            mvp_points: Number.parseFloat(element.Scorecard.mvp_points)
+                                .toFixed(2),
                             mvp_points_link: mvpLink,
                             accuracy: (Math.round(element.Scorecard.accuracy * 100 * 100) /
                                 100),
