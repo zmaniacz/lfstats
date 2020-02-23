@@ -183,7 +183,7 @@ class Scorecard extends AppModel
 
                     break;
                 case 'Medic':
-                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score'] - 2000) / 10) * .01), 0);
+                    $mvp_details['positionBonus']['value'] += max((floor(($score['Scorecard']['score'] - 2000) / 10) * .02), 0);
 
                     break;
                 case 'Scout':
@@ -192,10 +192,10 @@ class Scorecard extends AppModel
                     break;
             }
 
-            //medic bonus point
-            if ('Medic' == $score['Scorecard']['position'] && $score['Scorecard']['score'] >= 3000) {
+            //medic bonus point - removed on 2020-02-22
+            /*if ('Medic' == $score['Scorecard']['position'] && $score['Scorecard']['score'] >= 3000) {
                 ++$mvp_details['medicScoreBonus']['value'];
-            }
+            }*/
 
             //accuracy bonus
             $mvp_details['acc']['value'] += round($score['Scorecard']['accuracy'] * 10, 1);
@@ -256,7 +256,7 @@ class Scorecard extends AppModel
 
             //push the little button
             //$mvp_details['rapidFire']['value'] += $score['Scorecard']['scout_rapid'] * .5;
-            $mvp_details['lifeBoost']['value'] += $score['Scorecard']['life_boost'] * 2;
+            $mvp_details['lifeBoost']['value'] += $score['Scorecard']['life_boost'] * 3;
             $mvp_details['ammoBoost']['value'] += $score['Scorecard']['ammo_boost'] * 3;
 
             //survival bonuses/penalties
