@@ -469,11 +469,11 @@ class Player extends AppModel
     public function linkPlayers($master_id, $target_id)
     {
         //delete duplicate aliases
-        $this->query("
+        /*$this->query("
         DELETE FROM players_names a
             USING players_names b
             WHERE a.player_name = b.player_name AND a.player_id = {$target_id}
-        ");
+        ");*/
 
         //update the player_names table
         $this->PlayersName->updateAll(
