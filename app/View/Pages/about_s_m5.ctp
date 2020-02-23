@@ -160,29 +160,28 @@
     <ul>
         <li>Missiles: 1 point for missiling an opponent (does not apply to bases).</li>
         <li>Nukes: 1 point for each successful nuke.</li>
-        <li>Score bonus: 1 point for every full 1000 points over 10,000.</li>
+        <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 10,000.</li>
         <li>Get nuke canceled: -3 points.</li>
     </ul>
     <li>Heavy Weapons</li>
     <ul>
         <li>Missiles: 2 points for missiling an opponent (does not apply to bases).</li>
-        <li>Score bonus: 1 point for every full 1000 points over 7000.</li>
+        <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 7000.</li>
     </ul>
     <li>Scout</li>
     <ul>
         <li>Hits vs. Commander/Heavy: .2 points for every hit on an enemy Heavy or Commander.</li>
-        <li>Score bonus: 1 point for every full 1000 points over 6000.</li>
+        <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 6000.</li>
     </ul>
     <li>Ammo Carrier</li>
     <ul>
         <li>Power Boost: 3 points each time you activate power boost.</li>
-        <li>Score bonus: 1 point for every full 1000 points over 3000.</li>
+        <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 3000.</li>
     </ul>
     <li>Medic</li>
     <ul>
-        <li>Power Boost: 2 points each time you activate power boost.</li>
+        <li>Power Boost: 3 points each time you activate power boost.</li>
         <li>Survival Bonus: 1 point if you are still alive when the game clock expires.</li>
-        <li>Score bonus: 1 point for every full 1000 points over 2000.</li>
-        <li>Score bonus: 1 point for scoring at least 3000 points</li>
+        <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 2000.</li>
     </ul>
 </ul>
