@@ -235,7 +235,7 @@
                     title: "Bases"
                 },
                 {
-                    data: "penalties",
+                    data: "penalty_count",
                     title: "Penalties"
                 },
                 {
