@@ -23,7 +23,8 @@
     </table>
 </div>
 <hr>
-<h4 class="my-4">Scorecards</h4>
+<h4 class="my-4">Scorecards <?php echo $this->Html->link('(details)', ['controller' => 'scorecards', 'action' => 'nightlyDetailed'], ['class' => 'h6 text-muted']); ?>
+</h4>
 <div>
     <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
         <thead>

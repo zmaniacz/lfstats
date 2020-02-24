@@ -198,10 +198,6 @@ class ScorecardsController extends AppController
     {
         $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
 
-        if ($this->Session->read('state.isComp') > 0) {
-            $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
-        }
-
         $game_dates = $this->Scorecard->getGameDates($this->Session->read('state'));
         $this->set('game_dates', $game_dates);
 
