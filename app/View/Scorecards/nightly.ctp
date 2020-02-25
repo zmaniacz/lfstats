@@ -148,13 +148,15 @@
                         let hitDiff = Math.round(element.Scorecard.shot_opponent / Math.max(
                                 element.Scorecard.times_zapped, 1) *
                             100) / 100;
+                        let mvp = Number.parseFloat(element.Scorecard.mvp_points).toFixed(
+                        2);
 
                         let playerLink =
                             `<a href="/players/view/${element.Scorecard.player_id}?${params.toString()}">${element.Scorecard.player_name}</a>`;
                         let gameLink =
                             `<a href="/games/view/${element.Game.id}?${params.toString()}" class="${gameClass}">${element.Game.game_name}</a>`;
                         let mvpLink =
-                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${element.Scorecard.mvp_points} <i class="material-icons">bar_chart</i></a>`;
+                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${mvp} <i class="material-icons">bar_chart</i></a>`;
                         let hitDiffLink =
                             `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
                         let positionElement =
@@ -168,8 +170,7 @@
                             position: element.Scorecard.position,
                             position_element: positionElement,
                             score: element.Scorecard.score,
-                            mvp_points: Number.parseFloat(element.Scorecard.mvp_points)
-                                .toFixed(2),
+                            mvp_points: mvp,
                             mvp_points_link: mvpLink,
                             accuracy: (Math.round(element.Scorecard.accuracy * 100 * 100) /
                                 100),
