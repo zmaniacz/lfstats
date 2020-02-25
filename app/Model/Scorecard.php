@@ -294,7 +294,7 @@ class Scorecard extends AppModel
             //at least 1 MVP for an elim, increased by 1/60 for each second of time remaining over 60
             if ($score['Scorecard']['elim_other_team'] > 0) {
                 if (!is_null($score['Game']['game_length'])) {
-                    $mvp_details['elimBonus']['value'] += max(1, ((900 - $score['Game']['game_length']) / 60));
+                    $mvp_details['elimBonus']['value'] += round(max(1, (($score['Game']['duration'] - $score['Game']['game_length']) / 60)), 2);
                 } else {
                     //default to 2
                     $mvp_details['elimBonus']['value'] += $score['Scorecard']['elim_other_team'] * 2;
