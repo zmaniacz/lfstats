@@ -468,12 +468,17 @@ class Player extends AppModel
 
     public function linkPlayers($master_id, $target_id)
     {
-        //delete duplicate aliases
-        /*$this->query("
-        DELETE FROM players_names a
-            USING players_names b
-            WHERE a.player_name = b.player_name AND a.player_id = {$target_id}
-        ");*/
+        $master = $this->find('first', ['conditions' => ['id' => $master_id]]);
+
+        $dupe = $this->PlayersName->find('first', ['conditions' => [
+            'player_name' => $master['Player']['player_name'],
+            'player_id' => $target_id,
+        ]]);
+
+        //delete dupe aliases
+        if (!empty($dupe)) {
+            $this->PlayersName->delete($dupe['PlayersName']['id']);
+        }
 
         //update the player_names table
         $this->PlayersName->updateAll(
