@@ -279,222 +279,228 @@
     </div>
 </div>
 <script type="text/javascript">
-function update_table(table, filter, data) {
-    table.clear()
-    table.rows.add(data.filter(function(row) {
-        return row.Scorecard.games_played >= filter
-    })).draw()
-}
+    function update_table(table, filter, data) {
+        table.clear()
+        table.rows.add(data.filter(function(row) {
+            return row.Scorecard.games_played >= filter
+        })).draw()
+    }
 
-$(document).ready(function() {
-    const params = new URLSearchParams(location.search);
+    $(document).ready(function() {
+        const params = new URLSearchParams(location.search);
 
-    //set initial state on the filter buttons
-    if (params.get('show_finals') === 'true')
-        $('#show_finals_button').addClass('active');
+        if (!params.has('show_finals'))
+            params.set('show_finals', 'false');
 
-    if (params.get('show_subs') === 'true')
-        $('#show_subs_button').addClass('active');
+        if (!params.has('show_subs'))
+            params.set('show_subs', 'false');
 
-    //defaults for all tables on this page
-    $.extend(true, $.fn.dataTable.defaults, {
-        order: [
-            [1, "desc"]
-        ],
-        searching: false,
-        lengthChange: false,
-        pageLength: 5,
-        pagingType: "simple",
-        processing: true,
-        language: {
-            processing: '<span class="align-center">Loading...</span>'
-        }
-    });
+        //set initial state on the filter buttons
+        if (params.get('show_finals') === 'true')
+            $('#show_finals_button').addClass('active');
 
-    //handle filtering clicks
-    $('#show_finals_button').click(function() {
-        params.set('show_finals', (params.get('show_finals') === 'true' ? 'false' : 'true'));
-        window.location = `${location.pathname}?${params.toString()}`;
-    });
+        if (params.get('show_subs') === 'true')
+            $('#show_subs_button').addClass('active');
 
-    $('#show_subs_button').click(function() {
-        params.set('show_subs', (params.get('show_subs') === 'true' ? 'false' : 'true'));
-        window.location = `${location.pathname}?${params.toString()}`;
-    });
-
-    //handle the missiles slider jfc
-    $('#avg_missiles_min_games_range').on('input', function() {
-        $('#avg_missiles_min_games').text(this.value);
-    });
-
-    $('#avg_missiles_min_games_range').change(function() {
-        update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
-            avg_missiles_data);
-    });
-
-    //instantiate all the datatables
-    $("table[id$='_leader_table']").DataTable({
-        columns: [{
-                data: function(row, type, val, meta) {
-                    if (type === 'display') {
-                        return `<a href="/players/view/${row.player.id}?${params.toString()}">${row.player.player_name}</a>`;
-                    }
-                    return row.player.player_name;
-                }
-            },
-            {
-                "data": "value"
-            },
-        ]
-    });
-    $("div[id$='_leader_table_processing']").show();
-
-    $("table[id$='_scores_table']").DataTable({
-        columns: [{
-                data: function(row, type, val, meta) {
-                    if (type === 'display') {
-                        return `<a href="/players/view/${row.Player.id}?${params.toString()}">${row.Player.player_name}</a>`;
-                    }
-                    return row.Player.player_name;
-                }
-            },
-            {
-                data: function(row, type, val, meta) {
-                    if (type === 'display') {
-                        return `<a href="/games/view/${row.Scorecard.game_id}?${params.toString()}">${row.Scorecard.final_score}</a>`;
-                    }
-                    return row.Scorecard.final_score;
-                }
-            },
-            {
-                data: function(row, type, val, meta) {
-                    if (type === 'display') {
-                        return `<a href="/games/view/${row.Scorecard.game_id}?${params.toString()}">${row.Scorecard.mvp_points}</a>`;
-                    }
-                    return row.Scorecard.mvp_points;
-                }
+        //defaults for all tables on this page
+        $.extend(true, $.fn.dataTable.defaults, {
+            order: [
+                [1, "desc"]
+            ],
+            searching: false,
+            lengthChange: false,
+            pageLength: 5,
+            pagingType: "simple",
+            processing: true,
+            language: {
+                processing: '<span class="align-center">Loading...</span>'
             }
-        ]
-    });
-    $("div[id$='_scores_table_processing']").show();
+        });
 
-    var avg_missiles_data
-    var avg_missiles_table = $("#avg_missiles_table").DataTable({
-        columns: [{
-                data: function(row, type, val, meta) {
-                    if (type === 'display') {
-                        return `<a href="/players/view/${row.Player.id}?${params.toString()}">${row.Player.player_name}</a>`;
+        //handle filtering clicks
+        $('#show_finals_button').click(function() {
+            params.set('show_finals', (params.get('show_finals') === 'true' ? 'false' : 'true'));
+            window.location = `${location.pathname}?${params.toString()}`;
+        });
+
+        $('#show_subs_button').click(function() {
+            params.set('show_subs', (params.get('show_subs') === 'true' ? 'false' : 'true'));
+            window.location = `${location.pathname}?${params.toString()}`;
+        });
+
+        //handle the missiles slider jfc
+        $('#avg_missiles_min_games_range').on('input', function() {
+            $('#avg_missiles_min_games').text(this.value);
+        });
+
+        $('#avg_missiles_min_games_range').change(function() {
+            update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
+                avg_missiles_data);
+        });
+
+        //instantiate all the datatables
+        $("table[id$='_leader_table']").DataTable({
+            columns: [{
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return `<a href="/players/view/${row.player.id}?${params.toString()}">${row.player.player_name}</a>`;
+                        }
+                        return row.player.player_name;
                     }
-                    return row.Player.player_name;
-                }
-            },
-            {
-                data: function(row, type, val, meta) {
-                    let avg = (row.Scorecard.missiled_opponent_total + row.Scorecard
-                        .missiled_team_total) / row.Scorecard.games_played;
+                },
+                {
+                    "data": "value"
+                },
+            ]
+        });
+        $("div[id$='_leader_table_processing']").show();
 
-                    if (type === 'display') {
-                        return avg.toFixed(2);
+        $("table[id$='_scores_table']").DataTable({
+            columns: [{
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return `<a href="/players/view/${row.Player.id}?${params.toString()}">${row.Player.player_name}</a>`;
+                        }
+                        return row.Player.player_name;
                     }
-
-                    return avg;
+                },
+                {
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return `<a href="/games/view/${row.Scorecard.game_id}?${params.toString()}">${row.Scorecard.final_score}</a>`;
+                        }
+                        return row.Scorecard.final_score;
+                    }
+                },
+                {
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return `<a href="/games/view/${row.Scorecard.game_id}?${params.toString()}">${row.Scorecard.mvp_points}</a>`;
+                        }
+                        return row.Scorecard.mvp_points;
+                    }
                 }
-            },
-        ]
+            ]
+        });
+        $("div[id$='_scores_table_processing']").show();
+
+        var avg_missiles_data
+        var avg_missiles_table = $("#avg_missiles_table").DataTable({
+            columns: [{
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return `<a href="/players/view/${row.Player.id}?${params.toString()}">${row.Player.player_name}</a>`;
+                        }
+                        return row.Player.player_name;
+                    }
+                },
+                {
+                    data: function(row, type, val, meta) {
+                        let avg = (row.Scorecard.missiled_opponent_total + row.Scorecard
+                            .missiled_team_total) / row.Scorecard.games_played;
+
+                        if (type === 'display') {
+                            return avg.toFixed(2);
+                        }
+
+                        return avg;
+                    }
+                },
+            ]
+        });
+        $("div[id$='_leader_table_processing']").show();
+
+        $("table[id$='_streak_table']").DataTable({
+            columns: [{
+                    "data": "player_name"
+                },
+                {
+                    "data": "maxstreak"
+                },
+            ]
+        });
+        $("div[id$='_streak_table_processing']").show();
+
+        $.ajax({
+            url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getPositionLeaderboards', 'ext' => 'json'])); ?>"
+        }).done(function(response) {
+            $("div[id$='_scores_table_processing']").hide();
+            $('#commander_scores_table').DataTable().clear().rows.add(response.data.commander).draw();
+            $('#heavy_scores_table').DataTable().clear().rows.add(response.data.heavy).draw();
+            $('#scout_scores_table').DataTable().clear().rows.add(response.data.scout).draw();
+            $('#ammo_scores_table').DataTable().clear().rows.add(response.data.ammo).draw();
+            $('#medic_scores_table').DataTable().clear().rows.add(response.data.medic).draw();
+        })
+
+        $.ajax({
+            url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getLeaderboards', 'ext' => 'json'])); ?>"
+        }).done(function(response) {
+            $("div[id$='_leader_table_processing']").hide();
+            $('#games_played_leader_table').DataTable().clear().rows.add(response.data.games_played)
+                .draw();
+            $('#score_total_leader_table').DataTable().clear().rows.add(response.data.score_total)
+                .draw();
+
+            $('#medic_hits_leader_table').DataTable().clear().rows.add(response.data.medic_hits_total)
+                .draw();
+            $('#own_medic_hits_leader_table').DataTable().clear().rows.add(response.data
+                .own_medic_hits_total).draw();
+            $('#medic_on_medic_hits_leader_table').DataTable().clear().rows.add(response.data
+                .medic_on_medic_hits_total).draw();
+
+            $('#missiled_opponent_leader_table').DataTable().clear().rows.add(response.data
+                .missiled_opponent_total).draw();
+            $('#times_missiled_leader_table').DataTable().clear().rows.add(response.data
+                .times_missiled_total).draw();
+            $('#missiled_team_leader_table').DataTable().clear().rows.add(response.data
+                .missiled_team_total).draw();
+
+            $('#nukes_detonated_total_leader_table').DataTable().clear().rows.add(response.data
+                .nukes_detonated_total).draw();
+            $('#nukes_canceled_total_leader_table').DataTable().clear().rows.add(response.data
+                .nukes_canceled_total).draw();
+            $('#own_nuke_cancels_total_leader_table').DataTable().clear().rows.add(response.data
+                .own_nuke_cancels_total).draw();
+
+            $('#elim_other_team_total_leader_table').DataTable().clear().rows.add(response.data
+                .elim_other_team_total).draw();
+            $('#team_elim_total_leader_table').DataTable().clear().rows.add(response.data
+                    .team_elim_total)
+                .draw();
+
+            $('#shots_fired_total_leader_table').DataTable().clear().rows.add(response.data
+                .shots_fired_total).draw();
+            $('#penalties_total_leader_table').DataTable().clear().rows.add(response.data
+                    .penalties_total)
+                .draw();
+        })
+
+        $.ajax({
+            url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getMissileLeaderboards', 'ext' => 'json'])); ?>"
+        }).done(function(response) {
+            avg_missiles_data = response.data;
+            update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
+                avg_missiles_data);
+        })
+
+        $.ajax({
+            url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'max', 'ext' => 'json'])); ?>"
+        }).done(function(response) {
+            $('#longest_win_streak_table_processing').hide();
+            $('#longest_loss_streak_table_processing').hide();
+            $('#longest_win_streak_table').DataTable().clear().rows.add(response.data.win).draw();
+            $('#longest_loss_streak_table').DataTable().clear().rows.add(response.data.loss).draw();
+        })
+
+        $.ajax({
+            url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'current', 'ext' => 'json'])); ?>"
+        }).done(function(response) {
+            $('#current_win_streak_table_processing').hide();
+            $('#current_loss_streak_table_processing').hide();
+            $('#current_win_streak_table').DataTable().clear().rows.add(response.data.win)
+                .draw();
+            $('#current_loss_streak_table').DataTable().clear().rows.add(response.data.loss)
+                .draw();
+        })
     });
-    $("div[id$='_leader_table_processing']").show();
-
-    $("table[id$='_streak_table']").DataTable({
-        columns: [{
-                "data": "player_name"
-            },
-            {
-                "data": "maxstreak"
-            },
-        ]
-    });
-    $("div[id$='_streak_table_processing']").show();
-
-    $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getPositionLeaderboards', 'ext' => 'json'])); ?>"
-    }).done(function(response) {
-        $("div[id$='_scores_table_processing']").hide();
-        $('#commander_scores_table').DataTable().clear().rows.add(response.data.commander).draw();
-        $('#heavy_scores_table').DataTable().clear().rows.add(response.data.heavy).draw();
-        $('#scout_scores_table').DataTable().clear().rows.add(response.data.scout).draw();
-        $('#ammo_scores_table').DataTable().clear().rows.add(response.data.ammo).draw();
-        $('#medic_scores_table').DataTable().clear().rows.add(response.data.medic).draw();
-    })
-
-    $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getLeaderboards', 'ext' => 'json'])); ?>"
-    }).done(function(response) {
-        $("div[id$='_leader_table_processing']").hide();
-        $('#games_played_leader_table').DataTable().clear().rows.add(response.data.games_played)
-            .draw();
-        $('#score_total_leader_table').DataTable().clear().rows.add(response.data.score_total)
-            .draw();
-
-        $('#medic_hits_leader_table').DataTable().clear().rows.add(response.data.medic_hits_total)
-            .draw();
-        $('#own_medic_hits_leader_table').DataTable().clear().rows.add(response.data
-            .own_medic_hits_total).draw();
-        $('#medic_on_medic_hits_leader_table').DataTable().clear().rows.add(response.data
-            .medic_on_medic_hits_total).draw();
-
-        $('#missiled_opponent_leader_table').DataTable().clear().rows.add(response.data
-            .missiled_opponent_total).draw();
-        $('#times_missiled_leader_table').DataTable().clear().rows.add(response.data
-            .times_missiled_total).draw();
-        $('#missiled_team_leader_table').DataTable().clear().rows.add(response.data
-            .missiled_team_total).draw();
-
-        $('#nukes_detonated_total_leader_table').DataTable().clear().rows.add(response.data
-            .nukes_detonated_total).draw();
-        $('#nukes_canceled_total_leader_table').DataTable().clear().rows.add(response.data
-            .nukes_canceled_total).draw();
-        $('#own_nuke_cancels_total_leader_table').DataTable().clear().rows.add(response.data
-            .own_nuke_cancels_total).draw();
-
-        $('#elim_other_team_total_leader_table').DataTable().clear().rows.add(response.data
-            .elim_other_team_total).draw();
-        $('#team_elim_total_leader_table').DataTable().clear().rows.add(response.data
-                .team_elim_total)
-            .draw();
-
-        $('#shots_fired_total_leader_table').DataTable().clear().rows.add(response.data
-            .shots_fired_total).draw();
-        $('#penalties_total_leader_table').DataTable().clear().rows.add(response.data
-                .penalties_total)
-            .draw();
-    })
-
-    $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getMissileLeaderboards', 'ext' => 'json'])); ?>"
-    }).done(function(response) {
-        avg_missiles_data = response.data;
-        update_table(avg_missiles_table, parseInt($('#avg_missiles_min_games').text()),
-            avg_missiles_data);
-    })
-
-    $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'max', 'ext' => 'json'])); ?>"
-    }).done(function(response) {
-        $('#longest_win_streak_table_processing').hide();
-        $('#longest_loss_streak_table_processing').hide();
-        $('#longest_win_streak_table').DataTable().clear().rows.add(response.data.win).draw();
-        $('#longest_loss_streak_table').DataTable().clear().rows.add(response.data.loss).draw();
-    })
-
-    $.ajax({
-        url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'current', 'ext' => 'json'])); ?>"
-    }).done(function(response) {
-        $('#current_win_streak_table_processing').hide();
-        $('#current_loss_streak_table_processing').hide();
-        $('#current_win_streak_table').DataTable().clear().rows.add(response.data.win)
-            .draw();
-        $('#current_loss_streak_table').DataTable().clear().rows.add(response.data.loss)
-            .draw();
-    })
-});
 </script>
