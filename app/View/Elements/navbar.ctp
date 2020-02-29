@@ -56,10 +56,10 @@
                     Admin
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                    <?php echo $this->Html->link('Upload PDFs', ['controller' => 'uploads', 'action' => 'index'], ['class' => 'dropdown-item']); ?>
                     <?php echo $this->Html->link('Upload TDFs', ['controller' => 'uploads', 'action' => 'uploadTdf'], ['class' => 'dropdown-item']); ?>
-                    <div class="dropdown-divider"></div>
                     <?php echo $this->Html->link('Import Log', ['controller' => 'uploads', 'action' => 'viewImports'], ['class' => 'dropdown-item']); ?>
+                    <div class="dropdown-divider"></div>
+                    <?php echo $this->Html->link('Upload PDFs (Retiring Soon)', ['controller' => 'uploads', 'action' => 'index'], ['class' => 'dropdown-item']); ?>
                 </div>
             </li>
             <?php } ?>

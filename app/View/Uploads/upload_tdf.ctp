@@ -1,6 +1,3 @@
-<div class="alert alert-danger" role="alert">
-    I know you don't know what this page is or what it does. So don't click anything.
-</div>
 <?php
     echo $this->Html->script('https://kit.fontawesome.com/9e4f8e5378.js', ['inline' => false]);
     echo $this->element('breadcrumbs');
@@ -23,13 +20,14 @@
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
 <div class="alert alert-warning" role="alert">
-    With the launch of (redacted), the upload process has changed. Pay attention to the new instructions.
+    With the launch of TDF Event files, the upload process has changed. Pay attention to the new instructions.
 </div>
 <div>
     <ol>
         <li>For social games, choose to either add to an existing event or create a new one.</li>
-        <li>Click Add Files to (duh) add files</li>
+        <li>Click Add Files to add files</li>
         <li>Click Start upload. The files will upload and the import will begin automatically</li>
+        <li>Click Admin > Import Log at the top to check status of your imports</li>
     </ol>
 </div>
 <hr>

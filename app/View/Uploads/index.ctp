@@ -3,6 +3,13 @@
 <?php
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
+<div class="alert alert-danger" role="alert">
+    PDF Uploads are being ***RETIRED***. With LaserForce v8.117 you can now configure your Space Marines 5 mission
+    to automatically save an event file. These files are more detailed, easier to parse and better in every single way.
+    Get your site to upgrade and start using them ASAP.
+
+    As usual, contact me with questions.
+</div>
 <div>
     <ol>
         <li>Choose to add these scorecards to a new or an existing event (in most cases, you'll just want a new event)
