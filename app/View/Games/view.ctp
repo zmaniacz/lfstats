@@ -1,3 +1,4 @@
+<?php echo $this->Html->script('https://www.gstatic.com/charts/loader.js', ['inline' => false]); ?>
 <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
 <h3 class="text-danger">IMPORTANT</h3>
 <p class="lead">
@@ -77,7 +78,7 @@
         }
         ?>
     <h3 class="text-center text-nowrap">
-        <?php echo $red_team_name; ?> vs <?php echo $green_team_name; ?>
+        <?php echo $red_team_name; ?> vs <?php echo $green_team_name; ?> <?php echo (null != $game['Game']['pdf_id']) ? $this->Html->link('PDF', 'https://lfstats-scorecards.s3.amazonaws.com/'.$game['Game']['pdf_id'].'.pdf', ['target' => '_blank']) : ''; ?>
     </h3>
     <?php
         if (!empty($neighbors['next'])) {
@@ -97,8 +98,8 @@
 <div class="tab-content" id="gameViewContent">
     <div class="tab-pane fade show active" id="scorecard-tab-content">
         <h6 class="d-flex justify-content-between my-4">
-            <span>Numbers in parentheses are score adjustments due to penalties and elimination bonuses.</span>
-            <?php echo $this->Html->link('PDF', 'https://lfstats-scorecards.s3.amazonaws.com/'.$game['Game']['pdf_id'].'.pdf', ['target' => '_blank']); ?>
+            <p>Numbers in parentheses are score adjustments due to penalties and elimination bonuses.</p>
+            <p>Uptime: Green is on, Yellow is off from resupply, Red is off from a tag.</p>
         </h6>
         <?php
         if ('green' == $game['Game']['winner']) {
@@ -163,6 +164,13 @@
                     $alive = (($score['lives_left'] > 0) ? '<td class="text-success"><i class="material-icons">check</i></span>' : '<td class="text-danger text-center"><i class="material-icons">close</i></span>').'</td>';
                 }
 
+                if ($score['uptime'] > 0) {
+                    //We've got uptime, more pie charts!'
+                    $uptime = '<td><span class="uptimePie" style="display: inline-block; margin: 0 auto;" data-uptime="'.$score['uptime'].'" data-resupply-downtime="'.$score['resupply_downtime'].'" data-other-downtime="'.$score['other_downtime'].'"></span></td>';
+                } else {
+                    $uptime = '<td>N/A</td>';
+                }
+
                 $score_line .= '<tr class="text-center">';
                 $score_line .= '<td>'.$this->Html->link($score['player_name'], ['controller' => 'Players', 'action' => 'view', $score['player_id']]).'</td>';
                 $score_line .= $alive;
@@ -173,6 +181,7 @@
                 $score_line .= '<td>'.$score['lives_left'].'</td>';
                 $score_line .= '<td>'.$score['shots_left'].'</td>';
                 $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/'.$score['player_id'].'/'.$score['game_id'].'.json">'.round($score['shot_opponent'] / max($score['times_zapped'], 1), 2).' ('.$score['shot_opponent'].'/'.$score['times_zapped'].') <i class="material-icons">bar_chart</i></a></td>';
+                $score_line .= $uptime;
                 $score_line .= '<td>'.$score['missiled_opponent'].'</td>';
                 $score_line .= '<td>'.$score['times_missiled'].'</td>';
                 $score_line .= '<td>'.$score['medic_hits'].('Commander' == $score['position'] ? '/'.$score['medic_nukes'] : '').'</td>';
@@ -244,6 +253,7 @@
                             <th>Lives Left</th>
                             <th>Shots Left</th>
                             <th>Hit Diff</th>
+                            <th>Uptime</th>
                             <th>Missiled</th>
                             <th>Got Missiled</th>
                             <th>Medic Hits</th>
@@ -312,6 +322,7 @@
                         <th>Lives Left</th>
                         <th>Shots Left</th>
                         <th>Hit Diff</th>
+                        <th>Uptime</th>
                         <th>Missiled</th>
                         <th>Got Missiled</th>
                         <th>Medic Hits</th>
@@ -368,6 +379,45 @@
         return minutes + ":" + seconds + "." + milliseconds;
     }
 
+    function round(value, decimals) {
+        return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+    }
+
+    function drawChart() {
+        $('.uptimePie').each(function(index, element) {
+            let data = google.visualization.arrayToDataTable([
+                ['Uptime', 'Total'],
+                ['Uptime', $(this).data("uptime")],
+                ['Resupply', $(this).data("resupply-downtime")],
+                ['Down', $(this).data("other-downtime")]
+            ]);
+            let chart = new google.visualization.PieChart(element);
+            let options = {
+                colors: ['green', 'yellow', 'red'],
+                pieSliceText: 'none',
+                legend: {
+                    position: 'none'
+                },
+                width: 25,
+                height: 25,
+                chartArea: {
+                    left: 'auto',
+                    top: 'auto',
+                    width: '100%',
+                    height: '100%'
+                },
+                tooltip: {
+                    trigger: 'none'
+                }
+            }
+            chart.draw(data, options);
+        })
+    }
+    google.charts.load("current", {
+        packages: ["corechart"]
+    });
+    google.charts.setOnLoadCallback(drawChart);
+
     $(document).ready(function() {
         function renderGameScoreChart(scoreData, actionData) {
             let teams = [];
@@ -394,8 +444,6 @@
             greenNukes = actionData.GameLog.filter(item => {
                 return item.action_type === "0405" && item.player_color != "Fire"
             });
-
-            console.log(greenNukes);
 
             Highcharts.chart('scoreChartContainer', {
                 chart: {
@@ -468,7 +516,7 @@
             paging: false,
             ordering: false,
             scrollX: true,
-            fixedColumns: true
+            fixedColumns: false
         });
 
         $('.timeLeft').each(function() {
