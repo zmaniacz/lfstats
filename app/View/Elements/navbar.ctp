@@ -49,6 +49,9 @@
             </li>
             <li class="nav-item"><a class="nav-link" id="twitch_status"
                     href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
+            <li class="nav-item">
+                <?php echo $this->Html->link('Help', ['controller' => 'pages', 'action' => 'help'], ['class' => 'nav-link']); ?>
+            </li>
             <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarAdminDropdown" role="button"
