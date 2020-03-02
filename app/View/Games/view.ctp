@@ -429,7 +429,7 @@
                     return {
                         name: team.name,
                         color_desc: team.color_desc,
-                        color: ('Fire' === team.color_desc) ? 'red' : 'green',
+                        color: team.color_normal,
                         data: null
                     };
                 });
