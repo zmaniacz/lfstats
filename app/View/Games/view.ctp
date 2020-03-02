@@ -394,6 +394,7 @@
             let chart = new google.visualization.PieChart(element);
             let options = {
                 colors: ['green', 'yellow', 'red'],
+                backgroundColor: 'transparent',
                 pieSliceText: 'none',
                 legend: {
                     position: 'none'
