@@ -182,6 +182,6 @@
     <ul>
         <li>Power Boost: 3 points each time you activate power boost.</li>
         <li>Survival Bonus: 1 point if you are still alive when the game clock expires.</li>
-        <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 2000.</li>
+        <li>Score bonus: 2 points (applied fractionally) for every 1000 points over 2000.</li>
     </ul>
 </ul>
