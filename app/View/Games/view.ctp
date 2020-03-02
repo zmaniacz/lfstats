@@ -419,6 +419,10 @@
     });
     google.charts.setOnLoadCallback(drawChart);
 
+    $('#chart-tab').on('shown.bs.tab', function(e) {
+        $('#game-log-table').DataTable().columns.adjust().draw();
+    })
+
     $(document).ready(function() {
         function renderGameScoreChart(scoreData, actionData) {
             let teams = [];
@@ -559,9 +563,5 @@
             renderGameScoreChart(data1[0].data, data2[0].data);
             renderGameLogTable(data2[0].data);
         });
-
-        $('#chart-tab').on('shown.bs.tab', function(e) {
-            $('#game-log-table').DataTable().columns.adjust().draw();
-        })
     });
 </script>
