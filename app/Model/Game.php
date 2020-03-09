@@ -251,6 +251,8 @@ class Game extends AppModel
 
         if (isset($state['leagueID']) && $state['leagueID'] > 0) {
             $conditions[] = ['Game.event_id' => $state['leagueID']];
+            //the below is stupid and I'm sorry
+            $date = null;
         }
 
         if (!is_null($date)) {
