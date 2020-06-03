@@ -106,4 +106,17 @@ SET team_id = game_teams.id
 FROM game_teams
 WHERE team_penalties.team_color = game_teams.color_normal;
 
--- TODO fix event team IDs
+-- fix event team IDs
+UPDATE game_teams
+SET event_team_id = games.red_team_id
+FROM games
+WHERE game_teams.game_id = games.id
+  AND game_teams.color_normal = 'red'
+  AND red_team_id IS NOT NULL;
+
+UPDATE game_teams
+SET event_team_id = games.green_team_id
+FROM games
+WHERE game_teams.game_id = games.id
+  AND game_teams.color_normal = 'green'
+  AND green_team_id IS NOT NULL;
