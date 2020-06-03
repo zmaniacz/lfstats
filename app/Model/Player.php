@@ -469,18 +469,21 @@ class Player extends AppModel
     public function linkPlayers($master_id, $target_id)
     {
         $master = $this->find('first', ['conditions' => ['id' => $master_id]]);
+        $target_aliases = $this->PlayersName->find('all', ['conditions' => ['id' => $target_id]]);
 
-        $dupe = $this->PlayersName->find('first', ['conditions' => [
-            'player_name' => $master['Player']['player_name'],
-            'player_id' => $target_id,
-        ]]);
+        //insert new rows for each existing alias on the target
+        //if the alias already exists, nothing changed
+        $this->query("
+            INSERT INTO players_names (player_id, player_name) (SELECT {$master_id}, player_name FROM players_names WHERE player_id = {$target_id})
+            ON CONFLICT DO NOTHING
+        ");
 
-        //delete dupe aliases
-        if (!empty($dupe)) {
-            $this->PlayersName->delete($dupe['PlayersName']['id']);
-        }
+        //delete leftover alias rows for the old id
+        $this->PlayersName->deleteAll(['player_id' => $target_id]);
 
         //update the player_names table
+        //given the above this should actually never change anything
+        //but am I confident? No. No I am not.
         $this->PlayersName->updateAll(
             ['PlayersName.player_id' => $master_id],
             ['PlayersName.player_id' => $target_id]
