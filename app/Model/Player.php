@@ -524,15 +524,13 @@ class Player extends AppModel
     public function findLinks()
     {
         return $this->query('
-        SELECT a.player_id AS master_id,
-            a.player_name AS master_name,
-            b.player_id AS target_id,
-            b.player_name AS target_name
+        SELECT a.player_id AS master_id, a.player_name AS master_name, b.player_id AS target_id, b.player_name AS target_name
         FROM players_names a
-            INNER JOIN players_names b
-                ON a.player_name = b.player_name AND a.player_id <> b.player_id
-            INNER JOIN players ON a.player_id = players.id
-        WHERE players.ipl_id IS NOT NULL
+                 INNER JOIN players_names b ON a.player_name = b.player_name AND a.player_id <> b.player_id
+                 INNER JOIN players AS masters ON a.player_id = masters.id
+                 INNER JOIN players AS targets ON b.player_id = targets.id
+        WHERE masters.ipl_id IS NOT NULL
+          AND targets.ipl_id IS NULL
         ');
     }
 }
