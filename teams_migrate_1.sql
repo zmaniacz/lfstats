@@ -1,25 +1,7 @@
 -- Update table definitions
 -- game_teams should represent a team in any game
 -- we'll store info about color
-ALTER TABLE public.game_teams
-    ADD COLUMN elim_bonus INTEGER DEFAULT 0;
 
-ALTER TABLE public.game_teams
-    ADD COLUMN adjustment INTEGER DEFAULT 0;
-
-ALTER TABLE public.game_teams
-    ADD COLUMN rank SMALLINT;
-
-ALTER TABLE public.game_teams
-    ADD COLUMN eliminated BOOLEAN;
-
-ALTER TABLE public.game_teams
-    ADD COLUMN event_team_id BIGINT;
-ALTER TABLE public.game_teams
-    ADD FOREIGN KEY (event_team_id) REFERENCES public.event_teams (id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
-
-ALTER TABLE public.game_teams
-    ADD UNIQUE (game_id, color_normal);
 
 -- insert the teams
 INSERT INTO game_teams (index,
@@ -120,3 +102,23 @@ FROM games
 WHERE game_teams.game_id = games.id
   AND game_teams.color_normal = 'green'
   AND green_team_id IS NOT NULL;
+
+-- kill old columns
+alter table games drop constraint fk_games_teams_red_team_id;
+alter table games drop constraint fk_games_teams_green_team_id;
+drop index idx_17022_red_team_id;
+drop index idx_17022_green_team_id;
+alter table games drop column green_team_id;
+alter table games drop column red_team_id;
+alter table games drop column red_score;
+alter table games drop column green_score;
+alter table games drop column red_adj;
+alter table games drop column green_adj;
+alter table games drop column winner;
+alter table games drop column red_eliminated;
+alter table games drop column green_eliminated;
+alter table games drop column league_round;
+alter table games drop column league_match;
+alter table games drop column league_game;
+
+
