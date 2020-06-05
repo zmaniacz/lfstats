@@ -9,6 +9,8 @@
 <link rel="stylesheet" type="text/css" href="/css/laserforce.css" />
 <link rel="stylesheet" type="text/css"
     href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/themes/orange/pace-theme-minimal.css"
+    integrity="sha256-T7F8zqYLFxSGRZJDsv/mZBeOK4uXfjapnTlct2b4pkw=" crossorigin="anonymous">
 <?php echo $this->fetch('css'); ?>
 
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"
@@ -16,7 +18,8 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"
     integrity="sha384-6khuMg9gaYr5AxOqhkVIODVIvm9ynTT5J4V1cfthmT+emCG6yVmEZsRHdxlotUnm" crossorigin="anonymous">
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"
+    integrity="sha256-wNhWj+b52Df2ZAAPGXPyIAnXdqq7Sb1tr2kpEoJfbig=" crossorigin="anonymous"></script>
 <script type="text/javascript"
     src="https://cdn.datatables.net/v/bs4/dt-1.10.20/b-1.6.1/b-html5-1.6.1/fc-3.3.0/sc-2.0.1/datatables.min.js">
 </script>
