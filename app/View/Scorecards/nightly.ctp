@@ -149,7 +149,7 @@
                                 element.Scorecard.times_zapped, 1) *
                             100) / 100;
                         let mvp = Number.parseFloat(element.Scorecard.mvp_points).toFixed(
-                        2);
+                            2);
 
                         let playerLink =
                             `<a href="/players/view/${element.Scorecard.player_id}?${params.toString()}">${element.Scorecard.player_name}</a>`;
@@ -299,9 +299,15 @@
                     className: "text-right"
                 },
                 {
-                    data: "min_mvp",
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return Number.parseFloat(row.min_mvp).toFixed(2);
+                        } else {
+                            return row.min_mvp;
+                        }
+                    },
+                    className: "text-right",
                     orderSequence: ["desc", "asc"],
-                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {
@@ -322,9 +328,15 @@
                     className: "text-right"
                 },
                 {
-                    data: "max_mvp",
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return Number.parseFloat(row.max_mvp).toFixed(2);
+                        } else {
+                            return row.max_mvp;
+                        }
+                    },
+                    className: "text-right",
                     orderSequence: ["desc", "asc"],
-                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {

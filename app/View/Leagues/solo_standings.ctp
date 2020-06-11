@@ -110,7 +110,7 @@
             columns: [{
                     data: function(row, type, val, meta) {
                         let link =
-                            `<a href="/players/${row.player_id}?${params.toString()}">${row.player_name}</a>`;
+                            `<a href="/players/view/${row.player_id}?${params.toString()}">${row.player_name}</a>`;
                         if (type === 'display') {
                             return link;
                         } else {
@@ -119,7 +119,13 @@
                     }
                 },
                 {
-                    data: "all_mvp_total",
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return Number.parseFloat(row.all_mvp_total).toFixed(2);
+                        } else {
+                            return row.all_mvp_total;
+                        }
+                    },
                     className: "text-right"
                 },
                 {
@@ -137,10 +143,8 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display') {
-
                             return Number.parseFloat(row.avg_mvp).toFixed(2);
                         } else {
-
                             return row.avg_mvp;
                         }
                     },
@@ -149,10 +153,8 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display') {
-
                             return Number.parseFloat(row.avg_score).toFixed(2);
                         } else {
-
                             return row.avg_score;
                         }
                     },
@@ -167,6 +169,7 @@
 
         let overall = $('#overall').DataTable({
             orderCellsTop: true,
+            processing: true,
             scrollX: true,
             fixedColumns: {
                 leftColumns: 2
@@ -188,7 +191,7 @@
                         let gameLink =
                             `<a href="/games/view/${element.Game.id}?${params.toString()}" class="${gameClass}">${element.Game.game_name}</a>`;
                         let mvpLink =
-                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${element.Scorecard.mvp_points} <i class="material-icons">bar_chart</i></a>`;
+                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${Number.parseFloat(element.Scorecard.mvp_points).toFixed(2)} <i class="material-icons">bar_chart</i></a>`;
                         let hitDiffLink =
                             `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
                         let positionElement =
