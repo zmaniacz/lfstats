@@ -13,7 +13,7 @@ class Scorecard extends AppModel
         ],
         'GameTeam' => [
             'className' => 'GameTeam',
-            'foreignKey' => 'game_id',
+            'foreignKey' => 'team_id',
         ],
     ];
 
@@ -576,7 +576,8 @@ class Scorecard extends AppModel
         return $this->find('all', [
             'conditions' => $conditions,
             'contain' => [
-                'Game' => [],
+                'Game' => ['GameWinner'],
+                'GameTeam',
             ],
         ]);
     }

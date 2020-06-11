@@ -21,24 +21,6 @@ class Game extends AppModel
             'className' => 'GameResult',
             'foreignKey' => 'game_id',
         ],
-        'TeamPenalties' => [
-            'className' => 'TeamPenalties',
-            'foreignKey' => 'game_id',
-        ],
-        'Red_TeamPenalties' => [
-            'className' => 'TeamPenalties',
-            'foreignKey' => 'game_id',
-            'conditions' => ['Red_TeamPenalties.team_color' => 'red'],
-        ],
-        'Green_TeamPenalties' => [
-            'className' => 'TeamPenalties',
-            'foreignKey' => 'game_id',
-            'conditions' => ['Green_TeamPenalties.team_color' => 'green'],
-        ],
-        'TeamDelta' => [
-            'className' => 'TeamDelta',
-            'foreignKey' => 'game_id',
-        ],
         'GameTeam' => [
             'className' => 'GameTeam',
             'foreignKey' => 'game_id',
@@ -55,18 +37,19 @@ class Game extends AppModel
         ],
     ];
 
+    public $hasOne = [
+        'GameWinner' => [
+            'className' => 'GameTeam',
+            'foreignKey' => 'game_id',
+            'order' => 'rank ASC',
+            'limit' => 1,
+        ],
+    ];
+
     public $belongsTo = [
         'Center' => [
             'className' => 'Center',
             'foreignKey' => 'center_id',
-        ],
-        'Red_Team' => [
-            'className' => 'EventTeam',
-            'foreignKey' => 'red_team_id',
-        ],
-        'Green_Team' => [
-            'className' => 'EventTeam',
-            'foreignKey' => 'green_team_id',
         ],
         'Match' => [
             'className' => 'Match',
@@ -261,8 +244,12 @@ class Game extends AppModel
 
         return $this->find('all', [
             'contain' => [
-                'Red_Team',
-                'Green_Team',
+                'GameTeam' => [
+                    'conditions' => [
+                        'GameTeam.neutral_team' => false,
+                    ],
+                    'order' => ['rank ASC'],
+                ],
                 'Match' => [
                     'Round',
                 ],

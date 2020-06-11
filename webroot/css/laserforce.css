@@ -11,6 +11,57 @@
 	font-style: normal;
 }
 
+/*
+2,Green
+12,Ice
+0,None
+11,Fire
+1,Red
+13,Earth
+*/
+.text-lfteam-0 {
+	color: #6a4c93 !important;
+}
+a.text-lfteam-0:hover,
+a.text-lfteam-0:focus {
+	color: #543c75 !important;
+}
+.text-lfteam-1 {
+	color: #ff595e !important;
+}
+a.text-lfteam-1:hover,
+a.text-lfteam-1:focus {
+	color: #fe141b !important;
+}
+.text-lfteam-2 {
+	color: #4d9c1d !important;
+}
+a.text-lfteam-2:hover,
+a.text-lfteam-2:focus {
+	color: #3d7c17 !important;
+}
+.text-lfteam-11 {
+	color: #ff595e !important;
+}
+a.text-lfteam-11:hover,
+a.text-lfteam-11:focus {
+	color: #fe141b !important;
+}
+.text-lfteam-12 {
+	color: #1982c4 !important;
+}
+a.text-lfteam-12:hover,
+a.text-lfteam-12:focus {
+	color: #14679c !important;
+}
+.text-lfteam-13 {
+	color: #4d9c1d !important;
+}
+a.text-lfteam-13:hover,
+a.text-lfteam-13:focus {
+	color: #3d7c17 !important;
+}
+
 .material-icons {
 	display: inline-flex;
 	align-items: center;

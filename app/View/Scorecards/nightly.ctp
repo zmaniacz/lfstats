@@ -105,23 +105,15 @@
                         '</h5>');
                     $heading.append($gameLink);
 
-                    let red_team = '<span class="text-danger">Red Team: ' + (element.Game
-                            .red_score +
-                            element.Game.red_adj) +
-                        '</span>';
-                    let green_team = '<span class="text-success">Green Team: ' + (element.Game
-                            .green_score +
-                            element.Game.green_adj) +
-                        '</span>';
+                    let scores = element.GameTeam.reduce((result, team) => {
+                        score =
+                            `<span class="text-lfteam-${team.color_enum}">${team.name}: ${team.score + team.adjustment}</span>`
+                        if (team.rank == 1) score = `<strong>${score}</strong>`
+                        return result + `${score} | `
+                    }, '')
 
                     $wrapper.append($heading);
-                    if (element.Game.winner === 'red') {
-                        $body.append('<strong>' + red_team + '</strong> | ' + green_team +
-                            ' - ');
-                    } else {
-                        $body.append('<strong>' + green_team + '</strong> | ' + red_team +
-                            ' - ');
-                    }
+                    $body.append(scores);
                     $body.append($pdfLink);
                     $wrapper.append($body);
                     $('#game_list_group').append($wrapper);
@@ -132,24 +124,19 @@
         updateGameList(params);
 
         var overall = $('#overall').DataTable({
-            deferRender: true,
+
             scrollX: true,
-            fixedColumns: {
-                leftColumns: 2
-            },
             ajax: {
                 url: `/scorecards/nightlyScorecards.json?${params.toString()}`,
                 dataSrc: function(response) {
                     var result = response.data.map(function(element) {
-                        let positionClass = (element.Scorecard.team === 'red') ?
-                            'text-danger' : 'text-success';
-                        let gameClass = (element.Game.winner === 'red') ? 'text-danger' :
-                            'text-success';
+                        let positionClass = `text-lfteam-${element.GameTeam.color_enum}`
+                        let gameClass = `text-lfteam-${element.Game.GameWinner.color_enum}`
                         let hitDiff = Math.round(element.Scorecard.shot_opponent / Math.max(
                                 element.Scorecard.times_zapped, 1) *
                             100) / 100;
                         let mvp = Number.parseFloat(element.Scorecard.mvp_points).toFixed(
-                        2);
+                            2);
 
                         let playerLink =
                             `<a href="/players/view/${element.Scorecard.player_id}?${params.toString()}">${element.Scorecard.player_name}</a>`;
@@ -262,7 +249,7 @@
             });
         }).draw();
 
-        var summary_stats = $('#summary_stats').DataTable({
+        /*var summary_stats = $('#summary_stats').DataTable({
             orderCellsTop: true,
             scrollX: true,
             fixedColumns: {
@@ -398,7 +385,7 @@
             }).nodes().each(function(cell, i) {
                 cell.innerHTML = i + 1;
             });
-        }).draw();
+        }).draw();*/
 
         var medicHitsTable = $('#medic_hits').DataTable({
             orderCellsTop: true,
