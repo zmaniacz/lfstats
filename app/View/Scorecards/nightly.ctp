@@ -286,9 +286,15 @@
                     className: "text-right"
                 },
                 {
-                    data: "min_mvp",
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return Number.parseFloat(row.min_mvp).toFixed(2);
+                        } else {
+                            return row.min_mvp;
+                        }
+                    },
+                    className: "text-right",
                     orderSequence: ["desc", "asc"],
-                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {
@@ -309,9 +315,15 @@
                     className: "text-right"
                 },
                 {
-                    data: "max_mvp",
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return Number.parseFloat(row.max_mvp).toFixed(2);
+                        } else {
+                            return row.max_mvp;
+                        }
+                    },
+                    className: "text-right",
                     orderSequence: ["desc", "asc"],
-                    className: "text-right"
                 },
                 {
                     data: function(row, type, val, meta) {
