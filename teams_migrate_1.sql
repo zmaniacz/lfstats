@@ -1,6 +1,12 @@
 -- Update table definitions
 -- game_teams should represent a team in any game
 -- we'll store info about color
+-- TEST:
+-- run drop script to backup hasura metadata and kill and recreate lfstats_test
+-- backup prod with pg_dump
+-- restore lfstats_test with pg_restore
+-- run this script
+-- reimport hasura metadata
 
 
 -- insert the teams
@@ -103,22 +109,46 @@ WHERE game_teams.game_id = games.id
   AND game_teams.color_normal = 'green'
   AND green_team_id IS NOT NULL;
 
--- kill old columns
-alter table games drop constraint fk_games_teams_red_team_id;
-alter table games drop constraint fk_games_teams_green_team_id;
-drop index idx_17022_red_team_id;
-drop index idx_17022_green_team_id;
-alter table games drop column green_team_id;
-alter table games drop column red_team_id;
-alter table games drop column red_score;
-alter table games drop column green_score;
-alter table games drop column red_adj;
-alter table games drop column green_adj;
-alter table games drop column winner;
-alter table games drop column red_eliminated;
-alter table games drop column green_eliminated;
-alter table games drop column league_round;
-alter table games drop column league_match;
-alter table games drop column league_game;
+-- update neutral teams
+UPDATE game_teams
+SET neutral_team= TRUE
+WHERE color_enum = 0;
 
+-- kill old columns
+ALTER TABLE games
+    DROP CONSTRAINT fk_games_teams_red_team_id;
+ALTER TABLE games
+    DROP CONSTRAINT fk_games_teams_green_team_id;
+DROP INDEX idx_17022_red_team_id;
+DROP INDEX idx_17022_green_team_id;
+ALTER TABLE games
+    DROP COLUMN green_team_id;
+ALTER TABLE games
+    DROP COLUMN red_team_id;
+ALTER TABLE games
+    DROP COLUMN red_score;
+ALTER TABLE games
+    DROP COLUMN green_score;
+ALTER TABLE games
+    DROP COLUMN red_adj;
+ALTER TABLE games
+    DROP COLUMN green_adj;
+ALTER TABLE games
+    DROP COLUMN winner CASCADE;
+ALTER TABLE games
+    DROP COLUMN red_eliminated;
+ALTER TABLE games
+    DROP COLUMN green_eliminated;
+ALTER TABLE games
+    DROP COLUMN league_round;
+ALTER TABLE games
+    DROP COLUMN league_match;
+ALTER TABLE games
+    DROP COLUMN league_game CASCADE;
+
+DROP INDEX idx_17117_fk_team_penalties_games_id_idx;
+ALTER TABLE team_penalties
+    DROP CONSTRAINT fk_team_penalties_games_id;
+ALTER TABLE team_penalties
+    DROP COLUMN game_id;
 
