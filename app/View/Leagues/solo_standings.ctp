@@ -634,7 +634,7 @@
                 leftColumns: 2
             },
             ajax: {
-                url: `/scorecards/nightlySummaryStats.json?${params.toString()}`
+                url: `/scorecards/nightlySummaryStats.json?${params.toString()}&leaguetype=solo`
             },
             columns: [{
                     defaultContent: '',
@@ -859,5 +859,11 @@
             params.set('date', $(this).val());
             window.location = `${location.pathname}?${params.toString()}`;
         });
+
+        $('#nightly-tab').on('shown.bs.tab', function(e) {
+            overall.draw();
+            summary_stats.draw();
+            medicHitsTable.draw();
+        })
     });
 </script>
