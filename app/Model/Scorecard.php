@@ -826,7 +826,7 @@ class Scorecard extends AppModel
         if (isset($state['gametype']) && 'all' != $state['gametype']) {
             $conditions[] = ['Scorecard.type' => $state['gametype']];
 
-            if ('league' == $state['gametype']) {
+            if ('league' == $state['gametype'] && 'solo' != $state['leaguetype']) {
                 if (isset($state['show_subs']) && 'false' == $state['show_subs']) {
                     $conditions[] = ['Scorecard.is_sub = false'];
                 }

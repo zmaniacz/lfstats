@@ -40,6 +40,19 @@ class LeaguesController extends AppController
 
     public function soloStandings()
     {
+        $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
+        $game_dates = $this->Scorecard->getGameDates($this->Session->read('state'));
+        $this->set('game_dates', $game_dates);
+
+        if ($this->request->isPost()) {
+            $date = $this->request->data['Scorecard']['date'];
+        }
+
+        if (empty($date)) {
+            $date = reset($game_dates);
+        }
+
+        $this->set('current_date', $date);
     }
 
     public function bracket()
