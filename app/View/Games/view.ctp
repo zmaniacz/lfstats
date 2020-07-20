@@ -177,7 +177,7 @@
                 $score_line .= $merc;
                 $score_line .= '<td>'.$score['position'].'</td>';
                 $score_line .= '<td>'.($score['score'] + $penalty_score).((0 != $penalty_score) ? " ({$penalty_score})" : '').'</td>';
-                $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/'.$score['id'].'.json">'.$score['mvp_points'].' <i class="material-icons">bar_chart</i></a></td>';
+                $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/'.$score['id'].'.json">'.round($score['mvp_points'],2).' <i class="material-icons">bar_chart</i></a></td>';
                 $score_line .= '<td>'.$score['lives_left'].'</td>';
                 $score_line .= '<td>'.$score['shots_left'].'</td>';
                 $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/'.$score['player_id'].'/'.$score['game_id'].'.json">'.round($score['shot_opponent'] / max($score['times_zapped'], 1), 2).' ('.$score['shot_opponent'].'/'.$score['times_zapped'].') <i class="material-icons">bar_chart</i></a></td>';
