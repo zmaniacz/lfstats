@@ -2,8 +2,8 @@
 -- game_teams should represent a team in any game
 -- we'll store info about color
 -- TEST:
--- run drop script to backup hasura metadata and kill and recreate lfstats_test
 -- backup prod with pg_dump
+-- run drop script to backup hasura metadata and kill and recreate lfstats_test
 -- restore lfstats_test with pg_restore
 -- run this script
 -- reimport hasura metadata
@@ -152,3 +152,22 @@ ALTER TABLE team_penalties
 ALTER TABLE team_penalties
     DROP COLUMN game_id;
 
+-- no mroe extra keys on scorecards
+ALTER TABLE scorecards
+    DROP CONSTRAINT fk_scorecards_centers_center_id;
+ALTER TABLE scorecards
+    DROP CONSTRAINT fk_scorecards_events_event_id;
+
+-- make sure we have a social tag on all social games
+INSERT INTO games_tags (game_id, tag_id)
+SELECT games.id, 1
+FROM games
+         LEFT OUTER JOIN games_tags ON games.id = games_tags.game_id
+WHERE games_tags.game_id IS NULL;
+
+-- remove social events, to be replaced with tags at a game level
+-- still need to manually update ~20 events that don't match this pattern and probably need their own tags
+DELETE
+FROM events
+WHERE is_comp = FALSE
+  AND name ~* 'Socials \d\d\d\d-\d\d-\d\d';
