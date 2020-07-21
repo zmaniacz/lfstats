@@ -171,8 +171,13 @@
                     $uptime = '<td>N/A</td>';
                 }
 
+                $video = '';
+                if (!is_null($score['video_link'])) {
+                    $video = $this->Html->link('<i class="material-icons">play_circle_filled</i>', $score['video_link']);
+                }
+
                 $score_line .= '<tr class="text-center">';
-                $score_line .= '<td>'.$this->Html->link($score['player_name'], ['controller' => 'Players', 'action' => 'view', $score['player_id']]).'</td>';
+                $score_line .= '<td>'.$this->Html->link($score['player_name'], ['controller' => 'Players', 'action' => 'view', $score['player_id']]).' '.$video.'</td>';
                 $score_line .= $alive;
                 $score_line .= $merc;
                 $score_line .= '<td>'.$score['position'].'</td>';
