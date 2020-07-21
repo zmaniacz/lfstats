@@ -173,7 +173,7 @@
 
                 $video = '';
                 if (!is_null($score['video_link'])) {
-                    $video = $this->Html->link('<i class="material-icons">play_circle_filled</i>', $score['video_link']);
+                    $video = '<a href="'.$score['video_link'].'"><i class="material-icons">play_circle_filled</i></a>';
                 }
 
                 $score_line .= '<tr class="text-center">';
