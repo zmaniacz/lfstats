@@ -477,7 +477,7 @@ class Scorecard extends AppModel
             'AVG(CAST(mvp_details -> \'ownNukesCanceled\' ->> \'value\' AS INTEGER)) as own_nukes_canceled',
             'AVG(CAST(mvp_details -> \'teamNukesCanceled\' ->> \'value\' AS INTEGER)) as team_nukes_canceled',
             'AVG(CAST(mvp_details -> \'elimPenalty\' ->> \'value\' AS INTEGER)) as elim_penalty',
-            'AVG(CAST(mvp_details -> \'penalties\' ->> \'value\' AS INTEGER)) as penalties',
+            'AVG(CAST(mvp_details -> \'penalties\' ->> \'value\' AS FLOAT)) as penalties',
         ];
 
         $positions = $this->find('all', [
