@@ -24,6 +24,7 @@ class Upload extends AppModel
         return $this->find('all', [
             'contain' => ['Game'],
             'conditions' => $conditions,
+            'order' => 'Upload.job_start DESC NULLS LAST',
             'limit' => $limit,
         ]);
     }
