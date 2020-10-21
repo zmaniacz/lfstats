@@ -94,6 +94,7 @@ class Match extends AppModel
                 'Game_2',
                 'Team_1',
                 'Team_2',
+                'Round',
             ],
             'conditions' => [
                 'Match.id' => $match_id,
@@ -141,8 +142,8 @@ class Match extends AppModel
             }
         }
 
-        $match['Match']['team_1_points'] = $team_1_points;
-        $match['Match']['team_2_points'] = $team_2_points;
+        $match['Match']['team_1_points'] = $team_1_points * $match['Match']['multiplier'];
+        $match['Match']['team_2_points'] = $team_2_points * $match['Match']['multiplier'];
         $this->save($match);
     }
 }
