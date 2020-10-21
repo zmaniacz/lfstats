@@ -169,7 +169,7 @@ class Event extends AppModel
 
                     //Matches Won
                     if (!is_null($match['team_1_points']) && !is_null($match['team_2_points'])) {
-                        if ($match['team_1_points'] + $match['team_2_points'] == (6 * $round['Round']['multiplier'])) {
+                        if ($match['team_1_points'] + $match['team_2_points'] == (6 * $round['multiplier'])) {
                             if ($match['team_1_points'] > $match['team_2_points']) {
                                 ++$standings[$match['team_1_id']]['matches_won'];
                             } elseif ($match['team_1_points'] < $match['team_2_points']) {
