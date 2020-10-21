@@ -142,8 +142,8 @@ class Match extends AppModel
             }
         }
 
-        $match['Match']['team_1_points'] = $team_1_points * $match['Match']['multiplier'];
-        $match['Match']['team_2_points'] = $team_2_points * $match['Match']['multiplier'];
+        $match['Match']['team_1_points'] = $team_1_points * $match['Round']['multiplier'];
+        $match['Match']['team_2_points'] = $team_2_points * $match['Round']['multiplier'];
         $this->save($match);
     }
 }
