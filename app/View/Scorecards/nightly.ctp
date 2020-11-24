@@ -315,7 +315,7 @@
                             avg_mvp = Math.round(row.avg_mvp * 100) / 100;
                             overall_avg_mvp = Math.round(row.overall_avg_mvp * 100) / 100;
 
-                            if (overall_avg_mvp >= avg_mvp) {
+                            if (overall_avg_mvp > avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons text-danger" title="${overall_avg_mvp}">arrow_downward</i>`
                             } else if(overall_avg_mvp === avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
@@ -346,8 +346,10 @@
                             avg_acc = Math.round(row.avg_acc * 100 * 100) / 100;
                             overall_avg_acc = Math.round(row.overall_avg_acc * 100) / 100;
 
-                            if (row.overall_avg_acc >= row.avg_acc) {
+                            if (row.overall_avg_acc > row.avg_acc) {
                                 return `${avg_acc}%<i class="material-icons text-danger" title="${overall_avg_acc}">arrow_downward</i>`
+                            } else if(row.overall_avg_acc === row.avg_acc) {
+                                return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
                             } else {
                                 return `${avg_acc}%<i class="material-icons text-success" title="${overall_avg_acc}">arrow_upward</i>`
                             }
