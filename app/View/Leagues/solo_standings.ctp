@@ -680,9 +680,9 @@
                             avg_mvp = Math.round(row.avg_mvp * 100) / 100;
                             overall_avg_mvp = Math.round(row.overall_avg_mvp * 100) / 100;
 
-                            if (row.overall_avg_mvp >= row.avg_mvp) {
+                            if (overall_avg_mvp >= avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons text-danger" title="${overall_avg_mvp}">arrow_downward</i>`
-                            } else if(row.overall_avg_mvp === row.avg_mvp) {
+                            } else if(overall_avg_mvp === avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
                             } else {
                                 return `${avg_mvp}<i class="material-icons text-success" title="${overall_avg_mvp}">arrow_upward</i>`
