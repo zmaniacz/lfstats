@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
         <a href="/leagues/standings?gametype=league&amp;leagueID=1103&amp;centerID=17&amp;isComp=1">
-            <div class="jumbotron bg-cover" style="background-image: url(/img/nerd_sturgis.png); height: 300px">
+            <div class="jumbotron bg-cover" style="background-image: url(/img/nerd_sturgis.png); background-size: 100% 100%; height: 300px">
             </div>
         </a>
     </div>
