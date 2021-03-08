@@ -34,11 +34,32 @@ class LeaguesController extends AppController
             $this->redirect(['controller' => 'leagues', 'action' => 'soloStandings', '?' => $this->request->query]);
         }
 
+        if ('solo' == $event['Event']['scoring']) {
+            $this->redirect(['controller' => 'leagues', 'action' => 'soloWinsStandings', '?' => $this->request->query]);
+        }
+
         $this->set('teams', $this->Event->EventTeam->find('list', ['fields' => ['EventTeam.name'], 'conditions' => ['event_id' => $this->Session->read('state.leagueID')]]));
         $this->set('details', $this->Event->getLeagueDetails($this->Session->read('state')));
     }
 
     public function soloStandings()
+    {
+        $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
+        $game_dates = $this->Scorecard->getGameDates($this->Session->read('state'));
+        $this->set('game_dates', $game_dates);
+
+        if ($this->request->isPost()) {
+            $date = $this->request->data['Scorecard']['date'];
+        }
+
+        if (empty($date)) {
+            $date = reset($game_dates);
+        }
+
+        $this->set('current_date', $date);
+    }
+
+    public function soloWinsStandings()
     {
         $date = (empty($this->request->query('date'))) ? null : $this->request->query('date');
         $game_dates = $this->Scorecard->getGameDates($this->Session->read('state'));
