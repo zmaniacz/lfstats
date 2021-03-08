@@ -439,4 +439,80 @@ class Event extends AppModel
 
         return $data;
     }
+
+    public function getSoloWinStandings($eventId)
+    {
+        $standings = $this->GameResult->find('all', [
+            'fields' => [
+                'player_id',
+                'count(won) as games_played',
+                'sum(won) as wins'
+            ],
+            'contain' => [
+                'Player' => [
+                    'fields' => ['id', 'player_name'],
+                ],
+            ],
+            'conditions' => [
+                'event_id' => $eventId,
+            ],
+            'group' => 'GameResult.player_id, Player.id',
+        ]);
+
+        $averages = $this->find(
+            'all',
+            [
+                'fields' => [
+                    'Scorecard.player_id',
+                    'AVG(Scorecard.score) as avg_score',
+                    'AVG(Scorecard.mvp_points) as avg_mvp',
+                ],
+                'conditions' => [
+                    'Event.id' => $eventId,
+                ],
+                'joins' => [
+                    [
+                        'table' => 'games',
+                        'alias' => 'Game',
+                        'type' => 'LEFT',
+                        'conditions' => [
+                            'Game.event_id = Event.id',
+                        ],
+                    ],
+                    [
+                        'table' => 'scorecards',
+                        'alias' => 'Scorecard',
+                        'type' => 'LEFT',
+                        'conditions' => [
+                            'Scorecard.game_id = Game.id',
+                        ],
+                    ],
+                ],
+                'group' => 'Scorecard.player_id',
+            ]
+        );
+
+        $data = [];
+
+        foreach ($standings as $standing) {
+            foreach ($averages as $average) {
+                if ($standing['GameResult']['player_id'] == $average['Scorecard']['player_id']) {
+                    $data[] = [
+                        'id' => $standing['GameResult']['id'],
+                        'player_id' => $standing['GameResult']['player_id'],
+                        'player_name' => $standing['Player']['player_name'],
+                        'avg_score' => $average[0]['avg_score'],
+                        'avg_mvp' => $average[0]['avg_mvp'],
+                        'games_played' => $standing[0]['wins'],
+                        'wins' => $standing[0]['wins'],
+                        'win_rate' => $standing[0]['wins']/$standing[0]['wins'],
+                    ];
+
+                    break;
+                }
+            }
+        }
+
+        return $data;
+    }
 }

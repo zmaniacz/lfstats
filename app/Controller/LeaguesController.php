@@ -8,7 +8,7 @@ class LeaguesController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow('index', 'standings', 'soloStandings', 'ajax_getLeagues', 'ajax_getTeams', 'ajax_getMatchDetails', 'ajax_getTeamStandings', 'bracket', 'getSoloStandings');
+        $this->Auth->allow('index', 'standings', 'soloStandings', 'ajax_getLeagues', 'ajax_getTeams', 'ajax_getMatchDetails', 'ajax_getTeamStandings', 'bracket', 'getSoloStandings','getSoloWinStandings');
         parent::beforeFilter();
     }
 
@@ -180,6 +180,16 @@ class LeaguesController extends AppController
         }
 
         $this->set('data', $this->Event->getSoloStandings($eventId));
+        $this->set('_serialize', ['data']);
+    }
+
+    public function getSoloWinStandings($eventId = null)
+    {
+        if (!$this->Event->exists($eventId)) {
+            throw new NotFoundException(__('Invalid event'));
+        }
+
+        $this->set('data', $this->Event->getSoloWinStandings($eventId));
         $this->set('_serialize', ['data']);
     }
 
