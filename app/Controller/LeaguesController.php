@@ -34,7 +34,7 @@ class LeaguesController extends AppController
             $this->redirect(['controller' => 'leagues', 'action' => 'soloStandings', '?' => $this->request->query]);
         }
 
-        if ('solo' == $event['Event']['scoring']) {
+        if ('solo_wins' == $event['Event']['scoring']) {
             $this->redirect(['controller' => 'leagues', 'action' => 'soloWinsStandings', '?' => $this->request->query]);
         }
 
