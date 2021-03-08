@@ -8,7 +8,7 @@ class LeaguesController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow('index', 'standings', 'soloStandings', 'ajax_getLeagues', 'ajax_getTeams', 'ajax_getMatchDetails', 'ajax_getTeamStandings', 'bracket', 'getSoloStandings','getSoloWinStandings');
+        $this->Auth->allow('index', 'standings', 'soloStandings', 'soloWinsStandings', 'ajax_getLeagues', 'ajax_getTeams', 'ajax_getMatchDetails', 'ajax_getTeamStandings', 'bracket', 'getSoloStandings','getSoloWinStandings');
         parent::beforeFilter();
     }
 
