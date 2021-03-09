@@ -66,8 +66,8 @@
                 </div>
             </li>
             <?php } ?>
-            <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Modes <b class="caret"></b></a>
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Modes <b class="caret"></b></a>
               <ul class="dropdown-menu">
                 <li><a href="#" data-theme="cerulean" class="theme-link">Default</a></li>
                 <li><a href="#" data-theme="darkly" class="theme-link">Trash</a></li>
