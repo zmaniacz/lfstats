@@ -66,13 +66,6 @@
                 </div>
             </li>
             <?php } ?>
-            <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Modes <b class="caret"></b></a>
-              <ul class="dropdown-menu">
-                <li><a href="#" data-theme="cerulean" class="theme-link">Default</a></li>
-                <li><a href="#" data-theme="darkly" class="theme-link">Trash</a></li>
-              </ul>
-            </li>
         </ul>
         <form class="form-inline">
             <?php if (AuthComponent::user('id')) { ?>

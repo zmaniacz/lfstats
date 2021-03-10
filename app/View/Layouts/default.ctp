@@ -77,18 +77,6 @@
         </div>
     </div>
     <script>
-    var themes = {
-    "darkly" : "https://stackpath.bootstrapcdn.com/bootswatch/4.4.1/darkly/bootstrap.min.css",
-    "cerulean" : "https://stackpath.bootstrapcdn.com/bootswatch/4.4.1/cerulean/bootstrap.min.css"
-}
-$(function(){
-   var themesheet = $('<link href="'+themes['default']+'" rel="stylesheet" />');
-    themesheet.appendTo('head');
-    $('.theme-link').click(function(){
-       var themeurl = themes[$(this).attr('data-theme')]; 
-        themesheet.attr('href',themeurl);
-    });
-});
     $(document).ready(function() {
         $.ajax({
             url: 'https://api.twitch.tv/helix/streams?user_login=laserforcetournaments',
