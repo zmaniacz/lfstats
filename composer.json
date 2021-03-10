@@ -15,8 +15,7 @@
     "aws/aws-sdk-php": "^3.128"
   },
   "require-dev": {
-    "cakephp/debug_kit": "~2.2.8",
-    "laravel/homestead": "dev-master"
+    "cakephp/debug_kit": "~2.2.8"
   },
   "minimum-stability": "stable",
   "config": {
