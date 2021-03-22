@@ -12,9 +12,7 @@
 <div class="tab-content mt-4" id="myTabContent">
     <div class="tab-pane fade show active" id="solo-standings" role="tabpanel">
         <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
-        <a class="btn btn-success my-2" data-toggle="modal" href="#addPlayerModal">Add Player</a> <a
-            href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $selected_league['Event']['id']]); ?>"><i
-                class="material-icons">settings</i></a>
+            <a class="btn btn-success my-2" data-toggle="modal" href="#addPlayerModal">Add Player</a> <a href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $selected_league['Event']['id']]); ?>"><i class="material-icons">settings</i></a>
         <?php } ?>
         <div class="table-responsive">
             <table class="table table-striped table-bordered table-hover table-sm nowrap" id="solo_wins_standings">
@@ -32,8 +30,7 @@
         <h4 class="my-4">Scorecards <?php echo $this->Html->link('(details)', ['controller' => 'scorecards', 'action' => 'nightlyDetailed'], ['class' => 'h6 text-muted']); ?>
         </h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%"
-                id="standings-overall">
+            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="standings-overall">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -55,9 +52,9 @@
                 <label for="nightlySelectDate">Select Date:</label>
                 <select class="form-control-sm" id="nightlySelectDate">
                     <?php foreach ($game_dates as $game_date) { ?>
-                    <option value="<?php echo $game_date; ?>" <?php echo ($game_date == $current_date) ? 'selected' : ''; ?>>
-                        <?php echo $game_date; ?>
-                    </option>
+                        <option value="<?php echo $game_date; ?>" <?php echo ($game_date == $current_date) ? 'selected' : ''; ?>>
+                            <?php echo $game_date; ?>
+                        </option>
                     <?php } ?>
                 </select>
             </div>
@@ -65,8 +62,7 @@
         <h4 class="my-4">Overall <?php echo $this->Html->link('(details)', ['controller' => 'scorecards', 'action' => 'nightlyDetailed'], ['class' => 'h6 text-muted']); ?>
         </h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%"
-                id="overall">
+            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -84,8 +80,7 @@
         <hr>
         <h4 class="my-4">Summary Stats</h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%"
-                id="summary_stats">
+            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="summary_stats">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -106,8 +101,7 @@
         <hr>
         <h4 class="my-4">Medic Hits</h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%"
-                id="medic_hits">
+            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="medic_hits">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -178,9 +172,9 @@
         const params = new URLSearchParams(location.search);
 
         <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
-        const loggedIn = true;
+            const loggedIn = true;
         <?php } else { ?>
-        const loggedIn = false;
+            const loggedIn = false;
         <?php } ?>
 
         let soloStandingsTable = $('#solo_wins_standings').DataTable({
@@ -203,7 +197,7 @@
                     }
                 },
                 {
-                    data: "wins"
+                    data: "wins",
                     className: "text-right"
                 },
                 {
@@ -671,7 +665,7 @@
 
                             if (overall_avg_mvp > avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons text-danger" title="${overall_avg_mvp}">arrow_downward</i>`
-                            } else if(overall_avg_mvp === avg_mvp) {
+                            } else if (overall_avg_mvp === avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
                             } else {
                                 return `${avg_mvp}<i class="material-icons text-success" title="${overall_avg_mvp}">arrow_upward</i>`
@@ -702,7 +696,7 @@
 
                             if (row.overall_avg_acc > row.avg_acc) {
                                 return `${avg_acc}%<i class="material-icons text-danger" title="${overall_avg_acc}">arrow_downward</i>`
-                            } else if(row.overall_avg_acc === row.avg_acc) {
+                            } else if (row.overall_avg_acc === row.avg_acc) {
                                 return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
                             } else {
                                 return `${avg_acc}%<i class="material-icons text-success" title="${overall_avg_acc}">arrow_upward</i>`
