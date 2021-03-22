@@ -506,9 +506,9 @@ class Event extends AppModel
                         'player_name' => $standing['Player']['player_name'],
                         'avg_score' => $average[0]['avg_score'],
                         'avg_mvp' => $average[0]['avg_mvp'],
-                        'games_played' => $standing[0]['wins'],
+                        'games_played' => $standing[0]['games_played'],
                         'wins' => $standing[0]['wins'],
-                        'win_rate' => $standing[0]['wins'] / $standing[0]['wins'],
+                        'win_rate' => $standing[0]['wins'] / $standing[0]['games_played'],
                     ];
 
                     break;
