@@ -47,7 +47,6 @@
             <li class="nav-item">
                 <?php echo $this->Html->link('About SM5', ['controller' => 'pages', 'action' => 'aboutSM5'], ['class' => 'nav-link']); ?>
             </li>
-            <li class="nav-item"><a class="nav-link" id="twitch_status" href="https://www.twitch.tv/laserforcetournaments">Twitch</a></li>
             <li class="nav-item">
                 <?php echo $this->Html->link('Help', ['controller' => 'pages', 'action' => 'help'], ['class' => 'nav-link']); ?>
             </li>
