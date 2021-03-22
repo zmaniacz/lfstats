@@ -502,7 +502,6 @@ class Event extends AppModel
             foreach ($averages as $average) {
                 if ($standing['GameResult']['player_id'] == $average['Scorecard']['player_id']) {
                     $data[] = [
-                        'id' => $standing['GameResult']['id'],
                         'player_id' => $standing['GameResult']['player_id'],
                         'player_name' => $standing['Player']['player_name'],
                         'avg_score' => $average[0]['avg_score'],
