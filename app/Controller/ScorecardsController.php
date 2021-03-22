@@ -30,7 +30,6 @@ class ScorecardsController extends AppController
             'filterRounds',
             'allstar',
             'getAllStarStats',
-            'getComparison',
             'getPlayerHitBreakdown',
             'getAllCenter',
             'getPlayerTargetsBreakdown',
@@ -94,30 +93,6 @@ class ScorecardsController extends AppController
                 $this->redirect(['controller' => 'leagues', 'action' => 'standings', '?' => $this->request->query]);
             }
         }
-    }
-
-    public function getComparison($player1_id, $player2_id)
-    {
-        App::import('Vendor', 'CosineSimilarity', ['file' => 'CosineSimilarity/CosineSimilarity.php']);
-        $compare = new CosineSimilarity();
-
-        $player1_stats = $this->Scorecard->getComparableMVP($player1_id);
-        $player2_stats = $this->Scorecard->getComparableMVP($player2_id);
-
-        $max = max(max($player1_stats), max($player2_stats));
-        $min = min(min($player1_stats), min($player2_stats));
-
-        foreach ($player1_stats as &$stat) {
-            $stat = ($stat - $min) / ($max - $min);
-        }
-
-        foreach ($player2_stats as &$stat) {
-            $stat = ($stat - $min) / ($max - $min);
-        }
-
-        $distance = $compare->similarity($player1_stats, $player2_stats);
-
-        $this->set('response', $distance);
     }
 
     public function eventScorecards($eventId)
@@ -443,7 +418,7 @@ class ScorecardsController extends AppController
             ],
             $this->Game
         );
-        $subQuery = '"Scorecard".game_id IN ('.$subQuery.') ';
+        $subQuery = '"Scorecard".game_id IN (' . $subQuery . ') ';
         $subQueryExpression = $db->expression($subQuery);
 
         $conditions[] = $subQueryExpression;

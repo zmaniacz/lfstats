@@ -360,7 +360,7 @@ class Scorecard extends AppModel
             $this->Game->save();
 
             $this->updateAll(
-                ['Scorecard.game_id' => '"'.$this->Game->id.'"'],
+                ['Scorecard.game_id' => '"' . $this->Game->id . '"'],
                 ['Scorecard.game_datetime' => $score['green']['game_datetime']]
             );
 
@@ -656,30 +656,6 @@ class Scorecard extends AppModel
         return $data;
     }
 
-    public function getComparison($player1_id, $player2_id)
-    {
-        App::import('Vendor', 'CosineSimilarity', ['file' => 'CosineSimilarity/CosineSimilarity.php']);
-        $compare = new CosineSimilarity();
-
-        $player1_stats = $this->getComparableMVP($player1_id);
-        $player2_stats = $this->getComparableMVP($player2_id);
-
-        $max = max(max($player1_stats), max($player2_stats));
-        $min = min(min($player1_stats), min($player2_stats));
-
-        foreach ($player1_stats as &$stat) {
-            $stat = ($stat - $min) / ($max - $min);
-        }
-
-        foreach ($player2_stats as &$stat) {
-            $stat = ($stat - $min) / ($max - $min);
-        }
-
-        $distance = $compare->similarity($player1_stats, $player2_stats);
-
-        return $distance;
-    }
-
     public function getPositionStats($role = null, $state = null)
     {
         $conditions = [];
@@ -704,17 +680,17 @@ class Scorecard extends AppModel
                 if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
                     $subQuery = new stdClass();
                     $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE event_id='.$state['leagueID'].')';
+                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE event_id=' . $state['leagueID'] . ')';
                     $conditions[] = $subQuery;
                 } elseif (isset($state['show_finals']) && 'true' == $state['show_finals']) {
                     $subQuery = new stdClass();
                     $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id='.$state['leagueID'].')';
+                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id=' . $state['leagueID'] . ')';
                     $conditions[] = $subQuery;
                 } elseif (isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
                     $subQuery = new stdClass();
                     $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id='.$state['leagueID'].')';
+                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id=' . $state['leagueID'] . ')';
                     $conditions[] = $subQuery;
                 } else {
                     $subQuery = new stdClass();
@@ -781,7 +757,7 @@ class Scorecard extends AppModel
                 ],
             ],
             'conditions' => $conditions,
-            'group' => 'Scorecard.player_id, Player.id'.(($min_games > 0) ? " HAVING COUNT(Scorecard.game_datetime) >= {$min_games}" : ''),
+            'group' => 'Scorecard.player_id, Player.id' . (($min_games > 0) ? " HAVING COUNT(Scorecard.game_datetime) >= {$min_games}" : ''),
             'order' => 'avg_mvp DESC',
         ]);
     }
@@ -805,17 +781,17 @@ class Scorecard extends AppModel
                 if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
                     $subQuery = new stdClass();
                     $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE event_id='.$state['leagueID'].')';
+                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE event_id=' . $state['leagueID'] . ')';
                     $conditions[] = $subQuery;
                 } elseif (isset($state['show_finals']) && 'true' == $state['show_finals']) {
                     $subQuery = new stdClass();
                     $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id='.$state['leagueID'].')';
+                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id=' . $state['leagueID'] . ')';
                     $conditions[] = $subQuery;
                 } elseif (isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
                     $subQuery = new stdClass();
                     $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id='.$state['leagueID'].')';
+                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id=' . $state['leagueID'] . ')';
                     $conditions[] = $subQuery;
                 } else {
                     $subQuery = new stdClass();
@@ -1341,9 +1317,9 @@ class Scorecard extends AppModel
             $conditions[] = ['Scorecard.event_id' => $state['leagueID']];
         }
 
-        $playerPos = "'".implode('\',\'', $positions['player'])."'";
-        $targetPos = "'".implode('\',\'', $positions['target'])."'";
-        $conditions[] = ['"Scorecard".position IN ('.$playerPos.')'];
+        $playerPos = "'" . implode('\',\'', $positions['player']) . "'";
+        $targetPos = "'" . implode('\',\'', $positions['target']) . "'";
+        $conditions[] = ['"Scorecard".position IN (' . $playerPos . ')'];
 
         $scorecards = $this->find('list', [
             'fields' => ['game_id'],
@@ -1378,16 +1354,16 @@ class Scorecard extends AppModel
 				scorecards AS targets ON targets.game_id = scorecards.game_id
 					AND targets.player_id = hits.target_id
 			WHERE
-				hits.player_id = '.$player_id.'
-					AND scorecards.position IN ('.$playerPos.')
-					AND targets.position IN ('.$targetPos.')
-					'.$whereFlag.'
-					AND scorecards.game_id IN ('.$games_ids.')
+				hits.player_id = ' . $player_id . '
+					AND scorecards.position IN (' . $playerPos . ')
+					AND targets.position IN (' . $targetPos . ')
+					' . $whereFlag . '
+					AND scorecards.game_id IN (' . $games_ids . ')
 			GROUP BY hits.target_id, hits.player_id
 		';
 
         $playerHitByQuery =
-        '
+            '
 			SELECT 
 				hits.player_id,
 				hits.target_id,
@@ -1402,11 +1378,11 @@ class Scorecard extends AppModel
 				scorecards AS targets ON targets.game_id = scorecards.game_id
 					AND targets.player_id = hits.target_id
 			WHERE
-				hits.target_id = '.$player_id.'
-					AND scorecards.position IN ('.$targetPos.')
-					AND targets.position IN ('.$playerPos.')
-					'.$whereFlag.'
-					AND scorecards.game_id IN ('.$games_ids.')
+				hits.target_id = ' . $player_id . '
+					AND scorecards.position IN (' . $targetPos . ')
+					AND targets.position IN (' . $playerPos . ')
+					' . $whereFlag . '
+					AND scorecards.game_id IN (' . $games_ids . ')
 			GROUP BY hits.player_id, hits.target_id
 		';
 

@@ -105,11 +105,6 @@ class GamesController extends AppController
         }
     }
 
-    public function getGameMatchups($game_id)
-    {
-        $this->set('data', $this->Game->getMatchups($game_id));
-    }
-
     /**
      * edit method.
      *
@@ -134,7 +129,7 @@ class GamesController extends AppController
         } else {
             $this->loadModel('Event');
 
-            $options = ['conditions' => ['Game.'.$this->Game->primaryKey => $id]];
+            $options = ['conditions' => ['Game.' . $this->Game->primaryKey => $id]];
             $this->request->data = $this->Game->find('first', $options);
             if ('league' == $this->request->data['Game']['type'] || 'tournament' == $this->request->data['Game']['type']) {
                 $this->set('teams', $this->Event->getTeams($this->request->data['Game']['event_id']));
