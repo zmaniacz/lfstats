@@ -35,6 +35,10 @@ class Event extends AppModel
             'className' => 'SoloStanding',
             'foreignKey' => 'event_id',
         ],
+        'GameResult' => [
+            'className' => 'GameResult',
+            'foreignKey' => 'event_id'
+        ]
     ];
 
     public function getEventList($type = null, $limit = null, $center_id = null)
@@ -505,7 +509,7 @@ class Event extends AppModel
                         'avg_mvp' => $average[0]['avg_mvp'],
                         'games_played' => $standing[0]['wins'],
                         'wins' => $standing[0]['wins'],
-                        'win_rate' => $standing[0]['wins']/$standing[0]['wins'],
+                        'win_rate' => $standing[0]['wins'] / $standing[0]['wins'],
                     ];
 
                     break;
