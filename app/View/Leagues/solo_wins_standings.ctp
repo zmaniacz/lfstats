@@ -183,7 +183,7 @@
             info: false,
             searching: false,
             order: [
-                [1, "desc"]
+                [3, "desc"]
             ],
             columns: [{
                     data: function(row, type, val, meta) {
