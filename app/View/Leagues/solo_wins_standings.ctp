@@ -207,7 +207,7 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display') {
-                            return Number.parseFloat(row.win_rate).toFixed(2);
+                            return `${(Number.parseFloat(row.win_rate).toFixed(2)) * 100} %`;
                         } else {
                             return row.win_rate;
                         }
