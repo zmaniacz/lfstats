@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a650da21072bf57b82cd2cc327e50be3",
+    "content-hash": "d6dc8f3c47d1c51b1ace83b0b094abe4",
     "packages": [
         {
             "name": "ad7six/dsn",
@@ -1053,7 +1053,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "~7.3.0"
+        "php": "7.3.26"
     },
     "platform-dev": [],
     "platform-overrides": {
