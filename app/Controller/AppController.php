@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Application level Controller.
  *
@@ -151,7 +152,7 @@ class AppController extends Controller
         $this->set('centers', $this->Center->find('list'));
         $this->set('leagues', $this->Event->getLeagueList());
         $this->set('league_details', $this->Event->getLeagueDetailList());
-        $this->set('scorecard_stats', $this->Scorecard->getDatabaseStats());
-        $this->set('game_stats', $this->Game->getDatabaseStats());
+        //$this->set('scorecard_stats', $this->Scorecard->getDatabaseStats());
+        //$this->set('game_stats', $this->Game->getDatabaseStats());
     }
 }
