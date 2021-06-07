@@ -143,6 +143,7 @@ class AppController extends Controller
                 $this->set('selected_center', $this->Center->findById($event['Center']['id']));
                 $this->Session->write('state.centerID', $event['Center']['id']);
                 $this->Session->write('state.isComp', $event['Event']['is_comp']);
+                $this->Session->write('state.scoring', $event['Event']['scoring']);
             } else {
                 $this->Session->write('state.leagueID', 0);
                 $this->Session->write('state.isComp', $event['Event']['is_comp']);
