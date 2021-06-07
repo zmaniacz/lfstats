@@ -780,26 +780,28 @@ class Scorecard extends AppModel
                     $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
-                if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE event_id=' . $state['leagueID'] . ')';
-                    $conditions[] = $subQuery;
-                } elseif (isset($state['show_finals']) && 'true' == $state['show_finals']) {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id=' . $state['leagueID'] . ')';
-                    $conditions[] = $subQuery;
-                } elseif (isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id=' . $state['leagueID'] . ')';
-                    $conditions[] = $subQuery;
-                } else {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = '"Scorecard".game_id IN (0)';
-                    $conditions[] = $subQuery;
+                if ($state['scoring'] == "team") {
+                    if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE event_id=' . $state['leagueID'] . ')';
+                        $conditions[] = $subQuery;
+                    } elseif (isset($state['show_finals']) && 'true' == $state['show_finals']) {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id=' . $state['leagueID'] . ')';
+                        $conditions[] = $subQuery;
+                    } elseif (isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = '"Scorecard".game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id=' . $state['leagueID'] . ')';
+                        $conditions[] = $subQuery;
+                    } else {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = '"Scorecard".game_id IN (0)';
+                        $conditions[] = $subQuery;
+                    }
                 }
             }
         }
@@ -931,26 +933,28 @@ class Scorecard extends AppModel
                     $conditions[] = ['Scorecard.is_sub = false'];
                 }
 
-                if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE event_id='{$state['leagueID']}')";
-                    $conditions[] = $subQuery;
-                } elseif (isset($state['show_finals']) && 'true' == $state['show_finals']) {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id='{$state['leagueID']}')";
-                    $conditions[] = $subQuery;
-                } elseif (isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id='{$state['leagueID']}')";
-                    $conditions[] = $subQuery;
-                } else {
-                    $subQuery = new stdClass();
-                    $subQuery->type = 'expression';
-                    $subQuery->value = 'game_id IN (0)';
-                    $conditions[] = $subQuery;
+                if ($state['scoring'] == "team") {
+                    if (isset($state['show_finals']) && 'true' == $state['show_finals'] && isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE event_id='{$state['leagueID']}')";
+                        $conditions[] = $subQuery;
+                    } elseif (isset($state['show_finals']) && 'true' == $state['show_finals']) {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE is_finals = 1 AND event_id='{$state['leagueID']}')";
+                        $conditions[] = $subQuery;
+                    } elseif (isset($state['show_rounds']) && 'true' == $state['show_rounds']) {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = "game_id IN (SELECT game_id FROM league_games WHERE is_finals = 0 AND event_id='{$state['leagueID']}')";
+                        $conditions[] = $subQuery;
+                    } else {
+                        $subQuery = new stdClass();
+                        $subQuery->type = 'expression';
+                        $subQuery->value = 'game_id IN (0)';
+                        $conditions[] = $subQuery;
+                    }
                 }
             }
         }
