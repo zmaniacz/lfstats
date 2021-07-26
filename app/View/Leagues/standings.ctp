@@ -16,24 +16,18 @@
         <input type="radio" name="rounds" id="round_all" value="0" autocomplete="off" checked> All
     </label>
     <?php foreach ($details['Round'] as $round) { ?>
-    <?php if (!$round['is_finals']) { ?>
-    <label class="btn btn-outline-info">
-        <input type="radio" name="rounds"
-            id="round_<?php echo $round['round']; ?>"
-            value="<?php echo $round['round']; ?>"
-            autocomplete="off"> Round
-        <?php echo $round['round']; ?>
-    </label>
-    <?php } ?>
+        <?php if (!$round['is_finals']) { ?>
+            <label class="btn btn-outline-info">
+                <input type="radio" name="rounds" id="round_<?php echo $round['round']; ?>" value="<?php echo $round['round']; ?>" autocomplete="off"> Round
+                <?php echo $round['round']; ?>
+            </label>
+        <?php } ?>
     <?php } ?>
 </div>
 <hr>
 <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
-<a class="btn btn-success"
-    href="<?php echo $this->Html->url(['controller' => 'leagues', 'action' => 'addTeam']); ?>">New
-    Team</a> <a
-    href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $details['Event']['id']]); ?>"><i
-        class="material-icons">settings</i></a>
+    <a class="btn btn-success" href="<?php echo $this->Html->url(['controller' => 'leagues', 'action' => 'addTeam']); ?>">New
+        Team</a> <a href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $details['Event']['id']]); ?>"><i class="material-icons">settings</i></a>
 <?php } ?>
 <div class="table-responsive">
     <table class="table table-striped table-bordered table-hover table-sm nowrap" id="team_standings">
@@ -50,29 +44,29 @@
 <hr>
 <div class="mt-4">
     <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
-    echo $this->Html->link('Add Round', ['controller' => 'leagues', 'action' => 'addRound'], ['class' => 'btn btn-success']);
-}
+        echo $this->Html->link('Add Round', ['controller' => 'leagues', 'action' => 'addRound'], ['class' => 'btn btn-success']);
+    }
     ?>
     <input class="float-right" type="text" id="search-criteria" placeholder="Search Matches..." />
     <?php foreach ($details['Round'] as $round) { ?>
-    <?php if (!$round['is_finals']) { ?>
-    <h3 class="my-4">
-        <?php echo ($round['is_finals']) ? 'Finals' : 'Round '.$round['round']; ?>
-    </h3>
-    <?php
-                if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
-                    echo $this->Html->link('Add Match', ['controller' => 'leagues', 'action' => 'addMatch', $details['Event']['id'], $round['id']], ['class' => 'btn btn-success']);
-                }
-            ?>
-    <div class="row">
-        <?php foreach ($round['Match'] as $match) {
-                echo $this->element('MatchCard', [
-                    'match' => $match,
-                ]);
+        <?php if (!$round['is_finals']) { ?>
+            <h3 class="my-4">
+                <?php echo ($round['is_finals']) ? 'Finals' : 'Round ' . $round['round']; ?>
+            </h3>
+            <?php
+            if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) {
+                echo $this->Html->link('Add Match', ['controller' => 'leagues', 'action' => 'addMatch', $details['Event']['id'], $round['id']], ['class' => 'btn btn-success']);
             }
-        ?>
-    </div>
-    <?php } ?>
+            ?>
+            <div class="row">
+                <?php foreach ($round['Match'] as $match) {
+                    echo $this->element('MatchCard', [
+                        'match' => $match,
+                    ]);
+                }
+                ?>
+            </div>
+        <?php } ?>
     <?php } ?>
 </div>
 <div class="modal fade" id="teamNameModal" tabindex="-1" role="dialog">
@@ -111,8 +105,7 @@
                         <label for="match-penalty-type" class="control-label">Type:</label>
                         <input type="text" class="form-control" id="match-penalty-type" name="match-penalty-type">
                         <label for="match-penalty-description" class="control-label">Description:</label>
-                        <input type="text" class="form-control" id="match-penalty-description"
-                            name="match-penalty-description">
+                        <input type="text" class="form-control" id="match-penalty-description" name="match-penalty-description">
                         <label for="match-penalty-value" class="control-label">Value:</label>
                         <input type="text" class="form-control" id="match-penalty-value" name="match-penalty-value">
                         <input type="hidden" id="match-penalty-team-id" name="match-penalty-team-id">
@@ -152,9 +145,9 @@
 <script>
     $(document).ready(function() {
         <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
-        const loggedIn = true;
+            const loggedIn = true;
         <?php } else { ?>
-        const loggedIn = false;
+            const loggedIn = false;
         <?php } ?>
 
         $('#teamNameModal').on('show.bs.modal', function(event) {
@@ -284,7 +277,7 @@
                 },
                 {
                     data: function(row, type, val, meta) {
-                        if(type === 'display') {
+                        if (type === 'display') {
                             return row.score_ratio;
                         } else {
                             return row.ratio;
@@ -344,9 +337,9 @@
             }
             table.ajax.url(url).load();
 
-            setTimeout(function() {
+            /*setTimeout(function() {
                 update_standings(table, round);
-            }, 30000)
+            }, 30000)*/
         }
 
         $("#round_radio :input").change(function() {
