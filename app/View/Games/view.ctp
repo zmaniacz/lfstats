@@ -438,9 +438,9 @@ if (null != $game['Game']['green_team_id']) {
 
             teams.forEach(team => {
                 team.data = scoreData.TeamDelta.filter(delta => {
-                    return delta.color_desc === team.color_desc;
+                    return delta.TeamDelta.color_desc === team.color_desc;
                 }).map(delta => {
-                    return [delta.score_time, delta.sum]
+                    return [delta.TeamDelta.score_time, delta.TeamDelta.sum]
                 })
             });
 
