@@ -1,6 +1,6 @@
 <?php
 $data = array('commander' => array(), 'heavy' => array(), 'scout' => array(), 'ammo' => array(), 'medic' => array(),);
-var_dump($response);
+
 foreach ($response as $key => $value) {
     if ($value['Commander']['games_played'] / $value['total_games'] > .5) {
         $data['commander'][] = array(
