@@ -399,10 +399,33 @@ class Game extends AppModel
 
     public function getGameScoreChartData($id)
     {
-        return $this->find('first', [
-            'contain' => ['GameTeam', 'TeamDelta'],
+        $db = $this->getDataSource();
+
+        $result['GameTeam'] = $this->find('first', [
+            'contain' => ['GameTeam'],
             'conditions' => ['id' => $id],
         ]);
+
+        $result['TeamDelta'] = $db->fetchAll('
+        SELECT "TeamDelta"."delta"      AS "TeamDelta__delta",
+        "TeamDelta"."score_time" AS "TeamDelta__score_time",
+        "TeamDelta"."team_id"    AS "TeamDelta__team_id",
+        "TeamDelta"."color_desc" AS "TeamDelta__color_desc",
+        "TeamDelta"."game_id"    AS "TeamDelta__game_id",
+        "TeamDelta"."sum"        AS "TeamDelta__sum"
+        FROM (SELECT game_deltas.delta,
+              game_deltas.score_time,
+              game_teams.id                                                                                                            AS team_id,
+              game_teams.color_desc,
+              game_teams.game_id,
+              sum(game_deltas.delta)
+              OVER (PARTITION BY game_deltas.team_id ORDER BY game_deltas.score_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS sum
+        FROM game_deltas
+                JOIN game_teams ON game_teams.id = game_deltas.team_id
+        where game_deltas.game_id = ' . $id . ') AS "TeamDelta";
+        ');
+
+        return $result;
     }
 
     public function getGameActionList($id)
