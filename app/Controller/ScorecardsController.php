@@ -129,7 +129,7 @@ class ScorecardsController extends AppController
 
     public function getAllStarStats()
     {
-        $this->set('response', $this->Scorecard->getAllAvgMVP($this->Session->read('state')));
+        $this->set('response', $this->Scorecard->getAllAvgMVP($this->request->query));
     }
 
     public function getOverallAverages()
