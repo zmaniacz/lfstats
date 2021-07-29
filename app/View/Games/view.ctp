@@ -72,6 +72,8 @@ if (null != $game['Game']['green_team_id']) {
 </h3>
 <h4 class="text-center"><small><?php echo $game['Game']['game_datetime']; ?></small>
 </h4>
+<h4 class="text-center"><small><a href="https://lfstats-next.vercel.app/<?php echo $game['Game']['tdf_id']; ?>" target="_blank" rel="noopener noreferrer">Replay Beta</a></small>
+</h4>
 <div class="d-flex justify-content-between">
     <?php
     if (!empty($neighbors['prev'])) {
