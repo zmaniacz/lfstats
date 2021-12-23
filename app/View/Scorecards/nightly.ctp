@@ -5,9 +5,9 @@
         <label for="nightlySelectDate">Select Date:</label>
         <select class="form-control-sm" id="nightlySelectDate">
             <?php foreach ($game_dates as $game_date) { ?>
-            <option value="<?php echo $game_date; ?>" <?php echo ($game_date == $current_date) ? 'selected' : ''; ?>>
-                <?php echo $game_date; ?>
-            </option>
+                <option value="<?php echo $game_date; ?>" <?php echo ($game_date == $current_date) ? 'selected' : ''; ?>>
+                    <?php echo $game_date; ?>
+                </option>
             <?php } ?>
         </select>
     </div>
@@ -317,7 +317,7 @@
 
                             if (overall_avg_mvp > avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons text-danger" title="${overall_avg_mvp}">arrow_downward</i>`
-                            } else if(overall_avg_mvp === avg_mvp) {
+                            } else if (overall_avg_mvp === avg_mvp) {
                                 return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
                             } else {
                                 return `${avg_mvp}<i class="material-icons text-success" title="${overall_avg_mvp}">arrow_upward</i>`
@@ -348,8 +348,8 @@
 
                             if (row.overall_avg_acc > row.avg_acc) {
                                 return `${avg_acc}%<i class="material-icons text-danger" title="${overall_avg_acc}">arrow_downward</i>`
-                            } else if(row.overall_avg_acc === row.avg_acc) {
-                                return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
+                            } else if (row.overall_avg_acc === row.avg_acc) {
+                                return `${avg_acc}%<i class="material-icons" title="${overall_avg_acc}">remove</i>`
                             } else {
                                 return `${avg_acc}%<i class="material-icons text-success" title="${overall_avg_acc}">arrow_upward</i>`
                             }
