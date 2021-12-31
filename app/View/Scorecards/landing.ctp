@@ -1,4 +1,7 @@
 <div class="row">
+    <p>2021-12-31 - Significant updates to the live replay engine. Click the 'Repaly Beta' link on any game page to check it out.</p>
+</div>
+<div class="row">
     <div class="col-8 offset-2 col-sm-3 offset-sm-3">
         <select id="jump-social" class="custom-select">
             <option selected>Jump to social games</option>
