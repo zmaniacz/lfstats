@@ -478,7 +478,16 @@ class Player extends AppModel
             ],
             $this->Scorecard
         );
-        $eligiblePlayers = $this->find('all', ['conditions' => ['ipl_id IS NOT NULL', 'id IN (' . $allEligiblePlayers . ')'], 'order' => 'player_name ASC']);
+        $addedPlayers = $db->buildStatement(
+            [
+                'fields' => ['DISTINCT player_id'],
+                'table' => $db->fullTableName($this->EventPlayer),
+                'alias' => 'EventPlayer',
+                'conditions' => ['event_id' => $event_id]
+            ],
+            $this->EventPlayer
+        );
+        $eligiblePlayers = $this->find('all', ['conditions' => ['ipl_id IS NOT NULL', 'id IN (' . $allEligiblePlayers . ')', 'id NOT IN (' . $addedPlayers . ')'], 'order' => 'player_name ASC']);
 
         return $eligiblePlayers;
     }
