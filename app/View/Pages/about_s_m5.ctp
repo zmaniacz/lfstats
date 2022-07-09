@@ -1,5 +1,4 @@
-<a class="display-4"
-    href="https://objects-us-east-1.dream.io/lfstatsstatic/Laserforce-Tournament-rules-current-through-June-2018.pdf">Official
+<a class="display-4" href="https://objects-us-east-1.dream.io/lfstatsstatic/Laserforce-Tournament-rules-current-through-June-2018.pdf">Official
     Rules PDF <i class="material-icons md-48">picture_as_pdf</i></a>
 <h4 class="my-4">Class Details</h4>
 <table class="table table-sm">
@@ -161,7 +160,7 @@
         <li>Missiles: 1 point for missiling an opponent (does not apply to bases).</li>
         <li>Nukes: 1 point for each successful nuke.</li>
         <li>Score bonus: 1 point (applied fractionally) for every 1000 points over 10,000.</li>
-        <li>Get nuke canceled: -3 points.</li>
+        <li>Get nuke canceled: -1 point.</li>
     </ul>
     <li>Heavy Weapons</li>
     <ul>

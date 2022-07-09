@@ -39,10 +39,6 @@
                 <li class="nav-item">
                     <?php echo $this->Html->link('Penalties', ['controller' => 'penalties', 'action' => 'index'], ['class' => 'nav-link']); ?>
                 </li>
-
-                <li class="nav-item">
-                    <?php echo $this->Html->link('ECT 2020', ['controller' => 'leagues', 'action' => 'standings', '?' => ['gametype' => 'league', 'leagueID' => 959, 'centerID' => 8, 'isComp' => 1]], ['class' => 'nav-link']); ?>
-                </li class="nav-item">
             <?php } ?>
             <li class="nav-item">
                 <?php echo $this->Html->link('About SM5', ['controller' => 'pages', 'action' => 'aboutSM5'], ['class' => 'nav-link']); ?>

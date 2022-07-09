@@ -11,21 +11,20 @@
     "cakephp/cakephp": "~2.10.11",
     "josegonzalez/dotenv": "~3.2.0",
     "ad7six/dsn": "~0.4.0",
-    "cakephp/debug_kit": "~2.2.8",
-    "aws/aws-sdk-php": "^3.128"
-  },
-  "require-dev": {
+    "aws/aws-sdk-php": "^3.128",
     "cakephp/debug_kit": "~2.2.8"
   },
   "minimum-stability": "stable",
-  "config": {
-    "preferred-install": "dist"
-  },
   "extra": {
     "heroku": {
       "framework": "cakephp2",
       "document-root": "webroot",
       "index-document": "index.php"
+    }
+  },
+  "config": {
+    "platform": {
+      "php": "7.3.0"
     }
   }
 }
