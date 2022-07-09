@@ -8,7 +8,7 @@ class LeaguesController extends AppController
 
     public function beforeFilter()
     {
-        $this->Auth->allow('index', 'standings', 'soloStandings', 'soloWinsStandings', 'ajax_getLeagues', 'ajax_getTeams', 'ajax_getMatchDetails', 'ajax_getTeamStandings', 'bracket', 'getSoloStandings','getSoloWinStandings');
+        $this->Auth->allow('index', 'standings', 'soloStandings', 'soloWinsStandings', 'ajax_getLeagues', 'ajax_getTeams', 'ajax_getMatchDetails', 'ajax_getTeamStandings', 'bracket', 'getSoloStandings', 'getSoloWinStandings');
         parent::beforeFilter();
     }
 
@@ -171,7 +171,7 @@ class LeaguesController extends AppController
             throw new NotFoundException(__('Invalid event'));
         }
 
-        $this->set('players', $this->Player->find('all', ['conditions' => ['ipl_id IS NOT NULL'], 'order' => 'player_name ASC']));
+        $this->set('players', $this->Player->getEligiblePlayers($eventId));
         $this->set('_serialize', ['players']);
     }
 
@@ -284,7 +284,7 @@ class LeaguesController extends AppController
                 return $this->flash(__('The event has been saved.'), ['action' => 'index']);
             }
         } else {
-            $options = ['conditions' => ['Event.'.$this->Event->primaryKey => $id]];
+            $options = ['conditions' => ['Event.' . $this->Event->primaryKey => $id]];
             $this->request->data = $this->Event->find('first', $options);
         }
         $centers = $this->Event->Center->find('list');
