@@ -466,6 +466,21 @@ class Player extends AppModel
         return $teammates;
     }
 
+    public function getEligiblePlayers($event_id)
+    {
+        $db = $this->Scorecard->getDataSource();
+        $allEligiblePlayers = $db->buildStatement(
+            [
+                'fields' => ['DISTINCT player_id'],
+                'conditions' => ['event_id' => $event_id]
+            ],
+            $this->Scorecard
+        );
+        $eligiblePlayers = $this->Player->find('all', ['conditions' => ['ipl_id IS NOT NULL', 'id NOT IN (' . $allEligiblePlayers . ')'], 'order' => 'player_name ASC']);
+
+        return $eligiblePlayers;
+    }
+
     public function linkPlayers($master_id, $target_id)
     {
         $master = $this->find('first', ['conditions' => ['id' => $master_id]]);
