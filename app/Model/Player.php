@@ -48,6 +48,10 @@ class Player extends AppModel
             'className' => 'GameDelta',
             'foreignKey' => 'player_id',
         ],
+        'EventPlayer' => [
+            'className' => 'EventPlayer',
+            'foreignKey' => 'player_id',
+        ],
     ];
 
     public function getPlayerStats($id, $role = null, $state = null)
