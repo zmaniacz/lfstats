@@ -472,6 +472,8 @@ class Player extends AppModel
         $allEligiblePlayers = $db->buildStatement(
             [
                 'fields' => ['DISTINCT player_id'],
+                'table' => $db->fullTableName($this->Scorecard),
+                'alias' => 'Scorecard',
                 'conditions' => ['event_id' => $event_id]
             ],
             $this->Scorecard
