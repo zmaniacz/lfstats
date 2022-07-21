@@ -629,7 +629,7 @@
                 leftColumns: 2
             },
             ajax: {
-                url: `/scorecards/nightlySummaryStats.json?${params.toString()}&leaguetype=solo`
+                url: `/scorecards/nightlySummaryStats.json?${params.toString()}`
             },
             columns: [{
                     defaultContent: '',
