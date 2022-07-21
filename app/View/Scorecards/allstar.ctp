@@ -13,8 +13,8 @@
                     <label class="custom-control-label" for="finals_cbox">Show Finals</label>
                 </div>
                 <div class="custom-control custom-switch">
-                    <input type="checkbox" class="custom-control-input" id="sub_cbox" <?= (($this->Session->read('state.show_subs') == 'true') ? "checked" : "") ?>>
-                    <label class="custom-control-label" for="sub_cbox">Show Subs</label>
+                    <input type="checkbox" class="custom-control-input" id="subs_cbox" <?= (($this->Session->read('state.show_subs') == 'true') ? "checked" : "") ?>>
+                    <label class="custom-control-label" for="subs_cbox">Show Subs</label>
                 </div>
         </div>
     <?php else : ?>
