@@ -25,9 +25,6 @@ class ScorecardsController extends AppController
             'leaderboards',
             'getMVPBreakdown',
             'getHitBreakdown',
-            'filterSub',
-            'filterFinals',
-            'filterRounds',
             'allstar',
             'getAllStarStats',
             'getPlayerHitBreakdown',
@@ -431,23 +428,5 @@ class ScorecardsController extends AppController
         } else {
             $this->set('data', 0);
         }
-    }
-
-    public function filterSub($showSubs = false)
-    {
-        $this->Session->write('state.show_subs', $showSubs);
-        $this->redirect($this->request->referer());
-    }
-
-    public function filterFinals($showFinals = false)
-    {
-        $this->Session->write('state.show_finals', $showFinals);
-        $this->redirect($this->request->referer());
-    }
-
-    public function filterRounds($showRounds = false)
-    {
-        $this->Session->write('state.show_rounds', $showRounds);
-        $this->redirect($this->request->referer());
     }
 }
