@@ -105,23 +105,23 @@ class ScorecardsController extends AppController
     {
         switch ($position) {
             case 'commander':
-                $this->set('response', $this->Scorecard->getPositionStats('Commander', $this->request->query));
+                $this->set('response', $this->Scorecard->getPositionStats('Commander', $this->Session->read('state')));
 
                 break;
             case 'heavy':
-                $this->set('response', $this->Scorecard->getPositionStats('Heavy Weapons', $this->request->query));
+                $this->set('response', $this->Scorecard->getPositionStats('Heavy Weapons', $this->Session->read('state')));
 
                 break;
             case 'scout':
-                $this->set('response', $this->Scorecard->getPositionStats('Scout', $this->request->query));
+                $this->set('response', $this->Scorecard->getPositionStats('Scout', $this->Session->read('state')));
 
                 break;
             case 'ammo':
-                $this->set('response', $this->Scorecard->getPositionStats('Ammo Carrier', $this->request->query));
+                $this->set('response', $this->Scorecard->getPositionStats('Ammo Carrier', $this->Session->read('state')));
 
                 break;
             case 'medic':
-                $this->set('response', $this->Scorecard->getPositionStats('Medic', $this->request->query));
+                $this->set('response', $this->Scorecard->getPositionStats('Medic', $this->Session->read('state')));
 
                 break;
         }
@@ -129,17 +129,17 @@ class ScorecardsController extends AppController
 
     public function getAllStarStats()
     {
-        $this->set('response', $this->Scorecard->getAllAvgMVP($this->request->query));
+        $this->set('response', $this->Scorecard->getAllAvgMVP($this->Session->read('state')));
     }
 
     public function getOverallAverages()
     {
-        $this->set('response', $this->Scorecard->getAllAvgMVP($this->request->query));
+        $this->set('response', $this->Scorecard->getAllAvgMVP($this->Session->read('state')));
     }
 
     public function getOverallMedicHits()
     {
-        $this->set('response', $this->Scorecard->getMedicHitStats($this->request->query));
+        $this->set('response', $this->Scorecard->getMedicHitStats($this->Session->read('state')));
     }
 
     public function getScorecardsByDateRange()
@@ -287,14 +287,14 @@ class ScorecardsController extends AppController
 
     public function getLeaderboards()
     {
-        $this->set('leaderboards', $this->Scorecard->getLeaderboards($this->request->query));
-        $this->set('penalties', $this->Scorecard->getPenaltyCount($this->request->query));
-        $this->set('medic_on_medic', $this->Scorecard->getMedicOnMedicHits($this->request->query));
+        $this->set('leaderboards', $this->Scorecard->getLeaderboards($this->Session->read('state')));
+        $this->set('penalties', $this->Scorecard->getPenaltyCount($this->Session->read('state')));
+        $this->set('medic_on_medic', $this->Scorecard->getMedicOnMedicHits($this->Session->read('state')));
     }
 
     public function getMissileLeaderBoards()
     {
-        $this->set('data', $this->Scorecard->getMissileLeaderboards($this->request->query));
+        $this->set('data', $this->Scorecard->getMissileLeaderboards($this->Session->read('state')));
     }
 
     public function getPositionLeaderboards()
