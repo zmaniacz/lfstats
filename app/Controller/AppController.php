@@ -119,6 +119,12 @@ class AppController extends Controller
             $this->Session->write('state.show_subs', 'false');
         }
 
+        if (!is_null($this->request->query('scoring'))) {
+            $this->Session->write('state.scoring', $this->request->query('scoring'));
+        } elseif (!$this->Session->check('state.scoring')) {
+            $this->Session->write('state.scoring', 'team');
+        }
+
         //get a center and league object for use throughout the app
         if (('all' == $this->Session->read('state.gametype') || 'social' == $this->Session->read('state.gametype')) && $this->Session->read('state.centerID') > 0) {
             $this->set('selected_center', $this->Center->findById($this->Session->read('state.centerID')));
