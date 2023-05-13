@@ -30,9 +30,9 @@ class UploadsController extends AppController
         if ('PDF' == $type) {
             App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandler.php']);
             $options = [
-                'script_url' => FULL_BASE_URL . DS . 'uploads/handleUploads/',
-                'upload_dir' => 'parser' . DS . 'incoming' . DS . $this->Session->read('state.centerID') . DS,
-                'upload_url' => FULL_BASE_URL . DS . 'parser' . DS . 'incoming' . DS . $this->Session->read('state.centerID') . DS,
+                'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
+                'upload_dir' => 'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
+                'upload_url' => FULL_BASE_URL.DS.'parser'.DS.'incoming'.DS.$this->Session->read('state.centerID').DS,
                 'delete_type' => 'POST',
                 'accept_file_types' => '/\.(pdf)$/i',
                 'print_response' => false,
@@ -41,7 +41,7 @@ class UploadsController extends AppController
         } elseif ('TDF' == $type) {
             App::import('Vendor', 'UploadHandler', ['file' => 'UploadHandler/UploadHandlerS3.php']);
             $options = [
-                'script_url' => FULL_BASE_URL . DS . 'uploads/handleUploads/',
+                'script_url' => FULL_BASE_URL.DS.'uploads/handleUploads/',
                 'accept_file_types' => '/\.(tdf)$/i',
                 'print_response' => false,
                 'image_versions' => [],
@@ -53,38 +53,38 @@ class UploadsController extends AppController
             switch ($_SERVER['REQUEST_METHOD']) {
                 case 'HEAD':
                 case 'GET':
-                    $upload_handler->get();
+                $upload_handler->get();
 
-                    break;
+                break;
                 case 'POST':
-                    $upload_handler->post();
+                $upload_handler->post();
 
-                    break;
+                break;
                 case 'DELETE':
-                    $upload_handler->delete();
+                $upload_handler->delete();
 
-                    break;
+                break;
                 default:
-                    header('HTTP/1.0 405 Method Not Allowed');
+                header('HTTP/1.0 405 Method Not Allowed');
             }
         } else {
             $upload_handler = new UploadHandler($options, $initialize = true, null, $prefix);
             switch ($_SERVER['REQUEST_METHOD']) {
                 case 'HEAD':
                 case 'GET':
-                    $upload_handler->get();
+                $upload_handler->get();
 
-                    break;
+                break;
                 case 'POST':
-                    $upload_handler->post();
+                $upload_handler->post();
 
-                    break;
+                break;
                 case 'DELETE':
-                    $upload_handler->delete();
+                $upload_handler->delete();
 
-                    break;
+                break;
                 default:
-                    header('HTTP/1.0 405 Method Not Allowed');
+                header('HTTP/1.0 405 Method Not Allowed');
             }
         }
         if (!$this->Session->check('state.centerID')) {
@@ -157,7 +157,7 @@ class UploadsController extends AppController
         }
 
         $row = 0;
-        $xmlString = file_get_contents($path . DS . $latest_filename);
+        $xmlString = file_get_contents($path.DS.$latest_filename);
         $xml = Xml::toArray(Xml::build($xmlString));
 
         //jesus fuck this shit right here.  I mean really cakephp, what the goddamned fuck
@@ -209,7 +209,6 @@ class UploadsController extends AppController
                     $this->Scorecard->set([
                         'player_name' => "{$player['name']}",
                         'game_datetime' => date(DATE_ATOM, strtotime($datetime)),
-                        'game_date' => date('Y-m-d', strtotime($datetime)),
                         'team' => $team,
                         'position' => $player['position'],
                         'score' => ($player['score'] + (1000 * $player['penalties'])),

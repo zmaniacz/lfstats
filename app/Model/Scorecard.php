@@ -517,7 +517,7 @@ class Scorecard extends AppModel
         }
 
         $game_dates = $this->find('all', [
-            'fields' => ['DISTINCT Scorecard.game_date as game_date'],
+            'fields' => ['DISTINCT DATE(Scorecard.game_datetime) as game_date'],
             'order' => 'game_date DESC',
             'conditions' => $conditions,
         ]);
@@ -530,7 +530,7 @@ class Scorecard extends AppModel
         $conditions = [];
 
         if (!is_null($date)) {
-            $conditions[] = ['Scorecard.game_date' => $date];
+            $conditions[] = ['DATE(Scorecard.game_datetime)' => $date];
         }
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
@@ -557,7 +557,7 @@ class Scorecard extends AppModel
     {
         $conditions = [];
 
-        $conditions[] = ["Scorecard.game_date BETWEEN DATE('{$start}') AND DATE('{$end}')"];
+        $conditions[] = ["DATE(Scorecard.game_datetime) BETWEEN DATE('{$start}') AND DATE('{$end}')"];
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
             $conditions[] = ['Scorecard.center_id' => $state['centerID']];
@@ -581,7 +581,7 @@ class Scorecard extends AppModel
         $conditions = [];
 
         if (!is_null($date)) {
-            $conditions[] = ['Scorecard.game_date' => $date];
+            $conditions[] = ['DATE(Scorecard.game_datetime)' => $date];
         }
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
@@ -1029,7 +1029,7 @@ class Scorecard extends AppModel
         $conditions = [];
 
         if (!is_null($date)) {
-            $conditions[] = ['game_date' => $date];
+            $conditions[] = ['DATE(game_datetime)' => $date];
         }
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
