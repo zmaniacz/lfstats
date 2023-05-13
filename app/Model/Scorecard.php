@@ -517,7 +517,7 @@ class Scorecard extends AppModel
         }
 
         $game_dates = $this->find('all', [
-            'fields' => ['DISTINCT Scorecard.game_date'],
+            'fields' => ['DISTINCT Scorecard.game_date as game_date'],
             'order' => 'game_date DESC',
             'conditions' => $conditions,
         ]);
