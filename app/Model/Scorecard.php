@@ -530,7 +530,7 @@ class Scorecard extends AppModel
         $conditions = [];
 
         if (!is_null($date)) {
-            $conditions[] = ['DATE(Scorecard.game_datetime)' => $date];
+            $conditions[] = ["Scorecard.game_datetime BETWEEN ('{$date}'::timestamptz AT TIME ZONE 'UTC') AND ('{$date}'::timestamptz AT TIME ZONE 'UTC') + INTERVAL '1 day'"];
         }
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
@@ -557,7 +557,7 @@ class Scorecard extends AppModel
     {
         $conditions = [];
 
-        $conditions[] = ["DATE(Scorecard.game_datetime) BETWEEN DATE('{$start}') AND DATE('{$end}')"];
+        $conditions[] = ["Scorecard.game_datetime BETWEEN ('{$start}'::timestamptz AT TIME ZONE 'UTC') AND ('{$end}'::timestamptz AT TIME ZONE 'UTC')"];
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {
             $conditions[] = ['Scorecard.center_id' => $state['centerID']];
@@ -1029,7 +1029,7 @@ class Scorecard extends AppModel
         $conditions = [];
 
         if (!is_null($date)) {
-            $conditions[] = ['DATE(game_datetime)' => $date];
+            $conditions[] = ["Scorecard.game_datetime BETWEEN ('{$date}'::timestamptz AT TIME ZONE 'UTC') AND ('{$date}'::timestamptz AT TIME ZONE 'UTC') + INTERVAL '1 day'"];
         }
 
         if (isset($state['centerID']) && $state['centerID'] > 0) {

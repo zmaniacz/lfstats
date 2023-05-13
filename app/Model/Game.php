@@ -184,7 +184,7 @@ class Game extends AppModel
         }
 
         if (!is_null($date)) {
-            $conditions[] = ['DATE(Game.game_datetime)' => $date];
+            $conditions[] = ["Game.game_datetime BETWEEN ('{$date}'::timestamptz AT TIME ZONE 'UTC') AND ('{$date}'::timestamptz AT TIME ZONE 'UTC') + INTERVAL '1 day'"];
         }
 
         return $this->find('all', [
