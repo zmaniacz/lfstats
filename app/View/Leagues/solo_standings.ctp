@@ -709,7 +709,7 @@
                             if (row.overall_avg_acc > row.avg_acc) {
                                 return `${avg_acc}%<i class="material-icons text-danger" title="${overall_avg_acc}">arrow_downward</i>`
                             } else if (row.overall_avg_acc === row.avg_acc) {
-                                return `${avg_mvp}<i class="material-icons" title="${overall_avg_mvp}">remove</i>`
+                                return `${avg_acc}<i class="material-icons" title="${overall_avg_acc}">remove</i>`
                             } else {
                                 return `${avg_acc}%<i class="material-icons text-success" title="${overall_avg_acc}">arrow_upward</i>`
                             }
