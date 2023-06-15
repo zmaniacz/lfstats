@@ -709,12 +709,12 @@ class Scorecard extends AppModel
 
         if (isset($state['startDate'])) {
             if (isset($state['endDate'])) {
-                $conditions[] = ["Scorecard.game_datetime BETWEEN '{$state['startDate']}' AND '{$state['endDate']}'"];
+                $conditions[] = ["Scorecard.game_datetime BETWEEN '{$state['startDate']}'::timestamptz AT TIME ZONE 'UTC' AND '{$state['endDate']}::timestamptz AT TIME ZONE 'UTC''"];
             } else {
-                $conditions[] = ["Scorecard.game_datetime >= '{$state['startDate']}'"];
+                $conditions[] = ["Scorecard.game_datetime >= '{$state['startDate']}::timestamptz AT TIME ZONE 'UTC''"];
             }
         } elseif (isset($state['endDate'])) {
-            $conditions[] = ["Scorecard.game_datetime <= '{$state['endDate']}'"];
+            $conditions[] = ["Scorecard.game_datetime <= '{$state['endDate']}::timestamptz AT TIME ZONE 'UTC''"];
         }
 
         return $this->find('all', [
