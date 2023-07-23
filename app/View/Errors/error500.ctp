@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * PHP 5
@@ -20,10 +21,10 @@
 <h2><?php echo $name; ?></h2>
 <p class="error">
 	<strong><?php echo __d('cake', 'Error'); ?>: </strong>
-	<?php echo __d('cake', 'An Internal Error Has Occurred.'); ?>
+	<?php echo __d('cake', 'An Internal Error Has Occurred. Wait a few seconds and try again. The database is probably waking up.'); ?>
 </p>
 <?php
-if (Configure::read('debug') > 0):
+if (Configure::read('debug') > 0) :
 	echo $this->element('exception_stack_trace');
 endif;
 ?>
