@@ -1664,6 +1664,7 @@ class Scorecard extends AppModel
                 'SUM(missiled_opponent) as missiled_opponent_total',
                 'SUM(missiled_team) as missiled_team_total',
                 'SUM(shots_fired) as shots_fired_total',
+                'SUM(uptime+resupply_downtime+other_downtime) as time_played_total'
             ],
             'conditions' => $conditions,
             'group' => 'Scorecard.player_id, Player.id',

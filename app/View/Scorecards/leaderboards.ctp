@@ -1,12 +1,12 @@
 <?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <?php if ('league' == $this->Session->read('state.gametype')) { ?>
-<button type="button" class="btn btn-outline-primary" data-toggle="button" id="show_finals_button">
-    Show Finals
-</button>
-<button type="button" class="btn btn-outline-primary" data-toggle="button" id="show_subs_button">
-    Show Mercs
-</button>
+    <button type="button" class="btn btn-outline-primary" data-toggle="button" id="show_finals_button">
+        Show Finals
+    </button>
+    <button type="button" class="btn btn-outline-primary" data-toggle="button" id="show_subs_button">
+        Show Mercs
+    </button>
 <?php } ?>
 <h4 class="my-4">
     Positions
@@ -68,7 +68,7 @@
     Games and Points
 </h4>
 <div class="row">
-    <div class="col-sm-6">
+    <div class="col-sm-4">
         <table class="table table-striped table-bordered table-hover table-sm nowrap" id="games_played_leader_table">
             <thead>
                 <th>Name</th>
@@ -76,11 +76,19 @@
             </thead>
         </table>
     </div>
-    <div class="col-sm-6">
+    <div class="col-sm-4">
         <table class="table table-striped table-bordered table-hover table-sm nowrap" id="score_total_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Total Score</th>
+            </thead>
+        </table>
+    </div>
+    <div class="col-sm-4">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="time_played_total_leader_table">
+            <thead>
+                <th>Name</th>
+                <th>Time Played</th>
             </thead>
         </table>
     </div>
@@ -106,8 +114,7 @@
         </table>
     </div>
     <div class="col-sm-4">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="medic_on_medic_hits_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="medic_on_medic_hits_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Medic On Medic Hits</th>
@@ -120,8 +127,7 @@
 </h4>
 <div class="row">
     <div class="col-sm-6">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="missiled_opponent_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="missiled_opponent_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Total Missiles</th>
@@ -131,10 +137,8 @@
     <div class="col-sm-6">
         <form>
             <div class="form-group">
-                <label for="avg_missiles_min_games_range">Minimum Games: <span
-                        id="avg_missiles_min_games">25</span></label>
-                <input type="range" class="form-control-range" value="25" min="0" max="100"
-                    id="avg_missiles_min_games_range">
+                <label for="avg_missiles_min_games_range">Minimum Games: <span id="avg_missiles_min_games">25</span></label>
+                <input type="range" class="form-control-range" value="25" min="0" max="100" id="avg_missiles_min_games_range">
             </div>
         </form>
         <table class="table table-striped table-bordered table-hover table-sm nowrap" id="avg_missiles_table">
@@ -168,8 +172,7 @@
 </h4>
 <div class="row">
     <div class="col-sm-4">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="nukes_detonated_total_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="nukes_detonated_total_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Total Nukes Detonated</th>
@@ -177,8 +180,7 @@
         </table>
     </div>
     <div class="col-sm-4">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="nukes_canceled_total_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="nukes_canceled_total_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Total Nukes Canceled</th>
@@ -186,8 +188,7 @@
         </table>
     </div>
     <div class="col-sm-4">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="own_nuke_cancels_total_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="own_nuke_cancels_total_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Own Nukes Canceled</th>
@@ -200,8 +201,7 @@
 </h4>
 <div class="row">
     <div class="col-sm-6">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="elim_other_team_total_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="elim_other_team_total_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Eliminated Opposing Team</th>
@@ -261,8 +261,7 @@
 </h4>
 <div class="row">
     <div class="col-sm-6">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap"
-            id="shots_fired_total_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="shots_fired_total_leader_table">
             <thead>
                 <th>Name</th>
                 <th>Shots Fired</th>
@@ -284,6 +283,17 @@
         table.rows.add(data.filter(function(row) {
             return row.Scorecard.games_played >= filter
         })).draw()
+    }
+
+    function msToTime(duration) {
+        let milliseconds = parseInt((duration % 1000) / 10),
+            seconds = parseInt((duration / 1000) % 60),
+            minutes = parseInt((duration / (1000 * 60)) % 60);
+
+        minutes = (minutes < 10) ? "0" + minutes : minutes;
+        seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+        return minutes + ":" + seconds + "." + milliseconds;
     }
 
     $(document).ready(function() {
@@ -439,6 +449,8 @@
             $('#games_played_leader_table').DataTable().clear().rows.add(response.data.games_played)
                 .draw();
             $('#score_total_leader_table').DataTable().clear().rows.add(response.data.score_total)
+                .draw();
+            $('#time_played_total_leader_table').DataTable().clear().rows.add(msToTime(response.data.time_played_total))
                 .draw();
 
             $('#medic_hits_leader_table').DataTable().clear().rows.add(response.data.medic_hits_total)
