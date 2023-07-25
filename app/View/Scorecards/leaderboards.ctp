@@ -285,15 +285,10 @@
         })).draw()
     }
 
-    function msToTime(duration) {
-        let milliseconds = parseInt((duration % 1000) / 10),
-            seconds = parseInt((duration / 1000) % 60),
-            minutes = parseInt((duration / (1000 * 60)) % 60);
-
-        minutes = (minutes < 10) ? "0" + minutes : minutes;
-        seconds = (seconds < 10) ? "0" + seconds : seconds;
-
-        return minutes + ":" + seconds + "." + milliseconds;
+    function millisToMinutesAndSeconds(millis) {
+        let minutes = Math.floor(millis / 60000);
+        let seconds = ((millis % 60000) / 1000).toFixed(0);
+        return minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
     }
 
     $(document).ready(function() {
@@ -377,7 +372,7 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display') {
-                            return msToTime(row.value);
+                            return millisToMinutesAndSeconds(row.value);
                         }
                         return row.value;
                     }
