@@ -85,7 +85,7 @@
         </table>
     </div>
     <div class="col-sm-4">
-        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="time_played_total_leader_table">
+        <table class="table table-striped table-bordered table-hover table-sm nowrap" id="time_played_table">
             <thead>
                 <th>Name</th>
                 <th>Time Played</th>
@@ -365,6 +365,27 @@
         });
         $("div[id$='_leader_table_processing']").show();
 
+        $("#time_played_table").DataTable({
+            columns: [{
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return `<a href="/players/view/${row.player.id}?${params.toString()}">${row.player.player_name}</a>`;
+                        }
+                        return row.player.player_name;
+                    }
+                },
+                {
+                    data: function(row, type, val, meta) {
+                        if (type === 'display') {
+                            return msToTime(row.value);
+                        }
+                        return row.value;
+                    }
+                },
+            ]
+        });
+        $("div[id$='_leader_table_processing']").show();
+
         $("table[id$='_scores_table']").DataTable({
             columns: [{
                     data: function(row, type, val, meta) {
@@ -450,7 +471,7 @@
                 .draw();
             $('#score_total_leader_table').DataTable().clear().rows.add(response.data.score_total)
                 .draw();
-            $('#time_played_total_leader_table').DataTable().clear().rows.add(msToTime(response.data.time_played_total))
+            $('#time_played_table').DataTable().clear().rows.add(response.data.time_played_total)
                 .draw();
 
             $('#medic_hits_leader_table').DataTable().clear().rows.add(response.data.medic_hits_total)
