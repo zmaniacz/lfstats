@@ -1,59 +1,54 @@
-ARG ALPINE_VERSION=3.17
-FROM alpine:${ALPINE_VERSION}
+FROM php:7.4-apache
 
-# Setup document root
-WORKDIR /var/www/html
+RUN apt-get update -yqq \
+    && apt-get install -yqq --no-install-recommends \
+    git \
+    zip \
+    unzip \
+    gnupg \
+    && rm -rf /var/lib/apt/lists
 
-# Install packages and remove default server definition
-RUN apk add --no-cache \
-  curl \
-  nginx \
-  php81 \
-  php81-ctype \
-  php81-curl \
-  php81-dom \
-  php81-fpm \
-  php81-gd \
-  php81-intl \
-  php81-mbstring \
-  php81-mysqli \
-  php81-opcache \
-  php81-openssl \
-  php81-pdo \
-  php81-pdo_pgsql \
-  php81-pgsql \
-  php81-phar \
-  php81-session \
-  php81-xml \
-  php81-xmlreader \
-  supervisor
+#Grap pg repo key
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
 
-# Configure nginx - http
-COPY docker/config/nginx.conf /etc/nginx/nginx.conf
-# Configure nginx - default server
-COPY docker/config/conf.d /etc/nginx/conf.d/
+#Add the pg repo
+RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" > /etc/apt/sources.list.d/postgresql.list'
 
-# Configure PHP-FPM
-COPY docker/config/fpm-pool.conf /etc/php81/php-fpm.d/www.conf
-COPY docker/config/php.ini /etc/php81/conf.d/custom.ini
+RUN apt-get update -yqq \
+    && apt-get install -yqq --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists
 
-# Configure supervisord
-COPY docker/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Enable PHP extensions
+RUN docker-php-ext-install pdo_pgsql
 
-# Make sure files/folders needed by the processes are accessable when they run under the nobody user
-RUN chown -R nobody.nobody /var/www/html /run /var/lib/nginx /var/log/nginx
+# Install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer
 
-# Switch to use a non-root user from here on
-USER nobody
+# Add cake and composer command to system path
+ENV PATH="${PATH}:/var/www/html/lib/Cake/Console"
+ENV PATH="${PATH}:/var/www/html/app/Vendor/bin"
 
-# Add application
-COPY --chown=nobody . /var/www/html/
+# COPY apache site.conf file
+COPY ./docker/apache/site.conf /etc/apache2/sites-available/000-default.conf
 
-# Expose the port nginx is reachable on
+# Copy the source code into /var/www/html/ inside the image
+COPY . .
+
+# Set default working directory
+#WORKDIR ./app
+
+# Create tmp directory and make it writable by the web server
+RUN mkdir -p \
+    tmp/cache/models \
+    tmp/cache/persistent \
+    && chown -R :www-data \
+    tmp \
+    && chmod -R 770 \
+    tmp
+
+# Enable Apache modules and restart
+RUN a2enmod rewrite \
+    && service apache2 restart
+
 EXPOSE 80
-
-# Let supervisord start nginx & php-fpm
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-
-# Configure a healthcheck to validate that everything is up&running
-HEALTHCHECK --timeout=10s CMD curl --silent --fail http://127.0.0.1:8080/fpm-ping
