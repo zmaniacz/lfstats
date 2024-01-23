@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
+      - /var/www/html/vendor
       - .:/var/www/html
     ports:
       - 8000:80
