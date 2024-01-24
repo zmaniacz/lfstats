@@ -29,16 +29,12 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ 
 ENV PATH="${PATH}:/var/www/html/lib/Cake/Console"
 ENV PATH="${PATH}:/var/www/html/app/Vendor/bin"
 
-COPY composer.json .
-COPY composer.lock .
-RUN composer install --no-scripts --no-autoloader
-
 # COPY apache site.conf file
 COPY ./docker/apache/site.conf /etc/apache2/sites-available/000-default.conf
 
 # Copy the source code into /var/www/html/ inside the image
 COPY . .
-RUN composer dump-autoload --optimize
+
 # Set default working directory
 #WORKDIR ./app
 
