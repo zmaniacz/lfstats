@@ -1,5 +1,5 @@
-<a class="display-4" href="https://objects-us-east-1.dream.io/lfstatsstatic/Laserforce-Tournament-rules-current-through-June-2018.pdf">Official
-    Rules PDF <i class="material-icons md-48">picture_as_pdf</i></a>
+<a class="display-4" href="https://lfstats-scorecards.s3.amazonaws.com/2023-09-23-Laserforce-Official-Tournament-Rules.pdf">Official
+    Rules PDF (2023-09-23)<i class="material-icons md-48">picture_as_pdf</i></a>
 <h4 class="my-4">Class Details</h4>
 <table class="table table-sm">
     <thead>
