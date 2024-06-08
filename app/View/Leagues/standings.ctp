@@ -1,6 +1,6 @@
 <?php echo $this->element('breadcrumbs'); ?>
 <hr>
-<div id="view_radio" class="btn-group btn-group-toggle" data-toggle="buttons">
+<div id="view_radio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
     <label class="btn btn-outline-info active">
         <input type="radio" name="rounds" id="rounds" value="0" autocomplete="off" checked> Round Play
     </label>
@@ -11,7 +11,7 @@
 <h4 class="my-4">
     Team Standings
 </h4>
-<div id="round_radio" class="btn-group btn-group-toggle" data-toggle="buttons">
+<div id="round_radio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
     <label class="btn btn-outline-info active">
         <input type="radio" name="rounds" id="round_all" value="0" autocomplete="off" checked> All
     </label>
@@ -30,7 +30,7 @@
         Team</a> <a href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $details['Event']['id']]); ?>"><i class="material-icons">settings</i></a>
 <?php } ?>
 <div class="table-responsive">
-    <table class="table table-striped table-bordered table-hover table-sm nowrap" id="team_standings">
+    <table class="table table-bordered table-hover table-sm nowrap" id="team_standings">
         <thead>
             <th style="width: 20%">Team</th>
             <th style="width: 15%">Points</th>
@@ -74,7 +74,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="teamNameModalLabel">Team Name:</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="teamNameModalForm" method="post">
@@ -86,7 +86,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="teamNameModalSaveBtn">Save</button>
             </div>
         </div>
@@ -97,7 +97,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="addTeamMatchPenaltyModalLabel">Add Match Penalty</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="addTeamMatchPenaltyModalForm" method="post">
@@ -113,7 +113,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="addTeamMatchPenaltyModalFormSaveBtn">Save</button>
             </div>
         </div>
@@ -124,7 +124,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="addTeamMatchPenaltyModalLabel">Team Penalties</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="table-responsive">
@@ -137,7 +137,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -191,7 +191,6 @@
             let teamId = $(event.relatedTarget).data('team-id');
 
             $('#teamMatchPenaltyTable').DataTable({
-                processing: true,
                 searching: false,
                 ajax: {
                     url: `/teams/getMatchPenalties/${teamId}.json`
@@ -203,7 +202,7 @@
                         data: function(row, type, val, meta) {
                             if (type === 'display' && loggedIn) {
                                 return row.value +
-                                    `<a class="pull-right delete-match-penalty-link" href="#" data-penalty-id=${row.id} data-dismiss="modal"><span class="glyphicon glyphicon-trash"></span></a>`;
+                                    `<a class="pull-right delete-match-penalty-link" href="#" data-penalty-id=${row.id} data-bs-dismiss="modal"><span class="glyphicon glyphicon-trash"></span></a>`;
                             } else {
                                 return row.value;
                             }
@@ -227,7 +226,6 @@
         });
 
         var standings_table = $('#team_standings').DataTable({
-            processing: true,
             paging: false,
             info: false,
             searching: false,
@@ -238,7 +236,7 @@
                     data: function(row, type, val, meta) {
                         if (type === 'display' && loggedIn) {
                             return row.link +
-                                ' <a class="float-right" data-toggle="modal" data-team-id="' +
+                                ' <a class="float-right" data-bs-toggle="modal" data-team-id="' +
                                 row.id +
                                 '" data-team-name="' + row.name +
                                 '" href="#teamNameModal"><i class="material-icons">edit</i></a>';
@@ -252,13 +250,13 @@
                         if (type === 'display' && loggedIn) {
                             let result = row.points;
                             if (row.adjustment !== null) {
-                                result += ' <a data-toggle="modal" data-team-id="' + row.id +
+                                result += ' <a data-bs-toggle="modal" data-team-id="' + row.id +
                                     '" href="#viewTeamMatchPenaltyModal">(' +
                                     row.adjustment + ')</a>';
                             }
 
                             return result +
-                                ' <a class="float-right" data-toggle="modal" data-team-id="' +
+                                ' <a class="float-right" data-bs-toggle="modal" data-team-id="' +
                                 row.id +
                                 '" href="#addTeamMatchPenaltyModal"><i class="material-icons">edit</i></a>';
                         } else {

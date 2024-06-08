@@ -1,7 +1,8 @@
-<div class="row">
+<div class="btn-group">
     <div class="dropdown">
-        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown">
-            <?php echo	Inflector::camelize(($this->Session->read('state.isComp') > 0) ? 'competitive' : $this->Session->read('state.gametype')); ?></button>
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownMenu1" data-bs-toggle="dropdown">
+            <?php echo    Inflector::camelize(($this->Session->read('state.isComp') > 0) ? 'competitive' : $this->Session->read('state.gametype')); ?>
+        </button>
         <div class="dropdown-menu">
             <?php echo $this->Html->link('All', [
                 'controller' => $this->request->params['controller'],
@@ -12,7 +13,8 @@
                     'centerID' => 0,
                     'leagueID' => 0,
                     'isComp' => 0,
-                ], ], ['class' => 'dropdown-item']); ?>
+                ],
+            ], ['class' => 'dropdown-item']); ?>
             <?php echo $this->Html->link('Social', [
                 'controller' => $this->request->params['controller'],
                 'action' => $this->request->params['action'],
@@ -22,7 +24,8 @@
                     'centerID' => $this->Session->read('state.centerID'),
                     'leagueID' => 0,
                     'isComp' => 0,
-                ], ], ['class' => 'dropdown-item']); ?>
+                ],
+            ], ['class' => 'dropdown-item']); ?>
             <?php echo $this->Html->link('Competitive', [
                 'controller' => $this->request->params['controller'],
                 'action' => $this->request->params['action'],
@@ -32,13 +35,14 @@
                     'centerID' => $this->Session->read('state.centerID'),
                     'leagueID' => $this->Session->read('state.leagueID'),
                     'isComp' => 1,
-                ], ], ['class' => 'dropdown-item']); ?>
+                ],
+            ], ['class' => 'dropdown-item']); ?>
         </div>
     </div>
     <span class="my-auto mx-2"><i class="material-icons">chevron_right</i></span>
     <div class="dropdown">
-        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownMenu2"
-            data-toggle="dropdown"><?php
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownMenu2" data-bs-toggle="dropdown">
+            <?php
             if ($this->Session->read('state.isComp') > 0 && $this->Session->read('state.leagueID') > 0) {
                 echo $leagues[$this->Session->read('state.leagueID')];
             } elseif ($this->Session->read('state.centerID') > 0) {
@@ -46,7 +50,8 @@
             } else {
                 echo 'All Games';
             }
-        ?></button>
+            ?>
+        </button>
         <div class="dropdown-menu">
             <?php echo $this->Html->link('All Games', [
                 'controller' => $this->request->params['controller'],
@@ -57,7 +62,8 @@
                     'centerID' => 0,
                     'leagueID' => 0,
                     'isComp' => 0,
-                ], ], ['class' => 'dropdown-item']); ?>
+                ],
+            ], ['class' => 'dropdown-item']); ?>
             <div class="dropdown-divider"></div>
             <?php
             if ('all' == $this->Session->read('state.gametype') || 'social' == $this->Session->read('state.gametype')) {
@@ -94,7 +100,7 @@
                     ], ['class' => 'dropdown-item']);
                 }
             }
-        ?>
+            ?>
         </div>
     </div>
 </div>

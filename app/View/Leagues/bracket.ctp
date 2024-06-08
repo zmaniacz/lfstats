@@ -1,6 +1,6 @@
 <?= $this->element('breadcrumbs'); ?>
 <hr>
-<div id="view_radio" class="btn-group btn-group-toggle" data-toggle="buttons">
+<div id="view_radio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
     <label class="btn btn-outline-info">
         <input type="radio" name="rounds" id="rounds" value="0" autocomplete="off"> Round Play
     </label>

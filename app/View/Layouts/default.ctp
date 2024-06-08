@@ -18,7 +18,7 @@
  */
 //debug($this->Session->read());
 ?>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
@@ -50,12 +50,12 @@
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h4 class="modal-title"></h4>
-                                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                             </div>
                         </div>
                     </div>

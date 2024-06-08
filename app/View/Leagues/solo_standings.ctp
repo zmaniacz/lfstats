@@ -2,11 +2,11 @@
 <div class="mb-4"></div>
 <ul class="nav nav-tabs" id="soloStandingsTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <a class="nav-link active" id="standings-tab" data-toggle="tab" href="#solo-standings" role="tab">Solo
+        <a class="nav-link active" id="standings-tab" data-bs-toggle="tab" href="#solo-standings" role="tab">Solo
             Standings</a>
     </li>
     <li class="nav-item" role="presentation">
-        <a class="nav-link" id="nightly-tab" data-toggle="tab" href="#nightly" role="tab">Nightly Stats</a>
+        <a class="nav-link" id="nightly-tab" data-bs-toggle="tab" href="#nightly" role="tab">Nightly Stats</a>
     </li>
 </ul>
 <div class="tab-content mt-4" id="myTabContent">
@@ -15,10 +15,10 @@
             the
             player's handicap added to each game.</p>
         <?php if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $this->Session->read('state.centerID'))) { ?>
-            <a class="btn btn-success my-2" data-toggle="modal" href="#addPlayerModal">Add Player</a> <a href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $selected_league['Event']['id']]); ?>"><i class="material-icons">settings</i></a>
+            <a class="btn btn-success my-2" data-bs-toggle="modal" href="#addPlayerModal">Add Player</a> <a href="<?php echo $this->Html->url(['controller' => 'Events', 'action' => 'edit', $selected_league['Event']['id']]); ?>"><i class="material-icons">settings</i></a>
         <?php } ?>
         <div class="table-responsive">
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" id="solo_standings">
+            <table class="table table-bordered table-hover table-sm nowrap" id="solo_standings">
                 <thead>
                     <th style="width: 25%">Player</th>
                     <th style="width: 10%">Total MVP</th>
@@ -33,7 +33,7 @@
         <h4 class="my-4">Scorecards <?php echo $this->Html->link('(details)', ['controller' => 'scorecards', 'action' => 'nightlyDetailed'], ['class' => 'h6 text-muted']); ?>
         </h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="standings-overall">
+            <table class="table table-bordered table-hover table-sm nowrap" style="width:100%" id="standings-overall">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -65,7 +65,7 @@
         <h4 class="my-4">Overall <?php echo $this->Html->link('(details)', ['controller' => 'scorecards', 'action' => 'nightlyDetailed'], ['class' => 'h6 text-muted']); ?>
         </h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
+            <table class="table table-bordered table-hover table-sm nowrap" style="width:100%" id="overall">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -83,7 +83,7 @@
         <hr>
         <h4 class="my-4">Summary Stats</h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="summary_stats">
+            <table class="table table-bordered table-hover table-sm nowrap" style="width:100%" id="summary_stats">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -104,7 +104,7 @@
         <hr>
         <h4 class="my-4">Medic Hits</h4>
         <div>
-            <table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%" id="medic_hits">
+            <table class="table table-bordered table-hover table-sm nowrap" style="width:100%" id="medic_hits">
                 <thead>
                     <th>#</th>
                     <th>Name</th>
@@ -127,7 +127,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="addPlayerModalLabel">Select a Player</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 Note that only players with a valid IPLID can be added. They may need to play a game first.
@@ -141,7 +141,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="addPlayerModalSaveBtn">Add</button>
             </div>
         </div>
@@ -152,7 +152,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="playerHandicapModalLabel">Edit Handicap</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="playerHandicapModalForm" method="post">
@@ -164,7 +164,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="playerHandicapModalSaveBtn">Save</button>
             </div>
         </div>
@@ -181,7 +181,6 @@
         <?php } ?>
 
         let soloStandingsTable = $('#solo_standings').DataTable({
-            processing: true,
             paging: false,
             info: false,
             searching: false,
@@ -212,7 +211,7 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display' && loggedIn) {
-                            return `<a class="float-left" data-toggle="modal" data-event-player-id="${row.id}" 
+                            return `<a class="float-left" data-bs-toggle="modal" data-event-player-id="${row.id}" 
                                     data-player-handicap="${row.handicap}" href="#playerHandicapModal">
                                     <i class="material-icons">edit</i></a>${row.handicap} `;
                         } else {
@@ -250,7 +249,6 @@
 
         let overallStandings = $('#standings-overall').DataTable({
             orderCellsTop: true,
-            processing: true,
             scrollX: true,
             fixedColumns: {
                 leftColumns: 2
@@ -272,9 +270,9 @@
                         let gameLink =
                             `<a href="/games/view/${element.Game.id}?${params.toString()}" class="${gameClass}">${element.Game.game_name}</a>`;
                         let mvpLink =
-                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${Number.parseFloat(element.Scorecard.mvp_points).toFixed(2)} <i class="material-icons">bar_chart</i></a>`;
+                            `<a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${Number.parseFloat(element.Scorecard.mvp_points).toFixed(2)} <i class="material-icons">bar_chart</i></a>`;
                         let hitDiffLink =
-                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
+                            `<a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
                         let positionElement =
                             `<span class="${positionClass}">${element.Scorecard.position}</span>`;
 
@@ -516,9 +514,9 @@
                         let gameLink =
                             `<a href="/games/view/${element.Game.id}?${params.toString()}" class="${gameClass}">${element.Game.game_name}</a>`;
                         let mvpLink =
-                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${mvp} <i class="material-icons">bar_chart</i></a>`;
+                            `<a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/${element.Scorecard.id}.json?${params.toString()}">${mvp} <i class="material-icons">bar_chart</i></a>`;
                         let hitDiffLink =
-                            `<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
+                            `<a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/${element.Scorecard.player_id}/${element.Scorecard.game_id}.json?${params.toString()}">${hitDiff} (${element.Scorecard.shot_opponent}/${element.Scorecard.times_zapped}) <i class="material-icons">bar_chart</i></a>`;
                         let positionElement =
                             `<span class="${positionClass}">${element.Scorecard.position}</span>`;
 

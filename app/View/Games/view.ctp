@@ -91,10 +91,10 @@ if (null != $game['Game']['green_team_id']) {
 </div>
 <ul class="nav nav-tabs" id="gameViewTab" role="tablist">
     <li class="nav-item">
-        <a class="nav-link active" id="scorecard-tab" data-toggle="tab" href="#scorecard-tab-content" role="tab">Scorecard</a>
+        <a class="nav-link active" id="scorecard-tab" data-bs-toggle="tab" href="#scorecard-tab-content" role="tab">Scorecard</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" id="chart-tab" data-toggle="tab" href="#actions-tab-content" role="tab">Actions</a>
+        <a class="nav-link" id="chart-tab" data-bs-toggle="tab" href="#actions-tab-content" role="tab">Actions</a>
     </li>
 </ul>
 <div class="tab-content" id="gameViewContent">
@@ -106,7 +106,7 @@ if (null != $game['Game']['green_team_id']) {
         <?php
         if ('green' == $game['Game']['winner']) {
             $winner = ((null != $game['Game']['green_team_id']) ? $teams[$game['Game']['green_team_id']] : 'Green Team');
-            $winner_panel = 'bg-success';
+            $winner_panel = 'success';
             $winner_score = ($game['Game']['green_score'] + $game['Game']['green_adj']);
             $winner_adj = '';
             if (0 != $game['Game']['green_adj']) {
@@ -114,7 +114,7 @@ if (null != $game['Game']['green_team_id']) {
             }
 
             $loser = ((null != $game['Game']['red_team_id']) ? $teams[$game['Game']['red_team_id']] : 'Red Team');
-            $loser_panel = 'bg-danger';
+            $loser_panel = 'danger';
             $loser_score = ($game['Game']['red_score'] + $game['Game']['red_adj']);
             $loser_adj = '';
             if (0 != $game['Game']['red_adj']) {
@@ -122,7 +122,7 @@ if (null != $game['Game']['green_team_id']) {
             }
         } else {
             $winner = ((null != $game['Game']['red_team_id']) ? $teams[$game['Game']['red_team_id']] : 'Red Team');
-            $winner_panel = 'bg-danger';
+            $winner_panel = 'danger';
             $winner_score = ($game['Game']['red_score'] + $game['Game']['red_adj']);
             $winner_adj = '';
             if (0 != $game['Game']['red_adj']) {
@@ -130,7 +130,7 @@ if (null != $game['Game']['green_team_id']) {
             }
 
             $loser = ((null != $game['Game']['green_team_id']) ? $teams[$game['Game']['green_team_id']] : 'Green Team');
-            $loser_panel = 'bg-success';
+            $loser_panel = 'success';
             $loser_score = ($game['Game']['green_score'] + $game['Game']['green_adj']);
             $loser_adj = '';
             if (0 != $game['Game']['green_adj']) {
@@ -150,7 +150,7 @@ if (null != $game['Game']['green_team_id']) {
                 foreach ($score['Penalty'] as $penalty) {
                     $penalty_score += $penalty['value'];
                 }
-                $penalty_string = '<a href="#" data-toggle="modal" data-target="#genericModal" data-title="Penalty Details" data-modalsize="modal-lg" target="' . $this->Html->url(['controller' => 'Penalties', 'action' => 'getPenaltyBreakdown', $score['id'], 'ext' => 'json']) . '">' . count($score['Penalty']) . ' <i class="material-icons">bar_chart</i></a>';
+                $penalty_string = '<a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="Penalty Details" data-modalsize="modal-lg" target="' . $this->Html->url(['controller' => 'Penalties', 'action' => 'getPenaltyBreakdown', $score['id'], 'ext' => 'json']) . '">' . count($score['Penalty']) . ' <i class="material-icons">bar_chart</i></a>';
             }
 
             if ('admin' === AuthComponent::user('role') || ('center_admin' === AuthComponent::user('role') && AuthComponent::user('center') == $game['Game']['center_id'])) {
@@ -184,10 +184,10 @@ if (null != $game['Game']['green_team_id']) {
             $score_line .= $merc;
             $score_line .= '<td>' . $score['position'] . '</td>';
             $score_line .= '<td>' . ($score['score'] + $penalty_score) . ((0 != $penalty_score) ? " ({$penalty_score})" : '') . '</td>';
-            $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/' . $score['id'] . '.json">' . round($score['mvp_points'], 2) . ' <i class="material-icons">bar_chart</i></a></td>';
+            $score_line .= '<td><a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="MVP Details" data-modalsize="modal-sm" target="/scorecards/getMVPBreakdown/' . $score['id'] . '.json">' . round($score['mvp_points'], 2) . ' <i class="material-icons">bar_chart</i></a></td>';
             $score_line .= '<td>' . $score['lives_left'] . '</td>';
             $score_line .= '<td>' . $score['shots_left'] . '</td>';
-            $score_line .= '<td><a href="#" data-toggle="modal" data-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/' . $score['player_id'] . '/' . $score['game_id'] . '.json">' . round($score['shot_opponent'] / max($score['times_zapped'], 1), 2) . ' (' . $score['shot_opponent'] . '/' . $score['times_zapped'] . ') <i class="material-icons">bar_chart</i></a></td>';
+            $score_line .= '<td><a href="#" data-bs-toggle="modal" data-bs-target="#genericModal" data-title="Hit Details" data-modalsize="modal-lg" target="/scorecards/getHitBreakdown/' . $score['player_id'] . '/' . $score['game_id'] . '.json">' . round($score['shot_opponent'] / max($score['times_zapped'], 1), 2) . ' (' . $score['shot_opponent'] . '/' . $score['times_zapped'] . ') <i class="material-icons">bar_chart</i></a></td>';
             $score_line .= $uptime;
             $score_line .= '<td>' . $score['missiled_opponent'] . '</td>';
             $score_line .= '<td>' . $score['times_missiled'] . '</td>';
@@ -213,13 +213,13 @@ if (null != $game['Game']['green_team_id']) {
             }
         }
         ?>
-        <div id="winner_card" class="card">
-            <h3 class="card-header text-light <?php echo $winner_panel; ?>">
+        <div id="winner_card" class="card border-<?php echo $winner_panel; ?>">
+            <h3 class="card-header text-<?php echo $winner_panel; ?>">
                 <?php echo $winner; ?>
             </h3>
             <div class="card-body p-0">
                 <div class="d-flex justify-content-between">
-                    <h3 class="text-primary m-2">
+                    <h3 class="text-<?php echo $winner_panel; ?> m-2">
                         <?php echo 'Score: ' . $winner_score . $winner_adj; ?>
                     </h3>
                     <div class="align-self-center">
@@ -234,13 +234,13 @@ if (null != $game['Game']['green_team_id']) {
                         if ('green' == $game['Game']['winner']) {
                             if (isset($game['Green_TeamPenalties'])) {
                                 foreach ($game['Green_TeamPenalties'] as $team_penalty) {
-                                    echo '<a href="#" class="text-warning" data-toggle="modal" data-title="Team Penalty Details" data-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
+                                    echo '<a href="#" class="text-warning" data-bs-toggle="modal" data-title="Team Penalty Details" data-bs-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
                                 }
                             }
                         } elseif ('red' == $game['Game']['winner']) {
                             if (isset($game['Red_TeamPenalties'])) {
                                 foreach ($game['Red_TeamPenalties'] as $team_penalty) {
-                                    echo '<a href="#" class="text-warning" data-toggle="modal" data-title="Team Penalty Details" data-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
+                                    echo '<a href="#" class="text-warning" data-bs-toggle="modal" data-title="Team Penalty Details" data-bs-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
                                 }
                             }
                         }
@@ -248,7 +248,7 @@ if (null != $game['Game']['green_team_id']) {
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="gamelist table table-striped table-bordered table-hover table-sm text-nowrap">
+                    <table class="gamelist table table-bordered table-hover table-sm text-nowrap">
                         <thead>
                             <th>Name</th>
                             <th>Alive</th>
@@ -280,13 +280,13 @@ if (null != $game['Game']['green_team_id']) {
                 </div>
             </div>
         </div>
-        <div id="loser_card" class="card mt-3">
-            <h3 class="card-header text-light <?php echo $loser_panel; ?>">
+        <div id="loser_card" class="card border-<?php echo $loser_panel; ?> mt-3">
+            <h3 class="card-header text-<?php echo $loser_panel; ?>">
                 <?php echo $loser; ?>
             </h3>
             <div class="card-body p-0">
                 <div class="d-flex justify-content-between">
-                    <h3 class="text-primary align-self-center mx-2">
+                    <h3 class="text-<?php echo $loser_panel; ?> align-self-center mx-2">
                         <?php echo 'Score: ' . $loser_score . $loser_adj; ?>
                     </h3>
                     <div class="align-self-center">
@@ -301,13 +301,13 @@ if (null != $game['Game']['green_team_id']) {
                         if ('green' == $game['Game']['winner']) {
                             if (isset($game['Red_TeamPenalties'])) {
                                 foreach ($game['Red_TeamPenalties'] as $team_penalty) {
-                                    echo '<a href="#" class="list-group-item list-group-item-action text-warning" data-toggle="modal" data-title="Team Penalty Details" data-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
+                                    echo '<a href="#" class="list-group-item list-group-item-action text-warning" data-bs-toggle="modal" data-title="Team Penalty Details" data-bs-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
                                 }
                             }
                         } elseif ('red' == $game['Game']['winner']) {
                             if (isset($game['Green_TeamPenalties'])) {
                                 foreach ($game['Green_TeamPenalties'] as $team_penalty) {
-                                    echo '<a href="#" class="list-group-item list-group-item-action text-warning" data-toggle="modal" data-title="Team Penalty Details" data-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
+                                    echo '<a href="#" class="list-group-item list-group-item-action text-warning" data-bs-toggle="modal" data-title="Team Penalty Details" data-bs-target="#genericModal" target="' . $this->Html->url(['controller' => 'TeamPenalties', 'action' => 'getTeamPenalty', $team_penalty['id'], 'ext' => 'json']) . '">' . $team_penalty['type'] . ' (' . $team_penalty['value'] . ')</a>';
                                 }
                             }
                         }
@@ -316,7 +316,7 @@ if (null != $game['Game']['green_team_id']) {
                 </div>
             </div>
             <div class="table-responsive">
-                <table class="gamelist table table-striped table-bordered table-hover table-sm text-nowrap">
+                <table class="gamelist table table-bordered table-hover table-sm text-nowrap">
                     <thead>
                         <th>Name</th>
                         <th>Alive</th>
@@ -524,7 +524,9 @@ if (null != $game['Game']['green_team_id']) {
             paging: false,
             ordering: false,
             scrollX: true,
-            fixedColumns: false
+            fixedColumns: {
+                start: 4
+            }
         });
 
         $('.timeLeft').each(function() {

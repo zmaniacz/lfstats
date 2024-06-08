@@ -14,6 +14,6 @@
     <?php endforeach; ?>
     <hr>
     <dt class="col-sm-9">Total</dt>
-    <dd class="col-sm-3 text-primary text-right"><?= round($data['Scorecard']['mvp_points'], 2); ?>
+    <dd class="col-sm-3 text-info text-right"><?= round($data['Scorecard']['mvp_points'], 2); ?>
     </dd>
 </dl>

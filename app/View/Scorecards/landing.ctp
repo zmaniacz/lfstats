@@ -1,9 +1,6 @@
 <div class="row">
-    <p>2021-12-31 - Significant updates to the live replay engine. Click the 'Repaly Beta' link on any game page to check it out.</p>
-</div>
-<div class="row">
     <div class="col-8 offset-2 col-sm-3 offset-sm-3">
-        <select id="jump-social" class="custom-select">
+        <select id="jump-social" class="form-select">
             <option selected>Jump to social games</option>
             <?php
             $sorted_centers = $centers;
@@ -25,7 +22,7 @@
         </select>
     </div>
     <div class="col-8 offset-2 col-sm-3 offset-sm-0">
-        <select id="jump-comp" class="custom-select">
+        <select id="jump-comp" class="form-select">
             <option selected>Jump to competition</option>
             <?php
             foreach ($league_details as $league) {
@@ -50,7 +47,7 @@
 <hr class="my-4">
 <div class="row">
     <div class="col-12 col-sm-8 offset-sm-2">
-        <table class="table table-striped table-sm table-bordered table-hover" id="events_list">
+        <table class="table table-sm table-bordered table-hover" id="events_list">
             <thead>
                 <tr>
                     <th class="col-xs-4">Center</th>
