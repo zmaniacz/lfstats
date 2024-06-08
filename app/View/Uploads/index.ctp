@@ -1,7 +1,7 @@
 <?php echo $this->element('breadcrumbs'); ?>
 <hr>
 <?php
-    echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
+echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
 ?>
 <div class="alert alert-danger" role="alert">
     PDF Uploads are being ***RETIRED***. With LaserForce v8.117 you can now configure your Space Marines 5 mission
@@ -18,9 +18,7 @@
             are uploaded, click Process to start the import.</li>
     </ol>
 </div>
-<form class="form-inline"
-    action="<?php echo $this->Html->url(['controller' => 'uploads', 'action' => 'parse']); ?>"
-    id="uploadForm" method="post" accept-charset="utf-8">
+<form class="form-inline" action="<?php echo $this->Html->url(['controller' => 'uploads', 'action' => 'parse']); ?>" id="uploadForm" method="post" accept-charset="utf-8">
     <select class="form-control" name="data[Event][id]" id="uploadSelectEvent">
         <?php
         if ('social' == $this->Session->read('state.gametype') || 'all' == $this->Session->read('state.gametype')) {
@@ -32,12 +30,10 @@
         } else {
             echo "<option value=\"{$selected_league['Event']['id']}\">{$selected_league['Event']['name']}</option>";
         }
-    ?>
+        ?>
     </select>
-    <input class="form-control" type="text" name="data[Event][name]" id="textEventName"
-        value="Socials <?php echo date('Y-m-d'); ?>">
-    <button class="btn btn-primary form-control" type="submit">Process <span
-            class="glyphicon glyphicon-play"></span></button>
+    <input class="form-control" type="text" name="data[Event][name]" id="textEventName" value="Socials <?php echo date('Y-m-d'); ?>">
+    <button class="btn btn-primary form-control" type="submit">Process <span class="glyphicon glyphicon-play"></span></button>
 </form>
 <hr>
 <!-- The file upload form used as target for the file upload widget -->
@@ -79,7 +75,7 @@
     </div>
 </div>
 <!-- The table listing the files available for upload/download -->
-<table role="presentation" class="table table-striped">
+<table role="presentation" class="table">
     <tbody class="files"></tbody>
 </table>
 </form>

@@ -1,52 +1,51 @@
 <?php
-    echo $this->Html->script('https://unpkg.com/gijgo@1.9.13/js/gijgo.min.js', ['inline' => false]);
-    echo $this->Html->css('https://unpkg.com/gijgo@1.9.13/css/gijgo.min.css', ['inline' => false]);
-    echo $this->element('breadcrumbs');
+echo $this->Html->script('https://unpkg.com/gijgo@1.9.13/js/gijgo.min.js', ['inline' => false]);
+echo $this->Html->css('https://unpkg.com/gijgo@1.9.13/css/gijgo.min.css', ['inline' => false]);
+echo $this->element('breadcrumbs');
 ?>
 <hr>
-<div style="position: sticky; top: 56px; z-index: 1">
-    <div class="card my-0">
-        <div class="card-body">
-            <?php if ($this->Session->read('state.isComp') > 0) { ?>
-            <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="rounds_cbox">
-                <label class="custom-control-label" for="rounds_cbox">Show Rounds</label>
+<div class="card my-0">
+    <div class="card-body">
+        <?php if ($this->Session->read('state.isComp') > 0) { ?>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="rounds_cbox">
+                <label class="form-check-label" for="rounds_cbox">Show Rounds</label>
             </div>
-            <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="finals_cbox">
-                <label class="custom-control-label" for="finals_cbox">Show Finals</label>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="finals_cbox">
+                <label class="form-check-label" for="finals_cbox">Show Finals</label>
             </div>
-            <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="subs_cbox">
-                <label class="custom-control-label" for="subs_cbox">Show Subs</label>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="subs_cbox">
+                <label class="form-check-label" for="subs_cbox">Show Subs</label>
             </div>
-            <?php } ?>
-            <div class="col-xs-6">
-                <div class="form-group">
-                    <label for="min_games_range">Min Games: <span id="min_games_slider_value"></span></label>
-                    <input type="range" class="custom-range" id="min_games_range" min="0" max="100" />
-                </div>
-            </div>
-            <?php if ($this->Session->read('state.isComp') <= 0) { ?>
-            <div class="col-xs-6">
-                <form class="form-inline">
-                    <label for="datepicker-start" class="mx-1">Start Date: </label>
-                    <input id="datepicker-start" width="270" />
-                    <label for="datepicker-end" class="mx-1">End Date: </label>
-                    <input id="datepicker-end" width="270" />
-                    <button id="applyDateButton" type="button" class="btn btn-sm btn-info mx-1">Apply</button>
-                    <button id="resetDateButton" type="button" class="btn btn-sm btn-warning mx-1">Reset</button>
-                </form>
-            </div>
-            <?php } ?>
+        <?php } ?>
+        <div class="col-xs-6">
+            <label for="min_games_range">Min Games: <span id="min_games_slider_value"></span></label>
+            <input type="range" class="form-range" id="min_games_range" min="0" max="100" />
         </div>
+        <?php if ($this->Session->read('state.isComp') <= 0) { ?>
+            <div class="row justify-content-center">
+                <div class="col-lg-3 col-sm-6">
+                    <label for="startDate">Start</label>
+                    <input id="startDate" class="form-control" type="date" />
+                    <span id="startDateSelected"></span>
+                </div>
+                <div class="col-lg-3 col-sm-6">
+                    <label for="endDate">End</label>
+                    <input id="endDate" class="form-control" type="date" />
+                    <span id="endDateSelected"></span>
+                </div>
+                <button id="applyDateButton" type="button" class="btn btn-sm btn-info mx-1">Apply</button>
+                <button id="resetDateButton" type="button" class="btn btn-sm btn-warning mx-1">Reset</button>
+            </div>
+        <?php } ?>
     </div>
 </div>
 <h4 class="my-4">
     Average Averages
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" style="width:100%"
-    id="overall_averages_table">
+<table class="table table-bordered table-hover table-sm nowrap" style="width:100%" id="overall_averages_table">
     <thead>
         <tr>
             <th rowspan="2">Name</th>
@@ -85,7 +84,7 @@
 <h4 class="my-4">
     Commander
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" id="commander_overall_table">
+<table class="table table-bordered table-hover table-sm nowrap" id="commander_overall_table">
     <thead>
         <tr>
             <th>Name</th>
@@ -105,7 +104,7 @@
 <h4 class="my-4">
     Heavy Weapons
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" id="heavy_overall_table">
+<table class="table table-bordered table-hover table-sm nowrap" id="heavy_overall_table">
     <thead>
         <tr>
             <th>Name</th>
@@ -124,7 +123,7 @@
 <h4 class="my-4">
     Scout
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" id="scout_overall_table">
+<table class="table table-bordered table-hover table-sm nowrap" id="scout_overall_table">
     <thead>
         <tr>
             <th>Name</th>
@@ -144,7 +143,7 @@
 <h4 class="my-4">
     Ammo Carrier
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" id="ammo_overall_table">
+<table class="table table-bordered table-hover table-sm nowrap" id="ammo_overall_table">
     <thead>
         <tr>
             <th>Name</th>
@@ -163,7 +162,7 @@
 <h4 class="my-4">
     Medic
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" id="medic_overall_table">
+<table class="table table-bordered table-hover table-sm nowrap" id="medic_overall_table">
     <thead>
         <tr>
             <th>Name</th>
@@ -184,7 +183,7 @@
 <h4 class="my-4">
     Medic Hits
 </h4>
-<table class="table table-striped table-bordered table-hover table-sm nowrap" id="overall_medic_hits_table">
+<table class="table table-bordered table-hover table-sm nowrap" id="overall_medic_hits_table">
     <thead>
         <tr>
             <th>Name</th>
@@ -200,8 +199,7 @@
 <script type="text/javascript">
     $(document).ready(function() {
         let params = new URLSearchParams(location.search);
-        let
-            min = <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?> ;
+        let min = <?php echo ($this->Session->read('state.isComp') > 0) ? 1 : 25; ?>;
 
         if (!params.has('show_rounds'))
             params.set('show_rounds', 'true');
@@ -260,8 +258,7 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display') {
-                            let display = Math.round(row.mvp_per_minute * 100) / 100;
-                            return display;
+                            return Math.round(row.mvp_per_minute * 100) / 100;
                         }
                         return row.mvp_per_minute;
                     }
@@ -275,22 +272,16 @@
                 {
                     data: function(row, type, val, meta) {
                         if (type === 'display') {
-                            return '<a href="/Players/view/' + row.player_id + '">' +
-                                row
-                                .hit_diff + '</a>';
+                            return '<a href="/Players/view/' + row.player_id + '">' + row.hit_diff + '</a>';
                         }
                         return row.hit_diff;
                     }
                 },
                 {
                     data: function(row, type, val, meta) {
-                        var ratio = Math.round((row.games_won / row.games_played) *
-                            100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.games_won + '/' + row
-                                .games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.games_played > 0) ratio = Math.round((row.games_won / row.games_played) * 100);
+                        if (type === 'display') return ratio + '% (' + row.games_won + '/' + row.games_played + ')';
                         return ratio;
                     }
                 },
@@ -302,13 +293,9 @@
                 },
                 {
                     data: function(row, type, val, meta) {
-                        var ratio = Math.round((row.commander_games_won / row
-                            .commander_games_played) * 100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.commander_games_won + '/' + row
-                                .commander_games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.commander_games_played > 0) ratio = Math.round((row.commander_games_won / row.commander_games_played) * 100);
+                        if (type === 'display') return ratio + '% (' + row.commander_games_won + '/' + row.commander_games_played + ')';
                         return ratio;
                     }
                 },
@@ -320,14 +307,9 @@
                 },
                 {
                     data: function(row, type, val, meta) {
-                        var ratio = Math.round((row.heavy_games_won / row
-                                .heavy_games_played) *
-                            100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.heavy_games_won + '/' + row
-                                .heavy_games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.heavy_games_played > 0) ratio = Math.round((row.heavy_games_won / row.heavy_games_played) * 100);
+                        if (type === 'display') return ratio + '% (' + row.heavy_games_won + '/' + row.heavy_games_played + ')';
                         return ratio;
                     }
                 },
@@ -339,14 +321,9 @@
                 },
                 {
                     data: function(row, type, val, meta) {
-                        var ratio = Math.round((row.scout_games_won / row
-                                .scout_games_played) *
-                            100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.scout_games_won + '/' + row
-                                .scout_games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.scout_games_played > 0) ratio = Math.round((row.scout_games_won / row.scout_games_played) * 100);
+                        if (type === 'display') return ratio + '% (' + row.scout_games_won + '/' + row.scout_games_played + ')';
                         return ratio;
                     }
                 },
@@ -358,13 +335,9 @@
                 },
                 {
                     data: function(row, type, val, meta) {
-                        var ratio = Math.round((row.ammo_games_won / row
-                            .ammo_games_played) * 100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.ammo_games_won + '/' + row
-                                .ammo_games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.ammo_games_played > 0) ratio = Math.round((row.ammo_games_won / row.ammo_games_played) * 100);
+                        if (type === 'display') ratio + '% (' + row.ammo_games_won + '/' + row.ammo_games_played + ')';
                         return ratio;
                     }
                 },
@@ -376,19 +349,14 @@
                 },
                 {
                     data: function(row, type, val, meta) {
-                        var ratio = Math.round((row.medic_games_won / row
-                                .medic_games_played) *
-                            100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.medic_games_won + '/' + row
-                                .medic_games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.medic_games_played > 0) ratio = Math.round((row.medic_games_won / row.medic_games_played) * 100);
+                        if (type === 'display') return ratio + '% (' + row.medic_games_won + '/' + row.medic_games_played + ')';
                         return ratio;
                     }
                 },
             ]
-        });
+        })
 
         overall_table.on('draw.dt', function() {
             overall_table.buttons().container().appendTo('#overall_averages_table_wrapper');
@@ -396,22 +364,20 @@
 
         var commander_overall_data
         var commander_overall_table = $('#commander_overall_table').DataTable({
-            "deferRender": true,
+            deferRender: true,
             scrollX: true,
             fixedColumns: true,
-            "order": [
+            order: [
                 [4, "desc"]
             ],
-            "columns": [{
+            columns: [{
                     "data": "player_name_link"
                 },
                 {
                     "data": function(row, type, val, meta) {
-                        var ratio = Math.round((row.games_won / row.games_played) * 100);
-                        if (type === 'display') {
-                            return ratio + '% (' + row.games_won + '/' + row.games_played + ')';
-                        }
-
+                        let ratio = 0;
+                        if (row.games_played > 0) ratio = Math.round((row.games_won / row.games_played) * 100);
+                        if (type === 'display') return ratio + '% (' + row.games_won + '/' + row.games_played + ')';
                         return ratio;
                     }
                 },
@@ -447,18 +413,19 @@
 
         var heavy_overall_data
         var heavy_overall_table = $('#heavy_overall_table').DataTable({
-            "deferRender": true,
+            deferRender: true,
             scrollX: true,
             fixedColumns: true,
-            "order": [
+            order: [
                 [4, "desc"]
             ],
-            "columns": [{
+            columns: [{
                     "data": "player_name_link"
                 },
                 {
                     "data": function(row, type, val, meta) {
-                        var ratio = Math.round((row.games_won / row.games_played) * 100);
+                        let ratio = 0;
+                        if (row.games_played > 0) ratio = Math.round((row.games_won / row.games_played) * 100);
                         if (type === 'display') {
                             return ratio + '% (' + row.games_won + '/' + row.games_played + ')';
                         }
@@ -686,7 +653,6 @@
             table.rows.add(data.filter(function(row) {
                 return row.games_played >= filter
             })).draw()
-            table.fixedColumns().relayout();
         }
 
         //AJAX calls to fetch raw datasets for the datatables
@@ -741,33 +707,29 @@
         });
 
         slider.on('change', function(event) {
-            let minVal = slider.val();
-            update_table(overall_table, minVal, overall_data)
-            update_table(commander_overall_table, minVal, commander_overall_data)
-            update_table(heavy_overall_table, minVal, heavy_overall_data)
-            update_table(scout_overall_table, minVal, scout_overall_data)
-            update_table(ammo_overall_table, minVal, ammo_overall_data)
-            update_table(medic_overall_table, minVal, medic_overall_data)
+            min = slider.val();
+            update_table(overall_table, min, overall_data)
+            update_table(commander_overall_table, min, commander_overall_data)
+            update_table(heavy_overall_table, min, heavy_overall_data)
+            update_table(scout_overall_table, min, scout_overall_data)
+            update_table(ammo_overall_table, min, ammo_overall_data)
+            update_table(medic_overall_table, min, medic_overall_data)
         });
 
-        $('#datepicker-start').datepicker({
-            uiLibrary: 'bootstrap4',
-            format: 'yyyy-mm-dd',
-            value: params.get('startDate'),
-            change: function() {
-                params.set('startDate', $('#datepicker-start').val());
-                console.log(params.toString())
-            }
-        });
-        $('#datepicker-end').datepicker({
-            uiLibrary: 'bootstrap4',
-            format: 'yyyy-mm-dd',
-            value: params.get('endDate'),
-            change: function() {
-                params.set('endDate', $('#datepicker-end').val());
-                console.log(params.toString())
-            }
-        });
+        if (params.get("startDate")) {
+            $('#startDate').val(params.get("startDate"))
+        }
+        if (params.get("endDate")) {
+            $('#endDate').val(params.get("endDate"))
+        }
+
+        $('#startDate').on('change', function(event) {
+            params.set('startDate', $('#startDate').val());
+        })
+
+        $('#endDate').on('change', function(event) {
+            params.set('endDate', $('#endDate').val());
+        })
 
         $('#applyDateButton').click(function(event) {
             window.location = `/scorecards/overall?${params.toString()}`;

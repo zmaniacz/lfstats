@@ -1,110 +1,109 @@
 <?php
-    echo $this->Html->script('https://kit.fontawesome.com/9e4f8e5378.js', ['inline' => false]);
-    echo $this->element('breadcrumbs');
+echo $this->Html->script('https://kit.fontawesome.com/9e4f8e5378.js', ['inline' => false]);
+echo $this->element('breadcrumbs');
 ?>
 <hr>
 <?php if ('all' === $this->Session->read('state.gametype')) { ?>
-<div class="alert alert-warning" role="alert">
-    You must select either Social or Competitive games above
-</div>
+    <div class="alert alert-warning" role="alert">
+        You must select either Social or Competitive games above
+    </div>
 <?php } elseif ('social' == $this->Session->read('state.gametype') && 0 == $this->Session->read('state.centerID')) { ?>
-<div class="alert alert-warning" role="alert">
-    You must select a Center above.
-</div>
+    <div class="alert alert-warning" role="alert">
+        You must select a Center above.
+    </div>
 <?php } elseif ('league' == $this->Session->read('state.gametype') && 0 == $this->Session->read('state.leagueID')) { ?>
-<div class="alert alert-warning" role="alert">
-    You must select a Competition above.
-</div>
+    <div class="alert alert-warning" role="alert">
+        You must select a Competition above.
+    </div>
 <?php } else { ?>
-<?php
+    <?php
     echo $this->Html->css(['JqueryFileUpload/jquery.fileupload', 'JqueryFileUpload/jquery.fileupload-ui']);
-?>
-<div class="alert alert-warning" role="alert">
-    With the launch of TDF Event files, the upload process has changed. Pay attention to the new instructions.
-</div>
-<div>
-    <ol>
-        <li>For social games, choose to either add to an existing event or create a new one.</li>
-        <li>Click Add Files to add files</li>
-        <li>Click Start upload. The files will upload and the import will begin automatically</li>
-        <li>Click Admin > Import Log at the top to check status of your imports</li>
-    </ol>
-</div>
-<hr>
-<div id="eventChoicesSection" style="display:none">
-    <div id="eventRadio" class="btn-group btn-group-toggle" data-toggle="buttons">
-        <label class="btn btn-outline-info active">
-            <input type="radio" name="rounds" id="newEvent" value="0" autocomplete="off" checked>Create New
-        </label>
-        <label class="btn btn-outline-info">
-            <input type="radio" name="rounds" id="existingEvent" value="1" autocomplete="off">Choose Existing
-        </label>
+    ?>
+    <div class="alert alert-warning" role="alert">
+        With the launch of TDF Event files, the upload process has changed. Pay attention to the new instructions.
     </div>
-    <div id="eventCreateSection">
-        <form class="form-inline p-2" id="eventCreateForm">
-            <label for="eventNameInput" class="mx-1">New Event Name:</label>
-            <input type="text" class="form-control mx-1" id="eventNameInput"
-                value="Socials <?php echo date('Y-m-d'); ?>">
-            <button class="btn btn-info mx-1" id="eventCreateButton">Create</button>
-        </form>
+    <div>
+        <ol>
+            <li>For social games, choose to either add to an existing event or create a new one.</li>
+            <li>Click Add Files to add files</li>
+            <li>Click Start upload. The files will upload and the import will begin automatically</li>
+            <li>Click Admin > Import Log at the top to check status of your imports</li>
+        </ol>
     </div>
-    <div id="eventExistingSection" style="display:none">
-        <form class="form-inline p-2" id="eventSelectForm">
-            <label for="eventNameInput" class="mx-1">Existing Event:</label>
-            <select class="form-control mx-1" id="eventSelect">
-            </select>
-            <button class="btn btn-info mx-1" id="eventSelectButton">Select</button>
-        </form>
-    </div>
-</div>
-<div id="selectedEventInfo" class="alert alert-primary" style="display:none">
-</div>
-<hr>
-<div id="uploadForm" style="display:none">
-    <!-- The file upload form used as target for the file upload widget -->
-    <!--<form id="fileupload" action="uploads/upload" method="POST" enctype="multipart/form-data">-->
-    <?php echo $this->Form->create('fileupload', ['type' => 'file', 'id' => 'fileupload']); ?>
-    <!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
-    <div class="row fileupload-buttonbar">
-        <div class="col-lg-7">
-            <!-- The fileinput-button span is used to style the file input field as button -->
-            <span class="btn btn-success fileinput-button">
-                <i class="glyphicon glyphicon-plus"></i>
-                <span>Add files...</span>
-                <input type="file" name="files[]" accept="text/tab-separated-values" multiple>
-            </span>
-            <button type="submit" class="btn btn-primary start">
-                <i class="glyphicon glyphicon-upload"></i>
-                <span>Start upload</span>
-            </button>
-            <button type="reset" class="btn btn-warning cancel">
-                <i class="glyphicon glyphicon-ban-circle"></i>
-                <span>Cancel upload</span>
-            </button>
-            <button type="button" class="btn btn-danger delete">
-                <i class="glyphicon glyphicon-trash"></i>
-                <span>Delete</span>
-            </button>
-            <input type="checkbox" class="toggle">
-            <!-- The global file processing state -->
-            <span class="fileupload-process"></span>
+    <hr>
+    <div id="eventChoicesSection" style="display:none">
+        <div id="eventRadio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
+            <label class="btn btn-outline-info active">
+                <input type="radio" name="rounds" id="newEvent" value="0" autocomplete="off" checked>Create New
+            </label>
+            <label class="btn btn-outline-info">
+                <input type="radio" name="rounds" id="existingEvent" value="1" autocomplete="off">Choose Existing
+            </label>
         </div>
-        <!-- The global progress state -->
-        <div class="col-lg-5 fileupload-progress fade">
-            <!-- The global progress bar -->
-            <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar progress-bar-success" style="width:0%;"></div>
+        <div id="eventCreateSection">
+            <form class="form-inline p-2" id="eventCreateForm">
+                <label for="eventNameInput" class="mx-1">New Event Name:</label>
+                <input type="text" class="form-control mx-1" id="eventNameInput" value="Socials <?php echo date('Y-m-d'); ?>">
+                <button class="btn btn-info mx-1" id="eventCreateButton">Create</button>
+            </form>
+        </div>
+        <div id="eventExistingSection" style="display:none">
+            <form class="form-inline p-2" id="eventSelectForm">
+                <label for="eventNameInput" class="mx-1">Existing Event:</label>
+                <select class="form-control mx-1" id="eventSelect">
+                </select>
+                <button class="btn btn-info mx-1" id="eventSelectButton">Select</button>
+            </form>
+        </div>
+    </div>
+    <div id="selectedEventInfo" class="alert alert-primary" style="display:none">
+    </div>
+    <hr>
+    <div id="uploadForm" style="display:none">
+        <!-- The file upload form used as target for the file upload widget -->
+        <!--<form id="fileupload" action="uploads/upload" method="POST" enctype="multipart/form-data">-->
+        <?php echo $this->Form->create('fileupload', ['type' => 'file', 'id' => 'fileupload']); ?>
+        <!-- The fileupload-buttonbar contains buttons to add/delete files and start/cancel the upload -->
+        <div class="row fileupload-buttonbar">
+            <div class="col-lg-7">
+                <!-- The fileinput-button span is used to style the file input field as button -->
+                <span class="btn btn-success fileinput-button">
+                    <i class="glyphicon glyphicon-plus"></i>
+                    <span>Add files...</span>
+                    <input type="file" name="files[]" accept="text/tab-separated-values" multiple>
+                </span>
+                <button type="submit" class="btn btn-primary start">
+                    <i class="glyphicon glyphicon-upload"></i>
+                    <span>Start upload</span>
+                </button>
+                <button type="reset" class="btn btn-warning cancel">
+                    <i class="glyphicon glyphicon-ban-circle"></i>
+                    <span>Cancel upload</span>
+                </button>
+                <button type="button" class="btn btn-danger delete">
+                    <i class="glyphicon glyphicon-trash"></i>
+                    <span>Delete</span>
+                </button>
+                <input type="checkbox" class="toggle">
+                <!-- The global file processing state -->
+                <span class="fileupload-process"></span>
             </div>
-            <!-- The extended global progress state -->
-            <div class="progress-extended">&nbsp;</div>
+            <!-- The global progress state -->
+            <div class="col-lg-5 fileupload-progress fade">
+                <!-- The global progress bar -->
+                <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar progress-bar-success" style="width:0%;"></div>
+                </div>
+                <!-- The extended global progress state -->
+                <div class="progress-extended">&nbsp;</div>
+            </div>
         </div>
+        <!-- The table listing the files available for upload/download -->
+        <table role="presentation" class="table">
+            <tbody class="files"></tbody>
+        </table>
+        </form>
     </div>
-    <!-- The table listing the files available for upload/download -->
-    <table role="presentation" class="table table-striped">
-        <tbody class="files"></tbody>
-    </table>
-    </form>
-</div>
 <?php } ?>
 <!-- The template to display files available for upload -->
 <script id="template-upload" type="text/x-tmpl">

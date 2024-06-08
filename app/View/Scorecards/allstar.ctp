@@ -34,7 +34,7 @@ $positions = array('commander', 'heavy', 'scout', 'ammo', 'medic');
         <?= $position; ?>
     </h4>
     <div class="table-responsive">
-        <table class="table table-striped table-bordered table-hover table-sm" id="<?= $position; ?>_allstar_table">
+        <table class="table table-bordered table-hover table-sm" id="<?= $position; ?>_allstar_table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -85,7 +85,6 @@ $positions = array('commander', 'heavy', 'scout', 'ammo', 'medic');
         });
 
         $('#commander_allstar_table').DataTable({
-            "processing": true,
             "order": [
                 [2, "desc"]
             ],
@@ -110,7 +109,6 @@ $positions = array('commander', 'heavy', 'scout', 'ammo', 'medic');
         });
 
         $('#heavy_allstar_table').DataTable({
-            "processing": true,
             "order": [
                 [2, "desc"]
             ],
@@ -135,7 +133,6 @@ $positions = array('commander', 'heavy', 'scout', 'ammo', 'medic');
         });
 
         $('#scout_allstar_table').DataTable({
-            "processing": true,
             "order": [
                 [2, "desc"]
             ],
@@ -160,7 +157,6 @@ $positions = array('commander', 'heavy', 'scout', 'ammo', 'medic');
         });
 
         $('#ammo_allstar_table').DataTable({
-            "processing": true,
             "order": [
                 [2, "desc"]
             ],
@@ -185,7 +181,6 @@ $positions = array('commander', 'heavy', 'scout', 'ammo', 'medic');
         });
 
         $('#medic_allstar_table').DataTable({
-            "processing": true,
             "order": [
                 [2, "desc"]
             ],
