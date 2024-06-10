@@ -1,26 +1,21 @@
 <?php echo $this->element('breadcrumbs'); ?>
 <hr>
-<div id="view_radio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
-    <label class="btn btn-outline-info active">
-        <input type="radio" name="rounds" id="rounds" value="0" autocomplete="off" checked> Round Play
-    </label>
-    <label class="btn btn-outline-info">
-        <input type="radio" name="finals" id="finals" value="0" autocomplete="off"> Finals
-    </label>
+<div id="view_radio" class="btn-group">
+    <input type="radio" class="btn-check" name="rounds" id="rounds" autocomplete="off" checked>
+    <label class="btn btn-outline-info" for="rounds">Round Play</label>
+    <input type="radio" class="btn-check" name="rounds" id="finals" autocomplete="off">
+    <label class="btn btn-outline-info" for="finals">Finals</label>
 </div>
 <h4 class="my-4">
     Team Standings
 </h4>
-<div id="round_radio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
-    <label class="btn btn-outline-info active">
-        <input type="radio" name="rounds" id="round_all" value="0" autocomplete="off" checked> All
-    </label>
+<div id="round_radio" class="btn-group">
+    <input type="radio" class="btn-check" name="standing_rounds" id="round_all" value="0" autocomplete="off" checked>
+    <label class="btn btn-outline-info" for="round_all">All</label>
     <?php foreach ($details['Round'] as $round) { ?>
         <?php if (!$round['is_finals']) { ?>
-            <label class="btn btn-outline-info">
-                <input type="radio" name="rounds" id="round_<?php echo $round['round']; ?>" value="<?php echo $round['round']; ?>" autocomplete="off"> Round
-                <?php echo $round['round']; ?>
-            </label>
+            <input type="radio" class="btn-check" name="standing_rounds" id="round_<?php echo $round['round']; ?>" value="<?php echo $round['round']; ?>" autocomplete="off">
+            <label class="btn btn-outline-info" for="round_<?php echo $round['round']; ?>">Round <?php echo $round['round']; ?></label>
         <?php } ?>
     <?php } ?>
 </div>
