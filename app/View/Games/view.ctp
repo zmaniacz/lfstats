@@ -525,7 +525,7 @@ if (null != $game['Game']['green_team_id']) {
             ordering: false,
             scrollX: true,
             fixedColumns: {
-                start: 4
+                start: 1
             }
         });
 
