@@ -1867,13 +1867,12 @@ IPL;
             const player_id = <?php echo $id; ?>
 
             $.each($("#headPlayerPosSelector input:checked"), function() {
-                let position = this.value
-                params.set('player_' + position, position)
+                params.set(this.prop("id"), true)
             })
 
             $.each($("#headTargetPosSelector input:checked"), function() {
                 let position = this.value
-                params.set('target_' + position, position)
+                params.set(this.prop("id"), true)
             })
 
             params.set('team_flag', $("#headTeamSelector input:checked").val());
