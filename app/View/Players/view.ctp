@@ -1866,13 +1866,12 @@ IPL;
             const params = new URLSearchParams(location.search);
             const player_id = <?php echo $id; ?>
 
-            $.each($("#headPlayerPosSelector input:checked"), function() {
-                params.set(this.prop("id"), true)
+            $("#headPlayerPosSelector input:checked").each(function() {
+                params.set($(this).prop("id"), true)
             })
 
-            $.each($("#headTargetPosSelector input:checked"), function() {
-                let position = this.value
-                params.set(this.prop("id"), true)
+            $("#headTargetPosSelector input:checked").each(function() {
+                params.set($(this).prop("id"), true)
             })
 
             params.set('team_flag', $("#headTeamSelector input:checked").val());
