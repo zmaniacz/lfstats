@@ -656,8 +656,8 @@ echo $this->element('breadcrumbs');
         }
 
         //AJAX calls to fetch raw datasets for the datatables
-        $.when(
-            $.ajax({
+
+        $.ajax({
                 url: `/scorecards/getOverallAverages.json?${params.toString()}`
             }).done(function(response) {
                 overall_data = response.data
@@ -697,7 +697,7 @@ echo $this->element('breadcrumbs');
             }).done(function(response) {
                 medic_overall_data = response.data
                 update_table(medic_overall_table, min, medic_overall_data)
-            }))
+            })
 
         let slider = $('#min_games_range');
         slider.val(min);
