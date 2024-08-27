@@ -656,47 +656,48 @@ echo $this->element('breadcrumbs');
         }
 
         //AJAX calls to fetch raw datasets for the datatables
-        $.ajax({
-            url: `/scorecards/getOverallAverages.json?${params.toString()}`
-        }).done(function(response) {
-            overall_data = response.data
-            update_table(overall_table, min, overall_data)
-        })
+        $.when(
+            $.ajax({
+                url: `/scorecards/getOverallAverages.json?${params.toString()}`
+            }).done(function(response) {
+                overall_data = response.data
+                update_table(overall_table, min, overall_data)
+            }),
 
-        $.ajax({
-            "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'commander', 'ext' => 'json'])); ?>"
-        }).done(function(response) {
-            commander_overall_data = response.data
-            update_table(commander_overall_table, min, commander_overall_data)
-        })
+            $.ajax({
+                "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'commander', 'ext' => 'json'])); ?>"
+            }).done(function(response) {
+                commander_overall_data = response.data
+                update_table(commander_overall_table, min, commander_overall_data)
+            }),
 
-        $.ajax({
-            "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'heavy', 'ext' => 'json'])); ?>"
-        }).done(function(response) {
-            heavy_overall_data = response.data
-            update_table(heavy_overall_table, min, heavy_overall_data)
-        })
+            $.ajax({
+                "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'heavy', 'ext' => 'json'])); ?>"
+            }).done(function(response) {
+                heavy_overall_data = response.data
+                update_table(heavy_overall_table, min, heavy_overall_data)
+            }),
 
-        $.ajax({
-            "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'scout', 'ext' => 'json'])); ?>"
-        }).done(function(response) {
-            scout_overall_data = response.data
-            update_table(scout_overall_table, min, scout_overall_data)
-        })
+            $.ajax({
+                "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'scout', 'ext' => 'json'])); ?>"
+            }).done(function(response) {
+                scout_overall_data = response.data
+                update_table(scout_overall_table, min, scout_overall_data)
+            }),
 
-        $.ajax({
-            "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'ammo', 'ext' => 'json'])); ?>"
-        }).done(function(response) {
-            ammo_overall_data = response.data
-            update_table(ammo_overall_table, min, ammo_overall_data)
-        })
+            $.ajax({
+                "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'ammo', 'ext' => 'json'])); ?>"
+            }).done(function(response) {
+                ammo_overall_data = response.data
+                update_table(ammo_overall_table, min, ammo_overall_data)
+            }),
 
-        $.ajax({
-            "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'medic', 'ext' => 'json'])); ?>"
-        }).done(function(response) {
-            medic_overall_data = response.data
-            update_table(medic_overall_table, min, medic_overall_data)
-        })
+            $.ajax({
+                "url": "<?php echo html_entity_decode($this->Html->url(['controller' => 'scorecards', 'action' => 'getOverallStats', 'medic', 'ext' => 'json'])); ?>"
+            }).done(function(response) {
+                medic_overall_data = response.data
+                update_table(medic_overall_table, min, medic_overall_data)
+            }))
 
         let slider = $('#min_games_range');
         slider.val(min);
