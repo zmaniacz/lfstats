@@ -337,7 +337,7 @@ echo $this->element('breadcrumbs');
                     data: function(row, type, val, meta) {
                         let ratio = 0;
                         if (row.ammo_games_played > 0) ratio = Math.round((row.ammo_games_won / row.ammo_games_played) * 100);
-                        if (type === 'display') ratio + '% (' + row.ammo_games_won + '/' + row.ammo_games_played + ')';
+                        if (type === 'display') return ratio + '% (' + row.ammo_games_won + '/' + row.ammo_games_played + ')';
                         return ratio;
                     }
                 },
