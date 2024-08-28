@@ -20,7 +20,9 @@ RUN apt-get update -yqq \
     && rm -rf /var/lib/apt/lists
 
 # Enable PHP extensions
-RUN docker-php-ext-install pdo_pgsql
+RUN docker-php-ext-install pdo_pgsql opcache
+
+COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Install composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer
