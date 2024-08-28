@@ -1,12 +1,10 @@
 <?= $this->element('breadcrumbs'); ?>
 <hr>
-<div id="view_radio" class="btn-group btn-group-toggle" data-bs-toggle="buttons">
-    <label class="btn btn-outline-info">
-        <input type="radio" name="rounds" id="rounds" value="0" autocomplete="off"> Round Play
-    </label>
-    <label class="btn btn-outline-info active">
-        <input type="radio" name="finals" id="finals" value="0" autocomplete="off" checked> Finals
-    </label>
+<div id="view_radio" class="btn-group">
+    <input type="radio" class="btn-check" name="rounds" id="rounds" autocomplete="off" checked>
+    <label class="btn btn-outline-info" for="rounds">Round Play</label>
+    <input type="radio" class="btn-check" name="rounds" id="finals" autocomplete="off">
+    <label class="btn btn-outline-info" for="finals">Finals</label>
 </div>
 <?php if ($details['Event']['challonge_link']) : ?>
     <h4 class="my-4">
