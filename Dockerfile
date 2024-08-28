@@ -44,9 +44,7 @@ COPY . .
 RUN mkdir -p \
     tmp/cache/models \
     tmp/cache/persistent \
-    && chown -R :www-data \
-    tmp \
-    && chmod -R 770 \
+    && chmod -R 777 \
     tmp
 
 # Enable Apache modules and restart
