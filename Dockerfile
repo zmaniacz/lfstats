@@ -34,8 +34,11 @@ ENV PATH="${PATH}:/var/www/html/app/Vendor/bin"
 # COPY apache site.conf file
 COPY ./docker/apache/site.conf /etc/apache2/sites-available/000-default.conf
 
+# Use the default production configuration
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
 # Copy the source code into /var/www/html/ inside the image
-COPY . .
+#COPY . .
 
 # Set default working directory
 #WORKDIR ./app
