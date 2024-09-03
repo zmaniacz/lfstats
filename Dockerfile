@@ -47,7 +47,9 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 RUN mkdir -p \
     tmp/cache/models \
     tmp/cache/persistent \
-    && chmod -R 777 \
+    && chown -R :www-data \
+    tmp \
+    && chmod -R 770 \
     tmp
 
 # Enable Apache modules and restart
