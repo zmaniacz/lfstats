@@ -77,6 +77,7 @@ class AppController extends Controller
     public function beforeFilter()
     {
         //read state from the querystring; default to social games at LTC if no state passed
+        //there has to be a better way to do this
         if (!is_null($this->request->query('gametype'))) {
             $this->Session->write('state.gametype', $this->request->query('gametype'));
         } elseif (!$this->Session->check('state.gametype')) {
@@ -123,6 +124,14 @@ class AppController extends Controller
             $this->Session->write('state.scoring', $this->request->query('scoring'));
         } elseif (!$this->Session->check('state.scoring')) {
             $this->Session->write('state.scoring', 'team');
+        }
+
+        if (!is_null($this->request->query('startDate'))) {
+            $this->Session->write('state.startDate', $this->request->query('startDate'));
+        }
+
+        if (!is_null($this->request->query('endDate'))) {
+            $this->Session->write('state.endDate', $this->request->query('endDate'));
         }
 
         //get a center and league object for use throughout the app
