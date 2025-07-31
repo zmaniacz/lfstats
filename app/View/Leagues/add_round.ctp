@@ -9,9 +9,8 @@
 		<?php
 			echo $this->Form->create('Round');
 			echo $this->Form->hidden('event_id', array('value' => $this->Session->read('state.leagueID')));
-			echo $this->Form->input('round', array('class' => 'form-control','div' => array('class' => 'form-group')));
-			echo $this->Form->label('is_finals', 'Finals');
-			echo $this->Form->checkbox('is_finals', array('class' => 'form-control','div' => array('class' => 'form-group')));
+			echo $this->Form->input('round', array('class' => 'form-control','label' => 'Round','div' => array('class' => 'mb-3')));
+			echo $this->Form->input('is_finals', array('class' => 'form-check-input','label' => 'Finals?','div' => array('class' => 'mb-3')));
 			echo $this->Form->end(array('value' => 'Submit', 'class' => 'btn btn-success'));
 		?>
 	</div>
