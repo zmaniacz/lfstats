@@ -217,7 +217,7 @@
         </table>
     </div>
 </div>
-<h4 class="my-4">
+<!-- <h4 class="my-4">
     Streaky
 </h4>
 <div class="row">
@@ -255,7 +255,7 @@
             </thead>
         </table>
     </div>
-</div>
+</div> -->
 <h4 class="my-4">
     Miscellaneous Mischief
 </h4>
@@ -429,7 +429,7 @@
             ]
         });
 
-        $("table[id$='_streak_table']").DataTable({
+        /*$("table[id$='_streak_table']").DataTable({
             columns: [{
                     "data": "player_name"
                 },
@@ -437,7 +437,7 @@
                     "data": "maxstreak"
                 },
             ]
-        });
+        });*/
 
         $.ajax({
             url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getPositionLeaderboards', 'ext' => 'json'])); ?>"
@@ -501,20 +501,20 @@
                 avg_missiles_data);
         })
 
-        $.ajax({
+        /*$.ajax({
             url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'max', 'ext' => 'json'])); ?>"
         }).done(function(response) {
             $('#longest_win_streak_table').DataTable().clear().rows.add(response.data.win).draw();
             $('#longest_loss_streak_table').DataTable().clear().rows.add(response.data.loss).draw();
-        })
+        })*/
 
-        $.ajax({
+        /*$.ajax({
             url: "<?php echo html_entity_decode($this->Html->url(['controller' => 'Scorecards', 'action' => 'getStreaks', 'current', 'ext' => 'json'])); ?>"
         }).done(function(response) {
             $('#current_win_streak_table').DataTable().clear().rows.add(response.data.win)
                 .draw();
             $('#current_loss_streak_table').DataTable().clear().rows.add(response.data.loss)
                 .draw();
-        })
+        })*/
     });
 </script>
