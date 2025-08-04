@@ -224,9 +224,7 @@
             paging: false,
             info: false,
             searching: false,
-            order: [
-                [1, "desc"]
-            ],
+            ordering: false,
             columns: [{
                     data: function(row, type, val, meta) {
                         if (type === 'display' && loggedIn) {
