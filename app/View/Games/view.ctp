@@ -365,6 +365,7 @@ if (null != $game['Game']['green_team_id']) {
         </div>
     </div>
 </div>
+<p class="text-center fs-6"><a href="https://lfstats-scorecard-archive.s3.us-east-1.amazonaws.com/<?= $game['Game']['tdf_key'] ?>"><?= $game['Game']['tdf_key'] ?></a></p>
 <script type="text/javascript">
     function getCoordinatesForPercent(percent) {
         const x = Math.cos(2 * Math.PI * percent);
