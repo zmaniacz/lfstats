@@ -181,9 +181,7 @@ class Game extends AppModel
 
         if (isset($state['leagueID']) && $state['leagueID'] > 0) {
             $conditions[] = ['Game.event_id' => $state['leagueID']];
-        }
-
-        if (!is_null($date)) {
+        } elseif (!is_null($date)) {
             $conditions[] = ["Game.game_datetime BETWEEN ('{$date}'::timestamptz AT TIME ZONE 'UTC') AND ('{$date}'::timestamptz AT TIME ZONE 'UTC') + INTERVAL '1 day'"];
         }
 
