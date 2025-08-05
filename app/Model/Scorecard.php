@@ -730,7 +730,7 @@ class Scorecard extends AppModel
                 'MIN(Scorecard.accuracy) as min_acc',
                 'AVG(Scorecard.accuracy) as avg_acc',
                 'MAX(Scorecard.accuracy) as max_acc',
-                '(SUM(Scorecard.nukes_detonated)/GREATEST(SUM(Scorecard.nukes_activated),1)) as nuke_ratio',
+                '(SUM(Scorecard.nukes_detonated)/GREATEST(SUM(Scorecard.nukes_activated),1.0)) as nuke_ratio',
                 '(SUM(Scorecard.shot_opponent)/GREATEST(SUM(Scorecard.times_zapped),1.0)) as hit_diff',
                 'AVG(Scorecard.missiled_opponent) as avg_missiles',
                 'AVG(Scorecard.medic_hits) as avg_medic_hits',
