@@ -11,7 +11,7 @@
         Finals Bracket
     </h4>
     <div>
-        <iframe src="<?= $details['Event']['challonge_link']; ?>" width="100%" height="500" frameborder="0" scrolling="auto" allowtransparency="true"></iframe>
+        <iframe src="<?= $details['Event']['challonge_link']; ?>?show_final_results=1&show_standings=1" width="100%" height="500" frameborder="0" scrolling="auto" allowtransparency="true"></iframe>
     </div>
     <hr>
 <?php endif; ?>
