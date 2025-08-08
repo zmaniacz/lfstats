@@ -11,7 +11,7 @@
         Finals Bracket
     </h4>
     <div>
-        <iframe id="challongeFrame" src="<?= $details['Event']['challonge_link']; ?>?show_final_results=1&show_standings=1" width="100%" height="500" frameborder="0" scrolling="auto" allowtransparency="true"></iframe>
+        <iframe id="challongeFrame" src="<?= $details['Event']['challonge_link']; ?>?show_final_results=1&show_standings=1" width="100%" height="700" frameborder="0" scrolling="auto" allowtransparency="true"></iframe>
     </div>
     <hr>
 <?php endif; ?>
@@ -39,12 +39,6 @@
     <?php endforeach; ?>
 </div>
 <script>
-    window.addEventListener('message', (event) => {
-    if (event.origin === 'https://challonge.com') { // Replace with the iframe's origin
-      const iframe = document.getElementById('challongeFrame');
-      iframe.style.height = event.data + 'px';
-    }
-  });
     $(document).ready(function() {
         $('.match-select').change(function() {
             toastr.options = {
