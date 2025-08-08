@@ -11,7 +11,7 @@
         Finals Bracket
     </h4>
     <div>
-        <iframe src="<?= $details['Event']['challonge_link']; ?>?show_final_results=1&show_standings=1" width="100%" height="500" frameborder="0" scrolling="auto" allowtransparency="true"></iframe>
+        <iframe src="<?= $details['Event']['challonge_link']; ?>?show_final_results=1&show_standings=1" width="100%" frameborder="0" scrolling="auto" allowtransparency="true" onLoad="resizeIframe(this)"></iframe>
     </div>
     <hr>
 <?php endif; ?>
@@ -39,6 +39,9 @@
     <?php endforeach; ?>
 </div>
 <script>
+    function resizeIframe(iframe) {
+        iframe.height = iframe.contentWindow.document.body.scrollHeight + "px";
+    }
     $(document).ready(function() {
         $('.match-select').change(function() {
             toastr.options = {
