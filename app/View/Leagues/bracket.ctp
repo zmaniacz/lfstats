@@ -1,3 +1,8 @@
+<script>
+    function resizeIframe(iframe) {
+        iframe.height = iframe.contentWindow.document.body.scrollHeight + "px";
+    }
+    </script>
 <?= $this->element('breadcrumbs'); ?>
 <hr>
 <div id="view_radio" class="btn-group">
@@ -39,9 +44,6 @@
     <?php endforeach; ?>
 </div>
 <script>
-    function resizeIframe(iframe) {
-        iframe.height = iframe.contentWindow.document.body.scrollHeight + "px";
-    }
     $(document).ready(function() {
         $('.match-select').change(function() {
             toastr.options = {
