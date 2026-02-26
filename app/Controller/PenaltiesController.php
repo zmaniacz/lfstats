@@ -139,9 +139,6 @@ class PenaltiesController extends AppController
             $options = ['conditions' => ['Penalty.'.$this->Penalty->primaryKey => $id]];
             $this->request->data = $this->Penalty->find('first', $options);
         }
-
-        $scorecards = $this->Penalty->Scorecard->find('list');
-        $this->set(compact('scorecards'));
     }
 
     public function rescind($id = null)
