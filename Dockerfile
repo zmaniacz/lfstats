@@ -41,7 +41,7 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 #COPY . .
 
 # Set default working directory
-#WORKDIR ./app
+WORKDIR /var/www/html
 
 # Create tmp directory and make it writable by the web server
 RUN mkdir -p \
@@ -51,6 +51,8 @@ RUN mkdir -p \
     tmp \
     && chmod -R 770 \
     tmp
+
+#RUN composer install
 
 # Enable Apache modules and restart
 RUN a2enmod rewrite \

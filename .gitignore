@@ -9,3 +9,4 @@ webroot/parser/s3.log
 webroot/parser/incoming/*
 webroot/parser/pending/*
 webroot/parser/output/*
+.env
