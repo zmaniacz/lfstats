@@ -1,0 +1,15 @@
+{
+  "name": "lfstats",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "db:migrate": "turbo db:migrate",
+    "ingest": "pnpm --filter chomper run ingest"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "^5"
+  }
+}
