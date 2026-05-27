@@ -68,6 +68,12 @@ On any unhandled error, catch it, rollback the transaction if open, and update `
 
 Both are required. Chomper should throw immediately on startup if either is absent.
 
+### Deployment and secrets
+
+Chomper uses AWS SAM for deployment and reads database credentials from AWS Secrets Manager in production. For local development, `DATABASE_URL` may be provided from `packages/db/.env` or the environment. The production Lambda expects `DATABASE_SECRET_ARN` and resolves a JSON secret with keys `username`, `password`, `host`, `port`, and `dbname`.
+
+See `apps/chomper/README.md` for the exact secret shape, pipeline secrets, and deploy commands.
+
 ### Archive filename
 
 The archive key is constructed as: `{center_id}-{game_start_timestamp}.tdf`

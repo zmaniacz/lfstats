@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "ingest": "tsx --env-file=../../packages/db/.env src/cli.ts",
-    "build": "tsc",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/*",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@types/aws-lambda": "^8",
     "@types/node": "^24",
+    "esbuild": "^0.25",
     "tsx": "^4",
     "typescript": "^5"
   }

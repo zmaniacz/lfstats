@@ -1,0 +1,76 @@
+name: Deploy Chomper
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Chomper
+        run: pnpm --filter chomper build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup AWS SAM
+        uses: aws-actions/setup-sam@v3
+
+      - name: Validate SAM template
+        run: sam validate --template apps/chomper/template.yaml
+
+      - name: Package SAM template
+        run: sam package --template-file apps/chomper/template.yaml --output-template-file apps/chomper/packaged.yaml --s3-bucket ${{ secrets.SAM_DEPLOYMENT_BUCKET }}
+
+      - name: Deploy Chomper stack
+        run: |
+          sam deploy --template-file apps/chomper/packaged.yaml \
+            --stack-name lfstats-chomper \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              IncomingBucket=${{ secrets.INCOMING_BUCKET }} \
+              ArchiveBucket=${{ secrets.ARCHIVE_BUCKET }} \
+              DbSecretArn=${{ secrets.DB_SECRET_ARN }} \
+              ErrorEmailAddress=${{ secrets.ERROR_EMAIL_ADDRESS }}
+
+      - name: Configure S3 bucket notification
+        run: |
+          FUNCTION_ARN=$(aws lambda get-function --function-name lfstats-chomper --query 'Configuration.FunctionArn' --output text)
+          aws s3api put-bucket-notification-configuration \
+            --bucket ${{ secrets.INCOMING_BUCKET }} \
+            --notification-configuration "{
+              \"LambdaFunctionConfigurations\": [{
+                \"LambdaFunctionArn\": \"$FUNCTION_ARN\",
+                \"Events\": [\"s3:ObjectCreated:*\"],
+                \"Filter\": {
+                  \"Key\": {
+                    \"FilterRules\": [{\"Name\": \"suffix\", \"Value\": \".tdf\"}]
+                  }
+                }
+              }]
+            }"

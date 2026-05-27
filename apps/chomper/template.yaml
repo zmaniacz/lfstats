@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS SAM template for the Chomper ingestion Lambda.
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Timeout: 120
+    MemorySize: 1024
+    Environment:
+      Variables:
+        INCOMING_BUCKET: !Ref IncomingBucket
+        ARCHIVE_BUCKET: !Ref ArchiveBucket
+Resources:
+  ChomperDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: lfstats-chomper-dlq
+
+  ChomperErrorTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: lfstats-chomper-errors
+
+  ChomperErrorSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref ErrorEmailAddress
+      TopicArn: !Ref ChomperErrorTopic
+
+  ChomperDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Send an email when Chomper dead-letter queue receives a message."
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ChomperDeadLetterQueue.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref ChomperErrorTopic
+      TreatMissingData: missing
+
+  ChomperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: lfstats-chomper
+      CodeUri: dist
+      Handler: index.handler
+      Architectures:
+        - x86_64
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt ChomperDeadLetterQueue.Arn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub arn:aws:s3:::${IncomingBucket}/*
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub arn:aws:s3:::${ArchiveBucket}/*
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref DbSecretArn
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ChomperDeadLetterQueue.Arn
+      Environment:
+        Variables:
+          DATABASE_SECRET_ARN: !Ref DbSecretArn
+
+  ChomperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ChomperFunction}
+      RetentionInDays: 30
+
+  ChomperS3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ChomperFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${IncomingBucket}
+
+Parameters:
+  IncomingBucket:
+    Type: String
+    Description: S3 bucket name where TDF files are uploaded.
+
+  ArchiveBucket:
+    Type: String
+    Description: S3 bucket name where processed files are archived.
+
+  DbSecretArn:
+    Type: String
+    Description: Secrets Manager secret ARN containing the Postgres DATABASE_URL.
+
+  ErrorEmailAddress:
+    Type: String
+    Description: Email address that receives Chomper failure notifications.
