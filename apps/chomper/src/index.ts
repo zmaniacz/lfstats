@@ -114,7 +114,8 @@ export const handler: S3Handler = async (event, context) => {
 
     // 11. Move TDF file to archive bucket
     const archiveKey = buildArchiveKey(
-      `${parsed.meta.countryCode}-${parsed.meta.siteCode}`,
+      parsed.meta.countryCode,
+      parsed.meta.siteCode,
       parsed.meta.startTime,
     );
     await archiveTdf(bucket, key, ARCHIVE_BUCKET, archiveKey);

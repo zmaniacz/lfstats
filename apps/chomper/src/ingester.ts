@@ -72,7 +72,7 @@ export async function ingest(
     // -----------------------------------------------------------------------
     // 3. Insert Game
     // -----------------------------------------------------------------------
-    const archiveKey = buildArchiveKey(centerId, parsed.meta.startTime);
+    const archiveKey = buildArchiveKey(parsed.meta.countryCode, parsed.meta.siteCode, parsed.meta.startTime);
 
     const gameRow = await insertGame(tx, {
       centerId,
@@ -520,8 +520,8 @@ export async function ingest(
 // Helpers
 // ---------------------------------------------------------------------------
 
-export function buildArchiveKey(centerId: string, startTime: string): string {
-  return `${centerId}-${startTime}.tdf`;
+export function buildArchiveKey(countryCode: number, siteCode: number, startTime: string): string {
+  return `${countryCode}-${siteCode}-${startTime}.tdf`;
 }
 
 export function parseGameStartTime(startTimeStr: string): Date {
