@@ -1,0 +1,2055 @@
+{
+  "id": "2eaab7b1-869b-40db-851e-56955891fd1b",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.battlesuit": {
+      "name": "battlesuit",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "center_id": {
+          "name": "center_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hardware_id": {
+          "name": "hardware_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "battlesuit_center_id_center_id_fk": {
+          "name": "battlesuit_center_id_center_id_fk",
+          "tableFrom": "battlesuit",
+          "tableTo": "center",
+          "columnsFrom": [
+            "center_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "battlesuit_center_id_name_unique": {
+          "name": "battlesuit_center_id_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "center_id",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.center": {
+      "name": "center",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "site_code": {
+          "name": "site_code",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Unknown Center'"
+        },
+        "short_name": {
+          "name": "short_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country_name": {
+          "name": "country_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "center_country_code_site_code_unique": {
+          "name": "center_country_code_site_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "country_code",
+            "site_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chomper_job": {
+      "name": "chomper_job",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "s3_key": {
+          "name": "s3_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lambda_request_id": {
+          "name": "lambda_request_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "skip_reason": {
+          "name": "skip_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error_message": {
+          "name": "error_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chomper_job_game_id_game_id_fk": {
+          "name": "chomper_job_game_id_game_id_fk",
+          "tableFrom": "chomper_job",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.game": {
+      "name": "game",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "center_id": {
+          "name": "center_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tdf_filename": {
+          "name": "tdf_filename",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "game_outcome",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduled_duration": {
+          "name": "scheduled_duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actual_duration": {
+          "name": "actual_duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "game_center_id_center_id_fk": {
+          "name": "game_center_id_center_id_fk",
+          "tableFrom": "game",
+          "tableTo": "center",
+          "columnsFrom": [
+            "center_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "game_center_id_start_time_unique": {
+          "name": "game_center_id_start_time_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "center_id",
+            "start_time"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.game_referee": {
+      "name": "game_referee",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ipl_id": {
+          "name": "ipl_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "callsign": {
+          "name": "callsign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "battlesuit_id": {
+          "name": "battlesuit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hardware_id": {
+          "name": "hardware_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "game_referee_game_id_game_id_fk": {
+          "name": "game_referee_game_id_game_id_fk",
+          "tableFrom": "game_referee",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "game_referee_player_id_player_id_fk": {
+          "name": "game_referee_player_id_player_id_fk",
+          "tableFrom": "game_referee",
+          "tableTo": "player",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "game_referee_battlesuit_id_battlesuit_id_fk": {
+          "name": "game_referee_battlesuit_id_battlesuit_id_fk",
+          "tableFrom": "game_referee",
+          "tableTo": "battlesuit",
+          "columnsFrom": [
+            "battlesuit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player": {
+      "name": "player",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "ipl_id": {
+          "name": "ipl_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_callsign": {
+          "name": "current_callsign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "player_ipl_id_unique": {
+          "name": "player_ipl_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "ipl_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_callsign_history": {
+      "name": "player_callsign_history",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "callsign": {
+          "name": "callsign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "player_callsign_history_player_id_player_id_fk": {
+          "name": "player_callsign_history_player_id_player_id_fk",
+          "tableFrom": "player_callsign_history",
+          "tableTo": "player",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "player_callsign_history_player_id_callsign_unique": {
+          "name": "player_callsign_history_player_id_callsign_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "player_id",
+            "callsign"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_event": {
+      "name": "sm5_game_event",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time": {
+          "name": "time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_scorecard_id": {
+          "name": "actor_scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_scorecard_id": {
+          "name": "target_scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_game_target_id": {
+          "name": "target_game_target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_game_event_game_id_game_id_fk": {
+          "name": "sm5_game_event_game_id_game_id_fk",
+          "tableFrom": "sm5_game_event",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_event_actor_scorecard_id_sm5_scorecard_id_fk": {
+          "name": "sm5_game_event_actor_scorecard_id_sm5_scorecard_id_fk",
+          "tableFrom": "sm5_game_event",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "actor_scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_event_target_scorecard_id_sm5_scorecard_id_fk": {
+          "name": "sm5_game_event_target_scorecard_id_sm5_scorecard_id_fk",
+          "tableFrom": "sm5_game_event",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "target_scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_event_target_game_target_id_sm5_game_target_id_fk": {
+          "name": "sm5_game_event_target_game_target_id_sm5_game_target_id_fk",
+          "tableFrom": "sm5_game_event",
+          "tableTo": "sm5_game_target",
+          "columnsFrom": [
+            "target_game_target_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_penalty": {
+      "name": "sm5_game_penalty",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referee_id": {
+          "name": "referee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scorecard_id": {
+          "name": "scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score_value": {
+          "name": "score_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time": {
+          "name": "time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_game_penalty_game_id_game_id_fk": {
+          "name": "sm5_game_penalty_game_id_game_id_fk",
+          "tableFrom": "sm5_game_penalty",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_penalty_referee_id_game_referee_id_fk": {
+          "name": "sm5_game_penalty_referee_id_game_referee_id_fk",
+          "tableFrom": "sm5_game_penalty",
+          "tableTo": "game_referee",
+          "columnsFrom": [
+            "referee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "sm5_game_penalty_scorecard_id_sm5_scorecard_id_fk": {
+          "name": "sm5_game_penalty_scorecard_id_sm5_scorecard_id_fk",
+          "tableFrom": "sm5_game_penalty",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_player_interaction": {
+      "name": "sm5_game_player_interaction",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scorecard_id": {
+          "name": "scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_scorecard_id": {
+          "name": "target_scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit": {
+          "name": "shots_hit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shot_deactivations": {
+          "name": "shot_deactivations",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missile_hits": {
+          "name": "missile_hits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_game_player_interaction_game_id_game_id_fk": {
+          "name": "sm5_game_player_interaction_game_id_game_id_fk",
+          "tableFrom": "sm5_game_player_interaction",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_player_interaction_scorecard_id_sm5_scorecard_id_fk": {
+          "name": "sm5_game_player_interaction_scorecard_id_sm5_scorecard_id_fk",
+          "tableFrom": "sm5_game_player_interaction",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_gpi_tgt_scorecard_id_fk": {
+          "name": "sm5_gpi_tgt_scorecard_id_fk",
+          "tableFrom": "sm5_game_player_interaction",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "target_scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sm5_game_player_interaction_unique": {
+          "name": "sm5_game_player_interaction_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "game_id",
+            "scorecard_id",
+            "target_scorecard_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_player_state": {
+      "name": "sm5_game_player_state",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scorecard_id": {
+          "name": "scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time": {
+          "name": "time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lives": {
+          "name": "lives",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots": {
+          "name": "shots",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missiles": {
+          "name": "missiles",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sp": {
+          "name": "sp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hit_points": {
+          "name": "hit_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_rapid_fire": {
+          "name": "is_rapid_fire",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_nuking": {
+          "name": "is_nuking",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accuracy": {
+          "name": "accuracy",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hit_diff": {
+          "name": "hit_diff",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sm5_game_player_state_sc_time_idx": {
+          "name": "sm5_game_player_state_sc_time_idx",
+          "columns": [
+            {
+              "expression": "game_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scorecard_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sm5_game_player_state_game_id_game_id_fk": {
+          "name": "sm5_game_player_state_game_id_game_id_fk",
+          "tableFrom": "sm5_game_player_state",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_player_state_event_id_sm5_game_event_id_fk": {
+          "name": "sm5_game_player_state_event_id_sm5_game_event_id_fk",
+          "tableFrom": "sm5_game_player_state",
+          "tableTo": "sm5_game_event",
+          "columnsFrom": [
+            "event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_player_state_scorecard_id_sm5_scorecard_id_fk": {
+          "name": "sm5_game_player_state_scorecard_id_sm5_scorecard_id_fk",
+          "tableFrom": "sm5_game_player_state",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sm5_game_player_state_event_id_scorecard_id_unique": {
+          "name": "sm5_game_player_state_event_id_scorecard_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "event_id",
+            "scorecard_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_target": {
+      "name": "sm5_game_target",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "game_team_id": {
+          "name": "game_team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_game_target_game_id_game_id_fk": {
+          "name": "sm5_game_target_game_id_game_id_fk",
+          "tableFrom": "sm5_game_target",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_game_target_target_id_target_id_fk": {
+          "name": "sm5_game_target_target_id_target_id_fk",
+          "tableFrom": "sm5_game_target",
+          "tableTo": "target",
+          "columnsFrom": [
+            "target_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sm5_game_target_game_team_id_sm5_game_team_id_fk": {
+          "name": "sm5_game_target_game_team_id_sm5_game_team_id_fk",
+          "tableFrom": "sm5_game_target",
+          "tableTo": "sm5_game_team",
+          "columnsFrom": [
+            "game_team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sm5_game_target_game_id_target_id_unique": {
+          "name": "sm5_game_target_game_id_target_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "game_id",
+            "target_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_target_destruction": {
+      "name": "sm5_game_target_destruction",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_target_id": {
+          "name": "game_target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scorecard_id": {
+          "name": "scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "method": {
+          "name": "method",
+          "type": "destruction_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time": {
+          "name": "time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_gtd_game_target_id_fk": {
+          "name": "sm5_gtd_game_target_id_fk",
+          "tableFrom": "sm5_game_target_destruction",
+          "tableTo": "sm5_game_target",
+          "columnsFrom": [
+            "game_target_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_gtd_scorecard_id_fk": {
+          "name": "sm5_gtd_scorecard_id_fk",
+          "tableFrom": "sm5_game_target_destruction",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_game_team": {
+      "name": "sm5_game_team",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tdf_team_index": {
+          "name": "tdf_team_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_neutral": {
+          "name": "is_neutral",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "colour_enum": {
+          "name": "colour_enum",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "colour_rgb": {
+          "name": "colour_rgb",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "elimination_bonus": {
+          "name": "elimination_bonus",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "result": {
+          "name": "result",
+          "type": "team_result",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminated": {
+          "name": "eliminated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_game_team_game_id_game_id_fk": {
+          "name": "sm5_game_team_game_id_game_id_fk",
+          "tableFrom": "sm5_game_team",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sm5_game_team_game_id_tdf_team_index_unique": {
+          "name": "sm5_game_team_game_id_tdf_team_index_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "game_id",
+            "tdf_team_index"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_mvp_model": {
+      "name": "sm5_mvp_model",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "version": {
+          "name": "version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "released_at": {
+          "name": "released_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired_at": {
+          "name": "retired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parameters": {
+          "name": "parameters",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sm5_mvp_model_version_unique": {
+          "name": "sm5_mvp_model_version_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "version"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_scorecard": {
+      "name": "sm5_scorecard",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "battlesuit_id": {
+          "name": "battlesuit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ipl_id": {
+          "name": "ipl_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "callsign": {
+          "name": "callsign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eliminated": {
+          "name": "eliminated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_fired": {
+          "name": "shots_fired",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit": {
+          "name": "shots_hit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit_opponent": {
+          "name": "shots_hit_opponent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit_team": {
+          "name": "shots_hit_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit_opponent_3hit": {
+          "name": "shots_hit_opponent_3hit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit_opponent_medic": {
+          "name": "shots_hit_opponent_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_hit_team_medic": {
+          "name": "shots_hit_team_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "times_hit": {
+          "name": "times_hit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missile_hits": {
+          "name": "missile_hits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missiles_hit_opponent": {
+          "name": "missiles_hit_opponent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missiles_hit_team": {
+          "name": "missiles_hit_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missiles_hit_opponent_medic": {
+          "name": "missiles_hit_opponent_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missiles_hit_team_medic": {
+          "name": "missiles_hit_team_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "times_hit_by_missile": {
+          "name": "times_hit_by_missile",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nukes_activated": {
+          "name": "nukes_activated",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nukes_detonated": {
+          "name": "nukes_detonated",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nukes_hit_medic": {
+          "name": "nukes_hit_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lives_removed_by_nuke": {
+          "name": "lives_removed_by_nuke",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_nuke_activation_time": {
+          "name": "total_nuke_activation_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "average_nuke_activation_time": {
+          "name": "average_nuke_activation_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nukes_canceled": {
+          "name": "nukes_canceled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "team_nukes_canceled": {
+          "name": "team_nukes_canceled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rapid_fire": {
+          "name": "rapid_fire",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_rapid_time": {
+          "name": "total_rapid_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "average_rapid_time": {
+          "name": "average_rapid_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shots_fired_during_rapid": {
+          "name": "shots_fired_during_rapid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shots_hit_during_rapid": {
+          "name": "shots_hit_during_rapid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shots_hit_opponent_during_rapid": {
+          "name": "shots_hit_opponent_during_rapid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shots_hit_team_during_rapid": {
+          "name": "shots_hit_team_during_rapid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accuracy_during_rapid": {
+          "name": "accuracy_during_rapid",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ammo_boost": {
+          "name": "ammo_boost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "life_boost": {
+          "name": "life_boost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resupplies_given": {
+          "name": "resupplies_given",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "double_resupplies_given": {
+          "name": "double_resupplies_given",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resupplies_received_ammo": {
+          "name": "resupplies_received_ammo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resupplies_received_lives": {
+          "name": "resupplies_received_lives",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deactivated_opponent": {
+          "name": "deactivated_opponent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deactivated_team": {
+          "name": "deactivated_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eliminated_opponent": {
+          "name": "eliminated_opponent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eliminated_team": {
+          "name": "eliminated_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eliminated_opponent_medic": {
+          "name": "eliminated_opponent_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eliminated_team_medic": {
+          "name": "eliminated_team_medic",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assists": {
+          "name": "assists",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reset_opponent": {
+          "name": "reset_opponent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reset_team": {
+          "name": "reset_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missile_reset_opponent": {
+          "name": "missile_reset_opponent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "missile_reset_team": {
+          "name": "missile_reset_team",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sp_earned": {
+          "name": "sp_earned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sp_spent": {
+          "name": "sp_spent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "targets_destroyed": {
+          "name": "targets_destroyed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "penalties": {
+          "name": "penalties",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lives_left": {
+          "name": "lives_left",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shots_left": {
+          "name": "shots_left",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uptime": {
+          "name": "uptime",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resupply_downtime": {
+          "name": "resupply_downtime",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "other_downtime": {
+          "name": "other_downtime",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accuracy": {
+          "name": "accuracy",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hit_diff": {
+          "name": "hit_diff",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mvp_points": {
+          "name": "mvp_points",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mvp_model_id": {
+          "name": "mvp_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_scorecard_game_id_game_id_fk": {
+          "name": "sm5_scorecard_game_id_game_id_fk",
+          "tableFrom": "sm5_scorecard",
+          "tableTo": "game",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_scorecard_player_id_player_id_fk": {
+          "name": "sm5_scorecard_player_id_player_id_fk",
+          "tableFrom": "sm5_scorecard",
+          "tableTo": "player",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sm5_scorecard_team_id_sm5_game_team_id_fk": {
+          "name": "sm5_scorecard_team_id_sm5_game_team_id_fk",
+          "tableFrom": "sm5_scorecard",
+          "tableTo": "sm5_game_team",
+          "columnsFrom": [
+            "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_scorecard_battlesuit_id_battlesuit_id_fk": {
+          "name": "sm5_scorecard_battlesuit_id_battlesuit_id_fk",
+          "tableFrom": "sm5_scorecard",
+          "tableTo": "battlesuit",
+          "columnsFrom": [
+            "battlesuit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sm5_scorecard_mvp_model_id_sm5_mvp_model_id_fk": {
+          "name": "sm5_scorecard_mvp_model_id_sm5_mvp_model_id_fk",
+          "tableFrom": "sm5_scorecard",
+          "tableTo": "sm5_mvp_model",
+          "columnsFrom": [
+            "mvp_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sm5_scorecard_mvp": {
+      "name": "sm5_scorecard_mvp",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "scorecard_id": {
+          "name": "scorecard_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mvp_model_id": {
+          "name": "mvp_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "component": {
+          "name": "component",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "input_value": {
+          "name": "input_value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "points": {
+          "name": "points",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sm5_scorecard_mvp_scorecard_id_sm5_scorecard_id_fk": {
+          "name": "sm5_scorecard_mvp_scorecard_id_sm5_scorecard_id_fk",
+          "tableFrom": "sm5_scorecard_mvp",
+          "tableTo": "sm5_scorecard",
+          "columnsFrom": [
+            "scorecard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sm5_scorecard_mvp_mvp_model_id_sm5_mvp_model_id_fk": {
+          "name": "sm5_scorecard_mvp_mvp_model_id_sm5_mvp_model_id_fk",
+          "tableFrom": "sm5_scorecard_mvp",
+          "tableTo": "sm5_mvp_model",
+          "columnsFrom": [
+            "mvp_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sm5_scorecard_mvp_scorecard_id_mvp_model_id_component_unique": {
+          "name": "sm5_scorecard_mvp_scorecard_id_mvp_model_id_component_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "scorecard_id",
+            "mvp_model_id",
+            "component"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.target": {
+      "name": "target",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "center_id": {
+          "name": "center_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hardware_id": {
+          "name": "hardware_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "target_center_id_center_id_fk": {
+          "name": "target_center_id_center_id_fk",
+          "tableFrom": "target",
+          "tableTo": "center",
+          "columnsFrom": [
+            "center_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "target_center_id_hardware_id_unique": {
+          "name": "target_center_id_hardware_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "center_id",
+            "hardware_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.destruction_method": {
+      "name": "destruction_method",
+      "schema": "public",
+      "values": [
+        "shot",
+        "missile",
+        "awarded"
+      ]
+    },
+    "public.game_outcome": {
+      "name": "game_outcome",
+      "schema": "public",
+      "values": [
+        "score",
+        "elimination",
+        "draw"
+      ]
+    },
+    "public.team_result": {
+      "name": "team_result",
+      "schema": "public",
+      "values": [
+        "win",
+        "loss",
+        "draw"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
