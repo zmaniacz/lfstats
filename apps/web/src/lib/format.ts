@@ -27,13 +27,18 @@ export function formatMVP(n: number | null): string {
   return n.toFixed(3)
 }
 
+export function formatGameName(description: string | null, startTime: Date): string {
+  if (description) return description
+  const h = String(startTime.getUTCHours()).padStart(2, '0')
+  const m = String(startTime.getUTCMinutes()).padStart(2, '0')
+  return `Game @ ${h}:${m}`
+}
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 export function formatDateTime(d: Date | null): string {
   if (d === null) return EM_DASH
-  const h = d.getHours()
-  const m = d.getMinutes()
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} ${h12}:${String(m).padStart(2, '0')} ${ampm}`
+  const h = String(d.getUTCHours()).padStart(2, '0')
+  const m = String(d.getUTCMinutes()).padStart(2, '0')
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${h}:${m}`
 }

@@ -16,9 +16,9 @@ export const TEAM_COLORS: Readonly<Record<number, TeamColor>> = {
   8:  { label: 'Orange',  bg: 'bg-orange-500',                                             text: 'text-orange-700' },
   9:  { label: 'Pink',    bg: 'bg-pink-400',                                               text: 'text-pink-700' },
   10: { label: 'Black',   bg: 'bg-gray-900',                                               text: 'text-gray-900' },
-  11: { label: 'Fire',    bg: 'bg-red-600',                                                text: 'text-red-800' },
-  12: { label: 'Ice',     bg: 'bg-sky-300',                                                text: 'text-sky-600' },
-  13: { label: 'Earth',   bg: 'bg-amber-700',                                              text: 'text-amber-800' },
+  11: { label: 'Fire',    bg: 'bg-red-600',                                                text: 'text-red-700' },
+  12: { label: 'Ice',     bg: 'bg-sky-300',                                                text: 'text-blue-700' },
+  13: { label: 'Earth',   bg: 'bg-amber-700',                                              text: 'text-green-700' },
   14: { label: 'Crystal', bg: 'bg-violet-400',                                             text: 'text-violet-700' },
   15: { label: 'Rainbow', bg: 'bg-gradient-to-r from-red-500 via-yellow-400 to-blue-500', text: 'text-purple-600' },
 } as const

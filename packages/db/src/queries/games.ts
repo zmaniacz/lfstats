@@ -15,6 +15,7 @@ export type GameListItem = {
   startTime: Date
   outcome: "score" | "elimination" | "draw"
   centerName: string
+  description: string | null
   teams: GameTeamSummary[]
 }
 
@@ -27,6 +28,7 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
       startTime: game.startTime,
       outcome: game.outcome,
       centerName: center.name,
+      description: game.description,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -61,6 +63,7 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
     startTime: row.startTime,
     outcome: row.outcome,
     centerName: row.centerName,
+    description: row.description,
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,

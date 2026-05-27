@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { formatDateTime, formatScore } from "@/lib/format"
+import { formatDateTime, formatGameName, formatScore } from "@/lib/format"
 import { getTeamColor } from "@/lib/team-colors"
 
 export default async function GamesPage({
@@ -31,6 +31,7 @@ export default async function GamesPage({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Game</TableHead>
             <TableHead>Center</TableHead>
             <TableHead>Started</TableHead>
             <TableHead>Outcome</TableHead>
@@ -38,33 +39,44 @@ export default async function GamesPage({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {games.map((game) => (
-            <TableRow key={game.id}>
-              <TableCell>
-                <Link href={`/games/${game.id}`} className="hover:underline">
-                  {game.centerName}
-                </Link>
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {formatDateTime(game.startTime)}
-              </TableCell>
-              <TableCell className="capitalize">{game.outcome}</TableCell>
-              <TableCell>
-                <span className="flex items-center gap-1.5 tabular-nums">
-                  {game.teams.map((team, i) => (
-                    <Fragment key={i}>
-                      {i > 0 && (
-                        <span className="text-muted-foreground">–</span>
-                      )}
-                      <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
-                        {formatScore(team.score)}
-                      </span>
-                    </Fragment>
-                  ))}
-                </span>
-              </TableCell>
-            </TableRow>
-          ))}
+          {games.map((game) => {
+            const winner = game.teams.find((t) => t.result === "win")
+            const winnerColor = winner ? getTeamColor(winner.colourEnum) : undefined
+            const sortedTeams = [...game.teams].sort((a, b) =>
+              a.result === "win" ? -1 : b.result === "win" ? 1 : 0
+            )
+            return (
+              <TableRow key={game.id}>
+                <TableCell>
+                  <Link
+                    href={`/games/${game.id}`}
+                    className={`hover:underline font-medium ${winnerColor?.text ?? "text-muted-foreground"}`}
+                  >
+                    {formatGameName(game.description, game.startTime)}
+                  </Link>
+                </TableCell>
+                <TableCell>{game.centerName}</TableCell>
+                <TableCell className="tabular-nums">
+                  {formatDateTime(game.startTime)}
+                </TableCell>
+                <TableCell className="capitalize">{game.outcome}</TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-1.5 tabular-nums">
+                    {sortedTeams.map((team, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && (
+                          <span className="text-muted-foreground">–</span>
+                        )}
+                        <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
+                          {formatScore(team.score)}
+                        </span>
+                      </Fragment>
+                    ))}
+                  </span>
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
 
