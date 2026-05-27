@@ -946,7 +946,7 @@ class Simulator {
     }
 
     const stats = POSITION_STATS[target.position]!;
-    target.shots = stats.maxShots;
+    target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
 
     // End rapid fire if active
     if (target.isRapidFire && target.rapidFireStartedAt !== null) {
@@ -987,7 +987,7 @@ class Simulator {
     }
 
     const stats = POSITION_STATS[target.position]!;
-    target.lives = stats.maxLives;
+    target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
 
     target.deactivationCause = "resupply";
     this.triggerStateTransition(target, 3, time);
@@ -1005,7 +1005,7 @@ class Simulator {
 
     for (const teammate of this.getActiveTeammates(actor)) {
       const stats = POSITION_STATS[teammate.position]!;
-      teammate.shots = stats.maxShots;
+      teammate.shots = Math.min(teammate.shots + stats.resupplyShots, stats.maxShots);
       this.recordSnapshot(teammate, eventIndex);
     }
     void stats_actor; // suppress unused warning
@@ -1020,7 +1020,7 @@ class Simulator {
 
     for (const teammate of this.getActiveTeammates(actor)) {
       const stats = POSITION_STATS[teammate.position]!;
-      teammate.lives = stats.maxLives;
+      teammate.lives = Math.min(teammate.lives + stats.resupplyLives, stats.maxLives);
       this.recordSnapshot(teammate, eventIndex);
     }
   }
@@ -1123,7 +1123,9 @@ class Simulator {
     }
 
     // Game outcome
-    const anyEliminated = [...teamEliminated.values()].some((e) => e);
+    const anyEliminated = [...teamEliminated.entries()].some(
+      ([ti, e]) => e && !this.isNeutralTeam(ti),
+    );
     let outcome: "score" | "elimination" | "draw";
 
     if (anyEliminated) {
