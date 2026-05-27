@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm --filter chomper typecheck)"
+      "Bash(pnpm --filter chomper typecheck)",
+      "Bash(pnpm typecheck *)"
     ]
   }
 }
