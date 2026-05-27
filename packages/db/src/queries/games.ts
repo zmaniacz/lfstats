@@ -7,6 +7,7 @@ export const GAMES_PER_PAGE = 10
 export type GameTeamSummary = {
   colourEnum: number
   score: number | null
+  eliminationBonus: number | null
   result: "win" | "loss" | "draw" | null
 }
 
@@ -45,6 +46,7 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
       gameId: sm5GameTeam.gameId,
       colourEnum: sm5GameTeam.colourEnum,
       score: sm5GameTeam.score,
+      eliminationBonus: sm5GameTeam.eliminationBonus,
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
@@ -67,6 +69,7 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,
+      eliminationBonus: t.eliminationBonus,
       result: t.result,
     })),
   }))

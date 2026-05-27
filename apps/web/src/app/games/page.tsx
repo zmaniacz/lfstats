@@ -68,7 +68,7 @@ export default async function GamesPage({
                           <span className="text-muted-foreground">–</span>
                         )}
                         <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
-                          {formatScore(team.score)}
+                          {formatScore((team.score ?? 0) + (team.eliminationBonus ?? 0))}
                         </span>
                       </Fragment>
                     ))}
