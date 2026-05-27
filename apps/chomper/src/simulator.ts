@@ -319,6 +319,10 @@ class Simulator {
     const stats = POSITION_STATS[ps.position]!;
 
     if (newState === 3) {
+      // Accumulate the uptime segment that just ended
+      if (ps.state === 0) {
+        ps.uptime += time - ps.stateEnteredAt;
+      }
       // On entry to state 3: reset HP, track state3EnteredAt, clear resupply flags
       ps.hitPoints = stats.hitPoints;
       if (ps.isNuking) {
@@ -467,6 +471,13 @@ class Simulator {
   ): void {
     if (target.lives > 0) return;
     if (target.isEliminated) return;
+
+    // The state transition to state 3 is blocked once isEliminated is set,
+    // so capture the final uptime segment now while we still can.
+    if (target.state === 0) {
+      target.uptime += time - target.stateEnteredAt;
+      target.stateEnteredAt = time;
+    }
 
     target.isEliminated = true;
     target.eliminatedAt = time;
@@ -1183,14 +1194,6 @@ class Simulator {
         eliminationBonus,
       };
     });
-
-    // Accumulate uptime for eliminated players
-    for (const ps of this.playerStates.values()) {
-      if (ps.isEliminated && ps.eliminatedAt !== null) {
-        // Uptime was already accumulated during simulation up to elimination
-        // The player's last state transition handles the final segment
-      }
-    }
 
     return {
       actualDuration: this.missionEndTime - this.missionStartTime,
