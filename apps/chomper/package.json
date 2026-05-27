@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ingest": "tsx src/index.ts",
+    "ingest": "tsx --env-file=../../packages/db/.env src/cli.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3",
     "@lfstats/db": "workspace:*"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8",
     "@types/node": "^24",
     "tsx": "^4",
     "typescript": "^5"
