@@ -24,6 +24,10 @@ The specs live in /docs:
 - Scorecard_Table_Spec.md — per-player stat definitions
 - Core_Schema.md — full database schema spec
 
+## Skills
+- shadcn/ui — `npx skills add https://github.com/shadcn/ui --skill shadcn`
+- Load this skill before any UI work in apps/web.
+
 ## Database Conventions
 - All timestamps stored as local time (no UTC conversion)
 - Position-specific nullable columns: null = not applicable, 0 = applicable but zero
