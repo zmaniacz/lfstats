@@ -37,6 +37,7 @@ export async function ingest(
   simResult: SimulatedGame,
   gameStartTime: Date,
   mvpRows: MvpRow[],
+  gameType: string,
 ): Promise<string> {
   let gameId = "";
 
@@ -81,6 +82,7 @@ export async function ingest(
       outcome: simResult.outcome,
       scheduledDuration: parsed.meta.duration,
       actualDuration: simResult.actualDuration,
+      type: gameType,
     });
     gameId = gameRow.id;
 

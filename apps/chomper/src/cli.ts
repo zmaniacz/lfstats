@@ -49,6 +49,7 @@ if (parsed.meta.missionType !== 5) {
   console.warn(`Skipped: mission type ${parsed.meta.missionType} is not SM5`);
   process.exit(0);
 }
+const gameType = "sm5";
 
 // Duplicate check
 const gameStartTime = parseGameStartTime(parsed.meta.startTime);
@@ -94,5 +95,5 @@ const mvpRows = calculateMvp(
 );
 
 // Phase 3 — Ingest
-const gameId = await ingest(parsed, simResult, gameStartTime, mvpRows);
+const gameId = await ingest(parsed, simResult, gameStartTime, mvpRows, gameType);
 console.log(`Ingested: gameId=${gameId}`);

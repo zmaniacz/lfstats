@@ -1,3 +1,4 @@
-export { db } from "./client.js";
-export * from "./schema.js";
-export * from "./queries/chomper.js";
+export { db } from "./client";
+export * from "./schema";
+export * from "./queries/chomper";
+export * from "./queries/games";

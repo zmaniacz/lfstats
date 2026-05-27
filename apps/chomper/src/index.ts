@@ -56,6 +56,7 @@ export const handler: S3Handler = async (event, context) => {
       });
       return;
     }
+    const gameType = "sm5";
 
     // 5. Check for duplicate game
     const gameStartTime = parseGameStartTime(parsed.meta.startTime);
@@ -103,7 +104,7 @@ export const handler: S3Handler = async (event, context) => {
     );
 
     // 9–15. Write all rows to database in a single transaction (Phase 3)
-    const gameId = await ingest(parsed, simResult, gameStartTime, mvpRows);
+    const gameId = await ingest(parsed, simResult, gameStartTime, mvpRows, gameType);
 
     // 10. Update ChomperJob (status: completed) — outside transaction
     await updateChomperJob(job.id, {

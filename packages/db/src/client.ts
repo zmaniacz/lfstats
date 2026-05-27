@@ -1,7 +1,7 @@
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "./schema.js";
+import * as schema from "./schema";
 
 async function resolveDatabaseUrl(): Promise<string> {
   if (process.env.DATABASE_URL) {

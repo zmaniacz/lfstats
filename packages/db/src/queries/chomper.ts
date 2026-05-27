@@ -1,5 +1,5 @@
 import { eq, isNull, and, sql } from "drizzle-orm";
-import { db } from "../client.js";
+import { db } from "../client";
 import {
   center,
   player,
@@ -7,19 +7,19 @@ import {
   battlesuit,
   target,
   game,
-  gameTeam,
-  gameTarget,
-  gameTargetDestruction,
+  sm5GameTeam,
+  sm5GameTarget,
+  sm5GameTargetDestruction,
   gameReferee,
-  gamePenalty,
-  scorecard,
-  gamePlayerInteraction,
-  gameEvent,
-  gamePlayerState,
-  scorecardMvp,
+  sm5GamePenalty,
+  sm5Scorecard,
+  sm5GamePlayerInteraction,
+  sm5GameEvent,
+  sm5GamePlayerState,
+  sm5ScorecardMvp,
   chomperJob,
-  mvpModel,
-} from "../schema.js";
+  sm5MvpModel,
+} from "../schema";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -165,16 +165,16 @@ export async function insertGame(
 
 export async function insertGameTeams(
   tx: Tx,
-  rows: (typeof gameTeam.$inferInsert)[],
+  rows: (typeof sm5GameTeam.$inferInsert)[],
 ) {
-  return tx.insert(gameTeam).values(rows).returning();
+  return tx.insert(sm5GameTeam).values(rows).returning();
 }
 
 export async function insertGameTargets(
   tx: Tx,
-  rows: (typeof gameTarget.$inferInsert)[],
+  rows: (typeof sm5GameTarget.$inferInsert)[],
 ) {
-  return tx.insert(gameTarget).values(rows).returning();
+  return tx.insert(sm5GameTarget).values(rows).returning();
 }
 
 export async function insertGameReferees(
@@ -187,18 +187,18 @@ export async function insertGameReferees(
 
 export async function insertGameTargetDestructions(
   tx: Tx,
-  rows: (typeof gameTargetDestruction.$inferInsert)[],
+  rows: (typeof sm5GameTargetDestruction.$inferInsert)[],
 ) {
   if (rows.length === 0) return [];
-  await tx.insert(gameTargetDestruction).values(rows);
+  await tx.insert(sm5GameTargetDestruction).values(rows);
 }
 
 export async function insertGamePenalties(
   tx: Tx,
-  rows: (typeof gamePenalty.$inferInsert)[],
+  rows: (typeof sm5GamePenalty.$inferInsert)[],
 ) {
   if (rows.length === 0) return [];
-  await tx.insert(gamePenalty).values(rows);
+  await tx.insert(sm5GamePenalty).values(rows);
 }
 
 // ---------------------------------------------------------------------------
@@ -207,17 +207,17 @@ export async function insertGamePenalties(
 
 export async function insertScorecards(
   tx: Tx,
-  rows: (typeof scorecard.$inferInsert)[],
+  rows: (typeof sm5Scorecard.$inferInsert)[],
 ) {
-  return tx.insert(scorecard).values(rows).returning();
+  return tx.insert(sm5Scorecard).values(rows).returning();
 }
 
 export async function insertGamePlayerInteractions(
   tx: Tx,
-  rows: (typeof gamePlayerInteraction.$inferInsert)[],
+  rows: (typeof sm5GamePlayerInteraction.$inferInsert)[],
 ) {
   if (rows.length === 0) return;
-  await tx.insert(gamePlayerInteraction).values(rows);
+  await tx.insert(sm5GamePlayerInteraction).values(rows);
 }
 
 // ---------------------------------------------------------------------------
@@ -226,13 +226,13 @@ export async function insertGamePlayerInteractions(
 
 export async function insertGameEvents(
   tx: Tx,
-  rows: (typeof gameEvent.$inferInsert)[],
+  rows: (typeof sm5GameEvent.$inferInsert)[],
 ) {
   if (rows.length === 0) return [];
   const CHUNK = 1000;
   const results = [];
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const batch = await tx.insert(gameEvent).values(rows.slice(i, i + CHUNK)).returning();
+    const batch = await tx.insert(sm5GameEvent).values(rows.slice(i, i + CHUNK)).returning();
     results.push(...batch);
   }
   return results;
@@ -240,13 +240,13 @@ export async function insertGameEvents(
 
 export async function insertGamePlayerStates(
   tx: Tx,
-  rows: (typeof gamePlayerState.$inferInsert)[],
+  rows: (typeof sm5GamePlayerState.$inferInsert)[],
 ) {
   if (rows.length === 0) return;
   // Batch in chunks to avoid hitting postgres parameter limits on large games
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
-    await tx.insert(gamePlayerState).values(rows.slice(i, i + CHUNK));
+    await tx.insert(sm5GamePlayerState).values(rows.slice(i, i + CHUNK));
   }
 }
 
@@ -257,15 +257,15 @@ export async function insertGamePlayerStates(
 export async function findActiveMvpModel() {
   const rows = await db
     .select()
-    .from(mvpModel)
-    .where(isNull(mvpModel.retiredAt));
+    .from(sm5MvpModel)
+    .where(isNull(sm5MvpModel.retiredAt));
   return rows[0] ?? null;
 }
 
 export async function insertScorecardMvps(
   tx: Tx,
-  rows: (typeof scorecardMvp.$inferInsert)[],
+  rows: (typeof sm5ScorecardMvp.$inferInsert)[],
 ) {
   if (rows.length === 0) return;
-  await tx.insert(scorecardMvp).values(rows);
+  await tx.insert(sm5ScorecardMvp).values(rows);
 }

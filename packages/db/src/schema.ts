@@ -1,6 +1,7 @@
 import {
   boolean,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -98,10 +99,10 @@ export const target = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// MVP Model (defined before Scorecard — Scorecard holds the FK)
+// SM5 MVP Model (defined before sm5Scorecard — sm5Scorecard holds the FK)
 // ---------------------------------------------------------------------------
 
-export const mvpModel = pgTable("mvp_model", {
+export const sm5MvpModel = pgTable("sm5_mvp_model", {
   id: uuid("id").primaryKey().defaultRandom(),
   version: text("version").notNull().unique(),
   releasedAt: timestamp("released_at").notNull(),
@@ -126,12 +127,14 @@ export const game = pgTable(
     outcome: gameOutcomeEnum("outcome").notNull(),
     scheduledDuration: integer("scheduled_duration").notNull(),
     actualDuration: integer("actual_duration").notNull(),
+    type: text("type").notNull(),
+    description: text("description"),
   },
   (t) => [unique().on(t.centerId, t.startTime)],
 );
 
-export const gameTeam = pgTable(
-  "game_team",
+export const sm5GameTeam = pgTable(
+  "sm5_game_team",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     gameId: uuid("game_id")
@@ -155,8 +158,8 @@ export const gameTeam = pgTable(
 // Non-Player Entity Tables
 // ---------------------------------------------------------------------------
 
-export const gameTarget = pgTable(
-  "game_target",
+export const sm5GameTarget = pgTable(
+  "sm5_game_target",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     gameId: uuid("game_id")
@@ -167,7 +170,7 @@ export const gameTarget = pgTable(
       .references(() => target.id),
     gameTeamId: uuid("game_team_id")
       .notNull()
-      .references(() => gameTeam.id, { onDelete: "cascade" }),
+      .references(() => sm5GameTeam.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
   },
   (t) => [unique().on(t.gameId, t.targetId)],
@@ -187,10 +190,10 @@ export const gameReferee = pgTable("game_referee", {
 });
 
 // ---------------------------------------------------------------------------
-// Player Performance Tables
+// SM5 Player Performance Tables
 // ---------------------------------------------------------------------------
 
-export const scorecard = pgTable("scorecard", {
+export const sm5Scorecard = pgTable("sm5_scorecard", {
   id: uuid("id").primaryKey().defaultRandom(),
 
   // Identity & Context
@@ -200,7 +203,7 @@ export const scorecard = pgTable("scorecard", {
   playerId: uuid("player_id").references(() => player.id),
   teamId: uuid("team_id")
     .notNull()
-    .references(() => gameTeam.id, { onDelete: "cascade" }),
+    .references(() => sm5GameTeam.id, { onDelete: "cascade" }),
   battlesuitId: uuid("battlesuit_id").references(() => battlesuit.id),
   iplId: text("ipl_id"),
   callsign: text("callsign").notNull(),
@@ -296,22 +299,25 @@ export const scorecard = pgTable("scorecard", {
   mvpPoints: doublePrecision("mvp_points").notNull(),
   mvpModelId: uuid("mvp_model_id")
     .notNull()
-    .references(() => mvpModel.id),
+    .references(() => sm5MvpModel.id),
 });
 
-export const gameTargetDestruction = pgTable("game_target_destruction", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  gameTargetId: uuid("game_target_id")
-    .notNull()
-    .references(() => gameTarget.id, { onDelete: "cascade" }),
-  scorecardId: uuid("scorecard_id")
-    .notNull()
-    .references(() => scorecard.id, { onDelete: "cascade" }),
-  method: destructionMethodEnum("method").notNull(),
-  time: integer("time").notNull(),
-});
+export const sm5GameTargetDestruction = pgTable(
+  "sm5_game_target_destruction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameTargetId: uuid("game_target_id").notNull(),
+    scorecardId: uuid("scorecard_id").notNull(),
+    method: destructionMethodEnum("method").notNull(),
+    time: integer("time").notNull(),
+  },
+  (t) => [
+    foreignKey({ name: "sm5_gtd_game_target_id_fk", columns: [t.gameTargetId], foreignColumns: [sm5GameTarget.id] }).onDelete("cascade"),
+    foreignKey({ name: "sm5_gtd_scorecard_id_fk", columns: [t.scorecardId], foreignColumns: [sm5Scorecard.id] }).onDelete("cascade"),
+  ],
+);
 
-export const gamePenalty = pgTable("game_penalty", {
+export const sm5GamePenalty = pgTable("sm5_game_penalty", {
   id: uuid("id").primaryKey().defaultRandom(),
   gameId: uuid("game_id")
     .notNull()
@@ -322,14 +328,14 @@ export const gamePenalty = pgTable("game_penalty", {
   }),
   scorecardId: uuid("scorecard_id")
     .notNull()
-    .references(() => scorecard.id, { onDelete: "cascade" }),
+    .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
   scoreValue: integer("score_value").notNull(),
   description: text("description").notNull(),
   time: integer("time"),
 });
 
-export const gamePlayerInteraction = pgTable(
-  "game_player_interaction",
+export const sm5GamePlayerInteraction = pgTable(
+  "sm5_game_player_interaction",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     gameId: uuid("game_id")
@@ -337,31 +343,32 @@ export const gamePlayerInteraction = pgTable(
       .references(() => game.id, { onDelete: "cascade" }),
     scorecardId: uuid("scorecard_id")
       .notNull()
-      .references(() => scorecard.id, { onDelete: "cascade" }),
-    targetScorecardId: uuid("target_scorecard_id")
-      .notNull()
-      .references(() => scorecard.id, { onDelete: "cascade" }),
+      .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
+    targetScorecardId: uuid("target_scorecard_id").notNull(),
     shotsHit: integer("shots_hit").notNull(),
     shotDeactivations: integer("shot_deactivations").notNull(),
     missileHits: integer("missile_hits").notNull(),
   },
-  (t) => [unique("game_player_interaction_unique").on(t.gameId, t.scorecardId, t.targetScorecardId)],
+  (t) => [
+    unique("sm5_game_player_interaction_unique").on(t.gameId, t.scorecardId, t.targetScorecardId),
+    foreignKey({ name: "sm5_gpi_tgt_scorecard_id_fk", columns: [t.targetScorecardId], foreignColumns: [sm5Scorecard.id] }).onDelete("cascade"),
+  ],
 );
 
 // ---------------------------------------------------------------------------
-// MVP Scoring Tables
+// SM5 MVP Scoring Tables
 // ---------------------------------------------------------------------------
 
-export const scorecardMvp = pgTable(
-  "scorecard_mvp",
+export const sm5ScorecardMvp = pgTable(
+  "sm5_scorecard_mvp",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     scorecardId: uuid("scorecard_id")
       .notNull()
-      .references(() => scorecard.id, { onDelete: "cascade" }),
+      .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
     mvpModelId: uuid("mvp_model_id")
       .notNull()
-      .references(() => mvpModel.id),
+      .references(() => sm5MvpModel.id),
     component: text("component").notNull(),
     inputValue: doublePrecision("input_value").notNull(),
     points: doublePrecision("points").notNull(),
@@ -370,11 +377,11 @@ export const scorecardMvp = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Replay Data Tables
+// SM5 Replay Data Tables
 // ---------------------------------------------------------------------------
 
-export const gameEvent = pgTable(
-  "game_event",
+export const sm5GameEvent = pgTable(
+  "sm5_game_event",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     gameId: uuid("game_id")
@@ -384,16 +391,16 @@ export const gameEvent = pgTable(
     eventType: text("event_type").notNull(),
     // Null for events with no actor (0100/0101)
     actorScorecardId: uuid("actor_scorecard_id").references(
-      () => scorecard.id,
+      () => sm5Scorecard.id,
       { onDelete: "cascade" },
     ),
     // target_scorecard_id and target_game_target_id are mutually exclusive
     targetScorecardId: uuid("target_scorecard_id").references(
-      () => scorecard.id,
+      () => sm5Scorecard.id,
       { onDelete: "cascade" },
     ),
     targetGameTargetId: uuid("target_game_target_id").references(
-      () => gameTarget.id,
+      () => sm5GameTarget.id,
       { onDelete: "cascade" },
     ),
     description: text("description").notNull(),
@@ -417,8 +424,8 @@ export const chomperJob = pgTable("chomper_job", {
   completedAt: timestamp("completed_at"),
 });
 
-export const gamePlayerState = pgTable(
-  "game_player_state",
+export const sm5GamePlayerState = pgTable(
+  "sm5_game_player_state",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     gameId: uuid("game_id")
@@ -426,10 +433,10 @@ export const gamePlayerState = pgTable(
       .references(() => game.id, { onDelete: "cascade" }),
     eventId: uuid("event_id")
       .notNull()
-      .references(() => gameEvent.id, { onDelete: "cascade" }),
+      .references(() => sm5GameEvent.id, { onDelete: "cascade" }),
     scorecardId: uuid("scorecard_id")
       .notNull()
-      .references(() => scorecard.id, { onDelete: "cascade" }),
+      .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
     time: integer("time").notNull(),
     score: integer("score").notNull(),
     lives: integer("lives").notNull(),
@@ -447,7 +454,7 @@ export const gamePlayerState = pgTable(
   (t) => [
     unique().on(t.eventId, t.scorecardId),
     // Primary read pattern: reconstruct player state at time T
-    index("game_player_state_game_scorecard_time_idx").on(
+    index("sm5_game_player_state_sc_time_idx").on(
       t.gameId,
       t.scorecardId,
       t.time,
