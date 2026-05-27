@@ -1,0 +1,1 @@
+ALTER TABLE "sm5_scorecard" ADD COLUMN "double_resupplies_received" integer NOT NULL DEFAULT 0;

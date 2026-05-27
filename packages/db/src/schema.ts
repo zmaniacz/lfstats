@@ -259,6 +259,7 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   // Received stats apply to all positions
   resuppliesReceivedAmmo: integer("resupplies_received_ammo").notNull(),
   resuppliesReceivedLives: integer("resupplies_received_lives").notNull(),
+  doubleResuppliesReceived: integer("double_resupplies_received").notNull(),
 
   // Combat Outcomes
   deactivatedOpponent: integer("deactivated_opponent").notNull(),

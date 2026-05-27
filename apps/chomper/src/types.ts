@@ -172,6 +172,7 @@ export interface PlayerSimState {
   doubleResuppliesGiven: number;
   resuppliesReceivedAmmo: number;
   resuppliesReceivedLives: number;
+  doubleResuppliesReceived: number;
   deactivatedOpponent: number;
   deactivatedTeam: number;
   eliminatedOpponent: number;

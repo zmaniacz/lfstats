@@ -188,6 +188,7 @@ class Simulator {
         doubleResuppliesGiven: 0,
         resuppliesReceivedAmmo: 0,
         resuppliesReceivedLives: 0,
+        doubleResuppliesReceived: 0,
         deactivatedOpponent: 0,
         deactivatedTeam: 0,
         eliminatedOpponent: 0,
@@ -949,6 +950,7 @@ class Simulator {
     // Double resupply detection
     if (target.receivedLivesResupplyThisCycle) {
       actor.doubleResuppliesGiven++;
+      target.doubleResuppliesReceived++;
       const medicId = target.lastLivesResuppliedBy;
       if (medicId) {
         const medic = this.playerStates.get(medicId);
@@ -990,6 +992,7 @@ class Simulator {
     // Double resupply detection
     if (target.receivedAmmoResupplyThisCycle) {
       actor.doubleResuppliesGiven++;
+      target.doubleResuppliesReceived++;
       const ammoId = target.lastAmmoResuppliedBy;
       if (ammoId) {
         const ammoCarrier = this.playerStates.get(ammoId);

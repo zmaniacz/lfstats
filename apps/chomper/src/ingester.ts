@@ -330,6 +330,7 @@ export async function ingest(
         doubleResuppliesGiven: isSupport ? (ps?.doubleResuppliesGiven ?? 0) : null,
         resuppliesReceivedAmmo: ps?.resuppliesReceivedAmmo ?? 0,
         resuppliesReceivedLives: ps?.resuppliesReceivedLives ?? 0,
+        doubleResuppliesReceived: ps?.doubleResuppliesReceived ?? 0,
 
         // Combat outcomes — derived
         deactivatedOpponent: ps?.deactivatedOpponent ?? 0,

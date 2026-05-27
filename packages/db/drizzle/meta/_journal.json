@@ -15,12 +15,19 @@
       "when": 1748304000000,
       "tag": "0001_seed_mvp_model",
       "breakpoints": true
-    }
-    ,{
+    },
+    {
       "idx": 2,
       "version": "7",
       "when": 1779840000000,
       "tag": "0002_seed_centers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779924083486,
+      "tag": "0003_add_double_resupplies_recd",
       "breakpoints": true
     }
   ]
