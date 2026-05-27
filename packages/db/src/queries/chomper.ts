@@ -229,7 +229,13 @@ export async function insertGameEvents(
   rows: (typeof gameEvent.$inferInsert)[],
 ) {
   if (rows.length === 0) return [];
-  return tx.insert(gameEvent).values(rows).returning();
+  const CHUNK = 1000;
+  const results = [];
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const batch = await tx.insert(gameEvent).values(rows.slice(i, i + CHUNK)).returning();
+    results.push(...batch);
+  }
+  return results;
 }
 
 export async function insertGamePlayerStates(
