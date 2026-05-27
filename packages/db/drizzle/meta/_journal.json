@@ -16,5 +16,12 @@
       "tag": "0001_seed_mvp_model",
       "breakpoints": true
     }
+    ,{
+      "idx": 2,
+      "version": "7",
+      "when": 1779840000000,
+      "tag": "0002_seed_centers",
+      "breakpoints": true
+    }
   ]
 }
