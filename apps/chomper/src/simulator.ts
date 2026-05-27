@@ -323,21 +323,19 @@ class Simulator {
       if (ps.state === 0) {
         ps.uptime += time - ps.stateEnteredAt;
       }
-      // On entry to state 3: reset HP, track state3EnteredAt, clear resupply flags
+      // On entry to state 3: reset HP, track state3EnteredAt
       ps.hitPoints = stats.hitPoints;
       if (ps.isNuking) {
         ps.isNuking = false;
         ps.nukeActivatedAt = null;
       }
       ps.state3EnteredAt = time;
-      ps.receivedAmmoResupplyThisCycle = false;
-      ps.receivedLivesResupplyThisCycle = false;
       // Clear assist window for this player (they are deactivated — no longer valid target)
       this.assistWindows.delete(ps.entityId);
     } else if (newState === 2) {
       // HP unchanged from state 3 (which set it to full)
     } else {
-      // Transitioning to state 0: accumulate downtime
+      // Transitioning to state 0: accumulate downtime, reset resupply cycle flags
       if (ps.state3EnteredAt !== null) {
         const duration = time - ps.state3EnteredAt;
         if (ps.deactivationCause === "resupply") {
@@ -348,6 +346,8 @@ class Simulator {
         ps.state3EnteredAt = null;
       }
       ps.deactivationCause = null;
+      ps.receivedAmmoResupplyThisCycle = false;
+      ps.receivedLivesResupplyThisCycle = false;
     }
 
     ps.state = newState;
@@ -1087,9 +1087,11 @@ class Simulator {
     newState: 0 | 2 | 3,
     time: number,
   ): void {
-    // For 2.005+ files, the state log will drive this via advanceClock.
-    // For pre-2.005 files, we need to emit the synthetic event now.
-    // Either way, we emit a state_N event and apply the transition.
+    // For 2.005+ files, the explicit state log drives all transitions via advanceClock.
+    // Action handlers must not trigger transitions — doing so fires at the wrong timestamp
+    // when the log's state event is delayed relative to the action event.
+    if (this.parsed.playerStateLog.length > 0) return;
+    // Pre-2.005 files have no state log; emit a synthetic transition now.
     this.applyExplicitStateTransition(time, target.entityId, newState);
   }
 
