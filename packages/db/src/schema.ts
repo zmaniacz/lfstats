@@ -398,7 +398,7 @@ export const gameEvent = pgTable(
     ),
     description: text("description").notNull(),
   },
-  (t) => [unique().on(t.gameId, t.time, t.eventType, t.actorScorecardId)],
+  () => [],
 );
 
 // ---------------------------------------------------------------------------
