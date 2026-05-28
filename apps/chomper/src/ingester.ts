@@ -57,10 +57,13 @@ export async function ingest(
     // -----------------------------------------------------------------------
     const playerIdByEntityId = new Map<string, string>(); // entityId → player UUID
 
-    for (const entity of parsed.entities) {
-      if (entity.type !== "player") continue;
-      if (!entity.id.startsWith("#")) continue; // skip guest hardware IDs
+    // Sort by iplId so all concurrent transactions acquire row locks in the same
+    // order, preventing circular deadlocks when multiple games share players.
+    const playerEntities = parsed.entities
+      .filter((e) => e.type === "player" && e.id.startsWith("#"))
+      .sort((a, b) => a.id.localeCompare(b.id));
 
+    for (const entity of playerEntities) {
       const playerRow = await upsertPlayer(tx, {
         iplId: entity.id,
         memberId: entity.memberId ?? null,
@@ -117,14 +120,17 @@ export async function ingest(
     // -----------------------------------------------------------------------
     const battlesuitIdByName = new Map<string, string>(); // name → UUID
 
-    for (const entity of parsed.entities) {
-      if (!entity.battlesuit) continue;
+    const battlesuitEntities = parsed.entities
+      .filter((e) => !!e.battlesuit)
+      .sort((a, b) => a.battlesuit!.localeCompare(b.battlesuit!));
+
+    for (const entity of battlesuitEntities) {
       const row = await upsertBattlesuit(tx, {
         centerId,
-        name: entity.battlesuit,
+        name: entity.battlesuit!,
         hardwareId: entity.type !== "player" ? entity.id : null,
       });
-      battlesuitIdByName.set(entity.battlesuit, row.id);
+      battlesuitIdByName.set(entity.battlesuit!, row.id);
     }
 
     // -----------------------------------------------------------------------
@@ -132,14 +138,16 @@ export async function ingest(
     // -----------------------------------------------------------------------
     const targetIdByHardwareId = new Map<string, string>();
 
-    for (const entity of parsed.entities) {
-      if (
-        entity.type !== "standard-target" &&
-        entity.type !== "beacon" &&
-        entity.type !== "generator-target"
+    const targetEntityList = parsed.entities
+      .filter(
+        (e) =>
+          e.type === "standard-target" ||
+          e.type === "beacon" ||
+          e.type === "generator-target",
       )
-        continue;
+      .sort((a, b) => a.id.localeCompare(b.id));
 
+    for (const entity of targetEntityList) {
       const row = await upsertTarget(tx, {
         centerId,
         hardwareId: entity.id,
@@ -151,15 +159,9 @@ export async function ingest(
     // -----------------------------------------------------------------------
     // 7. Insert GameTargets (bulk)
     // -----------------------------------------------------------------------
-    const targetEntities = parsed.entities.filter(
-      (e) =>
-        e.type === "standard-target" ||
-        e.type === "beacon" ||
-        e.type === "generator-target",
-    );
     const gameTargetRows = await insertGameTargets(
       tx,
-      targetEntities.map((entity) => ({
+      targetEntityList.map((entity) => ({
         gameId,
         targetId: targetIdByHardwareId.get(entity.id)!,
         gameTeamId: teamIdByIndex.get(entity.team)!,
@@ -167,8 +169,8 @@ export async function ingest(
       })),
     );
     const gameTargetIdByHardwareId = new Map<string, string>();
-    for (let i = 0; i < targetEntities.length; i++) {
-      gameTargetIdByHardwareId.set(targetEntities[i]!.id, gameTargetRows[i]!.id);
+    for (let i = 0; i < targetEntityList.length; i++) {
+      gameTargetIdByHardwareId.set(targetEntityList[i]!.id, gameTargetRows[i]!.id);
     }
 
     // -----------------------------------------------------------------------
@@ -502,8 +504,7 @@ export async function ingest(
     // -----------------------------------------------------------------------
     // 16. Upsert PlayerCallsignHistory (one per player)
     // -----------------------------------------------------------------------
-    for (const entity of parsed.entities) {
-      if (entity.type !== "player" || !entity.id.startsWith("#")) continue;
+    for (const entity of playerEntities) {
       const playerId = playerIdByEntityId.get(entity.id);
       if (!playerId) continue;
 

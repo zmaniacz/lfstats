@@ -3,6 +3,26 @@ import { findCenterByNaturalKey, findGameByNaturalKey, findActiveMvpModel, creat
 import { parseTdf, ParseError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
 import { ingest, parseGameStartTime, buildArchiveKey } from "./ingester.js";
+
+const DEADLOCK_CODE = "40P01";
+const MAX_INGEST_RETRIES = 3;
+
+async function ingestWithRetry(...args: Parameters<typeof ingest>): Promise<string> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await ingest(...args);
+    } catch (err: unknown) {
+      const isDeadlock =
+        typeof err === "object" &&
+        err !== null &&
+        "cause" in err &&
+        typeof (err as { cause?: unknown }).cause === "object" &&
+        (err as { cause?: { code?: string } }).cause?.code === DEADLOCK_CODE;
+      if (!isDeadlock || attempt >= MAX_INGEST_RETRIES) throw err;
+      console.warn(`Deadlock on ingest attempt ${attempt}, retrying…`);
+    }
+  }
+}
 import { calculateMvp } from "./mvp.js";
 import { fetchTdf, archiveTdf } from "./s3.js";
 
@@ -104,7 +124,7 @@ export const handler: S3Handler = async (event, context) => {
     );
 
     // 9–15. Write all rows to database in a single transaction (Phase 3)
-    const gameId = await ingest(parsed, simResult, gameStartTime, mvpRows, gameType);
+    const gameId = await ingestWithRetry(parsed, simResult, gameStartTime, mvpRows, gameType);
 
     // 10. Update ChomperJob (status: completed) — outside transaction
     await updateChomperJob(job.id, {
