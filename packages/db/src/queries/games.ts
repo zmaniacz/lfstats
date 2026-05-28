@@ -205,6 +205,7 @@ export type GameDetailTeam = {
 
 export type GameDetail = {
   id: string;
+  centerId: string;
   description: string | null;
   startTime: Date;
   centerName: string;
@@ -214,10 +215,23 @@ export type GameDetail = {
   teams: GameDetailTeam[];
 };
 
+export async function getGameCenterId(id: string): Promise<string | null> {
+  const [row] = await db
+    .select({ centerId: game.centerId })
+    .from(game)
+    .where(eq(game.id, id));
+  return row?.centerId ?? null;
+}
+
+export async function deleteGame(id: string): Promise<void> {
+  await db.delete(game).where(eq(game.id, id));
+}
+
 export async function getGameDetail(id: string): Promise<GameDetail | null> {
   const [gameRow] = await db
     .select({
       id: game.id,
+      centerId: game.centerId,
       description: game.description,
       startTime: game.startTime,
       centerName: center.name,
@@ -514,6 +528,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 
   return {
     id: gameRow.id,
+    centerId: gameRow.centerId,
     description: gameRow.description,
     startTime: gameRow.startTime,
     centerName: gameRow.centerName,

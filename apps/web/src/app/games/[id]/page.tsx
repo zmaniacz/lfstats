@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import { getGameDetail } from "@lfstats/db"
+import { auth } from "@/auth"
 import { Badge } from "@/components/ui/badge"
 import {
   formatScore,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/format"
 import { getTeamColor } from "@/lib/team-colors"
 import { TeamStatsTable } from "@/components/games/TeamStatsTable"
+import { DeleteGameButton } from "@/components/games/DeleteGameButton"
 
 
 export default async function GameDetailPage({
@@ -17,9 +19,16 @@ export default async function GameDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const game = await getGameDetail(id)
+  const [game, session] = await Promise.all([getGameDetail(id), auth()])
 
   if (!game) notFound()
+
+  const roles = session?.user.roles ?? []
+  const canDelete = roles.some(
+    (r) =>
+      r.role === "admin" ||
+      (r.role === "centerAdmin" && r.centerId === game.centerId),
+  )
 
   return (
     <div className="p-6 space-y-8">
@@ -30,6 +39,7 @@ export default async function GameDetailPage({
         <p className="text-muted-foreground text-sm">
           {game.centerName} · {formatDateTime(game.startTime)} · {formatMs(game.actualDuration)}
         </p>
+        {canDelete && <DeleteGameButton gameId={game.id} />}
       </div>
 
       {game.teams.map((team) => {
