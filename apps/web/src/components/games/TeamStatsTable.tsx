@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { formatScore } from "@/lib/format"
+import { formatScore, formatPct } from "@/lib/format"
 import { getPosition } from "@/lib/positions"
 import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog"
 import { HitDiffDialog } from "@/components/games/HitDiffDialog"
@@ -33,19 +33,21 @@ export function TeamStatsTable({ team }: Props) {
 
   return (
     <>
-      <Table>
+      <div className="overflow-x-auto">
+      <Table className="table-fixed min-w-175 w-full">
         <TableHeader>
           <TableRow>
-            <TableHead>Callsign</TableHead>
-            <TableHead>Pos</TableHead>
-            <TableHead className="text-center">Score</TableHead>
-            <TableHead className="text-center">MVP</TableHead>
-            <TableHead className="text-center">Hit Diff</TableHead>
-            <TableHead className="text-center">Medic Hits</TableHead>
-            <TableHead className="text-center">Msls</TableHead>
-            <TableHead className="text-center">Lives</TableHead>
-            <TableHead className="text-center">Shots</TableHead>
-            <TableHead className="text-center">Missiled</TableHead>
+            <TableHead className="w-[20%]">Callsign</TableHead>
+            <TableHead className="w-[6%]">Pos</TableHead>
+            <TableHead className="w-[9%] text-center">Score</TableHead>
+            <TableHead className="w-[8%] text-center">MVP</TableHead>
+            <TableHead className="w-[9%] text-center">Hit Diff</TableHead>
+            <TableHead className="w-[9%] text-center">Accuracy</TableHead>
+            <TableHead className="w-[9%] text-center">Medic Hits</TableHead>
+            <TableHead className="w-[6%] text-center">Msls</TableHead>
+            <TableHead className="w-[6%] text-center">Lives</TableHead>
+            <TableHead className="w-[6%] text-center">Shots</TableHead>
+            <TableHead className="w-[6%] text-center">Missiled</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -100,6 +102,9 @@ export function TeamStatsTable({ team }: Props) {
                 />
               </TableCell>
               <TableCell className="text-center tabular-nums">
+                {formatPct(player.accuracy)}
+              </TableCell>
+              <TableCell className="text-center tabular-nums">
                 {player.shotsHitOpponentMedic}
                 {player.position === 1 && player.nukesHitMedic !== null && (
                   <span className="text-muted-foreground ml-1">
@@ -123,6 +128,7 @@ export function TeamStatsTable({ team }: Props) {
           ))}
         </TableBody>
       </Table>
+      </div>
 
       <PlayerStatsSheet
         player={selectedPlayer}

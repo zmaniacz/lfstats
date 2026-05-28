@@ -53,6 +53,9 @@ export default async function GameDetailPage({
                 {team.result === "loss" && (
                   <Badge variant="secondary">Loss</Badge>
                 )}
+                {team.eliminated && (
+                  <Badge variant="destructive" className="text-xs px-1 py-0">ELIMINATED</Badge>
+                )}
                 {team.result === "draw" && (
                   <Badge variant="secondary">Draw</Badge>
                 )}
