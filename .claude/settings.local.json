@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pnpm --filter chomper typecheck)",
-      "Bash(pnpm typecheck *)"
+      "Bash(pnpm typecheck *)",
+      "WebFetch(domain:recharts.github.io)",
+      "Bash(gh api *)"
     ]
   }
 }
