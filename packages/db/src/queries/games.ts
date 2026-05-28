@@ -109,11 +109,73 @@ export type GameDetailPlayer = {
   livesLeft: number
   shotsLeft: number
   hitDiff: number
-  missilesHitOpponent: number
-  timesHitByMissile: number
-  shotsHitOpponentMedic: number
-  nukesHitMedic: number | null
+  accuracy: number
+  // Shot stats
+  shotsFired: number
+  shotsHit: number
+  shotsHitOpponent: number
+  shotsHitOpponent3hit: number
   shotsHitTeam: number
+  shotsHitOpponentMedic: number
+  shotsHitTeamMedic: number
+  timesHit: number
+  // Missile stats
+  missileHits: number
+  missilesHitOpponent: number
+  missilesHitTeam: number
+  missilesHitOpponentMedic: number
+  missilesHitTeamMedic: number
+  timesHitByMissile: number
+  // Nuke stats (Commander only, nullable)
+  nukesActivated: number | null
+  nukesDetonated: number | null
+  nukesHitMedic: number | null
+  livesRemovedByNuke: number | null
+  totalNukeActivationTime: number | null
+  averageNukeActivationTime: number | null
+  // Nuke cancel stats (all positions)
+  nukesCanceled: number
+  teamNukesCanceled: number
+  // Scout special ability (nullable)
+  rapidFire: number | null
+  totalRapidTime: number | null
+  averageRapidTime: number | null
+  shotsFiredDuringRapid: number | null
+  shotsHitDuringRapid: number | null
+  shotsHitOpponentDuringRapid: number | null
+  shotsHitTeamDuringRapid: number | null
+  accuracyDuringRapid: number | null
+  // Ammo/Medic special ability (nullable)
+  ammoBoost: number | null
+  lifeBoost: number | null
+  // Support stats (Ammo/Medic only, nullable for giving; universal for receiving)
+  resuppliesGiven: number | null
+  doubleResuppliesGiven: number | null
+  resuppliesReceivedAmmo: number
+  resuppliesReceivedLives: number
+  doubleResuppliesReceived: number
+  // Combat outcomes
+  deactivatedOpponent: number
+  deactivatedTeam: number
+  eliminatedOpponent: number
+  eliminatedTeam: number
+  eliminatedOpponentMedic: number
+  eliminatedTeamMedic: number
+  assists: number
+  resetOpponent: number
+  resetTeam: number
+  missileResetOpponent: number
+  missileResetTeam: number
+  // SP tracking (null for Heavy Weapons)
+  spEarned: number | null
+  spSpent: number | null
+  // Targets and penalties
+  targetsDestroyed: number
+  penalties: number
+  // Uptime & downtime (ms)
+  uptime: number
+  resupplyDowntime: number
+  otherDowntime: number
   mvpComponents: MvpComponentRow[]
   hitInteractions: PlayerHitData[]
 }
@@ -185,11 +247,73 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         livesLeft: sm5Scorecard.livesLeft,
         shotsLeft: sm5Scorecard.shotsLeft,
         hitDiff: sm5Scorecard.hitDiff,
-        missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
-        timesHitByMissile: sm5Scorecard.timesHitByMissile,
-        shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
-        nukesHitMedic: sm5Scorecard.nukesHitMedic,
+        accuracy: sm5Scorecard.accuracy,
+        // Shot stats
+        shotsFired: sm5Scorecard.shotsFired,
+        shotsHit: sm5Scorecard.shotsHit,
+        shotsHitOpponent: sm5Scorecard.shotsHitOpponent,
+        shotsHitOpponent3hit: sm5Scorecard.shotsHitOpponent3hit,
         shotsHitTeam: sm5Scorecard.shotsHitTeam,
+        shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
+        shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+        timesHit: sm5Scorecard.timesHit,
+        // Missile stats
+        missileHits: sm5Scorecard.missileHits,
+        missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
+        missilesHitTeam: sm5Scorecard.missilesHitTeam,
+        missilesHitOpponentMedic: sm5Scorecard.missilesHitOpponentMedic,
+        missilesHitTeamMedic: sm5Scorecard.missilesHitTeamMedic,
+        timesHitByMissile: sm5Scorecard.timesHitByMissile,
+        // Nuke stats
+        nukesActivated: sm5Scorecard.nukesActivated,
+        nukesDetonated: sm5Scorecard.nukesDetonated,
+        nukesHitMedic: sm5Scorecard.nukesHitMedic,
+        livesRemovedByNuke: sm5Scorecard.livesRemovedByNuke,
+        totalNukeActivationTime: sm5Scorecard.totalNukeActivationTime,
+        averageNukeActivationTime: sm5Scorecard.averageNukeActivationTime,
+        // Nuke cancel stats
+        nukesCanceled: sm5Scorecard.nukesCanceled,
+        teamNukesCanceled: sm5Scorecard.teamNukesCanceled,
+        // Scout special ability
+        rapidFire: sm5Scorecard.rapidFire,
+        totalRapidTime: sm5Scorecard.totalRapidTime,
+        averageRapidTime: sm5Scorecard.averageRapidTime,
+        shotsFiredDuringRapid: sm5Scorecard.shotsFiredDuringRapid,
+        shotsHitDuringRapid: sm5Scorecard.shotsHitDuringRapid,
+        shotsHitOpponentDuringRapid: sm5Scorecard.shotsHitOpponentDuringRapid,
+        shotsHitTeamDuringRapid: sm5Scorecard.shotsHitTeamDuringRapid,
+        accuracyDuringRapid: sm5Scorecard.accuracyDuringRapid,
+        // Ammo/Medic special ability
+        ammoBoost: sm5Scorecard.ammoBoost,
+        lifeBoost: sm5Scorecard.lifeBoost,
+        // Support stats
+        resuppliesGiven: sm5Scorecard.resuppliesGiven,
+        doubleResuppliesGiven: sm5Scorecard.doubleResuppliesGiven,
+        resuppliesReceivedAmmo: sm5Scorecard.resuppliesReceivedAmmo,
+        resuppliesReceivedLives: sm5Scorecard.resuppliesReceivedLives,
+        doubleResuppliesReceived: sm5Scorecard.doubleResuppliesReceived,
+        // Combat outcomes
+        deactivatedOpponent: sm5Scorecard.deactivatedOpponent,
+        deactivatedTeam: sm5Scorecard.deactivatedTeam,
+        eliminatedOpponent: sm5Scorecard.eliminatedOpponent,
+        eliminatedTeam: sm5Scorecard.eliminatedTeam,
+        eliminatedOpponentMedic: sm5Scorecard.eliminatedOpponentMedic,
+        eliminatedTeamMedic: sm5Scorecard.eliminatedTeamMedic,
+        assists: sm5Scorecard.assists,
+        resetOpponent: sm5Scorecard.resetOpponent,
+        resetTeam: sm5Scorecard.resetTeam,
+        missileResetOpponent: sm5Scorecard.missileResetOpponent,
+        missileResetTeam: sm5Scorecard.missileResetTeam,
+        // SP tracking
+        spEarned: sm5Scorecard.spEarned,
+        spSpent: sm5Scorecard.spSpent,
+        // Targets and penalties
+        targetsDestroyed: sm5Scorecard.targetsDestroyed,
+        penalties: sm5Scorecard.penalties,
+        // Uptime & downtime
+        uptime: sm5Scorecard.uptime,
+        resupplyDowntime: sm5Scorecard.resupplyDowntime,
+        otherDowntime: sm5Scorecard.otherDowntime,
       })
       .from(sm5Scorecard)
       .where(eq(sm5Scorecard.gameId, id))
@@ -280,11 +404,62 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         livesLeft: sc.livesLeft,
         shotsLeft: sc.shotsLeft,
         hitDiff: sc.hitDiff,
-        missilesHitOpponent: sc.missilesHitOpponent,
-        timesHitByMissile: sc.timesHitByMissile,
-        shotsHitOpponentMedic: sc.shotsHitOpponentMedic,
-        nukesHitMedic: sc.nukesHitMedic,
+        accuracy: sc.accuracy,
+        shotsFired: sc.shotsFired,
+        shotsHit: sc.shotsHit,
+        shotsHitOpponent: sc.shotsHitOpponent,
+        shotsHitOpponent3hit: sc.shotsHitOpponent3hit,
         shotsHitTeam: sc.shotsHitTeam,
+        shotsHitOpponentMedic: sc.shotsHitOpponentMedic,
+        shotsHitTeamMedic: sc.shotsHitTeamMedic,
+        timesHit: sc.timesHit,
+        missileHits: sc.missileHits,
+        missilesHitOpponent: sc.missilesHitOpponent,
+        missilesHitTeam: sc.missilesHitTeam,
+        missilesHitOpponentMedic: sc.missilesHitOpponentMedic,
+        missilesHitTeamMedic: sc.missilesHitTeamMedic,
+        timesHitByMissile: sc.timesHitByMissile,
+        nukesActivated: sc.nukesActivated,
+        nukesDetonated: sc.nukesDetonated,
+        nukesHitMedic: sc.nukesHitMedic,
+        livesRemovedByNuke: sc.livesRemovedByNuke,
+        totalNukeActivationTime: sc.totalNukeActivationTime,
+        averageNukeActivationTime: sc.averageNukeActivationTime,
+        nukesCanceled: sc.nukesCanceled,
+        teamNukesCanceled: sc.teamNukesCanceled,
+        rapidFire: sc.rapidFire,
+        totalRapidTime: sc.totalRapidTime,
+        averageRapidTime: sc.averageRapidTime,
+        shotsFiredDuringRapid: sc.shotsFiredDuringRapid,
+        shotsHitDuringRapid: sc.shotsHitDuringRapid,
+        shotsHitOpponentDuringRapid: sc.shotsHitOpponentDuringRapid,
+        shotsHitTeamDuringRapid: sc.shotsHitTeamDuringRapid,
+        accuracyDuringRapid: sc.accuracyDuringRapid,
+        ammoBoost: sc.ammoBoost,
+        lifeBoost: sc.lifeBoost,
+        resuppliesGiven: sc.resuppliesGiven,
+        doubleResuppliesGiven: sc.doubleResuppliesGiven,
+        resuppliesReceivedAmmo: sc.resuppliesReceivedAmmo,
+        resuppliesReceivedLives: sc.resuppliesReceivedLives,
+        doubleResuppliesReceived: sc.doubleResuppliesReceived,
+        deactivatedOpponent: sc.deactivatedOpponent,
+        deactivatedTeam: sc.deactivatedTeam,
+        eliminatedOpponent: sc.eliminatedOpponent,
+        eliminatedTeam: sc.eliminatedTeam,
+        eliminatedOpponentMedic: sc.eliminatedOpponentMedic,
+        eliminatedTeamMedic: sc.eliminatedTeamMedic,
+        assists: sc.assists,
+        resetOpponent: sc.resetOpponent,
+        resetTeam: sc.resetTeam,
+        missileResetOpponent: sc.missileResetOpponent,
+        missileResetTeam: sc.missileResetTeam,
+        spEarned: sc.spEarned,
+        spSpent: sc.spSpent,
+        targetsDestroyed: sc.targetsDestroyed,
+        penalties: sc.penalties,
+        uptime: sc.uptime,
+        resupplyDowntime: sc.resupplyDowntime,
+        otherDowntime: sc.otherDowntime,
         mvpComponents: mvpByScorecard.get(sc.id) ?? [],
         hitInteractions: (() => {
           const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>()

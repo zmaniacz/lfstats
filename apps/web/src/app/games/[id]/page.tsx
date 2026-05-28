@@ -1,14 +1,5 @@
 import { notFound } from "next/navigation"
-import Link from "next/link"
 import { getGameDetail } from "@lfstats/db"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import {
   formatScore,
@@ -17,9 +8,8 @@ import {
   formatMs,
 } from "@/lib/format"
 import { getTeamColor } from "@/lib/team-colors"
-import { getPosition } from "@/lib/positions"
-import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog"
-import { HitDiffDialog } from "@/components/games/HitDiffDialog"
+import { TeamStatsTable } from "@/components/games/TeamStatsTable"
+
 
 export default async function GameDetailPage({
   params,
@@ -77,91 +67,7 @@ export default async function GameDetailPage({
               </span>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Callsign</TableHead>
-                  <TableHead>Pos</TableHead>
-                  <TableHead className="text-right">Score</TableHead>
-                  <TableHead className="text-right">MVP</TableHead>
-                  <TableHead className="text-right">Lives</TableHead>
-                  <TableHead className="text-right">Shots</TableHead>
-                  <TableHead className="text-right">Hit Diff</TableHead>
-                  <TableHead className="text-right">Msls</TableHead>
-                  <TableHead className="text-right">Missiled</TableHead>
-                  <TableHead className="text-right">Medic Hits</TableHead>
-                  <TableHead className="text-right">Shot Team</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {team.players.map((player) => (
-                  <TableRow
-                    key={player.id}
-                    className={player.eliminated ? "opacity-60" : ""}
-                  >
-                    <TableCell className="font-medium">
-                      {player.playerId !== null ? (
-                        <Link
-                          href={`/players/${player.iplId}`}
-                          className="hover:underline"
-                        >
-                          {player.callsign}
-                        </Link>
-                      ) : (
-                        player.callsign
-                      )} {player.eliminated && (
-                        <Badge variant="destructive" className="text-xs px-1 py-0">
-                          OUT
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {getPosition(player.position)?.abbr ?? player.position}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatScore(player.score)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <MvpBreakdownDialog
-                        callsign={player.callsign}
-                        totalMvp={player.mvpPoints}
-                        components={player.mvpComponents}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {player.livesLeft}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {player.shotsLeft}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <HitDiffDialog
-                        callsign={player.callsign}
-                        hitDiff={player.hitDiff}
-                        interactions={player.hitInteractions}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {player.missilesHitOpponent}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {player.timesHitByMissile}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {player.shotsHitOpponentMedic}
-                      {player.position === 1 && player.nukesHitMedic !== null && (
-                        <span className="text-muted-foreground ml-1">
-                          ({player.nukesHitMedic})
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {player.shotsHitTeam}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <TeamStatsTable team={team} />
           </section>
         )
       })}
