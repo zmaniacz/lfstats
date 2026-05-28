@@ -1,5 +1,11 @@
 import { db } from "../client";
-import { player, playerCallsignHistory, sm5Scorecard, sm5GameTeam, game } from "../schema";
+import {
+  player,
+  playerCallsignHistory,
+  sm5Scorecard,
+  sm5GameTeam,
+  game,
+} from "../schema";
 import { eq, and, asc, desc, count, sql } from "drizzle-orm";
 import type { MvpBoxPlotItem } from "./centers";
 
@@ -21,7 +27,9 @@ export type PositionAvgMvp = {
   avgMvp: number;
 };
 
-export async function getPlayerByIplId(iplId: string): Promise<PlayerDetail | null> {
+export async function getPlayerByIplId(
+  iplId: string,
+): Promise<PlayerDetail | null> {
   const normalized = iplId.startsWith("#") ? iplId : `#${iplId}`;
   const [row] = await db
     .select({
@@ -63,7 +71,9 @@ export type PlayerResultItem = {
   count: number;
 };
 
-export async function getPlayerResultsByColor(playerId: string): Promise<PlayerResultItem[]> {
+export async function getPlayerResultsByColor(
+  playerId: string,
+): Promise<PlayerResultItem[]> {
   const rows = await db
     .select({
       colourEnum: sm5GameTeam.colourEnum,
@@ -81,7 +91,11 @@ export async function getPlayerResultsByColor(playerId: string): Promise<PlayerR
       ),
     )
     .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
-    .orderBy(desc(sm5GameTeam.result), asc(sm5GameTeam.colourEnum), desc(game.outcome));
+    .orderBy(
+      desc(sm5GameTeam.result),
+      asc(sm5GameTeam.colourEnum),
+      desc(game.outcome),
+    );
 
   return rows
     .filter(
@@ -132,7 +146,9 @@ export async function getGlobalAvgMvpByPosition(): Promise<PositionAvgMvp[]> {
   }));
 }
 
-export async function getPlayerMvpBoxPlot(playerId: string): Promise<MvpBoxPlotItem[]> {
+export async function getPlayerMvpBoxPlot(
+  playerId: string,
+): Promise<MvpBoxPlotItem[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -181,7 +197,9 @@ export async function getPlayerAvgScoreByPosition(
   }));
 }
 
-export async function getGlobalAvgScoreByPosition(): Promise<PositionAvgScore[]> {
+export async function getGlobalAvgScoreByPosition(): Promise<
+  PositionAvgScore[]
+> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,

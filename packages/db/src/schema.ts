@@ -242,16 +242,16 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   teamNukesCanceled: integer("team_nukes_canceled").notNull(),
 
   // Special Ability Stats — position-specific, null where not applicable
-  rapidFire: integer("rapid_fire"),                                         // Scout only
-  totalRapidTime: integer("total_rapid_time"),                              // Scout only
-  averageRapidTime: integer("average_rapid_time"),                          // Scout only
-  shotsFiredDuringRapid: integer("shots_fired_during_rapid"),               // Scout only
-  shotsHitDuringRapid: integer("shots_hit_during_rapid"),                   // Scout only
-  shotsHitOpponentDuringRapid: integer("shots_hit_opponent_during_rapid"),  // Scout only
-  shotsHitTeamDuringRapid: integer("shots_hit_team_during_rapid"),          // Scout only
-  accuracyDuringRapid: doublePrecision("accuracy_during_rapid"),            // Scout only
-  ammoBoost: integer("ammo_boost"),                                         // Ammo Carrier only
-  lifeBoost: integer("life_boost"),                                         // Medic only
+  rapidFire: integer("rapid_fire"), // Scout only
+  totalRapidTime: integer("total_rapid_time"), // Scout only
+  averageRapidTime: integer("average_rapid_time"), // Scout only
+  shotsFiredDuringRapid: integer("shots_fired_during_rapid"), // Scout only
+  shotsHitDuringRapid: integer("shots_hit_during_rapid"), // Scout only
+  shotsHitOpponentDuringRapid: integer("shots_hit_opponent_during_rapid"), // Scout only
+  shotsHitTeamDuringRapid: integer("shots_hit_team_during_rapid"), // Scout only
+  accuracyDuringRapid: doublePrecision("accuracy_during_rapid"), // Scout only
+  ammoBoost: integer("ammo_boost"), // Ammo Carrier only
+  lifeBoost: integer("life_boost"), // Medic only
 
   // Support Stats — Ammo Carrier and Medic only; null for all other positions
   resuppliesGiven: integer("resupplies_given"),
@@ -313,8 +313,16 @@ export const sm5GameTargetDestruction = pgTable(
     time: integer("time").notNull(),
   },
   (t) => [
-    foreignKey({ name: "sm5_gtd_game_target_id_fk", columns: [t.gameTargetId], foreignColumns: [sm5GameTarget.id] }).onDelete("cascade"),
-    foreignKey({ name: "sm5_gtd_scorecard_id_fk", columns: [t.scorecardId], foreignColumns: [sm5Scorecard.id] }).onDelete("cascade"),
+    foreignKey({
+      name: "sm5_gtd_game_target_id_fk",
+      columns: [t.gameTargetId],
+      foreignColumns: [sm5GameTarget.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "sm5_gtd_scorecard_id_fk",
+      columns: [t.scorecardId],
+      foreignColumns: [sm5Scorecard.id],
+    }).onDelete("cascade"),
   ],
 );
 
@@ -351,8 +359,16 @@ export const sm5GamePlayerInteraction = pgTable(
     missileHits: integer("missile_hits").notNull(),
   },
   (t) => [
-    unique("sm5_game_player_interaction_unique").on(t.gameId, t.scorecardId, t.targetScorecardId),
-    foreignKey({ name: "sm5_gpi_tgt_scorecard_id_fk", columns: [t.targetScorecardId], foreignColumns: [sm5Scorecard.id] }).onDelete("cascade"),
+    unique("sm5_game_player_interaction_unique").on(
+      t.gameId,
+      t.scorecardId,
+      t.targetScorecardId,
+    ),
+    foreignKey({
+      name: "sm5_gpi_tgt_scorecard_id_fk",
+      columns: [t.targetScorecardId],
+      foreignColumns: [sm5Scorecard.id],
+    }).onDelete("cascade"),
   ],
 );
 

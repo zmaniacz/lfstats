@@ -27,9 +27,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 // ChomperJob
 // ---------------------------------------------------------------------------
 
-export async function createChomperJob(
-  data: typeof chomperJob.$inferInsert,
-) {
+export async function createChomperJob(data: typeof chomperJob.$inferInsert) {
   const [row] = await db.insert(chomperJob).values(data).returning();
   return row;
 }
@@ -45,14 +43,8 @@ export async function updateChomperJob(
 // Identity / Reference
 // ---------------------------------------------------------------------------
 
-export async function upsertCenter(
-  tx: Tx,
-  data: typeof center.$inferInsert,
-) {
-  await tx
-    .insert(center)
-    .values(data)
-    .onConflictDoNothing();
+export async function upsertCenter(tx: Tx, data: typeof center.$inferInsert) {
+  await tx.insert(center).values(data).onConflictDoNothing();
   const [row] = await tx
     .select()
     .from(center)
@@ -65,10 +57,7 @@ export async function upsertCenter(
   return row;
 }
 
-export async function upsertPlayer(
-  tx: Tx,
-  data: typeof player.$inferInsert,
-) {
+export async function upsertPlayer(tx: Tx, data: typeof player.$inferInsert) {
   const [row] = await tx
     .insert(player)
     .values(data)
@@ -115,10 +104,7 @@ export async function upsertBattlesuit(
   return row;
 }
 
-export async function upsertTarget(
-  tx: Tx,
-  data: typeof target.$inferInsert,
-) {
+export async function upsertTarget(tx: Tx, data: typeof target.$inferInsert) {
   const [row] = await tx
     .insert(target)
     .values(data)
@@ -141,14 +127,13 @@ export async function findCenterByNaturalKey(
   const rows = await db
     .select()
     .from(center)
-    .where(and(eq(center.countryCode, countryCode), eq(center.siteCode, siteCode)));
+    .where(
+      and(eq(center.countryCode, countryCode), eq(center.siteCode, siteCode)),
+    );
   return rows[0] ?? null;
 }
 
-export async function findGameByNaturalKey(
-  centerId: string,
-  startTime: Date,
-) {
+export async function findGameByNaturalKey(centerId: string, startTime: Date) {
   const rows = await db
     .select()
     .from(game)
@@ -160,10 +145,7 @@ export async function findGameByNaturalKey(
 // Game Structure
 // ---------------------------------------------------------------------------
 
-export async function insertGame(
-  tx: Tx,
-  data: typeof game.$inferInsert,
-) {
+export async function insertGame(tx: Tx, data: typeof game.$inferInsert) {
   const [row] = await tx.insert(game).values(data).returning();
   return row;
 }
@@ -237,7 +219,10 @@ export async function insertGameEvents(
   const CHUNK = 1000;
   const results = [];
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const batch = await tx.insert(sm5GameEvent).values(rows.slice(i, i + CHUNK)).returning();
+    const batch = await tx
+      .insert(sm5GameEvent)
+      .values(rows.slice(i, i + CHUNK))
+      .returning();
     results.push(...batch);
   }
   return results;

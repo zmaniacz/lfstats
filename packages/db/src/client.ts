@@ -1,4 +1,7 @@
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -34,7 +37,9 @@ async function resolveDatabaseUrl(): Promise<string> {
       engine?: string;
     };
   } catch (err) {
-    throw new Error(`Invalid JSON in secret ${secretArn}: ${(err as Error).message}`);
+    throw new Error(
+      `Invalid JSON in secret ${secretArn}: ${(err as Error).message}`,
+    );
   }
 
   const { username, password, host, port, dbname, engine } = parsed;
