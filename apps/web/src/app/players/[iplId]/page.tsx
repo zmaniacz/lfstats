@@ -9,11 +9,14 @@ import {
   getPlayerMvpBoxPlot,
   getPlayerAvgScoreByPosition,
   getGlobalAvgScoreByPosition,
+  getPlayerGames,
 } from "@lfstats/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlayerWinsByColorChart } from "@/components/players/PlayerWinsByColorChart"
 import { PositionRadarChart, type PositionRadarPoint } from "@/components/charts/PositionRadarChart"
 import { MvpBoxPlotChart } from "@/components/charts/MvpBoxPlotChart"
+import { PlayerTabs } from "@/components/players/PlayerTabs"
+import { PlayerGamesTable } from "@/components/players/PlayerGamesTable"
 import { POSITIONS } from "@/lib/positions"
 
 export default async function PlayerDetailPage({
@@ -34,6 +37,7 @@ export default async function PlayerDetailPage({
     playerBoxPlot,
     playerScore,
     globalScore,
+    playerGames,
   ] = await Promise.all([
     getPlayerCallsignHistory(playerDetail.id),
     getPlayerResultsByColor(playerDetail.id),
@@ -42,6 +46,7 @@ export default async function PlayerDetailPage({
     getPlayerMvpBoxPlot(playerDetail.id),
     getPlayerAvgScoreByPosition(playerDetail.id),
     getGlobalAvgScoreByPosition(),
+    getPlayerGames(playerDetail.id),
   ])
 
   const otherCallsigns = callsignHistory.filter(
@@ -91,45 +96,52 @@ export default async function PlayerDetailPage({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Wins by Team Color</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PlayerWinsByColorChart data={gameResults} />
-          </CardContent>
-        </Card>
+      <PlayerTabs
+        chartsContent={
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Wins by Team Color</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PlayerWinsByColorChart data={gameResults} />
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Average MVP by Position</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PositionRadarChart data={mvpRadarData} />
-          </CardContent>
-        </Card>
-      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Average MVP by Position</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PositionRadarChart data={mvpRadarData} />
+                </CardContent>
+              </Card>
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>MVP Distribution by Position</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MvpBoxPlotChart data={playerBoxPlot} />
-          </CardContent>
-        </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>MVP Distribution by Position</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <MvpBoxPlotChart data={playerBoxPlot} />
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Average Score by Position</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PositionRadarChart data={scoreRadarData} />
-          </CardContent>
-        </Card>
-      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Average Score by Position</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PositionRadarChart data={scoreRadarData} />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        }
+        gamesContent={<PlayerGamesTable games={playerGames} />}
+      />
     </div>
   )
 }

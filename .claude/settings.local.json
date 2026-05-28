@@ -5,7 +5,9 @@
       "Bash(pnpm typecheck *)",
       "WebFetch(domain:recharts.github.io)",
       "Bash(gh api *)",
-      "Bash(pnpm tsc *)"
+      "Bash(pnpm tsc *)",
+      "Bash(npx shadcn@latest add tabs --yes)",
+      "Bash(npx shadcn@latest add select --yes)"
     ]
   }
 }

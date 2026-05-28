@@ -4,10 +4,13 @@ import {
   playerCallsignHistory,
   sm5Scorecard,
   sm5GameTeam,
+  sm5ScorecardMvp,
   game,
+  center,
 } from "../schema";
-import { eq, and, asc, desc, count, sql } from "drizzle-orm";
+import { eq, and, asc, desc, count, sql, inArray } from "drizzle-orm";
 import type { MvpBoxPlotItem } from "./centers";
+import type { GameTeamSummary, MvpComponentRow } from "./games";
 
 export type PlayerDetail = {
   id: string;
@@ -212,5 +215,116 @@ export async function getGlobalAvgScoreByPosition(): Promise<
   return rows.map((r) => ({
     position: r.position,
     avgScore: r.avgScore,
+  }));
+}
+
+export type PlayerGameListItem = {
+  id: string;
+  startTime: Date;
+  outcome: "score" | "elimination" | "draw";
+  centerId: string;
+  centerName: string;
+  description: string | null;
+  teams: GameTeamSummary[];
+  position: number;
+  mvpPoints: number;
+  score: number;
+  teamColourEnum: number;
+  callsign: string;
+  mvpComponents: MvpComponentRow[];
+};
+
+export async function getPlayerGames(
+  playerId: string,
+): Promise<PlayerGameListItem[]> {
+  const rows = await db
+    .select({
+      scorecardId: sm5Scorecard.id,
+      id: game.id,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      centerId: center.id,
+      centerName: center.name,
+      description: game.description,
+      callsign: sm5Scorecard.callsign,
+      position: sm5Scorecard.position,
+      mvpPoints: sm5Scorecard.mvpPoints,
+      score: sm5Scorecard.score,
+      teamColourEnum: sm5GameTeam.colourEnum,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(eq(sm5Scorecard.playerId, playerId))
+    .orderBy(desc(game.startTime));
+
+  if (rows.length === 0) return [];
+
+  const gameIds = [...new Set(rows.map((r) => r.id))];
+  const scorecardIds = rows.map((r) => r.scorecardId);
+
+  const [teamRows, mvpRows] = await Promise.all([
+    db
+      .select({
+        gameId: sm5GameTeam.gameId,
+        colourEnum: sm5GameTeam.colourEnum,
+        score: sm5GameTeam.score,
+        eliminationBonus: sm5GameTeam.eliminationBonus,
+        result: sm5GameTeam.result,
+      })
+      .from(sm5GameTeam)
+      .where(
+        and(
+          inArray(sm5GameTeam.gameId, gameIds),
+          eq(sm5GameTeam.isNeutral, false),
+        ),
+      )
+      .orderBy(sm5GameTeam.tdfTeamIndex),
+    db
+      .select({
+        scorecardId: sm5ScorecardMvp.scorecardId,
+        component: sm5ScorecardMvp.component,
+        inputValue: sm5ScorecardMvp.inputValue,
+        points: sm5ScorecardMvp.points,
+      })
+      .from(sm5ScorecardMvp)
+      .where(inArray(sm5ScorecardMvp.scorecardId, scorecardIds)),
+  ]);
+
+  const teamsByGame = new Map<string, GameTeamSummary[]>();
+  for (const team of teamRows) {
+    const list = teamsByGame.get(team.gameId) ?? [];
+    list.push({
+      colourEnum: team.colourEnum,
+      score: team.score,
+      eliminationBonus: team.eliminationBonus,
+      result: team.result,
+    });
+    teamsByGame.set(team.gameId, list);
+  }
+
+  const mvpByScorecard = new Map<string, MvpComponentRow[]>();
+  for (const row of mvpRows) {
+    if (row.inputValue === 0 && row.points === 0) continue;
+    const list = mvpByScorecard.get(row.scorecardId) ?? [];
+    list.push({ component: row.component, inputValue: row.inputValue, points: row.points });
+    mvpByScorecard.set(row.scorecardId, list);
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    startTime: row.startTime,
+    outcome: row.outcome as "score" | "elimination" | "draw",
+    centerId: row.centerId,
+    centerName: row.centerName,
+    description: row.description,
+    callsign: row.callsign,
+    position: row.position,
+    mvpPoints: row.mvpPoints,
+    score: row.score,
+    teamColourEnum: row.teamColourEnum,
+    teams: teamsByGame.get(row.id) ?? [],
+    mvpComponents: mvpByScorecard.get(row.scorecardId) ?? [],
   }));
 }
