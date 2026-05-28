@@ -49,14 +49,19 @@ export async function upsertCenter(
   tx: Tx,
   data: typeof center.$inferInsert,
 ) {
-  const [row] = await tx
+  await tx
     .insert(center)
     .values(data)
-    .onConflictDoUpdate({
-      target: [center.countryCode, center.siteCode],
-      set: { name: sql`excluded.name` },
-    })
-    .returning();
+    .onConflictDoNothing();
+  const [row] = await tx
+    .select()
+    .from(center)
+    .where(
+      and(
+        eq(center.countryCode, data.countryCode),
+        eq(center.siteCode, data.siteCode),
+      ),
+    );
   return row;
 }
 
