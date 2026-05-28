@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   RadarChart,
@@ -6,7 +6,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-} from "recharts"
+} from "recharts";
 import {
   ChartContainer,
   ChartLegend,
@@ -14,28 +14,28 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@/components/ui/chart"
+} from "@/components/ui/chart";
 
 export type PositionRadarPoint = {
-  positionLabel: string
-  playerAvg: number
-  globalAvg: number
-}
+  positionLabel: string;
+  playerAvg: number;
+  globalAvg: number;
+};
 
 type Props = {
-  data: PositionRadarPoint[]
-}
+  data: PositionRadarPoint[];
+};
 
 const chartConfig = {
   playerAvg: {
     label: "This Player",
-    color: "var(--chart-2)",
+    color: "var(--chart-5)",
   },
   globalAvg: {
     label: "Global Avg",
     color: "var(--chart-1)",
   },
-} satisfies ChartConfig
+} satisfies ChartConfig;
 
 export function PositionRadarChart({ data }: Props) {
   return (
@@ -66,7 +66,8 @@ export function PositionRadarChart({ data }: Props) {
               formatter={(value, name) => (
                 <>
                   <span className="text-muted-foreground">
-                    {chartConfig[name as keyof typeof chartConfig]?.label ?? name}
+                    {chartConfig[name as keyof typeof chartConfig]?.label ??
+                      name}
                   </span>
                   <span className="font-mono font-medium text-foreground tabular-nums">
                     {typeof value === "number" ? value.toFixed(2) : value}
@@ -79,5 +80,5 @@ export function PositionRadarChart({ data }: Props) {
         <ChartLegend content={<ChartLegendContent />} />
       </RadarChart>
     </ChartContainer>
-  )
+  );
 }
