@@ -60,7 +60,7 @@ export function TeamStatsTable({ team }: Props) {
               <TableCell className="font-medium">
                 {player.playerId !== null ? (
                   <Link
-                    href={`/players/${player.iplId}`}
+                    href={`/players/${player.iplId?.replace(/^#/, "")}`}
                     className="hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >

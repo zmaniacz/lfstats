@@ -4,7 +4,8 @@
       "Bash(pnpm --filter chomper typecheck)",
       "Bash(pnpm typecheck *)",
       "WebFetch(domain:recharts.github.io)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(pnpm tsc *)"
     ]
   }
 }
