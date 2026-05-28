@@ -45,7 +45,7 @@ export function WinsByColorChart({ data }: Props) {
   )
 
   return (
-    <ChartContainer config={chartConfig} className="aspect-auto h-[300px]">
+    <ChartContainer config={chartConfig} className="aspect-auto h-75">
       <PieChart>
         <Pie
           data={slices}
