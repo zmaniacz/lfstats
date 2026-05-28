@@ -18,6 +18,7 @@ In production, Chomper reads the database connection details from AWS Secrets Ma
 ```
 
 ### Required fields
+
 - `username`
 - `password`
 - `host`
@@ -25,6 +26,7 @@ In production, Chomper reads the database connection details from AWS Secrets Ma
 - `dbname`
 
 ### Optional field
+
 - `engine`: if present, it must be `postgres`.
 
 ## Runtime credential behavior

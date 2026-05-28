@@ -55,7 +55,8 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
         meta = parseLine0(fields);
         break;
       case "1":
-        if (meta === null) throw new ParseError("Line type 1 before line type 0");
+        if (meta === null)
+          throw new ParseError("Line type 1 before line type 0");
         parseLine1(fields, schemaColumns.get("1") ?? [], meta);
         break;
       case "2":
@@ -85,7 +86,16 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
 
   if (meta === null) throw new ParseError("Missing line type 0 (info)");
 
-  return { meta, teams, entities, events, scores, entityEnds, sm5Stats, playerStateLog };
+  return {
+    meta,
+    teams,
+    entities,
+    events,
+    scores,
+    entityEnds,
+    sm5Stats,
+    playerStateLog,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -109,8 +119,7 @@ function decodeUtf16Le(buffer: Buffer): string {
 function parseLine0(fields: string[]): ParsedTdf["meta"] {
   // fields: [0, file-version, program-version, centre]
   const [, fileVersionStr, , centre] = fields;
-  if (!fileVersionStr || !centre)
-    throw new ParseError("Malformed line type 0");
+  if (!fileVersionStr || !centre) throw new ParseError("Malformed line type 0");
 
   const [countryStr, siteStr] = centre.split("-");
   const countryCode = parseInt(countryStr ?? "0", 10);

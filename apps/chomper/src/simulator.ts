@@ -39,7 +39,10 @@ class Simulator {
   private scorePointer = 0; // index into parsed.scores
 
   // Assist windows — only for Commander and Heavy opponents
-  private assistWindows = new Map<string, Array<{ actorId: string; timestamp: number }>>();
+  private assistWindows = new Map<
+    string,
+    Array<{ actorId: string; timestamp: number }>
+  >();
 
   // Interaction tracking
   private interactions = new Map<
@@ -79,9 +82,9 @@ class Simulator {
       const actor = event.actor;
       const target = event.target;
       const isTargetEntity = target
-        ? (this.entityById.get(target)?.type === "standard-target" ||
-            this.entityById.get(target)?.type === "beacon" ||
-            this.entityById.get(target)?.type === "generator-target")
+        ? this.entityById.get(target)?.type === "standard-target" ||
+          this.entityById.get(target)?.type === "beacon" ||
+          this.entityById.get(target)?.type === "generator-target"
         : false;
 
       this.events.push({
@@ -239,7 +242,11 @@ class Simulator {
       ) {
         const entry = this.parsed.playerStateLog[this.stateLogPointer]!;
         this.stateLogPointer++;
-        this.applyExplicitStateTransition(entry.time, entry.entity, entry.state as 0 | 2 | 3);
+        this.applyExplicitStateTransition(
+          entry.time,
+          entry.entity,
+          entry.state as 0 | 2 | 3,
+        );
       }
     } else {
       // pre-2.005 synthetic transitions
@@ -296,7 +303,8 @@ class Simulator {
     this.advanceScores(time);
 
     // Create synthetic GameEvent for this state transition
-    const eventType = newState === 3 ? "state_3" : newState === 2 ? "state_2" : "state_0";
+    const eventType =
+      newState === 3 ? "state_3" : newState === 2 ? "state_2" : "state_0";
     this.events.push({
       time,
       eventType,
@@ -382,10 +390,8 @@ class Simulator {
   // ---------------------------------------------------------------------------
 
   private recordSnapshot(ps: PlayerSimState, eventIndex: number): void {
-    const accuracy =
-      ps.shotsFired > 0 ? r3(ps.shotsHit / ps.shotsFired) : 0;
-    const hitDiff =
-      r3(ps.shotsHitOpponent / Math.max(ps.timesHit, 1));
+    const accuracy = ps.shotsFired > 0 ? r3(ps.shotsHit / ps.shotsFired) : 0;
+    const hitDiff = r3(ps.shotsHitOpponent / Math.max(ps.timesHit, 1));
 
     ps.stateSnapshots.push({
       eventIndex,
@@ -430,7 +436,11 @@ class Simulator {
     const bTeam = this.parsed.teams[b.teamIndex];
     // Both must be non-neutral to be opponents
     if (!aTeam || !bTeam) return false;
-    return a.teamIndex !== b.teamIndex && !aTeam.desc.toLowerCase().includes("neutral") && !bTeam.desc.toLowerCase().includes("neutral");
+    return (
+      a.teamIndex !== b.teamIndex &&
+      !aTeam.desc.toLowerCase().includes("neutral") &&
+      !bTeam.desc.toLowerCase().includes("neutral")
+    );
   }
 
   private isSameTeam(a: PlayerSimState, b: PlayerSimState): boolean {
@@ -439,7 +449,11 @@ class Simulator {
 
   private isNeutralTeam(teamIndex: number): boolean {
     const team = this.parsed.teams[teamIndex];
-    return !team || team.desc.toLowerCase() === "neutral" || team.desc.toLowerCase() === "neutral team";
+    return (
+      !team ||
+      team.desc.toLowerCase() === "neutral" ||
+      team.desc.toLowerCase() === "neutral team"
+    );
   }
 
   private getTeammates(ps: PlayerSimState): PlayerSimState[] {
@@ -454,9 +468,7 @@ class Simulator {
 
   private getOpposingActivePlayers(ps: PlayerSimState): PlayerSimState[] {
     return [...this.playerStates.values()].filter(
-      (p) =>
-        !p.isEliminated &&
-        this.isOpponent(ps, p),
+      (p) => !p.isEliminated && this.isOpponent(ps, p),
     );
   }
 
@@ -507,11 +519,19 @@ class Simulator {
   // Assist window
   // ---------------------------------------------------------------------------
 
-  private addToAssistWindow(actorId: string, targetId: string, timestamp: number): void {
+  private addToAssistWindow(
+    actorId: string,
+    targetId: string,
+    timestamp: number,
+  ): void {
     const target = this.playerStates.get(targetId);
     if (!target) return;
     // Only track assists for Commander and Heavy opponents
-    if (target.position !== POSITION.COMMANDER && target.position !== POSITION.HEAVY) return;
+    if (
+      target.position !== POSITION.COMMANDER &&
+      target.position !== POSITION.HEAVY
+    )
+      return;
 
     if (!this.assistWindows.has(targetId)) {
       this.assistWindows.set(targetId, []);
@@ -549,7 +569,10 @@ class Simulator {
   // Nuke cancel detection
   // ---------------------------------------------------------------------------
 
-  private handleNukeCancel(actor: PlayerSimState, target: PlayerSimState): void {
+  private handleNukeCancel(
+    actor: PlayerSimState,
+    target: PlayerSimState,
+  ): void {
     if (!target.isNuking) return;
 
     // Determine relationship between actor and the COMMANDER target
@@ -595,10 +618,12 @@ class Simulator {
         if (actor) this.handle0204(actor, time, eventIndex, targetId);
         break;
       case "0205":
-        if (actor && target) this.handlePlayerHit(actor, target, time, false, eventIndex);
+        if (actor && target)
+          this.handlePlayerHit(actor, target, time, false, eventIndex);
         break;
       case "0206":
-        if (actor && target) this.handlePlayerHit(actor, target, time, true, eventIndex);
+        if (actor && target)
+          this.handlePlayerHit(actor, target, time, true, eventIndex);
         break;
       case "0303":
         if (actor) this.handle0303(actor, time, eventIndex, targetId);
@@ -658,12 +683,14 @@ class Simulator {
         ps.uptime += time - ps.stateEnteredAt;
       } else if (ps.state === 3 && ps.state3EnteredAt !== null) {
         const duration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply") ps.resupplyDowntime += duration;
+        if (ps.deactivationCause === "resupply")
+          ps.resupplyDowntime += duration;
         else ps.otherDowntime += duration;
       } else if (ps.state === 2 && ps.state3EnteredAt !== null) {
         // state3EnteredAt was set when entering state 3; state 3 lasted 4000ms
         const fullDuration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply") ps.resupplyDowntime += fullDuration;
+        if (ps.deactivationCause === "resupply")
+          ps.resupplyDowntime += fullDuration;
         else ps.otherDowntime += fullDuration;
       }
 
@@ -687,7 +714,11 @@ class Simulator {
   }
 
   // 0203 — Target Hit (non-final)
-  private handle0203(actor: PlayerSimState, _time: number, eventIndex: number): void {
+  private handle0203(
+    actor: PlayerSimState,
+    _time: number,
+    eventIndex: number,
+  ): void {
     actor.shotsFired++;
     actor.shotsHit++;
     if (actor.isRapidFire) {
@@ -757,7 +788,8 @@ class Simulator {
     // 3-hit stat — hits on opponent Commander or Heavy
     if (
       isOpponent &&
-      (target.position === POSITION.COMMANDER || target.position === POSITION.HEAVY)
+      (target.position === POSITION.COMMANDER ||
+        target.position === POSITION.HEAVY)
     ) {
       actor.shotsHitOpponent3hit++;
     }
@@ -800,7 +832,11 @@ class Simulator {
       // Award assists (before clearing the window)
       this.awardAssists(target.entityId, actor.entityId);
 
-      this.incrInteraction(actor.entityId, target.entityId, "shotDeactivations");
+      this.incrInteraction(
+        actor.entityId,
+        target.entityId,
+        "shotDeactivations",
+      );
 
       target.deactivationCause = "other";
       // State transition handled by state event (emitted by advanceClock or explicit state log)
@@ -885,7 +921,11 @@ class Simulator {
   }
 
   // 0400 — Rapid Fire Activate
-  private handle0400(actor: PlayerSimState, time: number, eventIndex: number): void {
+  private handle0400(
+    actor: PlayerSimState,
+    time: number,
+    eventIndex: number,
+  ): void {
     actor.isRapidFire = true;
     actor.rapidFireStartedAt = time;
     actor.rapidFire++;
@@ -894,7 +934,11 @@ class Simulator {
   }
 
   // 0404 — Nuke Activate
-  private handle0404(actor: PlayerSimState, time: number, eventIndex: number): void {
+  private handle0404(
+    actor: PlayerSimState,
+    time: number,
+    eventIndex: number,
+  ): void {
     actor.isNuking = true;
     actor.nukeActivatedAt = time;
     actor.nukesActivated++;
@@ -903,7 +947,11 @@ class Simulator {
   }
 
   // 0405 — Nuke Detonate
-  private handle0405(actor: PlayerSimState, time: number, eventIndex: number): void {
+  private handle0405(
+    actor: PlayerSimState,
+    time: number,
+    eventIndex: number,
+  ): void {
     actor.isNuking = false;
     actor.nukesDetonated++;
 
@@ -1010,7 +1058,11 @@ class Simulator {
   }
 
   // 0510 — Team Ammo Boost
-  private handle0510(actor: PlayerSimState, time: number, eventIndex: number): void {
+  private handle0510(
+    actor: PlayerSimState,
+    time: number,
+    eventIndex: number,
+  ): void {
     actor.ammoBoost++;
     this.spendSp(actor, 15);
 
@@ -1019,14 +1071,21 @@ class Simulator {
 
     for (const teammate of this.getActiveTeammates(actor)) {
       const stats = POSITION_STATS[teammate.position]!;
-      teammate.shots = Math.min(teammate.shots + stats.resupplyShots, stats.maxShots);
+      teammate.shots = Math.min(
+        teammate.shots + stats.resupplyShots,
+        stats.maxShots,
+      );
       this.recordSnapshot(teammate, eventIndex);
     }
     void stats_actor; // suppress unused warning
   }
 
   // 0512 — Team Lives Boost
-  private handle0512(actor: PlayerSimState, _time: number, eventIndex: number): void {
+  private handle0512(
+    actor: PlayerSimState,
+    _time: number,
+    eventIndex: number,
+  ): void {
     actor.lifeBoost++;
     this.spendSp(actor, 10);
 
@@ -1034,7 +1093,10 @@ class Simulator {
 
     for (const teammate of this.getActiveTeammates(actor)) {
       const stats = POSITION_STATS[teammate.position]!;
-      teammate.lives = Math.min(teammate.lives + stats.resupplyLives, stats.maxLives);
+      teammate.lives = Math.min(
+        teammate.lives + stats.resupplyLives,
+        stats.maxLives,
+      );
       this.recordSnapshot(teammate, eventIndex);
     }
   }
@@ -1119,7 +1181,8 @@ class Simulator {
       const players = [...this.playerStates.values()].filter(
         (p) => p.teamIndex === teamIndex,
       );
-      const allEliminated = players.length > 0 && players.every((p) => p.isEliminated);
+      const allEliminated =
+        players.length > 0 && players.every((p) => p.isEliminated);
       teamEliminated.set(teamIndex, allEliminated);
     }
 
@@ -1235,8 +1298,16 @@ export function runConsistencyCheck(
       ["nukesDetonated", ps.nukesDetonated, stats.nukesDetonated],
       ["nukesActivated", ps.nukesActivated, stats.nukesActivated],
       ["nukesCanceled", ps.nukesCanceled, stats.nukeCancels],
-      ["shotsHitOpponentMedic", ps.shotsHitOpponentMedic + ps.missilesHitOpponentMedic * 2, stats.medicHits],
-      ["shotsHitTeamMedic", ps.shotsHitTeamMedic + ps.missilesHitTeamMedic * 2, stats.ownMedicHits],
+      [
+        "shotsHitOpponentMedic",
+        ps.shotsHitOpponentMedic + ps.missilesHitOpponentMedic * 2,
+        stats.medicHits,
+      ],
+      [
+        "shotsHitTeamMedic",
+        ps.shotsHitTeamMedic + ps.missilesHitTeamMedic * 2,
+        stats.ownMedicHits,
+      ],
       ["nukesHitMedic", ps.nukesHitMedic, stats.medicNukes],
       ["rapidFire", ps.rapidFire, stats.scoutRapid],
       ["lifeBoost", ps.lifeBoost, stats.lifeBoost],

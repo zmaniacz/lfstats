@@ -76,7 +76,11 @@ export async function ingest(
     // -----------------------------------------------------------------------
     // 3. Insert Game
     // -----------------------------------------------------------------------
-    const archiveKey = buildArchiveKey(parsed.meta.countryCode, parsed.meta.siteCode, parsed.meta.startTime);
+    const archiveKey = buildArchiveKey(
+      parsed.meta.countryCode,
+      parsed.meta.siteCode,
+      parsed.meta.startTime,
+    );
 
     const gameRow = await insertGame(tx, {
       centerId,
@@ -95,11 +99,15 @@ export async function ingest(
     const gameTeamRows = await insertGameTeams(
       tx,
       parsed.teams.map((team) => {
-        const simTeam = simResult.teams.find((t) => t.tdfTeamIndex === team.index);
+        const simTeam = simResult.teams.find(
+          (t) => t.tdfTeamIndex === team.index,
+        );
         return {
           gameId,
           tdfTeamIndex: team.index,
-          isNeutral: team.desc.toLowerCase() === "neutral" || team.desc.toLowerCase() === "neutral team",
+          isNeutral:
+            team.desc.toLowerCase() === "neutral" ||
+            team.desc.toLowerCase() === "neutral team",
           name: team.desc,
           colourEnum: team.colourEnum,
           colourRgb: team.colourRgb,
@@ -170,7 +178,10 @@ export async function ingest(
     );
     const gameTargetIdByHardwareId = new Map<string, string>();
     for (let i = 0; i < targetEntityList.length; i++) {
-      gameTargetIdByHardwareId.set(targetEntityList[i]!.id, gameTargetRows[i]!.id);
+      gameTargetIdByHardwareId.set(
+        targetEntityList[i]!.id,
+        gameTargetRows[i]!.id,
+      );
     }
 
     // -----------------------------------------------------------------------
@@ -181,7 +192,9 @@ export async function ingest(
       tx,
       refereeEntities.map((entity) => ({
         gameId,
-        playerId: entity.id.startsWith("#") ? (playerIdByEntityId.get(entity.id) ?? null) : null,
+        playerId: entity.id.startsWith("#")
+          ? (playerIdByEntityId.get(entity.id) ?? null)
+          : null,
         iplId: entity.id.startsWith("#") ? entity.id : null,
         callsign: entity.desc,
         battlesuitId: entity.battlesuit
@@ -199,9 +212,7 @@ export async function ingest(
     // 9. Insert Scorecards (bulk) — all players
     // -----------------------------------------------------------------------
     const playerEntityList = parsed.entities.filter((e) => e.type === "player");
-    const endByEntityId = new Map(
-      parsed.entityEnds.map((e) => [e.id, e]),
-    );
+    const endByEntityId = new Map(parsed.entityEnds.map((e) => [e.id, e]));
 
     // Find mission end time for end_time calculation
     const missionEndEvent = parsed.events.find((e) => e.type === "0101");
@@ -228,11 +239,13 @@ export async function ingest(
       const endTime = new Date(gameStartTime.getTime() + endOffset);
       const score = end?.score ?? 0;
 
-      const accuracy = (sm5?.shotsFired ?? 0) > 0
-        ? r3((sm5?.shotsHit ?? 0) / (sm5?.shotsFired ?? 1))
-        : 0;
-      const hitDiff =
-        r3((sm5?.shotOpponent ?? 0) / Math.max(sm5?.timesZapped ?? 0, 1));
+      const accuracy =
+        (sm5?.shotsFired ?? 0) > 0
+          ? r3((sm5?.shotsHit ?? 0) / (sm5?.shotsFired ?? 1))
+          : 0;
+      const hitDiff = r3(
+        (sm5?.shotOpponent ?? 0) / Math.max(sm5?.timesZapped ?? 0, 1),
+      );
 
       // Average nuke activation time
       const avgNukeTime =
@@ -251,8 +264,8 @@ export async function ingest(
         isScout && ps && ps.shotsFiredDuringRapid > 0
           ? r3(ps.shotsHitDuringRapid / ps.shotsFiredDuringRapid)
           : isScout
-          ? 0
-          : null;
+            ? 0
+            : null;
 
       // SP spent calculation
       const spSpent = isHeavySp
@@ -308,7 +321,9 @@ export async function ingest(
         nukesDetonated: isCommander ? (sm5?.nukesDetonated ?? 0) : null,
         nukesHitMedic: isCommander ? (sm5?.medicNukes ?? 0) : null,
         livesRemovedByNuke: isCommander ? (ps?.livesRemovedByNuke ?? 0) : null,
-        totalNukeActivationTime: isCommander ? (ps?.totalNukeActivationTime ?? 0) : null,
+        totalNukeActivationTime: isCommander
+          ? (ps?.totalNukeActivationTime ?? 0)
+          : null,
         averageNukeActivationTime: isCommander ? avgNukeTime : null,
 
         // Nuke cancel — all positions
@@ -319,17 +334,25 @@ export async function ingest(
         rapidFire: isScout ? (sm5?.scoutRapid ?? 0) : null,
         totalRapidTime: isScout ? (ps?.totalRapidTime ?? 0) : null,
         averageRapidTime: isScout ? avgRapidTime : null,
-        shotsFiredDuringRapid: isScout ? (ps?.shotsFiredDuringRapid ?? 0) : null,
+        shotsFiredDuringRapid: isScout
+          ? (ps?.shotsFiredDuringRapid ?? 0)
+          : null,
         shotsHitDuringRapid: isScout ? (ps?.shotsHitDuringRapid ?? 0) : null,
-        shotsHitOpponentDuringRapid: isScout ? (ps?.shotsHitOpponentDuringRapid ?? 0) : null,
-        shotsHitTeamDuringRapid: isScout ? (ps?.shotsHitTeamDuringRapid ?? 0) : null,
+        shotsHitOpponentDuringRapid: isScout
+          ? (ps?.shotsHitOpponentDuringRapid ?? 0)
+          : null,
+        shotsHitTeamDuringRapid: isScout
+          ? (ps?.shotsHitTeamDuringRapid ?? 0)
+          : null,
         accuracyDuringRapid: accDuringRapid,
         ammoBoost: isAmmo ? (sm5?.ammoBoost ?? 0) : null,
         lifeBoost: isMedic ? (sm5?.lifeBoost ?? 0) : null,
 
         // Support stats
         resuppliesGiven: isSupport ? (ps?.resuppliesGiven ?? 0) : null,
-        doubleResuppliesGiven: isSupport ? (ps?.doubleResuppliesGiven ?? 0) : null,
+        doubleResuppliesGiven: isSupport
+          ? (ps?.doubleResuppliesGiven ?? 0)
+          : null,
         resuppliesReceivedAmmo: ps?.resuppliesReceivedAmmo ?? 0,
         resuppliesReceivedLives: ps?.resuppliesReceivedLives ?? 0,
         doubleResuppliesReceived: ps?.doubleResuppliesReceived ?? 0,
@@ -375,7 +398,10 @@ export async function ingest(
       };
     });
 
-    const scorecardRows = await insertScorecards(tx, scorecardInsertRows as Parameters<typeof insertScorecards>[1]);
+    const scorecardRows = await insertScorecards(
+      tx,
+      scorecardInsertRows as Parameters<typeof insertScorecards>[1],
+    );
     const scorecardIdByEntityId = new Map<string, string>();
     for (let i = 0; i < playerEntityList.length; i++) {
       scorecardIdByEntityId.set(playerEntityList[i]!.id, scorecardRows[i]!.id);
@@ -524,7 +550,11 @@ export async function ingest(
 // Helpers
 // ---------------------------------------------------------------------------
 
-export function buildArchiveKey(countryCode: number, siteCode: number, startTime: string): string {
+export function buildArchiveKey(
+  countryCode: number,
+  siteCode: number,
+  startTime: string,
+): string {
   return `${countryCode}-${siteCode}-${startTime}.tdf`;
 }
 

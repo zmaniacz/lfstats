@@ -88,7 +88,9 @@ export function calculateMvp(
     const pos = ps.position;
 
     // Find this player's team and whether it won by elimination
-    const simTeam = simResult.teams.find((t) => t.tdfTeamIndex === ps.teamIndex);
+    const simTeam = simResult.teams.find(
+      (t) => t.tdfTeamIndex === ps.teamIndex,
+    );
     const teamWonByElimination =
       simResult.outcome === "elimination" && simTeam?.result === "win";
 
@@ -107,18 +109,27 @@ export function calculateMvp(
 
     // Accuracy: ceil(accuracy × 100) percentage points
     // Multiply first to avoid floating point error (e.g. 56/100 * 100 = 56.0000...01)
-    const accuracyPct = sm5.shotsFired > 0
-      ? Math.round((sm5.shotsHit * 100) / sm5.shotsFired)
-      : 0;
+    const accuracyPct =
+      sm5.shotsFired > 0
+        ? Math.round((sm5.shotsHit * 100) / sm5.shotsFired)
+        : 0;
 
     const components: MvpComponent[] = [];
 
     const comp = (name: string, input: number, points: number) => {
-      components.push({ component: name, inputValue: r3(input), points: r3(points) });
+      components.push({
+        component: name,
+        inputValue: r3(input),
+        points: r3(points),
+      });
     };
 
     // Universal components (all positions)
-    comp("accuracy", accuracyPct, accuracyPct * params.universal.accuracy_points_per_percent);
+    comp(
+      "accuracy",
+      accuracyPct,
+      accuracyPct * params.universal.accuracy_points_per_percent,
+    );
     comp(
       "shots_hit_opponent_medic",
       sm5.medicHits,
@@ -149,7 +160,11 @@ export function calculateMvp(
     // Eliminated — all positions except Medic
     if (pos !== POSITION.MEDIC) {
       const elimInput = eliminated ? 1 : 0;
-      comp("eliminated", elimInput, elimInput * params.universal.eliminated_points);
+      comp(
+        "eliminated",
+        elimInput,
+        elimInput * params.universal.eliminated_points,
+      );
     } else {
       comp("eliminated", 0, 0);
     }
@@ -227,7 +242,11 @@ export function calculateMvp(
     const scoreBonusThreshold = getScoreBonusThreshold(pos, params);
     const scoreBonusMultiplier = getScoreBonusMultiplier(pos, params);
     const scoreBonusInput = r3(Math.max(0, score - scoreBonusThreshold) / 1000);
-    comp("score_bonus", scoreBonusInput, scoreBonusInput * scoreBonusMultiplier);
+    comp(
+      "score_bonus",
+      scoreBonusInput,
+      scoreBonusInput * scoreBonusMultiplier,
+    );
 
     const totalPoints = r3(components.reduce((sum, c) => sum + c.points, 0));
 

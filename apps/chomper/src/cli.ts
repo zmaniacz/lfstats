@@ -58,7 +58,10 @@ const existingCenter = await findCenterByNaturalKey(
   parsed.meta.siteCode,
 );
 if (existingCenter) {
-  const existingGame = await findGameByNaturalKey(existingCenter.id, gameStartTime);
+  const existingGame = await findGameByNaturalKey(
+    existingCenter.id,
+    gameStartTime,
+  );
   if (existingGame) {
     console.warn(`Skipped: duplicate game (gameId=${existingGame.id})`);
     process.exit(0);
@@ -84,7 +87,10 @@ if (!mvpModel) {
 }
 
 const entityEndsById = new Map(
-  parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
+  parsed.entityEnds.map((e) => [
+    e.id,
+    { score: e.score, exitType: e.exitType },
+  ]),
 );
 const mvpRows = calculateMvp(
   simResult,
@@ -95,5 +101,11 @@ const mvpRows = calculateMvp(
 );
 
 // Phase 3 — Ingest
-const gameId = await ingest(parsed, simResult, gameStartTime, mvpRows, gameType);
+const gameId = await ingest(
+  parsed,
+  simResult,
+  gameStartTime,
+  mvpRows,
+  gameType,
+);
 console.log(`Ingested: gameId=${gameId}`);

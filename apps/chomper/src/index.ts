@@ -1,5 +1,11 @@
 import type { S3Handler } from "aws-lambda";
-import { findCenterByNaturalKey, findGameByNaturalKey, findActiveMvpModel, createChomperJob, updateChomperJob } from "@lfstats/db";
+import {
+  findCenterByNaturalKey,
+  findGameByNaturalKey,
+  findActiveMvpModel,
+  createChomperJob,
+  updateChomperJob,
+} from "@lfstats/db";
 import { parseTdf, ParseError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
 import { ingest, parseGameStartTime, buildArchiveKey } from "./ingester.js";
@@ -7,7 +13,9 @@ import { ingest, parseGameStartTime, buildArchiveKey } from "./ingester.js";
 const DEADLOCK_CODE = "40P01";
 const MAX_INGEST_RETRIES = 3;
 
-async function ingestWithRetry(...args: Parameters<typeof ingest>): Promise<string> {
+async function ingestWithRetry(
+  ...args: Parameters<typeof ingest>
+): Promise<string> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await ingest(...args);
@@ -86,7 +94,10 @@ export const handler: S3Handler = async (event, context) => {
       parsed.meta.siteCode,
     );
     if (existingCenter) {
-      const existingGame = await findGameByNaturalKey(existingCenter.id, gameStartTime);
+      const existingGame = await findGameByNaturalKey(
+        existingCenter.id,
+        gameStartTime,
+      );
       if (existingGame) {
         await updateChomperJob(job.id, {
           status: "skipped",
@@ -113,7 +124,10 @@ export const handler: S3Handler = async (event, context) => {
 
     // 8. Calculate MVP scores
     const entityEndsById = new Map(
-      parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
+      parsed.entityEnds.map((e) => [
+        e.id,
+        { score: e.score, exitType: e.exitType },
+      ]),
     );
     const mvpRows = calculateMvp(
       simResult,
@@ -124,7 +138,13 @@ export const handler: S3Handler = async (event, context) => {
     );
 
     // 9–15. Write all rows to database in a single transaction (Phase 3)
-    const gameId = await ingestWithRetry(parsed, simResult, gameStartTime, mvpRows, gameType);
+    const gameId = await ingestWithRetry(
+      parsed,
+      simResult,
+      gameStartTime,
+      mvpRows,
+      gameType,
+    );
 
     // 10. Update ChomperJob (status: completed) — outside transaction
     await updateChomperJob(job.id, {
