@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
+import { AppSessionProvider } from "@/components/session-provider";
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
@@ -22,15 +23,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-mono", jetbrainsMono.variable)}>
       <body>
-        <TooltipProvider>
-          <SidebarProvider>
-            <SiteHeader />
-            <AppSidebar />
-            <SidebarInset className="pt-(--header-height)">
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
-        </TooltipProvider>
+        <AppSessionProvider>
+          <TooltipProvider>
+            <SidebarProvider>
+              <SiteHeader />
+              <AppSidebar />
+              <SidebarInset className="pt-(--header-height)">
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          </TooltipProvider>
+        </AppSessionProvider>
       </body>
     </html>
   );

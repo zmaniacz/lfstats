@@ -4,3 +4,4 @@ export * from "./queries/chomper";
 export * from "./queries/games";
 export * from "./queries/centers";
 export * from "./queries/players";
+export * from "./queries/userRoles";

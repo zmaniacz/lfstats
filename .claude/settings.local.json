@@ -7,7 +7,11 @@
       "Bash(gh api *)",
       "Bash(pnpm tsc *)",
       "Bash(npx shadcn@latest add tabs --yes)",
-      "Bash(npx shadcn@latest add select --yes)"
+      "Bash(npx shadcn@latest add select --yes)",
+      "Bash(pnpm db:generate)",
+      "Bash(pnpm --filter @lfstats/db db:generate)",
+      "Bash(pnpm --filter @lfstats/db db:migrate)",
+      "Bash(del \"packages\\\\db\\\\drizzle\\\\0004_handy_iron_man.sql\")"
     ]
   }
 }
