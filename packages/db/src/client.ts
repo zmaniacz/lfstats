@@ -76,6 +76,22 @@ export async function initDb(): Promise<PostgresJsDatabase<typeof schema>> {
 }
 
 /**
+ * Returns the concrete instance (not the proxy). Use where a
+ * library inspects the real database type — e.g. the Auth.js Drizzle
+ * adapter, which detects the dialect from the instance itself.
+ */
+export function getDb(): PostgresJsDatabase<typeof schema> {
+  if (globalForDb._db) return globalForDb._db;
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set. For the Secrets Manager path (e.g. Chomper), call `await initDb()` first.",
+    );
+  }
+  return build(url);
+}
+
+/**
  * Lazy database handle. Nothing runs at import. The client is built on
  * first property access from DATABASE_URL. For the Secrets Manager path,
  * call `await initDb()` first.
