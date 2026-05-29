@@ -55,5 +55,17 @@ async function resolveDatabaseUrl(): Promise<string> {
   return `postgres://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${host}:${port}/${dbname}`;
 }
 
-const client = postgres(await resolveDatabaseUrl());
+const globalForDb = globalThis as typeof globalThis & {
+  _pgClient?: postgres.Sql;
+};
+
+async function getOrCreateClient(): Promise<postgres.Sql> {
+  if (!globalForDb._pgClient) {
+    const url = await resolveDatabaseUrl();
+    globalForDb._pgClient = postgres(url, { max: 10 });
+  }
+  return globalForDb._pgClient;
+}
+
+const client = await getOrCreateClient();
 export const db = drizzle(client, { schema });
