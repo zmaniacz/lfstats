@@ -9,7 +9,7 @@ import {
   gameTag,
   gameTagAssignment,
 } from "../schema";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, isNull, sql } from "drizzle-orm";
 
 export const GAMES_PER_PAGE = 10;
 
@@ -225,6 +225,328 @@ export type GameDetail = {
   tags: GameTagSummary[];
   teams: GameDetailTeam[];
 };
+
+export async function getNightlyDetails(centerId: string, date: string): Promise<GameDetail[]> {
+  const gameRows = await db
+    .select({
+      id: game.id,
+      centerId: game.centerId,
+      competitionId: game.competitionId,
+      description: game.description,
+      startTime: game.startTime,
+      centerName: center.name,
+      outcome: game.outcome,
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      exclude: game.exclude,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(game.centerId, centerId),
+        sql`date(${game.startTime}) = ${date}::date`,
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
+    .orderBy(desc(game.startTime));
+
+  if (gameRows.length === 0) return [];
+
+  const gameIds = gameRows.map((r) => r.id);
+
+  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows] = await Promise.all([
+    db
+      .select({
+        gameId: sm5GameTeam.gameId,
+        id: sm5GameTeam.id,
+        name: sm5GameTeam.name,
+        colourEnum: sm5GameTeam.colourEnum,
+        score: sm5GameTeam.score,
+        eliminationBonus: sm5GameTeam.eliminationBonus,
+        result: sm5GameTeam.result,
+        eliminated: sm5GameTeam.eliminated,
+      })
+      .from(sm5GameTeam)
+      .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false))),
+
+    db
+      .select({
+        id: sm5Scorecard.id,
+        teamId: sm5Scorecard.teamId,
+        playerId: sm5Scorecard.playerId,
+        iplId: sm5Scorecard.iplId,
+        callsign: sm5Scorecard.callsign,
+        position: sm5Scorecard.position,
+        eliminated: sm5Scorecard.eliminated,
+        score: sm5Scorecard.score,
+        mvpPoints: sm5Scorecard.mvpPoints,
+        livesLeft: sm5Scorecard.livesLeft,
+        shotsLeft: sm5Scorecard.shotsLeft,
+        hitDiff: sm5Scorecard.hitDiff,
+        accuracy: sm5Scorecard.accuracy,
+        shotsFired: sm5Scorecard.shotsFired,
+        shotsHit: sm5Scorecard.shotsHit,
+        shotsHitOpponent: sm5Scorecard.shotsHitOpponent,
+        shotsHitOpponent3hit: sm5Scorecard.shotsHitOpponent3hit,
+        shotsHitTeam: sm5Scorecard.shotsHitTeam,
+        shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
+        shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+        timesHit: sm5Scorecard.timesHit,
+        missileHits: sm5Scorecard.missileHits,
+        missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
+        missilesHitTeam: sm5Scorecard.missilesHitTeam,
+        missilesHitOpponentMedic: sm5Scorecard.missilesHitOpponentMedic,
+        missilesHitTeamMedic: sm5Scorecard.missilesHitTeamMedic,
+        timesHitByMissile: sm5Scorecard.timesHitByMissile,
+        nukesActivated: sm5Scorecard.nukesActivated,
+        nukesDetonated: sm5Scorecard.nukesDetonated,
+        nukesHitMedic: sm5Scorecard.nukesHitMedic,
+        livesRemovedByNuke: sm5Scorecard.livesRemovedByNuke,
+        totalNukeActivationTime: sm5Scorecard.totalNukeActivationTime,
+        averageNukeActivationTime: sm5Scorecard.averageNukeActivationTime,
+        nukesCanceled: sm5Scorecard.nukesCanceled,
+        teamNukesCanceled: sm5Scorecard.teamNukesCanceled,
+        rapidFire: sm5Scorecard.rapidFire,
+        totalRapidTime: sm5Scorecard.totalRapidTime,
+        averageRapidTime: sm5Scorecard.averageRapidTime,
+        shotsFiredDuringRapid: sm5Scorecard.shotsFiredDuringRapid,
+        shotsHitDuringRapid: sm5Scorecard.shotsHitDuringRapid,
+        shotsHitOpponentDuringRapid: sm5Scorecard.shotsHitOpponentDuringRapid,
+        shotsHitTeamDuringRapid: sm5Scorecard.shotsHitTeamDuringRapid,
+        accuracyDuringRapid: sm5Scorecard.accuracyDuringRapid,
+        ammoBoost: sm5Scorecard.ammoBoost,
+        lifeBoost: sm5Scorecard.lifeBoost,
+        resuppliesGiven: sm5Scorecard.resuppliesGiven,
+        doubleResuppliesGiven: sm5Scorecard.doubleResuppliesGiven,
+        resuppliesReceivedAmmo: sm5Scorecard.resuppliesReceivedAmmo,
+        resuppliesReceivedLives: sm5Scorecard.resuppliesReceivedLives,
+        doubleResuppliesReceived: sm5Scorecard.doubleResuppliesReceived,
+        deactivatedOpponent: sm5Scorecard.deactivatedOpponent,
+        deactivatedTeam: sm5Scorecard.deactivatedTeam,
+        eliminatedOpponent: sm5Scorecard.eliminatedOpponent,
+        eliminatedTeam: sm5Scorecard.eliminatedTeam,
+        eliminatedOpponentMedic: sm5Scorecard.eliminatedOpponentMedic,
+        eliminatedTeamMedic: sm5Scorecard.eliminatedTeamMedic,
+        assists: sm5Scorecard.assists,
+        resetOpponent: sm5Scorecard.resetOpponent,
+        resetTeam: sm5Scorecard.resetTeam,
+        missileResetOpponent: sm5Scorecard.missileResetOpponent,
+        missileResetTeam: sm5Scorecard.missileResetTeam,
+        spEarned: sm5Scorecard.spEarned,
+        spSpent: sm5Scorecard.spSpent,
+        targetsDestroyed: sm5Scorecard.targetsDestroyed,
+        penalties: sm5Scorecard.penalties,
+        uptime: sm5Scorecard.uptime,
+        resupplyDowntime: sm5Scorecard.resupplyDowntime,
+        otherDowntime: sm5Scorecard.otherDowntime,
+      })
+      .from(sm5Scorecard)
+      .where(inArray(sm5Scorecard.gameId, gameIds))
+      .orderBy(desc(sm5Scorecard.score)),
+
+    db
+      .select({
+        scorecardId: sm5ScorecardMvp.scorecardId,
+        component: sm5ScorecardMvp.component,
+        inputValue: sm5ScorecardMvp.inputValue,
+        points: sm5ScorecardMvp.points,
+      })
+      .from(sm5ScorecardMvp)
+      .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
+      .where(inArray(sm5Scorecard.gameId, gameIds)),
+
+    db
+      .select({
+        scorecardId: sm5GamePlayerInteraction.scorecardId,
+        targetScorecardId: sm5GamePlayerInteraction.targetScorecardId,
+        shotsHit: sm5GamePlayerInteraction.shotsHit,
+        missileHits: sm5GamePlayerInteraction.missileHits,
+      })
+      .from(sm5GamePlayerInteraction)
+      .where(inArray(sm5GamePlayerInteraction.gameId, gameIds)),
+
+    db
+      .select({
+        gameId: gameTagAssignment.gameId,
+        id: gameTag.id,
+        name: gameTag.name,
+        color: gameTag.color,
+      })
+      .from(gameTag)
+      .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
+      .where(inArray(gameTagAssignment.gameId, gameIds)),
+  ]);
+
+  const mvpByScorecard = new Map<string, MvpComponentRow[]>();
+  for (const row of mvpRows) {
+    if (row.inputValue === 0 && row.points === 0) continue;
+    const list = mvpByScorecard.get(row.scorecardId) ?? [];
+    list.push({ component: row.component, inputValue: row.inputValue, points: row.points });
+    mvpByScorecard.set(row.scorecardId, list);
+  }
+
+  const scorecardMeta = new Map<string, { callsign: string; teamId: string }>();
+  for (const sc of scorecardRows) {
+    scorecardMeta.set(sc.id, { callsign: sc.callsign, teamId: sc.teamId });
+  }
+
+  type RawHit = { shotsHit: number; missileHits: number };
+  const interactionDealt = new Map<string, Map<string, RawHit>>();
+  const interactionReceived = new Map<string, Map<string, RawHit>>();
+  for (const row of interactionRows) {
+    if (!interactionDealt.has(row.scorecardId)) interactionDealt.set(row.scorecardId, new Map());
+    interactionDealt.get(row.scorecardId)!.set(row.targetScorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
+    if (!interactionReceived.has(row.targetScorecardId)) interactionReceived.set(row.targetScorecardId, new Map());
+    interactionReceived.get(row.targetScorecardId)!.set(row.scorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
+  }
+
+  const teamsByGame = new Map<string, typeof teamRows>();
+  for (const team of teamRows) {
+    const list = teamsByGame.get(team.gameId) ?? [];
+    list.push(team);
+    teamsByGame.set(team.gameId, list);
+  }
+
+  const scorecardsByTeam = new Map<string, typeof scorecardRows>();
+  for (const sc of scorecardRows) {
+    const list = scorecardsByTeam.get(sc.teamId) ?? [];
+    list.push(sc);
+    scorecardsByTeam.set(sc.teamId, list);
+  }
+
+  const tagsByGame = new Map<string, GameTagSummary[]>();
+  for (const tag of tagRows) {
+    const list = tagsByGame.get(tag.gameId) ?? [];
+    list.push({ id: tag.id, name: tag.name, color: tag.color });
+    tagsByGame.set(tag.gameId, list);
+  }
+
+  function buildPlayers(teamId: string, teamIdRef: string): GameDetailPlayer[] {
+    return (scorecardsByTeam.get(teamId) ?? []).map((sc) => ({
+      id: sc.id,
+      playerId: sc.playerId,
+      iplId: sc.iplId,
+      callsign: sc.callsign,
+      position: sc.position,
+      eliminated: sc.eliminated,
+      score: sc.score,
+      mvpPoints: sc.mvpPoints,
+      livesLeft: sc.livesLeft,
+      shotsLeft: sc.shotsLeft,
+      hitDiff: sc.hitDiff,
+      accuracy: sc.accuracy,
+      shotsFired: sc.shotsFired,
+      shotsHit: sc.shotsHit,
+      shotsHitOpponent: sc.shotsHitOpponent,
+      shotsHitOpponent3hit: sc.shotsHitOpponent3hit,
+      shotsHitTeam: sc.shotsHitTeam,
+      shotsHitOpponentMedic: sc.shotsHitOpponentMedic,
+      shotsHitTeamMedic: sc.shotsHitTeamMedic,
+      timesHit: sc.timesHit,
+      missileHits: sc.missileHits,
+      missilesHitOpponent: sc.missilesHitOpponent,
+      missilesHitTeam: sc.missilesHitTeam,
+      missilesHitOpponentMedic: sc.missilesHitOpponentMedic,
+      missilesHitTeamMedic: sc.missilesHitTeamMedic,
+      timesHitByMissile: sc.timesHitByMissile,
+      nukesActivated: sc.nukesActivated,
+      nukesDetonated: sc.nukesDetonated,
+      nukesHitMedic: sc.nukesHitMedic,
+      livesRemovedByNuke: sc.livesRemovedByNuke,
+      totalNukeActivationTime: sc.totalNukeActivationTime,
+      averageNukeActivationTime: sc.averageNukeActivationTime,
+      nukesCanceled: sc.nukesCanceled,
+      teamNukesCanceled: sc.teamNukesCanceled,
+      rapidFire: sc.rapidFire,
+      totalRapidTime: sc.totalRapidTime,
+      averageRapidTime: sc.averageRapidTime,
+      shotsFiredDuringRapid: sc.shotsFiredDuringRapid,
+      shotsHitDuringRapid: sc.shotsHitDuringRapid,
+      shotsHitOpponentDuringRapid: sc.shotsHitOpponentDuringRapid,
+      shotsHitTeamDuringRapid: sc.shotsHitTeamDuringRapid,
+      accuracyDuringRapid: sc.accuracyDuringRapid,
+      ammoBoost: sc.ammoBoost,
+      lifeBoost: sc.lifeBoost,
+      resuppliesGiven: sc.resuppliesGiven,
+      doubleResuppliesGiven: sc.doubleResuppliesGiven,
+      resuppliesReceivedAmmo: sc.resuppliesReceivedAmmo,
+      resuppliesReceivedLives: sc.resuppliesReceivedLives,
+      doubleResuppliesReceived: sc.doubleResuppliesReceived,
+      deactivatedOpponent: sc.deactivatedOpponent,
+      deactivatedTeam: sc.deactivatedTeam,
+      eliminatedOpponent: sc.eliminatedOpponent,
+      eliminatedTeam: sc.eliminatedTeam,
+      eliminatedOpponentMedic: sc.eliminatedOpponentMedic,
+      eliminatedTeamMedic: sc.eliminatedTeamMedic,
+      assists: sc.assists,
+      resetOpponent: sc.resetOpponent,
+      resetTeam: sc.resetTeam,
+      missileResetOpponent: sc.missileResetOpponent,
+      missileResetTeam: sc.missileResetTeam,
+      spEarned: sc.spEarned,
+      spSpent: sc.spSpent,
+      targetsDestroyed: sc.targetsDestroyed,
+      penalties: sc.penalties,
+      uptime: sc.uptime,
+      resupplyDowntime: sc.resupplyDowntime,
+      otherDowntime: sc.otherDowntime,
+      mvpComponents: mvpByScorecard.get(sc.id) ?? [],
+      hitInteractions: (() => {
+        const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>();
+        const received = interactionReceived.get(sc.id) ?? new Map<string, RawHit>();
+        const otherIds = new Set([...dealt.keys(), ...received.keys()]);
+        const interactions: PlayerHitData[] = [];
+        for (const otherId of otherIds) {
+          const meta = scorecardMeta.get(otherId);
+          if (!meta) continue;
+          const d = dealt.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
+          const r = received.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
+          interactions.push({
+            callsign: meta.callsign,
+            isTeammate: meta.teamId === teamIdRef,
+            hitsDealt: d.shotsHit,
+            missilesDealt: d.missileHits,
+            hitsReceived: r.shotsHit,
+            missilesReceived: r.missileHits,
+          });
+        }
+        return interactions;
+      })(),
+    }));
+  }
+
+  return gameRows.map((gameRow) => {
+    const gameTeams: GameDetailTeam[] = (teamsByGame.get(gameRow.id) ?? [])
+      .sort((a, b) => (a.result === "win" ? -1 : b.result === "win" ? 1 : 0))
+      .map((team) => ({
+        id: team.id,
+        name: team.name,
+        colourEnum: team.colourEnum,
+        score: team.score,
+        eliminationBonus: team.eliminationBonus,
+        result: team.result,
+        eliminated: team.eliminated,
+        players: buildPlayers(team.id, team.id),
+      }));
+
+    return {
+      id: gameRow.id,
+      centerId: gameRow.centerId,
+      competitionId: gameRow.competitionId,
+      description: gameRow.description,
+      startTime: gameRow.startTime,
+      centerName: gameRow.centerName,
+      outcome: gameRow.outcome,
+      scheduledDuration: gameRow.scheduledDuration,
+      actualDuration: gameRow.actualDuration,
+      exclude: gameRow.exclude,
+      tags: tagsByGame.get(gameRow.id) ?? [],
+      teams: gameTeams,
+    };
+  });
+}
 
 export async function getGameCenterId(id: string): Promise<string | null> {
   const [row] = await db

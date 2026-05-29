@@ -1,6 +1,6 @@
 import { db } from "../client";
-import { game, sm5GameTeam, center, competition, gameTagAssignment } from "../schema";
-import { eq, and, isNull, or, inArray, gte, lte, sql, desc } from "drizzle-orm";
+import { game, sm5GameTeam, sm5Scorecard, center, competition, gameTagAssignment } from "../schema";
+import { eq, and, isNull, isNotNull, or, inArray, gte, lte, sql, desc } from "drizzle-orm";
 import type { GameListItem } from "./games";
 
 async function attachTeams(rows: { id: string; startTime: Date; outcome: "score" | "elimination" | "draw"; centerName: string; description: string | null }[]): Promise<GameListItem[]> {
@@ -40,6 +40,24 @@ async function attachTeams(rows: { id: string; startTime: Date; outcome: "score"
       result: t.result,
     })),
   }));
+}
+
+export async function getGameDatesForCenter(centerId: string): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({
+      gameDate: sql<string>`date(${game.startTime})::text`,
+    })
+    .from(game)
+    .where(
+      and(
+        eq(game.centerId, centerId),
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
+    .orderBy(desc(sql`date(${game.startTime})::text`));
+
+  return rows.map((r) => r.gameDate);
 }
 
 export async function getNightlyGames(centerId: string, date: string): Promise<GameListItem[]> {
@@ -128,6 +146,38 @@ export async function getCompetitionGames(competitionId: string): Promise<GameLi
     .orderBy(desc(game.startTime));
 
   return attachTeams(rows);
+}
+
+export type PlayerSocialAverages = {
+  playerId: string;
+  avgMvp: number;
+  avgScore: number;
+};
+
+export async function getPlayerSocialAveragesByCenter(centerId: string): Promise<PlayerSocialAverages[]> {
+  const rows = await db
+    .select({
+      playerId: sm5Scorecard.playerId,
+      avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
+      avgScore: sql<number>`AVG(${sm5Scorecard.score})::float`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
+    .where(
+      and(
+        eq(game.centerId, centerId),
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+        eq(sm5GameTeam.isNeutral, false),
+        isNotNull(sm5Scorecard.playerId),
+      ),
+    )
+    .groupBy(sm5Scorecard.playerId);
+
+  return rows
+    .filter((r) => r.playerId !== null)
+    .map((r) => ({ playerId: r.playerId as string, avgMvp: r.avgMvp, avgScore: r.avgScore }));
 }
 
 export async function getAllCompetitiveGames(): Promise<GameListItem[]> {

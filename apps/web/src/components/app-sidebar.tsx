@@ -14,9 +14,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { CrosshairIcon, GameControllerIcon, HeartIcon, MapPinIcon, ShieldIcon, UsersIcon } from "@phosphor-icons/react"
+import { CalendarIcon, CrosshairIcon, GameControllerIcon, HeartIcon, MapPinIcon, ShieldIcon, UsersIcon } from "@phosphor-icons/react"
 
 const baseNavItems = [
+  {
+    title: "Nightly Stats",
+    url: "/nightly",
+    icon: <CalendarIcon />,
+  },
   {
     title: "Games",
     url: "/games",
