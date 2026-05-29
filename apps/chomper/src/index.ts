@@ -1,14 +1,17 @@
-import type { S3Handler } from "aws-lambda";
 import {
+  createChomperJob,
+  findActiveMvpModel,
   findCenterByNaturalKey,
   findGameByNaturalKey,
-  findActiveMvpModel,
-  createChomperJob,
+  initDb,
   updateChomperJob,
 } from "@lfstats/db";
-import { parseTdf, ParseError } from "./parser.js";
-import { simulate, runConsistencyCheck } from "./simulator.js";
-import { ingest, parseGameStartTime, buildArchiveKey } from "./ingester.js";
+import type { S3Handler } from "aws-lambda";
+import { buildArchiveKey, ingest, parseGameStartTime } from "./ingester.js";
+import { calculateMvp } from "./mvp.js";
+import { ParseError, parseTdf } from "./parser.js";
+import { archiveTdf, fetchTdf } from "./s3.js";
+import { runConsistencyCheck, simulate } from "./simulator.js";
 
 const DEADLOCK_CODE = "40P01";
 const MAX_INGEST_RETRIES = 3;
@@ -31,8 +34,6 @@ async function ingestWithRetry(
     }
   }
 }
-import { calculateMvp } from "./mvp.js";
-import { fetchTdf, archiveTdf } from "./s3.js";
 
 const INCOMING_BUCKET = process.env.INCOMING_BUCKET;
 const ARCHIVE_BUCKET = process.env.ARCHIVE_BUCKET;
@@ -41,6 +42,7 @@ if (!INCOMING_BUCKET) throw new Error("Missing env var: INCOMING_BUCKET");
 if (!ARCHIVE_BUCKET) throw new Error("Missing env var: ARCHIVE_BUCKET");
 
 export const handler: S3Handler = async (event, context) => {
+  await initDb();
   const record = event.Records[0];
   if (!record) return;
 

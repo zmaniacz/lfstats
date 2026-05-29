@@ -1,14 +1,19 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { JetBrains_Mono } from "next/font/google";
-import { cn } from "@/lib/utils";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
 import { AppSessionProvider } from "@/components/session-provider";
+import { SiteHeader } from "@/components/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
+import { JetBrains_Mono } from "next/font/google";
+import "./globals.css";
 
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "LFstats",

@@ -1,14 +1,14 @@
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import {
-  db,
-  authUser,
   authAccount,
   authSession,
+  authUser,
   authVerificationToken,
+  getDb,
   getUserRoles,
 } from "@lfstats/db";
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
 
 const UPLOAD_PATHS = ["/upload", "/api/upload"];
 const UPLOAD_ROLES = ["admin", "centerAdmin", "uploader"];
@@ -16,8 +16,8 @@ const UPLOAD_ROLES = ["admin", "centerAdmin", "uploader"];
 const ADMIN_PATHS = ["/admin"];
 const ADMIN_ROLES = ["admin", "centerAdmin"];
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db, {
+export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
+  adapter: DrizzleAdapter(getDb(), {
     usersTable: authUser,
     accountsTable: authAccount,
     sessionsTable: authSession,
@@ -92,4 +92,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
   },
-});
+}));
