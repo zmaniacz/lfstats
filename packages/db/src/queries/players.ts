@@ -234,6 +234,110 @@ export type PlayerGameListItem = {
   mvpComponents: MvpComponentRow[];
 };
 
+export type PlayerLeaderboardItem = {
+  iplId: string;
+  callsign: string;
+  avgMvp: number;
+  totalMvp: number;
+  avgAccuracy: number;
+  avgHitDiff: number;
+  totalGames: number;
+  wins: number;
+};
+
+export async function getPlayersLeaderboard(options?: {
+  centerId?: string;
+  position?: number;
+}): Promise<PlayerLeaderboardItem[]> {
+  const rows = await db
+    .select({
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
+      totalMvp: sql<number>`SUM(${sm5Scorecard.mvpPoints})::float`,
+      avgAccuracy: sql<number>`AVG(${sm5Scorecard.accuracy})::float`,
+      avgHitDiff: sql<number>`AVG(${sm5Scorecard.hitDiff})::float`,
+      totalGames: sql<number>`(COUNT(*))::int`,
+      wins: sql<number>`(COUNT(*) FILTER (WHERE ${sm5GameTeam.result} = 'win'))::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
+    .innerJoin(player, eq(sm5Scorecard.playerId, player.id))
+    .where(
+      and(
+        eq(sm5GameTeam.isNeutral, false),
+        options?.centerId ? eq(game.centerId, options.centerId) : undefined,
+        options?.position !== undefined
+          ? eq(sm5Scorecard.position, options.position)
+          : undefined,
+      ),
+    )
+    .groupBy(player.id, player.iplId, player.currentCallsign)
+    .orderBy(desc(sql`AVG(${sm5Scorecard.mvpPoints})`));
+
+  return rows.map((r) => ({
+    iplId: r.iplId,
+    callsign: r.callsign,
+    avgMvp: r.avgMvp,
+    totalMvp: r.totalMvp,
+    avgAccuracy: r.avgAccuracy,
+    avgHitDiff: r.avgHitDiff,
+    totalGames: r.totalGames,
+    wins: r.wins,
+  }));
+}
+
+export type PlayerMedicHitsItem = {
+  iplId: string;
+  callsign: string;
+  totalMedicHits: number;
+  avgMedicHits: number;
+  gamesPlayed: number;
+  totalMedicHitsNonResup: number | null;
+  avgMedicHitsNonResup: number | null;
+  gamesPlayedNonResup: number;
+};
+
+export async function getPlayersMedicHitsLeaderboard(options?: {
+  centerId?: string;
+}): Promise<PlayerMedicHitsItem[]> {
+  const rows = await db
+    .select({
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalMedicHits: sql<number>`(SUM(${sm5Scorecard.shotsHitOpponentMedic}))::int`,
+      avgMedicHits: sql<number>`AVG(${sm5Scorecard.shotsHitOpponentMedic})::float`,
+      gamesPlayed: sql<number>`(COUNT(*))::int`,
+      totalMedicHitsNonResup: sql<number | null>`(SUM(${sm5Scorecard.shotsHitOpponentMedic}) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::int`,
+      avgMedicHitsNonResup: sql<number | null>`(AVG(${sm5Scorecard.shotsHitOpponentMedic}) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::float`,
+      gamesPlayedNonResup: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
+    .innerJoin(player, eq(sm5Scorecard.playerId, player.id))
+    .where(
+      and(
+        eq(sm5GameTeam.isNeutral, false),
+        options?.centerId ? eq(game.centerId, options.centerId) : undefined,
+      ),
+    )
+    .groupBy(player.id, player.iplId, player.currentCallsign)
+    .orderBy(desc(sql`SUM(${sm5Scorecard.shotsHitOpponentMedic})`));
+
+  return rows.map((r) => ({
+    iplId: r.iplId,
+    callsign: r.callsign,
+    totalMedicHits: r.totalMedicHits,
+    avgMedicHits: r.avgMedicHits,
+    gamesPlayed: r.gamesPlayed,
+    totalMedicHitsNonResup: r.totalMedicHitsNonResup,
+    avgMedicHitsNonResup: r.avgMedicHitsNonResup,
+    gamesPlayedNonResup: r.gamesPlayedNonResup,
+  }));
+}
+
 export async function getPlayerGames(
   playerId: string,
 ): Promise<PlayerGameListItem[]> {

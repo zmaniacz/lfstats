@@ -27,6 +27,12 @@ export function formatMVP(n: number | null): string {
   return n.toFixed(3);
 }
 
+export function formatWinRate(wins: number, total: number): string {
+  if (total === 0) return "— (0/0)";
+  const pct = ((wins / total) * 100).toFixed(1);
+  return `${pct}% (${wins}/${total})`;
+}
+
 export function formatGameName(
   description: string | null,
   startTime: Date,
