@@ -1,8 +1,4 @@
-import {
-  SecretsManagerClient,
-  GetSecretValueCommand,
-} from "@aws-sdk/client-secrets-manager";
-import { drizzle } from "drizzle-orm/postgres-js";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
@@ -16,8 +12,13 @@ async function resolveDatabaseUrl(): Promise<string> {
     throw new Error("Missing env var: DATABASE_URL or DATABASE_SECRET_ARN");
   }
 
-  const client = new SecretsManagerClient({});
-  const response = await client.send(
+  // Imported only on the Secrets Manager path, so the web build never
+  // pulls the AWS SDK into its module graph.
+  const { SecretsManagerClient, GetSecretValueCommand } =
+    await import("@aws-sdk/client-secrets-manager");
+
+  const sm = new SecretsManagerClient({});
+  const response = await sm.send(
     new GetSecretValueCommand({ SecretId: secretArn }),
   );
 
@@ -57,15 +58,41 @@ async function resolveDatabaseUrl(): Promise<string> {
 
 const globalForDb = globalThis as typeof globalThis & {
   _pgClient?: postgres.Sql;
+  _db?: PostgresJsDatabase<typeof schema>;
 };
 
-async function getOrCreateClient(): Promise<postgres.Sql> {
-  if (!globalForDb._pgClient) {
-    const url = await resolveDatabaseUrl();
-    globalForDb._pgClient = postgres(url, { max: 10 });
-  }
-  return globalForDb._pgClient;
+function build(url: string): PostgresJsDatabase<typeof schema> {
+  globalForDb._pgClient ??= postgres(url, { max: 10 });
+  globalForDb._db ??= drizzle(globalForDb._pgClient, { schema });
+  return globalForDb._db;
 }
 
-const client = await getOrCreateClient();
-export const db = drizzle(client, { schema });
+/**
+ * Async initializer. Use where the URL is resolved asynchronously
+ * (e.g. Chomper, via DATABASE_SECRET_ARN). Call once before using `db`.
+ */
+export async function initDb(): Promise<PostgresJsDatabase<typeof schema>> {
+  return globalForDb._db ?? build(await resolveDatabaseUrl());
+}
+
+/**
+ * Lazy database handle. Nothing runs at import. The client is built on
+ * first property access from DATABASE_URL. For the Secrets Manager path,
+ * call `await initDb()` first.
+ */
+export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
+  get(_target, prop) {
+    if (!globalForDb._db) {
+      const url = process.env.DATABASE_URL;
+      if (!url) {
+        throw new Error(
+          "DATABASE_URL is not set. If resolving via DATABASE_SECRET_ARN (e.g. Chomper), call `await initDb()` before using `db`.",
+        );
+      }
+      build(url);
+    }
+    const real = globalForDb._db as PostgresJsDatabase<typeof schema>;
+    const value = Reflect.get(real, prop, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
