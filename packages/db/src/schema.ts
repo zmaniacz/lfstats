@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   doublePrecision,
   foreignKey,
   index,
@@ -30,6 +31,11 @@ export const destructionMethodEnum = pgEnum("destruction_method", [
   "shot",
   "missile",
   "awarded",
+]);
+
+export const competitionTypeEnum = pgEnum("competition_type", [
+  "competitive",
+  "social",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -113,6 +119,21 @@ export const sm5MvpModel = pgTable("sm5_mvp_model", {
 });
 
 // ---------------------------------------------------------------------------
+// Game Organization Tables
+// ---------------------------------------------------------------------------
+
+export const competition = pgTable("competition", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  type: competitionTypeEnum("type").notNull(),
+  hostCenterId: uuid("host_center_id").references(() => center.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
 // Game Structure Tables
 // ---------------------------------------------------------------------------
 
@@ -123,6 +144,9 @@ export const game = pgTable(
     centerId: uuid("center_id")
       .notNull()
       .references(() => center.id),
+    competitionId: uuid("competition_id").references(() => competition.id, {
+      onDelete: "set null",
+    }),
     startTime: timestamp("start_time").notNull(),
     tdfFilename: text("tdf_filename").notNull(),
     outcome: gameOutcomeEnum("outcome").notNull(),
@@ -130,6 +154,7 @@ export const game = pgTable(
     actualDuration: integer("actual_duration").notNull(),
     type: text("type").notNull(),
     description: text("description"),
+    exclude: boolean("exclude").notNull().default(false),
   },
   (t) => [unique().on(t.centerId, t.startTime)],
 );
@@ -551,4 +576,60 @@ export const userRole = pgTable(
     }),
   },
   (t) => [unique().on(t.userId, t.role, t.centerId)],
+);
+
+// ---------------------------------------------------------------------------
+// Game Tagging (center-scoped)
+// ---------------------------------------------------------------------------
+
+export const gameTag = pgTable(
+  "game_tag",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    centerId: uuid("center_id")
+      .notNull()
+      .references(() => center.id),
+    name: text("name").notNull(),
+    color: text("color"),
+    description: text("description"),
+    archived: boolean("archived").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.centerId, t.name)],
+);
+
+export const gameTagAssignment = pgTable(
+  "game_tag_assignment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => gameTag.id, { onDelete: "cascade" }),
+    assignedBy: text("assigned_by"),
+    assignedAt: timestamp("assigned_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.gameId, t.tagId)],
+);
+
+// ---------------------------------------------------------------------------
+// User Favorites (auth-user scoped, not player-scoped)
+// ---------------------------------------------------------------------------
+
+export const userFavoriteGame = pgTable(
+  "user_favorite_game",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.gameId)],
 );

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -13,9 +14,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { CrosshairIcon, GameControllerIcon, MapPinIcon, UsersIcon } from "@phosphor-icons/react"
+import { CrosshairIcon, GameControllerIcon, HeartIcon, MapPinIcon, ShieldIcon, UsersIcon } from "@phosphor-icons/react"
 
-const navItems = [
+const baseNavItems = [
   {
     title: "Games",
     url: "/games",
@@ -34,6 +35,17 @@ const navItems = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession()
+  const roles = session?.user?.roles ?? []
+  const isLoggedIn = session?.user != null
+  const isAdmin = roles.some((r) => r.role === "admin" || r.role === "centerAdmin")
+
+  const navItems = [
+    ...baseNavItems,
+    ...(isLoggedIn ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }] : []),
+    ...(isAdmin ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }] : []),
+  ]
+
   return (
     <Sidebar
       style={{

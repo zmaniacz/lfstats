@@ -90,6 +90,7 @@ export async function ingest(
       scheduledDuration: parsed.meta.duration,
       actualDuration: simResult.actualDuration,
       type: gameType,
+      exclude: false,
     });
     gameId = gameRow.id;
 

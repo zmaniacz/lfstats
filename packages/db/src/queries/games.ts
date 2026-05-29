@@ -6,6 +6,8 @@ import {
   sm5ScorecardMvp,
   sm5GamePlayerInteraction,
   center,
+  gameTag,
+  gameTagAssignment,
 } from "../schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
@@ -203,15 +205,24 @@ export type GameDetailTeam = {
   players: GameDetailPlayer[];
 };
 
+export type GameTagSummary = {
+  id: string;
+  name: string;
+  color: string | null;
+};
+
 export type GameDetail = {
   id: string;
   centerId: string;
+  competitionId: string | null;
   description: string | null;
   startTime: Date;
   centerName: string;
   outcome: "score" | "elimination" | "draw";
   scheduledDuration: number;
   actualDuration: number;
+  exclude: boolean;
+  tags: GameTagSummary[];
   teams: GameDetailTeam[];
 };
 
@@ -232,12 +243,14 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     .select({
       id: game.id,
       centerId: game.centerId,
+      competitionId: game.competitionId,
       description: game.description,
       startTime: game.startTime,
       centerName: center.name,
       outcome: game.outcome,
       scheduledDuration: game.scheduledDuration,
       actualDuration: game.actualDuration,
+      exclude: game.exclude,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -245,7 +258,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 
   if (!gameRow) return null;
 
-  const [teamRows, scorecardRows, mvpRows, interactionRows] = await Promise.all(
+  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows] =
+    await Promise.all(
     [
       db
         .select({
@@ -371,6 +385,16 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         })
         .from(sm5GamePlayerInteraction)
         .where(eq(sm5GamePlayerInteraction.gameId, id)),
+
+      db
+        .select({
+          id: gameTag.id,
+          name: gameTag.name,
+          color: gameTag.color,
+        })
+        .from(gameTag)
+        .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
+        .where(eq(gameTagAssignment.gameId, id)),
     ],
   );
 
@@ -529,12 +553,15 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   return {
     id: gameRow.id,
     centerId: gameRow.centerId,
+    competitionId: gameRow.competitionId,
     description: gameRow.description,
     startTime: gameRow.startTime,
     centerName: gameRow.centerName,
     outcome: gameRow.outcome,
     scheduledDuration: gameRow.scheduledDuration,
     actualDuration: gameRow.actualDuration,
+    exclude: gameRow.exclude,
+    tags: tagRows.map((t) => ({ id: t.id, name: t.name, color: t.color })),
     teams,
   };
 }

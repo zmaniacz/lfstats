@@ -13,6 +13,9 @@ import {
 const UPLOAD_PATHS = ["/upload", "/api/upload"];
 const UPLOAD_ROLES = ["admin", "centerAdmin", "uploader"];
 
+const ADMIN_PATHS = ["/admin"];
+const ADMIN_ROLES = ["admin", "centerAdmin"];
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
     usersTable: authUser,
@@ -46,7 +49,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const isUploadRoute = UPLOAD_PATHS.some((p) =>
         nextUrl.pathname.startsWith(p),
       );
-      if (!isUploadRoute) return true;
+      const isAdminRoute = ADMIN_PATHS.some((p) =>
+        nextUrl.pathname.startsWith(p),
+      );
+
+      if (!isUploadRoute && !isAdminRoute) return true;
 
       const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
@@ -61,15 +68,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       const roles = session.user.roles ?? [];
-      const hasRole = roles.some((r) => UPLOAD_ROLES.includes(r.role));
-      if (!hasRole) {
-        if (isApiRoute) {
-          return new Response(JSON.stringify({ error: "Forbidden" }), {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          });
+
+      if (isUploadRoute) {
+        const hasRole = roles.some((r) => UPLOAD_ROLES.includes(r.role));
+        if (!hasRole) {
+          if (isApiRoute) {
+            return new Response(JSON.stringify({ error: "Forbidden" }), {
+              status: 403,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return Response.redirect(new URL("/", nextUrl));
         }
-        return Response.redirect(new URL("/", nextUrl));
+      }
+
+      if (isAdminRoute) {
+        const hasRole = roles.some((r) => ADMIN_ROLES.includes(r.role));
+        if (!hasRole) {
+          return Response.redirect(new URL("/", nextUrl));
+        }
       }
 
       return true;
