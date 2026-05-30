@@ -1,15 +1,21 @@
 import type { NextConfig } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const nextConfig: NextConfig = {
-  output: "standalone",
-  outputFileTracingRoot: join(
-    dirname(fileURLToPath(import.meta.url)),
-    "../../",
-  ),
-  // If packages/db is consumed as raw TS rather than pre-built, add:
-  // transpilePackages: ["@lfstats/db"],  // use the db package's "name" field
+const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../");
+
+const config = (phase: string): NextConfig => {
+  if (phase === PHASE_PRODUCTION_BUILD) {
+    return {
+      output: "standalone",
+      outputFileTracingRoot: monorepoRoot,
+      turbopack: {
+        root: monorepoRoot,
+      },
+    };
+  }
+  return {};
 };
 
-export default nextConfig;
+export default config;
