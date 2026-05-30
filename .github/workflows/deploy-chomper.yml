@@ -3,6 +3,10 @@ name: Deploy Chomper
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/chomper/**'
+      - 'packages/db/**'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 jobs:
