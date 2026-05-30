@@ -2,6 +2,7 @@ import {
   createChomperJob,
   findActiveMvpModel,
   findCenterByNaturalKey,
+  findChomperJobByLambdaRequestId,
   findGameByNaturalKey,
   initDb,
   updateChomperJob,
@@ -50,8 +51,14 @@ export const handler: S3Handler = async (event, context) => {
   const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "));
   const lambdaRequestId = context.awsRequestId;
 
-  // 1. Write ChomperJob (status: processing) — outside main transaction
-  const job = await createChomperJob({
+  // 1. Write ChomperJob (status: processing) — outside main transaction.
+  //    Check first so re-invocations with the same request ID are idempotent.
+  const existing = await findChomperJobByLambdaRequestId(lambdaRequestId);
+  if (existing?.completedAt !== null && existing?.completedAt !== undefined) {
+    console.log(`Job already completed for request ${lambdaRequestId} (${existing.status}), skipping`);
+    return;
+  }
+  const job = existing ?? await createChomperJob({
     s3Key: key,
     status: "processing",
     lambdaRequestId,

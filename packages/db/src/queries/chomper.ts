@@ -1,4 +1,4 @@
-import { eq, isNull, and, sql } from "drizzle-orm";
+import { eq, isNull, and, sql, inArray, gte } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -37,6 +37,24 @@ export async function updateChomperJob(
   data: Partial<typeof chomperJob.$inferInsert>,
 ) {
   await db.update(chomperJob).set(data).where(eq(chomperJob.id, id));
+}
+
+export async function findChomperJobByLambdaRequestId(lambdaRequestId: string) {
+  const [row] = await db
+    .select()
+    .from(chomperJob)
+    .where(eq(chomperJob.lambdaRequestId, lambdaRequestId))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getChomperJobsByS3Keys(s3Keys: string[]) {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  return db
+    .select()
+    .from(chomperJob)
+    .where(and(inArray(chomperJob.s3Key, s3Keys), gte(chomperJob.startedAt, oneHourAgo)))
+    .orderBy(chomperJob.startedAt);
 }
 
 // ---------------------------------------------------------------------------
