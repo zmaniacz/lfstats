@@ -1,10 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { useSession } from "next-auth/react"
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
+import { NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -13,8 +10,20 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { CalendarIcon, CrosshairIcon, GameControllerIcon, HeartIcon, MapPinIcon, ShieldIcon, UploadSimpleIcon, UsersIcon } from "@phosphor-icons/react"
+} from "@/components/ui/sidebar";
+import {
+  CalendarIcon,
+  CrosshairIcon,
+  GameControllerIcon,
+  HeartIcon,
+  MapPinIcon,
+  ShieldIcon,
+  UploadSimpleIcon,
+  UsersIcon,
+} from "@phosphor-icons/react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import * as React from "react";
 
 const baseNavItems = [
   {
@@ -37,21 +46,36 @@ const baseNavItems = [
     url: "/centers",
     icon: <MapPinIcon />,
   },
-]
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { data: session } = useSession()
-  const roles = session?.user?.roles ?? []
-  const isLoggedIn = session?.user != null
-  const isAdmin = roles.some((r) => r.role === "admin" || r.role === "centerAdmin")
-  const canUpload = roles.some((r) => r.role === "admin" || r.role === "centerAdmin" || r.role === "uploader")
+  const { data: session } = useSession();
+  const roles = session?.user?.roles ?? [];
+  const isLoggedIn = session?.user != null;
+  const isAdmin = roles.some(
+    (r) =>
+      r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
+  );
+  const canUpload = roles.some(
+    (r) =>
+      r.role === "superAdmin" ||
+      r.role === "admin" ||
+      r.role === "centerAdmin" ||
+      r.role === "uploader",
+  );
 
   const navItems = [
     ...baseNavItems,
-    ...(isLoggedIn ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }] : []),
-    ...(canUpload ? [{ title: "Upload", url: "/upload", icon: <UploadSimpleIcon /> }] : []),
-    ...(isAdmin ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }] : []),
-  ]
+    ...(isLoggedIn
+      ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }]
+      : []),
+    ...(canUpload
+      ? [{ title: "Upload", url: "/upload", icon: <UploadSimpleIcon /> }]
+      : []),
+    ...(isAdmin
+      ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }]
+      : []),
+  ];
 
   return (
     <Sidebar
@@ -85,5 +109,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
