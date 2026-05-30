@@ -30,7 +30,7 @@ export async function createTagAction(centerId: string, formData: FormData) {
   const description = (formData.get("description") as string) || null
 
   await createTag({ centerId, name, color, description })
-  revalidatePath(`/admin/tags/${centerId}`)
+  revalidatePath("/admin/tags", "layout")
 }
 
 export async function updateTagAction(
@@ -45,25 +45,25 @@ export async function updateTagAction(
   const description = (formData.get("description") as string) || null
 
   await updateTag(id, { name, color, description })
-  revalidatePath(`/admin/tags/${centerId}`)
+  revalidatePath("/admin/tags", "layout")
 }
 
 export async function archiveTagAction(id: string, centerId: string) {
   await requireCenterAdmin(centerId)
   await archiveTag(id)
-  revalidatePath(`/admin/tags/${centerId}`)
+  revalidatePath("/admin/tags", "layout")
 }
 
 export async function unarchiveTagAction(id: string, centerId: string) {
   await requireCenterAdmin(centerId)
   await unarchiveTag(id)
-  revalidatePath(`/admin/tags/${centerId}`)
+  revalidatePath("/admin/tags", "layout")
 }
 
 export async function deleteTagAction(id: string, centerId: string) {
   await requireCenterAdmin(centerId)
   await deleteTag(id)
-  revalidatePath(`/admin/tags/${centerId}`)
+  revalidatePath("/admin/tags", "layout")
 }
 
 export async function mergeTagAction(
@@ -73,5 +73,5 @@ export async function mergeTagAction(
 ) {
   await requireCenterAdmin(centerId)
   await mergeTag(sourceId, targetId)
-  revalidatePath(`/admin/tags/${centerId}`)
+  revalidatePath("/admin/tags", "layout")
 }

@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import {
   deleteGame,
   getGameCenterId,
+  getGameSlugById,
   setGameExcluded,
   assignTagToGame,
   removeTagFromGame,
@@ -30,6 +31,11 @@ async function requireCenterAdmin(gameId: string) {
   return { session, centerId }
 }
 
+async function revalidateGame(gameId: string) {
+  const slug = await getGameSlugById(gameId)
+  if (slug) revalidatePath(`/games/${slug}`)
+}
+
 export async function deleteGameAction(gameId: string) {
   await requireCenterAdmin(gameId)
   await deleteGame(gameId)
@@ -39,7 +45,7 @@ export async function deleteGameAction(gameId: string) {
 export async function toggleExcludeAction(gameId: string, exclude: boolean) {
   await requireCenterAdmin(gameId)
   await setGameExcluded(gameId, exclude)
-  revalidatePath(`/games/${gameId}`)
+  await revalidateGame(gameId)
 }
 
 export async function assignTagAction(gameId: string, tagId: string) {
@@ -58,25 +64,25 @@ export async function assignTagAction(gameId: string, tagId: string) {
   if (!allowed) throw new Error("Forbidden")
 
   await assignTagToGame(gameId, tagId, session.user.email ?? undefined)
-  revalidatePath(`/games/${gameId}`)
+  await revalidateGame(gameId)
 }
 
 export async function removeTagAction(gameId: string, tagId: string) {
   await requireCenterAdmin(gameId)
   await removeTagFromGame(gameId, tagId)
-  revalidatePath(`/games/${gameId}`)
+  await revalidateGame(gameId)
 }
 
 export async function addFavoriteAction(gameId: string, note?: string) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
   await addFavorite(session.user.id, gameId, note)
-  revalidatePath(`/games/${gameId}`)
+  await revalidateGame(gameId)
 }
 
 export async function removeFavoriteAction(gameId: string) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
   await removeFavorite(session.user.id, gameId)
-  revalidatePath(`/games/${gameId}`)
+  await revalidateGame(gameId)
 }

@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { deleteGameAction } from "@/app/games/[id]/actions"
+import { deleteGameAction } from "@/app/games/[slug]/actions"
 
 export function DeleteGameButton({ gameId }: { gameId: string }) {
   const [pending, setPending] = useState(false)

@@ -59,7 +59,7 @@ export default async function CentersPage() {
               <TableRow key={c.id}>
                 <TableCell>
                   <Link
-                    href={`/centers/${c.id}`}
+                    href={`/centers/${c.slug}`}
                     className="hover:underline font-medium"
                   >
                     {c.name}
@@ -99,7 +99,7 @@ export default async function CentersPage() {
                       <TableRow key={s.centerId}>
                         <TableCell>
                           <Link
-                            href={`/centers/${s.centerId}`}
+                            href={`/centers/${s.centerSlug}`}
                             className="hover:underline"
                           >
                             {s.centerName}

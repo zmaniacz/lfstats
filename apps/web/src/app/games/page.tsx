@@ -49,7 +49,7 @@ export default async function GamesPage({
               <TableRow key={game.id}>
                 <TableCell>
                   <Link
-                    href={`/games/${game.id}`}
+                    href={`/games/${game.slug}`}
                     className={`hover:underline font-medium ${winnerColor?.text ?? "text-muted-foreground"}`}
                   >
                     {formatGameName(game.description, game.startTime)}

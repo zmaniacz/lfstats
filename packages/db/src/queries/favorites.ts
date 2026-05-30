@@ -1,6 +1,6 @@
 import { db } from "../client";
 import { userFavoriteGame, game, sm5GameTeam, center } from "../schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import type { GameListItem } from "./games";
 
 export async function getUserFavorites(userId: string): Promise<GameListItem[]> {
@@ -17,6 +17,8 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
   const gameRows = await db
     .select({
       id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       startTime: game.startTime,
       outcome: game.outcome,
       centerName: center.name,
@@ -52,6 +54,8 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
     .filter((r): r is NonNullable<typeof r> => r !== undefined)
     .map((row) => ({
       id: row.id,
+      slug: row.slug,
+      centerSlug: row.centerSlug,
       startTime: row.startTime,
       outcome: row.outcome,
       centerName: row.centerName,

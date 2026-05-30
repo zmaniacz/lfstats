@@ -10,12 +10,14 @@ import { eq, and, ne, desc, count, sql, asc } from "drizzle-orm";
 
 export type CenterListItem = {
   id: string;
+  slug: string;
   name: string;
   gameCount: number;
 };
 
 export type CenterPositionStat = {
   centerId: string;
+  centerSlug: string;
   centerName: string;
   position: number;
   avgMvp: number;
@@ -24,6 +26,7 @@ export type CenterPositionStat = {
 
 export type CenterDetail = {
   id: string;
+  slug: string;
   name: string;
   shortName: string | null;
   city: string | null;
@@ -35,6 +38,7 @@ export async function getCenterList(): Promise<CenterListItem[]> {
   const rows = await db
     .select({
       id: center.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       name: center.name,
       gameCount: count(game.id),
     })
@@ -45,6 +49,7 @@ export async function getCenterList(): Promise<CenterListItem[]> {
 
   return rows.map((r) => ({
     id: r.id,
+    slug: r.slug,
     name: r.name,
     gameCount: r.gameCount,
   }));
@@ -54,6 +59,7 @@ export async function getCenterPositionStats(): Promise<CenterPositionStat[]> {
   const rows = await db
     .select({
       centerId: center.id,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       centerName: center.name,
       position: sm5Scorecard.position,
       avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})::float`,
@@ -62,10 +68,11 @@ export async function getCenterPositionStats(): Promise<CenterPositionStat[]> {
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
     .innerJoin(center, eq(game.centerId, center.id))
-    .groupBy(center.id, center.name, sm5Scorecard.position);
+    .groupBy(center.id, center.name, center.countryCode, center.siteCode, sm5Scorecard.position);
 
   return rows.map((r) => ({
     centerId: r.centerId,
+    centerSlug: r.centerSlug,
     centerName: r.centerName,
     position: r.position,
     avgMvp: r.avgMvp,
@@ -77,6 +84,7 @@ export async function getCenterById(id: string): Promise<CenterDetail | null> {
   const [row] = await db
     .select({
       id: center.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       name: center.name,
       shortName: center.shortName,
       city: center.city,
@@ -85,6 +93,29 @@ export async function getCenterById(id: string): Promise<CenterDetail | null> {
     })
     .from(center)
     .where(eq(center.id, id));
+
+  return row ?? null;
+}
+
+export async function getCenterBySlug(slug: string): Promise<CenterDetail | null> {
+  const parts = slug.split("-");
+  if (parts.length !== 2) return null;
+  const countryCode = parseInt(parts[0], 10);
+  const siteCode = parseInt(parts[1], 10);
+  if (isNaN(countryCode) || isNaN(siteCode)) return null;
+
+  const [row] = await db
+    .select({
+      id: center.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      name: center.name,
+      shortName: center.shortName,
+      city: center.city,
+      countryName: center.countryName,
+      timezone: center.timezone,
+    })
+    .from(center)
+    .where(and(eq(center.countryCode, countryCode), eq(center.siteCode, siteCode)));
 
   return row ?? null;
 }

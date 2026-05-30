@@ -101,7 +101,7 @@ export default async function NightlyPage({
         player,
         teamColorEnum: team.colourEnum,
         teamResult: team.result,
-        gameId: game.id,
+        gameSlug: game.slug,
         gameStartTime: game.startTime,
         gameDescription: game.description,
         winningTeamColorEnum,

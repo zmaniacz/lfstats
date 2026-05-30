@@ -106,7 +106,7 @@ export default async function CompetitionDetailPage({
                   <TableRow key={g.id}>
                     <TableCell>
                       <Link
-                        href={`/games/${g.id}`}
+                        href={`/games/${g.slug}`}
                         className="hover:underline font-medium"
                       >
                         {formatGameName(g.description, g.startTime)}

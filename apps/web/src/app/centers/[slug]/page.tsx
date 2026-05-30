@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import {
-  getCenterById,
+  getCenterBySlug,
   getCenterGameCount,
   getCenterWinsByColor,
   getCenterMvpBoxPlot,
@@ -14,20 +14,20 @@ import { MvpComponentsChart } from "@/components/centers/MvpComponentsChart"
 export default async function CenterDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { id } = await params
+  const { slug } = await params
 
-  const [centerDetail, gameCount, winsByColor, mvpBoxPlot, mvpComponents] =
-    await Promise.all([
-      getCenterById(id),
-      getCenterGameCount(id),
-      getCenterWinsByColor(id),
-      getCenterMvpBoxPlot(id),
-      getCenterMvpComponents(id),
-    ])
-
+  const centerDetail = await getCenterBySlug(slug)
   if (!centerDetail) notFound()
+
+  const [gameCount, winsByColor, mvpBoxPlot, mvpComponents] =
+    await Promise.all([
+      getCenterGameCount(centerDetail.id),
+      getCenterWinsByColor(centerDetail.id),
+      getCenterMvpBoxPlot(centerDetail.id),
+      getCenterMvpComponents(centerDetail.id),
+    ])
 
   return (
     <div className="p-6 space-y-6">

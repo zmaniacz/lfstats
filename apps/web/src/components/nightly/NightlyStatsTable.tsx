@@ -34,7 +34,7 @@ export type NightlyScorecardRow = {
   player: GameDetailPlayer
   teamColorEnum: number
   teamResult: "win" | "loss" | "draw" | null
-  gameId: string
+  gameSlug: string
   gameStartTime: Date
   gameDescription: string | null
   winningTeamColorEnum: number | null
@@ -250,7 +250,7 @@ export function NightlyStatsTable({ rows }: Props) {
                         </TableCell>
                         <TableCell className="text-center">
                           <Link
-                            href={`/games/${row.gameId}`}
+                            href={`/games/${row.gameSlug}`}
                             className={`hover:underline ${winnerColor ?? ""}`}
                             onClick={(e) => e.stopPropagation()}
                           >

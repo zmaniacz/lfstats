@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getGameDetail, getTagsByCenter, isFavorite } from "@lfstats/db"
+import { getGameDetailBySlug, getTagsByCenter, isFavorite } from "@lfstats/db"
 import { auth } from "@/auth"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -25,10 +25,10 @@ import {
 export default async function GameDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { id } = await params
-  const [game, session] = await Promise.all([getGameDetail(id), auth()])
+  const { slug } = await params
+  const [game, session] = await Promise.all([getGameDetailBySlug(slug), auth()])
 
   if (!game) notFound()
 

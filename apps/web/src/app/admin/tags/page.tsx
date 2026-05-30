@@ -30,7 +30,7 @@ export default async function TagsPage() {
             <TableRow key={c.id}>
               <TableCell>
                 <Link
-                  href={`/admin/tags/${c.id}`}
+                  href={`/admin/tags/${c.slug}`}
                   className="hover:underline font-medium"
                 >
                   {c.name}

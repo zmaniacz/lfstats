@@ -50,7 +50,7 @@ export default async function FavoritesPage() {
                 <TableRow key={game.id}>
                   <TableCell>
                     <Link
-                      href={`/games/${game.id}`}
+                      href={`/games/${game.slug}`}
                       className={`hover:underline font-medium ${winnerColor?.text ?? "text-muted-foreground"}`}
                     >
                       {formatGameName(game.description, game.startTime)}

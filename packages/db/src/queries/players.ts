@@ -220,9 +220,11 @@ export async function getGlobalAvgScoreByPosition(): Promise<
 
 export type PlayerGameListItem = {
   id: string;
+  gameSlug: string;
   startTime: Date;
   outcome: "score" | "elimination" | "draw";
   centerId: string;
+  centerSlug: string;
   centerName: string;
   description: string | null;
   teams: GameTeamSummary[];
@@ -345,9 +347,11 @@ export async function getPlayerGames(
     .select({
       scorecardId: sm5Scorecard.id,
       id: game.id,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       startTime: game.startTime,
       outcome: game.outcome,
       centerId: center.id,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       centerName: center.name,
       description: game.description,
       callsign: sm5Scorecard.callsign,
@@ -418,9 +422,11 @@ export async function getPlayerGames(
 
   return rows.map((row) => ({
     id: row.id,
+    gameSlug: row.gameSlug,
     startTime: row.startTime,
     outcome: row.outcome as "score" | "elimination" | "draw",
     centerId: row.centerId,
+    centerSlug: row.centerSlug,
     centerName: row.centerName,
     description: row.description,
     callsign: row.callsign,

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getTagsByCenter, getCenterById } from "@lfstats/db"
+import { getTagsByCenter, getCenterBySlug } from "@lfstats/db"
 import { TagsTable } from "@/components/admin/TagsTable"
 import {
   createTagAction,
@@ -14,14 +14,14 @@ import {
 export default async function CenterTagsPage({
   params,
 }: {
-  params: Promise<{ centerId: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { centerId } = await params
+  const { slug } = await params
 
-  const centerRow = await getCenterById(centerId)
+  const centerRow = await getCenterBySlug(slug)
   if (!centerRow) notFound()
 
-  const tags = await getTagsByCenter(centerId, true)
+  const tags = await getTagsByCenter(centerRow.id, true)
 
   return (
     <div className="space-y-4">
@@ -36,7 +36,7 @@ export default async function CenterTagsPage({
 
       </div>
       <TagsTable
-        centerId={centerId}
+        centerId={centerRow.id}
         tags={tags}
         createAction={createTagAction}
         updateAction={updateTagAction}

@@ -336,7 +336,7 @@ export function PlayerGamesTable({ games }: { games: PlayerGameListItem[] }) {
               <TableRow key={game.id}>
                 <TableCell>
                   <Link
-                    href={`/games/${game.id}`}
+                    href={`/games/${game.gameSlug}`}
                     className={`hover:underline font-medium ${winnerColor?.text ?? "text-muted-foreground"}`}
                   >
                     {formatGameName(game.description, game.startTime)}
@@ -344,7 +344,7 @@ export function PlayerGamesTable({ games }: { games: PlayerGameListItem[] }) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/centers/${game.centerId}`}
+                    href={`/centers/${game.centerSlug}`}
                     className="hover:underline"
                   >
                     {game.centerName}

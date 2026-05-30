@@ -22,6 +22,8 @@ export type GameTeamSummary = {
 
 export type GameListItem = {
   id: string;
+  slug: string;
+  centerSlug: string;
   startTime: Date;
   outcome: "score" | "elimination" | "draw";
   centerName: string;
@@ -35,6 +37,8 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
   const rows = await db
     .select({
       id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       startTime: game.startTime,
       outcome: game.outcome,
       centerName: center.name,
@@ -76,6 +80,8 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
 
   return rows.map((row) => ({
     id: row.id,
+    slug: row.slug,
+    centerSlug: row.centerSlug,
     startTime: row.startTime,
     outcome: row.outcome,
     centerName: row.centerName,
@@ -213,7 +219,9 @@ export type GameTagSummary = {
 
 export type GameDetail = {
   id: string;
+  slug: string;
   centerId: string;
+  centerSlug: string;
   competitionId: string | null;
   description: string | null;
   startTime: Date;
@@ -230,7 +238,9 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
   const gameRows = await db
     .select({
       id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       centerId: game.centerId,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       competitionId: game.competitionId,
       description: game.description,
       startTime: game.startTime,
@@ -533,7 +543,9 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
 
     return {
       id: gameRow.id,
+      slug: gameRow.slug,
       centerId: gameRow.centerId,
+      centerSlug: gameRow.centerSlug,
       competitionId: gameRow.competitionId,
       description: gameRow.description,
       startTime: gameRow.startTime,
@@ -564,7 +576,9 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   const [gameRow] = await db
     .select({
       id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       centerId: game.centerId,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       competitionId: game.competitionId,
       description: game.description,
       startTime: game.startTime,
@@ -874,7 +888,9 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 
   return {
     id: gameRow.id,
+    slug: gameRow.slug,
     centerId: gameRow.centerId,
+    centerSlug: gameRow.centerSlug,
     competitionId: gameRow.competitionId,
     description: gameRow.description,
     startTime: gameRow.startTime,
@@ -886,4 +902,40 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     tags: tagRows.map((t) => ({ id: t.id, name: t.name, color: t.color })),
     teams,
   };
+}
+
+export async function getGameDetailBySlug(slug: string): Promise<GameDetail | null> {
+  const parts = slug.split("-");
+  if (parts.length !== 3) return null;
+  const [cc, sc, ts] = parts;
+  const countryCode = parseInt(cc, 10);
+  const siteCode = parseInt(sc, 10);
+  if (isNaN(countryCode) || isNaN(siteCode) || !/^\d{14}$/.test(ts)) return null;
+
+  const [idRow] = await db
+    .select({ id: game.id })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(center.countryCode, countryCode),
+        eq(center.siteCode, siteCode),
+        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${ts}`,
+      ),
+    );
+
+  if (!idRow) return null;
+  return getGameDetail(idRow.id);
+}
+
+export async function getGameSlugById(gameId: string): Promise<string | null> {
+  const [row] = await db
+    .select({
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(eq(game.id, gameId));
+
+  return row?.slug ?? null;
 }
