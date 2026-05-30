@@ -16,6 +16,7 @@ async function requireCenterAdmin(centerId: string) {
   const roles = session?.user?.roles ?? []
   const ok = roles.some(
     (r) =>
+      r.role === "superAdmin" ||
       r.role === "admin" ||
       (r.role === "centerAdmin" && r.centerId === centerId),
   )

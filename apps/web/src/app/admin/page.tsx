@@ -29,6 +29,18 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </Link>
+        <Link href="/admin/users">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Grant and revoke roles for users. Manage center admins and uploaders.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   )

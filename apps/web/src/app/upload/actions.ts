@@ -5,7 +5,7 @@ import { getChomperJobsByS3Keys } from "@lfstats/db"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
-const UPLOAD_ROLES = ["admin", "centerAdmin", "uploader"] as const
+const UPLOAD_ROLES = ["superAdmin", "admin", "centerAdmin", "uploader"] as const
 
 async function requireUploadRole() {
   const session = await auth()

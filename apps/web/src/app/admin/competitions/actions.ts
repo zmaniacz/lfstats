@@ -6,26 +6,40 @@ import {
   updateCompetition,
   deleteCompetition,
   bulkAssignGamesToCompetition,
+  getCompetitionById,
 } from "@lfstats/db"
 import { redirect } from "next/navigation"
 
-async function requireAdmin() {
+async function requireCompetitionAccess(hostCenterId: string | null) {
   const session = await auth()
   const roles = session?.user?.roles ?? []
-  const ok = roles.some((r) => r.role === "admin" || r.role === "centerAdmin")
-  if (!ok) throw new Error("Forbidden")
-  return session!
+
+  const isSuperOrAdmin = roles.some(
+    (r) => r.role === "superAdmin" || r.role === "admin",
+  )
+  if (isSuperOrAdmin) return session!
+
+  // centerAdmin may only manage competitions at their own center(s)
+  const centerAdminCenterIds = roles
+    .filter((r) => r.role === "centerAdmin" && r.centerId != null)
+    .map((r) => r.centerId!)
+
+  if (centerAdminCenterIds.length > 0 && hostCenterId != null && centerAdminCenterIds.includes(hostCenterId)) {
+    return session!
+  }
+
+  throw new Error("Forbidden")
 }
 
 export async function createCompetitionAction(formData: FormData) {
-  await requireAdmin()
+  const hostCenterId = (formData.get("hostCenterId") as string) || null
+  await requireCompetitionAccess(hostCenterId)
 
   const name = formData.get("name") as string
   const type = formData.get("type") as "competitive" | "social"
   const startDate = formData.get("startDate") as string
   const endDate = (formData.get("endDate") as string) || null
   const description = (formData.get("description") as string) || null
-  const hostCenterId = (formData.get("hostCenterId") as string) || null
 
   const id = await createCompetition({
     name,
@@ -40,7 +54,9 @@ export async function createCompetitionAction(formData: FormData) {
 }
 
 export async function updateCompetitionAction(id: string, formData: FormData) {
-  await requireAdmin()
+  const competition = await getCompetitionById(id)
+  if (!competition) throw new Error("Not found")
+  await requireCompetitionAccess(competition.hostCenterId ?? null)
 
   const name = formData.get("name") as string
   const type = formData.get("type") as "competitive" | "social"
@@ -54,7 +70,9 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
 }
 
 export async function deleteCompetitionAction(id: string) {
-  await requireAdmin()
+  const competition = await getCompetitionById(id)
+  if (!competition) throw new Error("Not found")
+  await requireCompetitionAccess(competition.hostCenterId ?? null)
   await deleteCompetition(id)
   redirect("/admin/competitions")
 }
@@ -63,7 +81,9 @@ export async function bulkAssignGamesAction(
   competitionId: string,
   formData: FormData,
 ) {
-  await requireAdmin()
+  const competition = await getCompetitionById(competitionId)
+  if (!competition) throw new Error("Not found")
+  await requireCompetitionAccess(competition.hostCenterId ?? null)
 
   const centerId = formData.get("centerId") as string
   const dateFrom = formData.get("dateFrom") as string

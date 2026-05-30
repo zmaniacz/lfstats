@@ -1,7 +1,7 @@
 import type { DefaultSession } from "next-auth";
 
 type UserRoleEntry = {
-  role: "admin" | "centerAdmin" | "uploader";
+  role: "admin" | "centerAdmin" | "uploader" | "superAdmin";
   centerId: string | null;
 };
 

@@ -11,10 +11,10 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
 const UPLOAD_PATHS = ["/upload", "/api/upload"];
-const UPLOAD_ROLES = ["admin", "centerAdmin", "uploader"];
+const UPLOAD_ROLES = ["superAdmin", "admin", "centerAdmin", "uploader"];
 
 const ADMIN_PATHS = ["/admin"];
-const ADMIN_ROLES = ["admin", "centerAdmin"];
+const ADMIN_ROLES = ["superAdmin", "admin", "centerAdmin"];
 
 export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   adapter: DrizzleAdapter(getDb(), {
@@ -40,7 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     async session({ session, token }) {
       session.user.id = token.userId as string;
       session.user.roles = token.roles as Array<{
-        role: "admin" | "centerAdmin" | "uploader";
+        role: "admin" | "centerAdmin" | "uploader" | "superAdmin";
         centerId: string | null;
       }>;
       return session;

@@ -513,6 +513,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "admin",
   "centerAdmin",
   "uploader",
+  "superAdmin",
 ]);
 
 export const authUser = pgTable("auth_user", {
