@@ -14,7 +14,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { CalendarIcon, CrosshairIcon, GameControllerIcon, HeartIcon, MapPinIcon, ShieldIcon, UsersIcon } from "@phosphor-icons/react"
+import { CalendarIcon, CrosshairIcon, GameControllerIcon, HeartIcon, MapPinIcon, ShieldIcon, UploadSimpleIcon, UsersIcon } from "@phosphor-icons/react"
 
 const baseNavItems = [
   {
@@ -44,10 +44,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const roles = session?.user?.roles ?? []
   const isLoggedIn = session?.user != null
   const isAdmin = roles.some((r) => r.role === "admin" || r.role === "centerAdmin")
+  const canUpload = roles.some((r) => r.role === "admin" || r.role === "centerAdmin" || r.role === "uploader")
 
   const navItems = [
     ...baseNavItems,
     ...(isLoggedIn ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }] : []),
+    ...(canUpload ? [{ title: "Upload", url: "/upload", icon: <UploadSimpleIcon /> }] : []),
     ...(isAdmin ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }] : []),
   ]
 

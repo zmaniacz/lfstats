@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/s3-request-presigner": "^3.1053.0",
     "@lfstats/db": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "class-variance-authority": "^0.7.1",
