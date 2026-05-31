@@ -472,8 +472,14 @@ class Simulator {
     );
   }
 
-  private getActiveTeammates(ps: PlayerSimState): PlayerSimState[] {
-    return this.getTeammates(ps).filter((p) => p.state === 0);
+  private getActiveTeammates(ps: PlayerSimState, time: number): PlayerSimState[] {
+    return this.getTeammates(ps).filter(
+      (p) =>
+        p.state === 0 ||
+        (p.state === 3 &&
+          p.state3EnteredAt !== null &&
+          time - p.state3EnteredAt <= 750),
+    );
   }
 
   private getOpposingActivePlayers(ps: PlayerSimState): PlayerSimState[] {
@@ -1122,7 +1128,7 @@ class Simulator {
     const stats_actor = POSITION_STATS[actor.position]!;
     this.recordSnapshot(actor, eventIndex);
 
-    for (const teammate of this.getActiveTeammates(actor)) {
+    for (const teammate of this.getActiveTeammates(actor, time)) {
       const stats = POSITION_STATS[teammate.position]!;
       teammate.shots = Math.min(
         teammate.shots + stats.resupplyShots,
@@ -1136,7 +1142,7 @@ class Simulator {
   // 0512 — Team Lives Boost
   private handle0512(
     actor: PlayerSimState,
-    _time: number,
+    time: number,
     eventIndex: number,
   ): void {
     actor.lifeBoost++;
@@ -1144,7 +1150,7 @@ class Simulator {
 
     this.recordSnapshot(actor, eventIndex);
 
-    for (const teammate of this.getActiveTeammates(actor)) {
+    for (const teammate of this.getActiveTeammates(actor, time)) {
       const stats = POSITION_STATS[teammate.position]!;
       teammate.lives = Math.min(
         teammate.lives + stats.resupplyLives,
