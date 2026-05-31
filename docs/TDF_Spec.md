@@ -48,7 +48,7 @@ When parsing older files, absent fields should be treated as `null` or a defined
 ### Ingestion Rules
 
 - Files where line type `1` `type` is not `5` (SM5) should be skipped entirely.
-- Files containing exit codes `01` or `17` on line type `6` would typically not be present in the archive as such games are not saved.
+- Files containing exit codes `01` or `17` on line type `6` may appear in the archive. When encountered, the affected players should be treated as eliminated with `livesLeft = 0`.
 
 ---
 
@@ -105,10 +105,12 @@ Resupply timing is a critical tactical decision — taking a player offline for 
 
 **Double resupply**: When the Ammo Carrier and Medic tag the same active player simultaneously (within a short hardware tolerance window), the target receives both shots and lives in a single 8-second downtime. This is highly efficient and a key coordination mechanic — without it, a full resupply would cost 16 seconds of downtime.
 
-**Team boost** (`0510`, `0512`): A special ability that resupplies all active (state 0) teammates simultaneously without deactivating any of them. Requires 15 SP (Ammo) or 10 SP (Medic).
+**Team boost** (`0510`, `0512`): A special ability that resupplies all active (state 0) teammates simultaneously without deactivating any of them. Requires 15 SP (Ammo) or 10 SP (Medic). Due to radio lag between suits and the game computer, a teammate who recently transitioned to state 3 may or may not receive the boost — the TDF cannot distinguish whether they were affected.
+
+**Emergency resupply** (beacon entity `0500`/`0502`): Certain arena configurations include an Emergency Resupply beacon (entity type `beacon`, team `Neutral`). When the beacon actor appears on a `0500` or `0502` event, the same resupply rules apply to the target — shots or lives are restored up to the position maximum. The beacon resupply can apply regardless of the target's current state.
 
 **Resupply rules:**
-- Players must be in state 0 to receive resupply — tagging a teammate in state 2 is treated as friendly fire with full score penalties and a respawn timer reset
+- Individual player resupply (`0500`, `0502`) targets state 0 players under normal conditions. Simultaneous double resupply (Ammo Carrier and Medic targeting the same player at nearly the same moment) can result in a second resupply event firing while the target is already in state 3 from the first resupply.
 - Resupply does not cost shots for the Ammo Carrier (infinite shots) or Medic (tagging an active friendly is free — shots are only consumed on misses, opponent tags, target hits, or state 2 friendly tags)
 - The Medic cannot resupply themselves; the Ammo Carrier cannot resupply their own shots (but an Ammo Carrier can resupply a Medic's shots)
 
@@ -482,10 +484,10 @@ Hit points are reduced by the shooter's shot power per hit (straight subtraction
 
 | Code | Name | Structure | Description |
 |------|------|-----------|-------------|
-| `0500` | Ammo Resupply | `actor	 resupplies	target` | Ammo Carrier resupplies a single teammate's shots up to their position maximum. Target must be in state 0 (active). Also implicitly ends rapid fire for a Scout target. |
-| `0502` | Lives Resupply | `actor	 resupplies	target` | Medic resupplies a single teammate's lives up to their position maximum. Target must be in state 0 (active). If a Medic is eliminated, their team can no longer gain lives for the rest of the game. |
-| `0510` | Team Ammo Resupply | `actor	 resupplies team` | Ammo Carrier special ability. Resupplies shots for all active (state 0) teammates simultaneously. |
-| `0512` | Team Lives Resupply | `actor	 resupplies team` | Medic special ability. Resupplies lives for all active (state 0) teammates simultaneously. |
+| `0500` | Ammo Resupply | `actor	 resupplies	target` | Actor resupplies a single teammate's shots up to their position maximum. Actor is normally an Ammo Carrier player, but may be a neutral beacon entity (Emergency Resupply). Also implicitly ends rapid fire for a Scout target. |
+| `0502` | Lives Resupply | `actor	 resupplies	target` | Actor resupplies a single teammate's lives up to their position maximum. Actor is normally a Medic player, but may be a neutral beacon entity (Emergency Resupply). If a Medic is eliminated, their team can no longer receive Medic-sourced life resupply for the rest of the game. |
+| `0510` | Team Ammo Resupply | `actor	 resupplies team` | Ammo Carrier special ability. Resupplies shots for all state 0 teammates simultaneously. State 3 teammates may or may not be affected depending on radio timing. |
+| `0512` | Team Lives Resupply | `actor	 resupplies team` | Medic special ability. Resupplies lives for all state 0 teammates simultaneously. State 3 teammates may or may not be affected depending on radio timing. |
 
 A simultaneous individual resupply by both an Ammo Carrier and a Medic targeting the same player generates both a `0500` and `0502` event at the same timestamp, granting the target both shots and lives in a single interaction.
 
@@ -493,7 +495,7 @@ A simultaneous individual resupply by both an Ammo Carrier and a Medic targeting
 
 | Code | Name | Structure | Description |
 |------|------|-----------|-------------|
-| `0600` | Penalty | `actor	 penalizes	target` | Referee deactivates a player as a penalty. Actor is always a `referee` entity. Target is immediately deactivated (state 3) and respawns normally after the standard respawn timer. Score adjustment applied to target equals the `penalty` value from line type `1` (typically `0`). Generates accompanying line type `5` and line type `9` entries. |
+| `0600` | Penalty | `actor	 is penalised` | A player is deactivated by a referee as a penalty. The `actor` field is the **penalized player** — there is no explicit referee identity in the event line. The player is immediately deactivated (state 3) and respawns normally after the standard respawn timer. Score adjustment equals the `penalty` value from line type `1` (typically `0`). Generates accompanying line type `5` and line type `9` entries. |
 
 ### Other Events
 
@@ -588,16 +590,17 @@ A simultaneous individual resupply by both an Ammo Carrier and a Medic targeting
 | Code | Name | Description |
 |------|------|-------------|
 | `02` | Mission Complete | Entity survived until mission time expired. Normal end for most players and all non-player entities. |
-| `04` | Lives Exhausted | Player ran out of lives before the mission ended. Their line 6 entry appears mid-game at the timestamp of elimination. |
-| `01` | Kicked | Player was removed from the mission. Should not appear in archived games under normal circumstances. |
-| `17` | Kicked by Referee | Player was removed from the mission by a referee. Should not appear in archived games under normal circumstances. |
+| `04` | Eliminated | Player ran out of lives before the mission ended, or was force-eliminated due to a game victory condition (mission kill). Their line 6 entry appears mid-game. `livesLeft` in line type 7 will be `0`. |
+| `01` | Kicked | Player was removed from the mission (e.g. removed from a broken suit mid-game). May appear in archived games. `livesLeft` in line type 7 should be treated as `0`. |
+| `17` | Kicked by Referee | Player was removed from the mission by a referee. May appear in archived games. `livesLeft` in line type 7 should be treated as `0`. |
 
 **Notes:**
 - A player with exit type `04` has their line 6 entry appear mid-game. No further line type `5` or `9` entries will appear for that entity after this point.
 - The `score` field should always equal the `new` value of the entity's last line type `5` score entry. This can be used as a consistency check during ingestion.
 - Non-player entities (`standard-target`, `beacon`, `referee`, etc.) always receive exit type `02` and a score of `0`.
 - `@NNN` guest players are treated the same as registered players for exit type purposes.
-- Exit codes `01` and `17` are included for completeness but files containing these codes would typically not be present in the archive.
+- Exit codes `01` and `17` may appear in archived games. Ingestion must handle them: treat the player as eliminated and set `livesLeft = 0`.
+- Exit code `04` covers both natural elimination (lives reached 0) and force-elimination from a game victory condition (mission kill where remaining team players are eliminated with lives still remaining).
 
 ---
 
@@ -730,7 +733,7 @@ During state 2, ALL incoming tags are treated as standard damage regardless of t
 | `0502` | Lives Resupply | medic | player | 0 | 0 |
 | `0510` | Team Ammo Resupply | ammo | team | 0 | 0 |
 | `0512` | Team Lives Resupply | medic | team | 0 | 0 |
-| `0600` | Penalty | referee | player | 0 | -penalty |
+| `0600` | Penalty | player (penalized) | — | -penalty | — |
 | `0900` | Achievement | player | — | 0 | — |
 | `0902` | Reward | player | — | 0 | — |
 | `0B03` | Base Award | player | target | +1001 | 0 |
