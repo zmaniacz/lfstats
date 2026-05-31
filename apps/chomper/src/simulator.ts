@@ -683,7 +683,7 @@ class Simulator {
         if (actor) this.handle0512(actor, time, eventIndex);
         break;
       case "0600":
-        if (target) this.handle0600(actorId, target, time, eventIndex);
+        if (actor) this.handle0600(null, actor, time, eventIndex);
         break;
       case "0B03":
         if (actor) this.handle0B03(actor, eventIndex, targetId);
