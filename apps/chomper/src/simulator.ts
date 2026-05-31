@@ -472,11 +472,16 @@ class Simulator {
     );
   }
 
-  private getActiveTeammates(ps: PlayerSimState, time: number): PlayerSimState[] {
+  private getActiveTeammates(
+    ps: PlayerSimState,
+    time: number,
+    includeRecentlyDown = false,
+  ): PlayerSimState[] {
     return this.getTeammates(ps).filter(
       (p) =>
         p.state === 0 ||
-        (p.state === 3 &&
+        (includeRecentlyDown &&
+          p.state === 3 &&
           p.state3EnteredAt !== null &&
           time - p.state3EnteredAt <= 750),
     );
@@ -1150,7 +1155,7 @@ class Simulator {
 
     this.recordSnapshot(actor, eventIndex);
 
-    for (const teammate of this.getActiveTeammates(actor, time)) {
+    for (const teammate of this.getActiveTeammates(actor, time, true)) {
       const stats = POSITION_STATS[teammate.position]!;
       teammate.lives = Math.min(
         teammate.lives + stats.resupplyLives,
