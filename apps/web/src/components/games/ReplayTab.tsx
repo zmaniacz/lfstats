@@ -1,0 +1,365 @@
+"use client"
+
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import { Play, Pause, RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
+import { formatMs, formatScore, formatPct } from "@/lib/format"
+import { getPosition } from "@/lib/positions"
+import { getTeamColor } from "@/lib/team-colors"
+import type { ReplayData, ReplayPlayer, ReplayPlayerState } from "@lfstats/db"
+
+const TICK_MS = 100
+const SPEEDS = [1, 2, 4, 8] as const
+type Speed = (typeof SPEEDS)[number]
+
+const HEAVY_WEAPONS_POSITION = 2
+
+function binarySearchLatestState(
+  states: ReplayPlayerState[],
+  atTime: number,
+): ReplayPlayerState | null {
+  let lo = 0
+  let hi = states.length - 1
+  let result = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (states[mid].time <= atTime) {
+      result = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  return result === -1 ? null : states[result]
+}
+
+type ComputedPlayer = ReplayPlayer & {
+  rank: number
+  score: number
+  accuracy: number
+  lives: number
+  shots: number
+  missiles: number
+  sp: number | null
+  isEliminated: boolean
+}
+
+type ComputedTeam = {
+  teamId: string
+  teamName: string
+  teamColour: number
+  totalScore: number
+  players: ComputedPlayer[]
+}
+
+export function ReplayTab({
+  gameId,
+  duration,
+}: {
+  gameId: string
+  duration: number
+}) {
+  const [data, setData] = useState<ReplayData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [speed, setSpeed] = useState<Speed>(1)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/games/${gameId}/replay`)
+      .then((r) => r.json())
+      .then((d: ReplayData) => {
+        setData(d)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [gameId])
+
+  // Pre-process: build per-player state arrays (already sorted by time from query)
+  const statesByPlayer = useMemo(() => {
+    if (!data) return new Map<string, ReplayPlayerState[]>()
+    const map = new Map<string, ReplayPlayerState[]>()
+    for (const s of data.playerStates) {
+      const arr = map.get(s.scorecardId) ?? []
+      arr.push(s)
+      map.set(s.scorecardId, arr)
+    }
+    return map
+  }, [data])
+
+  // Pre-process: callsign lookup for event stream
+  const playerMap = useMemo(() => {
+    if (!data) return new Map<string, string>()
+    const map = new Map<string, string>()
+    for (const p of data.players) map.set(p.scorecardId, p.callsign)
+    return map
+  }, [data])
+
+  // Timer management
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    if (!isPlaying) return
+
+    intervalRef.current = setInterval(() => {
+      setCurrentTime((prev) => {
+        const next = prev + TICK_MS * speed
+        if (next >= duration) {
+          setIsPlaying(false)
+          return duration
+        }
+        return next
+      })
+    }, TICK_MS)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [isPlaying, speed, duration])
+
+  const handleReset = useCallback(() => {
+    setIsPlaying(false)
+    setCurrentTime(0)
+  }, [])
+
+  // Scoreboard computation
+  const computedTeams = useMemo((): ComputedTeam[] => {
+    if (!data) return []
+
+    const teamMap = new Map<string, ComputedTeam>()
+    for (const player of data.players) {
+      if (!teamMap.has(player.teamId)) {
+        teamMap.set(player.teamId, {
+          teamId: player.teamId,
+          teamName: player.teamName,
+          teamColour: player.teamColour,
+          totalScore: 0,
+          players: [],
+        })
+      }
+    }
+
+    for (const player of data.players) {
+      const states = statesByPlayer.get(player.scorecardId) ?? []
+      const state = binarySearchLatestState(states, currentTime)
+      const score = state?.score ?? 0
+      const team = teamMap.get(player.teamId)!
+      team.totalScore += score
+      team.players.push({
+        ...player,
+        rank: 0,
+        score,
+        accuracy: state?.accuracy ?? 0,
+        lives: state?.lives ?? 0,
+        shots: state?.shots ?? 0,
+        missiles: state?.missiles ?? 0,
+        sp: player.position === HEAVY_WEAPONS_POSITION ? null : (state?.sp ?? 0),
+        isEliminated: state?.isEliminated ?? false,
+      })
+    }
+
+    const teams = Array.from(teamMap.values())
+    for (const team of teams) {
+      team.players.sort((a, b) => b.score - a.score)
+      team.players.forEach((p, i) => { p.rank = i + 1 })
+    }
+    teams.sort((a, b) => b.totalScore - a.totalScore)
+    return teams
+  }, [data, statesByPlayer, currentTime])
+
+  // Event stream computation
+  const visibleEvents = useMemo(() => {
+    if (!data) return []
+    const visible = data.events.filter((e) => e.time <= currentTime)
+    return visible.slice(-20).reverse()
+  }, [data, currentTime])
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-6 w-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Replay data not available for this game.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Playback controls */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsPlaying((p) => !p)}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleReset}
+            aria-label="Reset"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1">
+            {SPEEDS.map((s) => (
+              <Button
+                key={s}
+                variant={speed === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSpeed(s)}
+              >
+                {s}x
+              </Button>
+            ))}
+          </div>
+          <span className="ml-auto tabular-nums text-sm text-muted-foreground">
+            {formatMs(currentTime)} / {formatMs(duration)}
+          </span>
+        </div>
+        <Slider
+          min={0}
+          max={duration}
+          step={TICK_MS}
+          value={[currentTime]}
+          onValueChange={([v]) => {
+            setIsPlaying(false)
+            setCurrentTime(v)
+          }}
+        />
+      </div>
+
+      {/* Scoreboards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {computedTeams.map((team) => {
+          const color = getTeamColor(team.teamColour)
+          return (
+            <div key={team.teamId} className="space-y-0">
+              <div
+                className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
+              >
+                <span className={`font-bold ${color?.text ?? ""}`}>
+                  {team.teamName}
+                </span>
+                <span className="tabular-nums font-semibold">
+                  {formatScore(team.totalScore)}
+                </span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 text-center">#</TableHead>
+                    <TableHead>Callsign</TableHead>
+                    <TableHead className="text-center">Pos</TableHead>
+                    <TableHead className="text-right">Score</TableHead>
+                    <TableHead className="text-right">Acc</TableHead>
+                    <TableHead className="text-right">Lives</TableHead>
+                    <TableHead className="text-right">Shots</TableHead>
+                    <TableHead className="text-right">Msls</TableHead>
+                    <TableHead className="text-right">SP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {team.players.map((player) => (
+                    <TableRow
+                      key={player.scorecardId}
+                      className={player.isEliminated ? "opacity-50" : ""}
+                    >
+                      <TableCell className="text-center tabular-nums text-muted-foreground">
+                        {player.rank}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {player.callsign}
+                      </TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">
+                        {getPosition(player.position)?.abbr ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatScore(player.score)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatPct(player.accuracy)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {player.lives}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {player.shots}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {player.missiles}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {player.sp === null ? "—" : player.sp}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Event stream */}
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Events
+        </h3>
+        <div className="rounded-md border bg-muted/20 p-3 space-y-1 min-h-[80px] max-h-64 overflow-y-auto">
+          {visibleEvents.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No events yet.</p>
+          ) : (
+            visibleEvents.map((event) => {
+              const actor = event.actorScorecardId
+                ? playerMap.get(event.actorScorecardId)
+                : null
+              const target = event.isPlayerTarget && event.targetScorecardId
+                ? playerMap.get(event.targetScorecardId)
+                : event.targetScorecardId === null && !event.isPlayerTarget
+                  ? null
+                  : "a target"
+              const parts = [actor, event.description.trim(), target].filter(Boolean)
+              return (
+                <div key={event.id} className="flex items-baseline gap-2 text-sm">
+                  <span className="tabular-nums text-xs text-muted-foreground shrink-0 w-12">
+                    {formatMs(event.time)}
+                  </span>
+                  <span>{parts.join(" ")}</span>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

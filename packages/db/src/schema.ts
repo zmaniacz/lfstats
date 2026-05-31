@@ -490,6 +490,7 @@ export const sm5GamePlayerState = pgTable(
     state: integer("state").notNull(),
     isRapidFire: boolean("is_rapid_fire").notNull(),
     isNuking: boolean("is_nuking").notNull(),
+    isEliminated: boolean("is_eliminated").notNull().default(false),
     // Live running values for replay scoreboard — Scorecard columns are authoritative
     accuracy: doublePrecision("accuracy").notNull(),
     hitDiff: doublePrecision("hit_diff").notNull(),

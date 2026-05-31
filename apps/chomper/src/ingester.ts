@@ -507,6 +507,7 @@ export async function ingest(
           state: snap.state,
           isRapidFire: snap.isRapidFire,
           isNuking: snap.isNuking,
+          isEliminated: snap.isEliminated,
           accuracy: snap.accuracy,
           hitDiff: snap.hitDiff,
         });

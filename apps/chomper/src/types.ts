@@ -204,6 +204,7 @@ export interface GamePlayerStateSnapshot {
   state: 0 | 2 | 3;
   isRapidFire: boolean;
   isNuking: boolean;
+  isEliminated: boolean;
   accuracy: number;
   hitDiff: number;
 }

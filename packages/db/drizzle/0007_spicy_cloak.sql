@@ -1,0 +1,1 @@
+ALTER TABLE "sm5_game_player_state" ADD COLUMN "is_eliminated" boolean DEFAULT false NOT NULL;

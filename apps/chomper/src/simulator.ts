@@ -1,12 +1,12 @@
 import type {
-  ParsedTdf,
   ParsedEntity,
+  ParsedTdf,
   PlayerSimState,
-  SimulatedGame,
   SimEvent,
-  SimTeam,
-  SimTargetDestruction,
   SimPenalty,
+  SimTargetDestruction,
+  SimTeam,
+  SimulatedGame,
 } from "./types.js";
 import { POSITION, POSITION_STATS } from "./types.js";
 
@@ -311,7 +311,12 @@ class Simulator {
       actorEntityId: entityId,
       targetEntityId: null,
       targetHardwareId: null,
-      description: `state transition to ${newState}`,
+      description:
+        newState === 3
+          ? "is down"
+          : newState === 2
+            ? "is vulnerable"
+            : "reactivated",
       isSynthetic: true,
     });
     const stateEventIndex = this.events.length - 1;
@@ -404,6 +409,7 @@ class Simulator {
       state: ps.state,
       isRapidFire: ps.isRapidFire,
       isNuking: ps.isNuking,
+      isEliminated: ps.isEliminated,
       accuracy,
       hitDiff,
     });
@@ -494,6 +500,12 @@ class Simulator {
 
     target.isEliminated = true;
     target.eliminatedAt = time;
+
+    // Record a final state snapshot so the replay scoreboard can show lives=0 and
+    // isEliminated=true. The normal state_3 transition is blocked once isEliminated
+    // is set, so without this snapshot the player's last visible state would still
+    // show their pre-elimination life count.
+    this.recordSnapshot(target, this.currentEventIndex);
 
     const isMedic = target.position === POSITION.MEDIC;
 

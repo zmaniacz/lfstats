@@ -5,11 +5,13 @@ import {
   sm5Scorecard,
   sm5ScorecardMvp,
   sm5GamePlayerInteraction,
+  sm5GameEvent,
+  sm5GamePlayerState,
   center,
   gameTag,
   gameTagAssignment,
 } from "../schema";
-import { eq, and, desc, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, isNull, sql } from "drizzle-orm";
 
 export const GAMES_PER_PAGE = 10;
 
@@ -938,4 +940,140 @@ export async function getGameSlugById(gameId: string): Promise<string | null> {
     .where(eq(game.id, gameId));
 
   return row?.slug ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Replay
+// ---------------------------------------------------------------------------
+
+export type ReplayPlayer = {
+  scorecardId: string;
+  callsign: string;
+  position: number;
+  teamId: string;
+  teamName: string;
+  teamColour: number;
+  eliminated: boolean;
+};
+
+export type ReplayEvent = {
+  id: string;
+  time: number;
+  eventType: string;
+  description: string;
+  actorScorecardId: string | null;
+  targetScorecardId: string | null;
+  isPlayerTarget: boolean;
+};
+
+export type ReplayPlayerState = {
+  scorecardId: string;
+  time: number;
+  score: number;
+  lives: number;
+  shots: number;
+  missiles: number;
+  sp: number;
+  isEliminated: boolean;
+  accuracy: number;
+  hitDiff: number;
+};
+
+export type ReplayData = {
+  duration: number;
+  players: ReplayPlayer[];
+  events: ReplayEvent[];
+  playerStates: ReplayPlayerState[];
+};
+
+export async function getGameReplayData(gameId: string): Promise<ReplayData | null> {
+  const [gameRow] = await db
+    .select({ actualDuration: game.actualDuration })
+    .from(game)
+    .where(eq(game.id, gameId));
+
+  if (!gameRow) return null;
+
+  const [eventRows, stateRows, scorecardRows] = await Promise.all([
+    db
+      .select({
+        id: sm5GameEvent.id,
+        time: sm5GameEvent.time,
+        eventType: sm5GameEvent.eventType,
+        description: sm5GameEvent.description,
+        actorScorecardId: sm5GameEvent.actorScorecardId,
+        targetScorecardId: sm5GameEvent.targetScorecardId,
+        targetGameTargetId: sm5GameEvent.targetGameTargetId,
+      })
+      .from(sm5GameEvent)
+      .where(eq(sm5GameEvent.gameId, gameId))
+      .orderBy(asc(sm5GameEvent.time)),
+
+    db
+      .select({
+        scorecardId: sm5GamePlayerState.scorecardId,
+        time: sm5GamePlayerState.time,
+        score: sm5GamePlayerState.score,
+        lives: sm5GamePlayerState.lives,
+        shots: sm5GamePlayerState.shots,
+        missiles: sm5GamePlayerState.missiles,
+        sp: sm5GamePlayerState.sp,
+        isEliminated: sm5GamePlayerState.isEliminated,
+        accuracy: sm5GamePlayerState.accuracy,
+        hitDiff: sm5GamePlayerState.hitDiff,
+      })
+      .from(sm5GamePlayerState)
+      .where(eq(sm5GamePlayerState.gameId, gameId))
+      .orderBy(asc(sm5GamePlayerState.scorecardId), asc(sm5GamePlayerState.time)),
+
+    db
+      .select({
+        id: sm5Scorecard.id,
+        callsign: sm5Scorecard.callsign,
+        position: sm5Scorecard.position,
+        teamId: sm5Scorecard.teamId,
+        eliminated: sm5Scorecard.eliminated,
+        teamName: sm5GameTeam.name,
+        teamColour: sm5GameTeam.colourEnum,
+      })
+      .from(sm5Scorecard)
+      .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+      .where(
+        and(eq(sm5Scorecard.gameId, gameId), eq(sm5GameTeam.isNeutral, false)),
+      ),
+  ]);
+
+  return {
+    duration: gameRow.actualDuration,
+    players: scorecardRows.map((sc) => ({
+      scorecardId: sc.id,
+      callsign: sc.callsign,
+      position: sc.position,
+      teamId: sc.teamId,
+      teamName: sc.teamName,
+      teamColour: sc.teamColour,
+      eliminated: sc.eliminated,
+    })),
+    events: eventRows.map((e) => ({
+      id: e.id,
+      time: e.time,
+      eventType: e.eventType,
+      description: e.description,
+      actorScorecardId: e.actorScorecardId,
+      targetScorecardId: e.targetScorecardId,
+      isPlayerTarget: e.targetScorecardId !== null,
+    })),
+    playerStates: stateRows.map((s) => ({
+      scorecardId: s.scorecardId,
+      time: s.time,
+      score: s.score,
+      lives: s.lives,
+      shots: s.shots,
+      missiles: s.missiles,
+      sp: s.sp,
+      isEliminated: s.isEliminated,
+      accuracy: s.accuracy,
+      hitDiff: s.hitDiff,
+    })),
+  };
 }
