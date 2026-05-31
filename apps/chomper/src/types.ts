@@ -193,6 +193,10 @@ export interface PlayerSimState {
   targetsDestroyed: number;
   penalties: number;
 
+  // Tracking for consistency checks
+  phantomDeactivations: number;       // HP reached 0 on a 0205 (non-deactivating) event
+  entityEndForcedLives: number | null; // lives value when entity-end "04" forced elimination
+
   // GamePlayerState snapshots — one per state-changing event
   stateSnapshots: GamePlayerStateSnapshot[];
 }

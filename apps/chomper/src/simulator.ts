@@ -50,6 +50,12 @@ class Simulator {
     { shotsHit: number; shotDeactivations: number; missileHits: number }
   >();
 
+  // Pending boosts for state-3 players (radio lag — applied during reconciliation)
+  private pendingBoosts = new Map<
+    string,
+    Array<{ type: "lives" | "shots"; amount: number }>
+  >();
+
   // Line type 9 pointer (2.005+ only)
   private stateLogPointer = 0;
 
@@ -101,7 +107,80 @@ class Simulator {
       this.handleEvent(event.time, event.type, actor, target);
     }
 
+    this.reconcilePendingBoosts();
+    this.applyEntityEnds();
+
     return this.buildResult();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Post-simulation reconciliation and entity-end processing
+  // ---------------------------------------------------------------------------
+
+  private reconcilePendingBoosts(): void {
+    const sm5ById = new Map(this.parsed.sm5Stats.map((s) => [s.id, s]));
+
+    for (const [entityId, ps] of this.playerStates) {
+      const stats = sm5ById.get(entityId);
+      if (!stats) continue;
+      const boosts = this.pendingBoosts.get(entityId);
+      if (!boosts?.length) continue;
+
+      let livesGap = stats.livesLeft - ps.lives;
+      if (livesGap > 0) {
+        for (const b of boosts.filter((b) => b.type === "lives")) {
+          const apply = Math.min(b.amount, livesGap);
+          ps.lives += apply;
+          livesGap -= apply;
+          if (livesGap === 0) break;
+        }
+      }
+
+      let shotsGap = stats.shotsLeft - ps.shots;
+      if (shotsGap > 0) {
+        for (const b of boosts.filter((b) => b.type === "shots")) {
+          const apply = Math.min(b.amount, shotsGap);
+          ps.shots += apply;
+          shotsGap -= apply;
+          if (shotsGap === 0) break;
+        }
+      }
+
+      const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
+      if (finalSnap) {
+        finalSnap.lives = ps.lives;
+        finalSnap.shots = ps.shots;
+      }
+    }
+  }
+
+  private applyEntityEnds(): void {
+    for (const end of this.parsed.entityEnds) {
+      const ps = this.playerStates.get(end.id);
+      if (!ps) continue;
+
+      if (end.exitType === "04") {
+        // Eliminated — record if lives were > 0 so the consistency check can flag it,
+        // then zero out lives so the DB receives the correct value.
+        if (ps.lives > 0) {
+          ps.entityEndForcedLives = ps.lives;
+        }
+        ps.lives = 0;
+        ps.isEliminated = true;
+        if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
+      } else if (end.exitType === "01" || end.exitType === "17") {
+        // Kicked — quietly set to 0, no consistency check fail expected.
+        ps.lives = 0;
+        ps.isEliminated = true;
+        if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
+      }
+
+      // Update the final snapshot so the DB gets the corrected lives value.
+      const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
+      if (finalSnap && ps.lives !== finalSnap.lives) {
+        finalSnap.lives = ps.lives;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -211,6 +290,8 @@ class Simulator {
         spSpent: 0,
         targetsDestroyed: 0,
         penalties: 0,
+        phantomDeactivations: 0,
+        entityEndForcedLives: null,
         stateSnapshots: [],
       };
 
@@ -472,19 +553,19 @@ class Simulator {
     );
   }
 
-  private getActiveTeammates(
-    ps: PlayerSimState,
-    time: number,
-    includeRecentlyDown = false,
-  ): PlayerSimState[] {
-    return this.getTeammates(ps).filter(
-      (p) =>
-        p.state === 0 ||
-        (includeRecentlyDown &&
-          p.state === 3 &&
-          p.state3EnteredAt !== null &&
-          time - p.state3EnteredAt <= 750),
-    );
+  private getActiveTeammates(ps: PlayerSimState): PlayerSimState[] {
+    return this.getTeammates(ps).filter((p) => p.state === 0);
+  }
+
+  private recordPendingBoost(
+    entityId: string,
+    type: "lives" | "shots",
+    amount: number,
+  ): void {
+    if (amount <= 0) return;
+    const arr = this.pendingBoosts.get(entityId) ?? [];
+    arr.push({ type, amount });
+    this.pendingBoosts.set(entityId, arr);
   }
 
   private getOpposingActivePlayers(ps: PlayerSimState): PlayerSimState[] {
@@ -829,7 +910,12 @@ class Simulator {
     }
 
     const stats = POSITION_STATS[actor.position]!;
-    target.hitPoints -= stats.shotPower;
+    // Don't modify HP if target is already in state 3 — they're in the penalty
+    // box with HP already reset; a simultaneous/subsequent 0206 still deducts a
+    // life (game system confirms with score events) but must not corrupt HP.
+    if (target.state !== 3) {
+      target.hitPoints -= stats.shotPower;
+    }
 
     // Reset tracking (target was in state 2 and got hit)
     if (target.state === 2) {
@@ -854,6 +940,11 @@ class Simulator {
     this.incrInteraction(actor.entityId, target.entityId, "shotsHit");
 
     if (isDeactivating || target.hitPoints <= 0) {
+      // Track HP reaching 0 on a non-deactivating event — TDF says 0205 but HP
+      // arithmetic says the player should be down. Flagged in consistency check.
+      if (!isDeactivating && target.hitPoints <= 0) {
+        target.phantomDeactivations++;
+      }
       // Deactivating hit (0206 or HP ran out from shot power)
       this.handleNukeCancel(actor, target);
 
@@ -876,6 +967,11 @@ class Simulator {
       // State transition handled by state event (emitted by advanceClock or explicit state log)
       // Trigger the state_3 transition now since it coincides with the deactivating event
       this.triggerStateTransition(target, 3, time);
+      // If target was already in state 3 (simultaneous 0206 while in penalty),
+      // triggerStateTransition is a no-op so no snapshot was recorded — do it here.
+      if (target.state === 3) {
+        this.recordSnapshot(target, eventIndex);
+      }
     }
 
     this.recordSnapshot(actor, eventIndex);
@@ -998,7 +1094,7 @@ class Simulator {
 
     for (const target of opponents) {
       const livesLost = Math.min(3, target.lives);
-      target.lives -= 3;
+      target.lives -= livesLost;
 
       actor.livesRemovedByNuke += livesLost;
       if (target.position === POSITION.MEDIC) {
@@ -1124,7 +1220,7 @@ class Simulator {
   // 0510 — Team Ammo Boost
   private handle0510(
     actor: PlayerSimState,
-    time: number,
+    _time: number,
     eventIndex: number,
   ): void {
     actor.ammoBoost++;
@@ -1133,7 +1229,7 @@ class Simulator {
     const stats_actor = POSITION_STATS[actor.position]!;
     this.recordSnapshot(actor, eventIndex);
 
-    for (const teammate of this.getActiveTeammates(actor, time)) {
+    for (const teammate of this.getActiveTeammates(actor)) {
       const stats = POSITION_STATS[teammate.position]!;
       teammate.shots = Math.min(
         teammate.shots + stats.resupplyShots,
@@ -1141,13 +1237,23 @@ class Simulator {
       );
       this.recordSnapshot(teammate, eventIndex);
     }
+    // Record pending shot boosts for state-3 teammates (radio lag — resolved later)
+    for (const teammate of this.getTeammates(actor)) {
+      if (teammate.state !== 3) continue;
+      const stats = POSITION_STATS[teammate.position]!;
+      this.recordPendingBoost(
+        teammate.entityId,
+        "shots",
+        Math.min(stats.resupplyShots, stats.maxShots - teammate.shots),
+      );
+    }
     void stats_actor; // suppress unused warning
   }
 
   // 0512 — Team Lives Boost
   private handle0512(
     actor: PlayerSimState,
-    time: number,
+    _time: number,
     eventIndex: number,
   ): void {
     actor.lifeBoost++;
@@ -1155,13 +1261,23 @@ class Simulator {
 
     this.recordSnapshot(actor, eventIndex);
 
-    for (const teammate of this.getActiveTeammates(actor, time, true)) {
+    for (const teammate of this.getActiveTeammates(actor)) {
       const stats = POSITION_STATS[teammate.position]!;
       teammate.lives = Math.min(
         teammate.lives + stats.resupplyLives,
         stats.maxLives,
       );
       this.recordSnapshot(teammate, eventIndex);
+    }
+    // Record pending life boosts for state-3 teammates (radio lag — resolved later)
+    for (const teammate of this.getTeammates(actor)) {
+      if (teammate.state !== 3) continue;
+      const stats = POSITION_STATS[teammate.position]!;
+      this.recordPendingBoost(
+        teammate.entityId,
+        "lives",
+        Math.min(stats.resupplyLives, stats.maxLives - teammate.lives),
+      );
     }
   }
 
@@ -1416,6 +1532,20 @@ export function runConsistencyCheck(
           `${entityId} finalSnapshot.shots: computed=${finalSnapshot.shots} expected=${stats.shotsLeft}`,
         );
       }
+    }
+
+    // Entity-end exitType "04" forced lives to 0 — simulator missed life losses
+    if (ps.entityEndForcedLives !== null) {
+      discrepancies.push(
+        `${entityId} entity_end eliminated: simulator computed ${ps.entityEndForcedLives} lives but player was eliminated (exitType 04)`,
+      );
+    }
+
+    // HP reached 0 from a non-deactivating event (0205) — phantom lives deducted
+    if (ps.phantomDeactivations > 0) {
+      discrepancies.push(
+        `${entityId} phantomDeactivations: ${ps.phantomDeactivations} (HP reached 0 on a non-deactivating event)`,
+      );
     }
   }
 
