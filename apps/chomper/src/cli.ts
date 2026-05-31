@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve, dirname, basename } from "node:path";
 import {
   findCenterByNaturalKey,
   findGameByNaturalKey,
@@ -77,7 +77,33 @@ console.log(
 );
 
 const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-runConsistencyCheck(simResult.playerStats, sm5StatsById);
+const discrepancies = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+
+const debugOut = {
+  consistencyCheck: {
+    passed: discrepancies.length === 0,
+    discrepancies,
+  },
+  playerStates: Object.fromEntries(
+    [...simResult.playerStats.entries()].map(([id, ps]) => [
+      id,
+      {
+        ...ps,
+        stateSnapshots: ps.stateSnapshots.map((snap) => ({
+          ...snap,
+          time: simResult.events[snap.eventIndex]?.time ?? null,
+        })),
+        tdf: sm5StatsById.get(id) ?? null,
+      },
+    ]),
+  ),
+};
+const debugPath = resolve(
+  dirname(absPath),
+  basename(absPath, ".tdf") + ".debug.json",
+);
+writeFileSync(debugPath, JSON.stringify(debugOut, null, 2));
+console.log(`Debug output: ${debugPath}`);
 
 // MVP
 const mvpModel = await findActiveMvpModel();
@@ -109,3 +135,4 @@ const gameId = await ingest(
   gameType,
 );
 console.log(`Ingested: gameId=${gameId}`);
+process.exit(0);
