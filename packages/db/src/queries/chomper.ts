@@ -52,8 +52,22 @@ export async function getFailedChomperJobs() {
   return db
     .select()
     .from(chomperJob)
-    .where(eq(chomperJob.status, "failed"))
+    .where(and(eq(chomperJob.status, "failed"), eq(chomperJob.archived, false)))
     .orderBy(desc(chomperJob.startedAt));
+}
+
+export async function archiveChomperJob(id: string) {
+  await db
+    .update(chomperJob)
+    .set({ archived: true })
+    .where(eq(chomperJob.id, id));
+}
+
+export async function archiveAllChomperJobs() {
+  await db
+    .update(chomperJob)
+    .set({ archived: true })
+    .where(and(eq(chomperJob.status, "failed"), eq(chomperJob.archived, false)));
 }
 
 export async function getChomperJobsByS3Keys(s3Keys: string[]) {

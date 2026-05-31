@@ -71,6 +71,20 @@
       "when": 1780209476501,
       "tag": "0009_nosy_black_cat",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1748649600000,
+      "tag": "0010_archive_chomper_job",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780256358365,
+      "tag": "0011_dashing_next_avengers",
+      "breakpoints": true
     }
   ]
 }

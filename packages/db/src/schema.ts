@@ -471,6 +471,7 @@ export const chomperJob = pgTable("chomper_job", {
   errorMessage: text("error_message"),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
+  archived: boolean("archived").notNull().default(false),
 });
 
 export const sm5GamePlayerState = pgTable(

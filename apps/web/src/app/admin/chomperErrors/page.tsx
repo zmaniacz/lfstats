@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ArchiveAllButton, ArchiveButton } from "./archive-buttons"
 
 export default async function ChomperErrorsPage() {
   const session = await auth()
@@ -24,7 +25,10 @@ export default async function ChomperErrorsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Chomper Errors</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Chomper Errors</h2>
+        {jobs.length > 0 && <ArchiveAllButton />}
+      </div>
       {jobs.length === 0 ? (
         <p className="text-sm text-muted-foreground">No failed jobs.</p>
       ) : (
@@ -35,6 +39,7 @@ export default async function ChomperErrorsPage() {
               <TableHead>Started At</TableHead>
               <TableHead>Completed At</TableHead>
               <TableHead>Error Message</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -51,6 +56,9 @@ export default async function ChomperErrorsPage() {
                   <pre className="max-h-40 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">
                     {job.errorMessage ?? "—"}
                   </pre>
+                </TableCell>
+                <TableCell className="text-right">
+                  <ArchiveButton id={job.id} />
                 </TableCell>
               </TableRow>
             ))}
