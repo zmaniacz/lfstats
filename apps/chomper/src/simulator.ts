@@ -621,6 +621,7 @@ class Simulator {
         this.handleMissionEnd(time, eventIndex);
         break;
       case "0201":
+      case "0202": // miss on a target — same as open-air miss
         if (actor) this.handle0201(actor, eventIndex);
         break;
       case "0203":
@@ -670,7 +671,7 @@ class Simulator {
       case "0B03":
         if (actor) this.handle0B03(actor, eventIndex, targetId);
         break;
-      // 0202, 0300, 0301, 0304, 0900, 0902 — no state changes, skip
+      // 0300, 0301, 0304, 0900, 0902 — no state changes, skip
     }
   }
 
@@ -719,6 +720,7 @@ class Simulator {
 
   // 0201 — Miss
   private handle0201(actor: PlayerSimState, _eventIndex: number): void {
+    actor.shots--;
     actor.shotsFired++;
     if (actor.isRapidFire) {
       actor.shotsFiredDuringRapid++;
@@ -731,6 +733,7 @@ class Simulator {
     _time: number,
     eventIndex: number,
   ): void {
+    actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
     if (actor.isRapidFire) {
@@ -747,6 +750,7 @@ class Simulator {
     eventIndex: number,
     targetHardwareId: string | null,
   ): void {
+    actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
     actor.targetsDestroyed++;
@@ -775,6 +779,7 @@ class Simulator {
     isDeactivating: boolean,
     eventIndex: number,
   ): void {
+    actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
     target.timesHit++;
@@ -983,6 +988,7 @@ class Simulator {
         actor.nukesHitMedic += livesLost;
       }
 
+      this.handleNukeCancel(actor, target);
       this.checkElimination(actor, target, time, true);
       this.awardAssists(target.entityId, actor.entityId);
 
