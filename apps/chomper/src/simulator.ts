@@ -179,6 +179,8 @@ class Simulator {
         totalNukeActivationTime: 0,
         nukesCanceled: 0,
         teamNukesCanceled: 0,
+        nukesCanceledByNuke: 0,
+        ownNukesCanceledByNuke: 0,
         rapidFire: 0,
         totalRapidTime: 0,
         shotsFiredDuringRapid: 0,
@@ -191,6 +193,8 @@ class Simulator {
         doubleResuppliesGiven: 0,
         resuppliesReceivedAmmo: 0,
         resuppliesReceivedLives: 0,
+        emergencyResuppliesReceivedAmmo: 0,
+        emergencyResuppliesReceivedLives: 0,
         doubleResuppliesReceived: 0,
         deactivatedOpponent: 0,
         deactivatedTeam: 0,
@@ -655,9 +659,11 @@ class Simulator {
         break;
       case "0500":
         if (actor && target) this.handle0500(actor, target, time, eventIndex);
+        else if (!actor && target) this.handleEmergencyResupply(target, "ammo", time, eventIndex);
         break;
       case "0502":
         if (actor && target) this.handle0502(actor, target, time, eventIndex);
+        else if (!actor && target) this.handleEmergencyResupply(target, "lives", time, eventIndex);
         break;
       case "0510":
         if (actor) this.handle0510(actor, time, eventIndex);
@@ -720,7 +726,7 @@ class Simulator {
 
   // 0201 — Miss
   private handle0201(actor: PlayerSimState, _eventIndex: number): void {
-    actor.shots--;
+    if (actor.position !== POSITION.AMMO) actor.shots--;
     actor.shotsFired++;
     if (actor.isRapidFire) {
       actor.shotsFiredDuringRapid++;
@@ -733,7 +739,7 @@ class Simulator {
     _time: number,
     eventIndex: number,
   ): void {
-    actor.shots--;
+    if (actor.position !== POSITION.AMMO) actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
     if (actor.isRapidFire) {
@@ -750,7 +756,7 @@ class Simulator {
     eventIndex: number,
     targetHardwareId: string | null,
   ): void {
-    actor.shots--;
+    if (actor.position !== POSITION.AMMO) actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
     actor.targetsDestroyed++;
@@ -779,7 +785,7 @@ class Simulator {
     isDeactivating: boolean,
     eventIndex: number,
   ): void {
-    actor.shots--;
+    if (actor.position !== POSITION.AMMO) actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
     target.timesHit++;
@@ -989,6 +995,10 @@ class Simulator {
       }
 
       this.handleNukeCancel(actor, target);
+      if (target.isNuking && this.isOpponent(actor, target)) {
+        actor.nukesCanceledByNuke++;
+        target.ownNukesCanceledByNuke++;
+      }
       this.checkElimination(actor, target, time, true);
       this.awardAssists(target.entityId, actor.entityId);
 
@@ -1073,6 +1083,31 @@ class Simulator {
     this.triggerStateTransition(target, 3, time);
 
     this.recordSnapshot(actor, eventIndex);
+  }
+
+  // 0500/0502 from beacon — Emergency Resupply (no actor player state)
+  private handleEmergencyResupply(
+    target: PlayerSimState,
+    type: "ammo" | "lives",
+    time: number,
+    eventIndex: number,
+  ): void {
+    const stats = POSITION_STATS[target.position]!;
+    if (type === "ammo") {
+      target.emergencyResuppliesReceivedAmmo++;
+      target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
+      if (target.isRapidFire && target.rapidFireStartedAt !== null) {
+        target.totalRapidTime += time - target.rapidFireStartedAt;
+        target.isRapidFire = false;
+        target.rapidFireStartedAt = null;
+      }
+    } else {
+      target.emergencyResuppliesReceivedLives++;
+      target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
+    }
+    target.deactivationCause = "resupply";
+    this.triggerStateTransition(target, 3, time);
+    this.recordSnapshot(target, eventIndex);
   }
 
   // 0510 — Team Ammo Boost

@@ -1,0 +1,2 @@
+ALTER TABLE "sm5_scorecard" ADD COLUMN "emergency_resupplies_received_ammo" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "sm5_scorecard" ADD COLUMN "emergency_resupplies_received_lives" integer DEFAULT 0 NOT NULL;

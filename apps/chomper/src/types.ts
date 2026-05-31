@@ -160,6 +160,8 @@ export interface PlayerSimState {
   totalNukeActivationTime: number;
   nukesCanceled: number;
   teamNukesCanceled: number;
+  nukesCanceledByNuke: number;
+  ownNukesCanceledByNuke: number;
   rapidFire: number;
   totalRapidTime: number;
   shotsFiredDuringRapid: number;
@@ -172,6 +174,8 @@ export interface PlayerSimState {
   doubleResuppliesGiven: number;
   resuppliesReceivedAmmo: number;
   resuppliesReceivedLives: number;
+  emergencyResuppliesReceivedAmmo: number;
+  emergencyResuppliesReceivedLives: number;
   doubleResuppliesReceived: number;
   deactivatedOpponent: number;
   deactivatedTeam: number;

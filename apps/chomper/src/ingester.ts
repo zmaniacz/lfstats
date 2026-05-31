@@ -331,6 +331,10 @@ export async function ingest(
         nukesCanceled: sm5?.nukeCancels ?? 0,
         teamNukesCanceled: sm5?.ownNukeCancels ?? 0,
 
+        // Nuke-cancelled-by-nuke — Commander only
+        nukesCanceledByNuke: isCommander ? (ps?.nukesCanceledByNuke ?? 0) : null,
+        ownNukesCanceledByNuke: isCommander ? (ps?.ownNukesCanceledByNuke ?? 0) : null,
+
         // Special ability stats
         rapidFire: isScout ? (sm5?.scoutRapid ?? 0) : null,
         totalRapidTime: isScout ? (ps?.totalRapidTime ?? 0) : null,
@@ -356,6 +360,8 @@ export async function ingest(
           : null,
         resuppliesReceivedAmmo: ps?.resuppliesReceivedAmmo ?? 0,
         resuppliesReceivedLives: ps?.resuppliesReceivedLives ?? 0,
+        emergencyResuppliesReceivedAmmo: ps?.emergencyResuppliesReceivedAmmo ?? 0,
+        emergencyResuppliesReceivedLives: ps?.emergencyResuppliesReceivedLives ?? 0,
         doubleResuppliesReceived: ps?.doubleResuppliesReceived ?? 0,
 
         // Combat outcomes — derived

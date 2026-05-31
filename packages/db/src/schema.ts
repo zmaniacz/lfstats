@@ -267,6 +267,10 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   nukesCanceled: integer("nukes_canceled").notNull(),
   teamNukesCanceled: integer("team_nukes_canceled").notNull(),
 
+  // Nuke-cancelled-by-nuke stats — Commander only
+  nukesCanceledByNuke: integer("nukes_canceled_by_nuke"),
+  ownNukesCanceledByNuke: integer("own_nukes_canceled_by_nuke"),
+
   // Special Ability Stats — position-specific, null where not applicable
   rapidFire: integer("rapid_fire"), // Scout only
   totalRapidTime: integer("total_rapid_time"), // Scout only
@@ -285,6 +289,8 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   // Received stats apply to all positions
   resuppliesReceivedAmmo: integer("resupplies_received_ammo").notNull(),
   resuppliesReceivedLives: integer("resupplies_received_lives").notNull(),
+  emergencyResuppliesReceivedAmmo: integer("emergency_resupplies_received_ammo").notNull().default(0),
+  emergencyResuppliesReceivedLives: integer("emergency_resupplies_received_lives").notNull().default(0),
   doubleResuppliesReceived: integer("double_resupplies_received").notNull(),
 
   // Combat Outcomes
