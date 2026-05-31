@@ -23,6 +23,10 @@ export async function fetchTdf(bucket: string, key: string): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+export async function deleteTdf(bucket: string, key: string): Promise<void> {
+  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
 export async function archiveTdf(
   sourceBucket: string,
   sourceKey: string,

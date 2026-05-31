@@ -10,6 +10,7 @@ Globals:
       Variables:
         INCOMING_BUCKET: !Ref IncomingBucket
         ARCHIVE_BUCKET: !Ref ArchiveBucket
+        ERROR_BUCKET: !Ref ErrorBucket
 Resources:
   ChomperDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -71,6 +72,10 @@ Resources:
               Resource: !Sub arn:aws:s3:::${ArchiveBucket}/*
             - Effect: Allow
               Action:
+                - s3:PutObject
+              Resource: !Sub arn:aws:s3:::${ErrorBucket}/*
+            - Effect: Allow
+              Action:
                 - secretsmanager:GetSecretValue
               Resource: !Ref DbSecretArn
             - Effect: Allow
@@ -103,6 +108,10 @@ Parameters:
   ArchiveBucket:
     Type: String
     Description: S3 bucket name where processed files are archived.
+
+  ErrorBucket:
+    Type: String
+    Description: S3 bucket name where TDF files that caused errors are moved.
 
   DbSecretArn:
     Type: String

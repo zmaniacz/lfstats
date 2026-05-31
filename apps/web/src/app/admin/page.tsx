@@ -41,6 +41,18 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </Link>
+        <Link href="/admin/chomperErrors">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader>
+              <CardTitle>Chomper Errors</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View TDF ingestion jobs that failed, including full error and consistency check output.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   )

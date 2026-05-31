@@ -1,4 +1,4 @@
-import { eq, isNull, and, sql, inArray, gte } from "drizzle-orm";
+import { eq, isNull, and, sql, inArray, gte, desc } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -46,6 +46,14 @@ export async function findChomperJobByLambdaRequestId(lambdaRequestId: string) {
     .where(eq(chomperJob.lambdaRequestId, lambdaRequestId))
     .limit(1);
   return row ?? null;
+}
+
+export async function getFailedChomperJobs() {
+  return db
+    .select()
+    .from(chomperJob)
+    .where(eq(chomperJob.status, "failed"))
+    .orderBy(desc(chomperJob.startedAt));
 }
 
 export async function getChomperJobsByS3Keys(s3Keys: string[]) {

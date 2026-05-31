@@ -1296,7 +1296,9 @@ class Simulator {
 export function runConsistencyCheck(
   playerStats: Map<string, PlayerSimState>,
   sm5StatsById: Map<string, import("./types.js").ParsedSm5Stats>,
-): void {
+): string[] {
+  const discrepancies: string[] = [];
+
   for (const [entityId, ps] of playerStats) {
     const stats = sm5StatsById.get(entityId);
     if (!stats) continue;
@@ -1334,8 +1336,8 @@ export function runConsistencyCheck(
 
     for (const [field, computed, expected] of checks) {
       if (computed !== expected) {
-        console.warn(
-          `[consistency] ${entityId} ${field}: computed=${computed} expected=${expected}`,
+        discrepancies.push(
+          `${entityId} ${field}: computed=${computed} expected=${expected}`,
         );
       }
     }
@@ -1343,10 +1345,27 @@ export function runConsistencyCheck(
     // sm5Stats only tracks shot3Hit for scouts
     if (ps.position === POSITION.SCOUT) {
       if (ps.shotsHitOpponent3hit !== stats.shot3Hit) {
-        console.warn(
-          `[consistency] ${entityId} shotsHitOpponent3hit: computed=${ps.shotsHitOpponent3hit} expected=${stats.shot3Hit}`,
+        discrepancies.push(
+          `${entityId} shotsHitOpponent3hit: computed=${ps.shotsHitOpponent3hit} expected=${stats.shot3Hit}`,
+        );
+      }
+    }
+
+    // Final game_player_state snapshot must match line-7 residual values
+    const finalSnapshot = ps.stateSnapshots[ps.stateSnapshots.length - 1];
+    if (finalSnapshot) {
+      if (finalSnapshot.lives !== stats.livesLeft) {
+        discrepancies.push(
+          `${entityId} finalSnapshot.lives: computed=${finalSnapshot.lives} expected=${stats.livesLeft}`,
+        );
+      }
+      if (finalSnapshot.shots !== stats.shotsLeft) {
+        discrepancies.push(
+          `${entityId} finalSnapshot.shots: computed=${finalSnapshot.shots} expected=${stats.shotsLeft}`,
         );
       }
     }
   }
+
+  return discrepancies;
 }

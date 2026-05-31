@@ -11,7 +11,7 @@ import type { S3Handler } from "aws-lambda";
 import { buildArchiveKey, ingest, parseGameStartTime } from "./ingester.js";
 import { calculateMvp } from "./mvp.js";
 import { ParseError, parseTdf } from "./parser.js";
-import { archiveTdf, fetchTdf } from "./s3.js";
+import { archiveTdf, deleteTdf, fetchTdf } from "./s3.js";
 import { runConsistencyCheck, simulate } from "./simulator.js";
 
 const DEADLOCK_CODE = "40P01";
@@ -38,9 +38,11 @@ async function ingestWithRetry(
 
 const INCOMING_BUCKET = process.env.INCOMING_BUCKET;
 const ARCHIVE_BUCKET = process.env.ARCHIVE_BUCKET;
+const ERROR_BUCKET = process.env.ERROR_BUCKET;
 
 if (!INCOMING_BUCKET) throw new Error("Missing env var: INCOMING_BUCKET");
 if (!ARCHIVE_BUCKET) throw new Error("Missing env var: ARCHIVE_BUCKET");
+if (!ERROR_BUCKET) throw new Error("Missing env var: ERROR_BUCKET");
 
 export const handler: S3Handler = async (event, context) => {
   await initDb();
@@ -79,6 +81,7 @@ export const handler: S3Handler = async (event, context) => {
           errorMessage: `Parse error: ${err.message}`,
           completedAt: new Date(),
         });
+        await archiveTdf(bucket, key, ERROR_BUCKET, key);
         return;
       }
       throw err;
@@ -91,6 +94,7 @@ export const handler: S3Handler = async (event, context) => {
         skipReason: `Mission type ${parsed.meta.missionType} is not SM5`,
         completedAt: new Date(),
       });
+      await deleteTdf(bucket, key);
       return;
     }
     const gameType = "sm5";
@@ -114,6 +118,7 @@ export const handler: S3Handler = async (event, context) => {
           gameId: existingGame.id,
           completedAt: new Date(),
         });
+        await deleteTdf(bucket, key);
         return;
       }
     }
@@ -121,9 +126,12 @@ export const handler: S3Handler = async (event, context) => {
     // 6. Simulate state machine (Phase 2)
     const simResult = simulate(parsed);
 
-    // 6a. Consistency check (dev aid — logs warnings, does not throw)
+    // 6a. Consistency check — throws if any discrepancy found
     const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-    runConsistencyCheck(simResult.playerStats, sm5StatsById);
+    const discrepancies = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+    if (discrepancies.length > 0) {
+      throw new Error(`Consistency check failed:\n${discrepancies.join("\n")}`);
+    }
 
     // 7. Find active MVP model
     const mvpModel = await findActiveMvpModel();
@@ -176,6 +184,7 @@ export const handler: S3Handler = async (event, context) => {
       errorMessage: error.message,
       completedAt: new Date(),
     });
+    await archiveTdf(bucket, key, ERROR_BUCKET, key);
     throw err;
   }
 };
