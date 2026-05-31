@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/chomper/**'
-      - 'packages/db/**'
-      - 'pnpm-lock.yaml'
+      - "apps/chomper/**"
+      - "packages/db/**"
+      - "pnpm-lock.yaml"
   workflow_dispatch:
 
 jobs:
@@ -24,8 +24,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install
@@ -59,6 +59,7 @@ jobs:
             --parameter-overrides \
               IncomingBucket=${{ secrets.INCOMING_BUCKET }} \
               ArchiveBucket=${{ secrets.ARCHIVE_BUCKET }} \
+              ErrorBucket=${{ secrets.ERROR_BUCKET }} \
               DbSecretArn=${{ secrets.DB_SECRET_ARN }} \
               ErrorEmailAddress=${{ secrets.ERROR_EMAIL_ADDRESS }}
 
