@@ -1152,6 +1152,7 @@ class Simulator {
       this.recordSnapshot(target, eventIndex);
     }
 
+    this.handleNukeCancel(actor, target);
     target.deactivationCause = "resupply";
     this.triggerStateTransition(target, 3, time);
 
@@ -1186,6 +1187,7 @@ class Simulator {
     const stats = POSITION_STATS[target.position]!;
     target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
 
+    this.handleNukeCancel(actor, target);
     target.deactivationCause = "resupply";
     this.triggerStateTransition(target, 3, time);
 
