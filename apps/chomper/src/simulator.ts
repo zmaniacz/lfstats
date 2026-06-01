@@ -82,8 +82,14 @@ class Simulator {
   // checkElimination to compute the exact lives boost needed.
   //   deactivationsReceived: 0206 = 1 life, 0306 = 2 lives, nuke = 3 lives
   //   resuppliesGained: 0502 direct lives resupplies to the player
-  private deactivationsReceived = new Map<string, Array<{ time: number; lives: number }>>();
-  private resuppliesGained = new Map<string, Array<{ time: number; lives: number }>>();
+  private deactivationsReceived = new Map<
+    string,
+    Array<{ time: number; lives: number }>
+  >();
+  private resuppliesGained = new Map<
+    string,
+    Array<{ time: number; lives: number }>
+  >();
 
   // Entity-end time per player, for boost-cap calculations.
   private entityEndTimeById = new Map<string, number>();
@@ -129,15 +135,18 @@ class Simulator {
     for (const event of this.parsed.events) {
       if (event.actor && this.playerStates.has(event.actor)) {
         const prev = this.lastActorEventTime.get(event.actor) ?? -1;
-        if (event.time > prev) this.lastActorEventTime.set(event.actor, event.time);
+        if (event.time > prev)
+          this.lastActorEventTime.set(event.actor, event.time);
       }
       // Track deactivating hits received per player (0206 = 1 life, 0306 = 2 lives).
       const target = event.target;
       if (target && this.playerStates.has(target)) {
         const livesLost =
-          event.type === "0206" ? 1
-          : event.type === "0306" || event.type === "0308" ? 2
-          : 0;
+          event.type === "0206"
+            ? 1
+            : event.type === "0306" || event.type === "0308"
+              ? 2
+              : 0;
         if (livesLost > 0) {
           const arr = this.deactivationsReceived.get(target) ?? [];
           arr.push({ time: event.time, lives: livesLost });
@@ -381,7 +390,10 @@ class Simulator {
             const stats = POSITION_STATS[targetPs.position]!;
             shots.set(
               targetId!,
-              Math.min((shots.get(targetId!) ?? 0) + stats.resupplyShots, stats.maxShots),
+              Math.min(
+                (shots.get(targetId!) ?? 0) + stats.resupplyShots,
+                stats.maxShots,
+              ),
             );
           }
           break;
@@ -396,7 +408,10 @@ class Simulator {
               const stats = POSITION_STATS[ps.position]!;
               const current = shots.get(entityId) ?? 0;
               if (state === 0) {
-                shots.set(entityId, Math.min(current + stats.resupplyShots, stats.maxShots));
+                shots.set(
+                  entityId,
+                  Math.min(current + stats.resupplyShots, stats.maxShots),
+                );
               } else if (state === 3) {
                 // Record the authoritative shots count for this boost occurrence.
                 const list = this.shotsRefAtBoost.get(entityId) ?? [];
@@ -404,9 +419,15 @@ class Simulator {
                 this.shotsRefAtBoost.set(entityId, list);
                 // Accumulate the pending boost so the next 0510 in the same
                 // state_3 period uses the post-boost shots as its baseline.
-                const boost = Math.min(stats.resupplyShots, stats.maxShots - current);
+                const boost = Math.min(
+                  stats.resupplyShots,
+                  stats.maxShots - current,
+                );
                 if (boost > 0) {
-                  pendingRef.set(entityId, (pendingRef.get(entityId) ?? 0) + boost);
+                  pendingRef.set(
+                    entityId,
+                    (pendingRef.get(entityId) ?? 0) + boost,
+                  );
                 }
               }
             }
@@ -584,7 +605,12 @@ class Simulator {
     }
   }
 
-  private applySingleEntityEnd(end: { time: number; id: string; exitType: string; score: number }): void {
+  private applySingleEntityEnd(end: {
+    time: number;
+    id: string;
+    exitType: string;
+    score: number;
+  }): void {
     const ps = this.playerStates.get(end.id);
     if (!ps) return;
 
@@ -874,9 +900,11 @@ class Simulator {
     if (lastActor > time) {
       const boosts = this.pendingBoosts.get(target.entityId);
       if (boosts?.length) {
-        const entityEndT = this.entityEndTimeById.get(target.entityId) ?? Infinity;
+        const entityEndT =
+          this.entityEndTimeById.get(target.entityId) ?? Infinity;
         const tdfFinalLives = this.tdfFinalLives.get(target.entityId) ?? 0;
-        const deactivations = this.deactivationsReceived.get(target.entityId) ?? [];
+        const deactivations =
+          this.deactivationsReceived.get(target.entityId) ?? [];
         const resupplies = this.resuppliesGained.get(target.entityId) ?? [];
 
         // Forward-simulate the player's lives from the rescue point to entity-end,
@@ -901,7 +929,10 @@ class Simulator {
         }
         // -minBalance = lives needed to keep balance ≥ 0 throughout.
         // tdfFinalLives - balance = extra lives to reach target at game end.
-        let livesNeeded = Math.max(0, Math.max(-minBalance, tdfFinalLives - balance));
+        let livesNeeded = Math.max(
+          0,
+          Math.max(-minBalance, tdfFinalLives - balance),
+        );
         // If the formula says 0 but there are still future events, the player
         // needs at least 1 life to stay alive long enough to receive the next
         // resupply (lives=0 in our simulator triggers immediate elimination,
@@ -915,7 +946,10 @@ class Simulator {
           // Track unconsumed lives — double-resupply events can record multiple
           // pending boosts; only consume what we need and leave the rest for
           // reconcilePendingBoosts so they don't get silently discarded.
-          const leftoverLivesBoosts: Array<{ type: "lives" | "shots"; amount: number }> = [];
+          const leftoverLivesBoosts: Array<{
+            type: "lives" | "shots";
+            amount: number;
+          }> = [];
           for (const boost of livesBoosts) {
             if (budget <= 0) {
               leftoverLivesBoosts.push(boost);
@@ -925,7 +959,10 @@ class Simulator {
             target.lives = Math.min(target.lives + apply, stats.maxLives);
             budget -= apply;
             if (boost.amount > apply) {
-              leftoverLivesBoosts.push({ type: "lives", amount: boost.amount - apply });
+              leftoverLivesBoosts.push({
+                type: "lives",
+                amount: boost.amount - apply,
+              });
             }
           }
           // Keep shots boosts and any unconsumed/partial lives boosts.
@@ -1112,11 +1149,13 @@ class Simulator {
         break;
       case "0500":
         if (actor && target) this.handle0500(actor, target, time, eventIndex);
-        else if (!actor && target) this.handleEmergencyResupply(target, "ammo", time, eventIndex);
+        else if (!actor && target)
+          this.handleEmergencyResupply(target, "ammo", time, eventIndex);
         break;
       case "0502":
         if (actor && target) this.handle0502(actor, target, time, eventIndex);
-        else if (!actor && target) this.handleEmergencyResupply(target, "lives", time, eventIndex);
+        else if (!actor && target)
+          this.handleEmergencyResupply(target, "lives", time, eventIndex);
         break;
       case "0510":
         if (actor) this.handle0510(actor, time, eventIndex);
@@ -1178,12 +1217,13 @@ class Simulator {
   }
 
   // 0201 — Miss
-  private handle0201(actor: PlayerSimState, _eventIndex: number): void {
+  private handle0201(actor: PlayerSimState, eventIndex: number): void {
     if (actor.position !== POSITION.AMMO) actor.shots--;
     actor.shotsFired++;
     if (actor.isRapidFire) {
       actor.shotsFiredDuringRapid++;
     }
+    this.recordSnapshot(actor, eventIndex);
   }
 
   // 0203 — Target Hit (non-final)
@@ -1575,7 +1615,10 @@ class Simulator {
     const stats = POSITION_STATS[target.position]!;
     if (type === "ammo") {
       target.emergencyResuppliesReceivedAmmo++;
-      target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
+      target.shots = Math.min(
+        target.shots + stats.resupplyShots,
+        stats.maxShots,
+      );
       if (target.isRapidFire && target.rapidFireStartedAt !== null) {
         target.totalRapidTime += time - target.rapidFireStartedAt;
         target.isRapidFire = false;
@@ -1583,7 +1626,10 @@ class Simulator {
       }
     } else {
       target.emergencyResuppliesReceivedLives++;
-      target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
+      target.lives = Math.min(
+        target.lives + stats.resupplyLives,
+        stats.maxLives,
+      );
     }
     target.deactivationCause = "resupply";
     this.triggerStateTransition(target, 3, time);
