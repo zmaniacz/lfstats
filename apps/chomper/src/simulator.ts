@@ -127,7 +127,9 @@ class Simulator {
       const target = event.target;
       if (target && this.playerStates.has(target)) {
         const livesLost =
-          event.type === "0206" ? 1 : event.type === "0306" ? 2 : 0;
+          event.type === "0206" ? 1
+          : event.type === "0306" || event.type === "0308" ? 2
+          : 0;
         if (livesLost > 0) {
           const arr = this.deactivationsReceived.get(target) ?? [];
           arr.push({ time: event.time, lives: livesLost });
@@ -953,10 +955,15 @@ class Simulator {
         if (actor && target)
           this.handlePlayerHit(actor, target, time, true, eventIndex);
         break;
+      case "0301": // Missile Gen Miss — missile consumed, no hit stats
+      case "0304": // Missile Miss — missile consumed, no hit stats
+        if (actor) actor.missiles = Math.max(0, actor.missiles - 1);
+        break;
       case "0303":
         if (actor) this.handle0303(actor, time, eventIndex, targetId);
         break;
-      case "0306":
+      case "0306": // Missile OppDown — deactivates opponent
+      case "0308": // Missile OwnDown — deactivates teammate (same logic, isFriendly flag handles team tracking)
         if (actor && target) this.handle0306(actor, target, time, eventIndex);
         break;
       case "0400":
@@ -988,7 +995,7 @@ class Simulator {
       case "0B03":
         if (actor) this.handle0B03(actor, eventIndex, targetId);
         break;
-      // 0300, 0301, 0304, 0900, 0902 — no state changes, skip
+      // 0300, 0900, 0902 — no state changes, skip
     }
   }
 
