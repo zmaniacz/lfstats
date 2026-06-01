@@ -1333,7 +1333,8 @@ class Simulator {
       this.triggerStateTransition(target, 3, time);
       // If target was already in state 3 (simultaneous 0206 while in penalty),
       // triggerStateTransition is a no-op so no snapshot was recorded — do it here.
-      if (target.state === 3) {
+      // Skip if eliminated: checkElimination already recorded the snapshot.
+      if (target.state === 3 && !target.isEliminated) {
         this.recordSnapshot(target, eventIndex);
       }
     }
