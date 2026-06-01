@@ -59,6 +59,10 @@ class Simulator {
   // Line type 9 pointer (2.005+ only)
   private stateLogPointer = 0;
 
+  // Entity-end pointer — entity-ends are processed in-order during advanceClock
+  // so that post-entity-end events don't affect an already-eliminated player.
+  private entityEndPointer = 0;
+
   // Mission time
   private missionStartTime = 0;
   private missionEndTime = 0;
@@ -79,6 +83,8 @@ class Simulator {
     this.buildEntityMaps();
     this.initPlayerStates();
     this.initInteractionMap();
+    // Sort entity-ends by time so advanceClock can process them in order.
+    this.parsed.entityEnds.sort((a, b) => a.time - b.time);
 
     // Walk all events in order
     for (const event of this.parsed.events) {
@@ -319,6 +325,16 @@ class Simulator {
   // ---------------------------------------------------------------------------
 
   private advanceClock(T: number): void {
+    // Process entity-end (line type 6) events before game events at the same
+    // timestamp, so that post-entity-end events don't affect an eliminated player.
+    while (
+      this.entityEndPointer < this.parsed.entityEnds.length &&
+      this.parsed.entityEnds[this.entityEndPointer]!.time <= T
+    ) {
+      this.applySingleEntityEnd(this.parsed.entityEnds[this.entityEndPointer]!);
+      this.entityEndPointer++;
+    }
+
     if (this.parsed.playerStateLog.length > 0) {
       // 2.005+ explicit state log
       while (
@@ -336,6 +352,29 @@ class Simulator {
     } else {
       // pre-2.005 synthetic transitions
       this.fireSyntheticTransitions(T);
+    }
+  }
+
+  private applySingleEntityEnd(end: { time: number; id: string; exitType: string; score: number }): void {
+    const ps = this.playerStates.get(end.id);
+    if (!ps) return;
+
+    if (end.exitType === "04") {
+      if (ps.lives > 0) {
+        ps.entityEndForcedLives = ps.lives;
+      }
+      ps.lives = 0;
+      ps.isEliminated = true;
+      if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
+    } else if (end.exitType === "01" || end.exitType === "17") {
+      ps.lives = 0;
+      ps.isEliminated = true;
+      if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
+    }
+
+    const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
+    if (finalSnap && ps.lives !== finalSnap.lives) {
+      finalSnap.lives = ps.lives;
     }
   }
 
@@ -939,7 +978,10 @@ class Simulator {
     // Interaction tracking
     this.incrInteraction(actor.entityId, target.entityId, "shotsHit");
 
-    if (isDeactivating || target.hitPoints <= 0) {
+    // Once eliminated, state transitions are blocked so HP never resets. Every
+    // subsequent hit would see HP ≤ 0 and fire false phantom deactivations.
+    // Skip the deactivation block entirely for already-eliminated targets.
+    if (!target.isEliminated && (isDeactivating || target.hitPoints <= 0)) {
       // Track HP reaching 0 on a non-deactivating event — TDF says 0205 but HP
       // arithmetic says the player should be down. Flagged in consistency check.
       if (!isDeactivating && target.hitPoints <= 0) {
