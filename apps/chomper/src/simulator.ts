@@ -69,6 +69,20 @@ class Simulator {
   // kept them alive and any pending lives boosts should be applied.
   private lastActorEventTime = new Map<string, number>();
 
+  // Per-player sorted list of {time, lives} for deactivating hits they receive
+  // (0206 = 1 life, 0306 = 2 lives). Used to cap the pending-boost rescue to
+  // exactly the number of lives needed to survive until entity-end, preventing
+  // over-application that would leave entityEndForcedLives > 0.
+  private deactivationsReceived = new Map<string, Array<{ time: number; lives: number }>>();
+
+  // Entity-end time per player, for boost-cap calculations.
+  private entityEndTimeById = new Map<string, number>();
+
+  // TDF final lives per player. Surviving players end with livesLeft > 0; this
+  // must be added to the deactivation count when computing livesNeeded so we
+  // don't eliminate a player who is supposed to survive the game.
+  private tdfFinalLives = new Map<string, number>();
+
   // Mission time
   private missionStartTime = 0;
   private missionEndTime = 0;
@@ -91,11 +105,57 @@ class Simulator {
     this.initInteractionMap();
     // Sort entity-ends by time so advanceClock can process them in order.
     this.parsed.entityEnds.sort((a, b) => a.time - b.time);
-    // Pre-build actor-event lookup used by checkElimination.
+    // Pre-build lookups used by checkElimination.
+    for (const end of this.parsed.entityEnds) {
+      if (this.playerStates.has(end.id)) {
+        this.entityEndTimeById.set(end.id, end.time);
+      }
+    }
+    for (const stats of this.parsed.sm5Stats) {
+      if (this.playerStates.has(stats.id)) {
+        this.tdfFinalLives.set(stats.id, stats.livesLeft);
+      }
+    }
     for (const event of this.parsed.events) {
       if (event.actor && this.playerStates.has(event.actor)) {
         const prev = this.lastActorEventTime.get(event.actor) ?? -1;
         if (event.time > prev) this.lastActorEventTime.set(event.actor, event.time);
+      }
+      // Track deactivating hits received per player (0206 = 1 life, 0306 = 2 lives).
+      const target = event.target;
+      if (target && this.playerStates.has(target)) {
+        const livesLost =
+          event.type === "0206" ? 1 : event.type === "0306" ? 2 : 0;
+        if (livesLost > 0) {
+          const arr = this.deactivationsReceived.get(target) ?? [];
+          arr.push({ time: event.time, lives: livesLost });
+          this.deactivationsReceived.set(target, arr);
+        }
+      }
+    }
+    // Nukes (0405) have no explicit per-target event in the TDF; detect them by
+    // finding state_3 entries in the player state log that occur within 100 ms
+    // of a nuke detonation. Count each nuke hit as 3 lives (maximum removal).
+    {
+      const nukeEvents = this.parsed.events
+        .filter((e) => e.type === "0405")
+        .map((e) => e.time);
+      for (const stateEntry of this.parsed.playerStateLog) {
+        if (stateEntry.state !== 3) continue;
+        if (!this.playerStates.has(stateEntry.entity)) continue;
+        const t = stateEntry.time;
+        for (const nukeT of nukeEvents) {
+          if (t >= nukeT && t <= nukeT + 100) {
+            const arr = this.deactivationsReceived.get(stateEntry.entity) ?? [];
+            arr.push({ time: nukeT, lives: 3 });
+            this.deactivationsReceived.set(stateEntry.entity, arr);
+            break; // one nuke per state_3 entry
+          }
+        }
+      }
+      // Keep all arrays sorted by time.
+      for (const arr of this.deactivationsReceived.values()) {
+        arr.sort((a, b) => a.time - b.time);
       }
     }
 
@@ -643,22 +703,57 @@ class Simulator {
     // kept them alive — our lives count is wrong. Apply any pending lives boosts
     // to correct it. This handles resupply-during-state-3 radio lag: the boost
     // was recorded but not yet applied, so lives hit 0 prematurely.
+    //
+    // Cap the boost to the number of lives the player actually needs: count the
+    // deactivating hits (0206 = 1 life, 0306 = 2 lives) they receive between now
+    // and their entity-end. Applying only that many lives prevents over-inflation
+    // that would cause entityEndForcedLives > 0.
     const lastActor = this.lastActorEventTime.get(target.entityId) ?? -1;
     if (lastActor > time) {
       const boosts = this.pendingBoosts.get(target.entityId);
       if (boosts?.length) {
-        const stats = POSITION_STATS[target.position]!;
-        const livesBoosts = boosts.filter((b) => b.type === "lives");
-        for (const boost of livesBoosts) {
-          target.lives = Math.min(target.lives + boost.amount, stats.maxLives);
+        const entityEndT = this.entityEndTimeById.get(target.entityId) ?? Infinity;
+        const deactivations = this.deactivationsReceived.get(target.entityId) ?? [];
+        // Lives needed = deactivations remaining before entity-end + final lives
+        // from TDF (> 0 for players who survive the game, 0 for eliminated ones).
+        const livesNeeded =
+          deactivations
+            .filter((d) => d.time > time && d.time <= entityEndT)
+            .reduce((sum, d) => sum + d.lives, 0) +
+          (this.tdfFinalLives.get(target.entityId) ?? 0);
+
+        if (livesNeeded > 0) {
+          const stats = POSITION_STATS[target.position]!;
+          let budget = livesNeeded;
+          const livesBoosts = boosts.filter((b) => b.type === "lives");
+          // Track unconsumed lives — double-resupply events can record multiple
+          // pending boosts; only consume what we need and leave the rest for
+          // reconcilePendingBoosts so they don't get silently discarded.
+          const leftoverLivesBoosts: Array<{ type: "lives" | "shots"; amount: number }> = [];
+          for (const boost of livesBoosts) {
+            if (budget <= 0) {
+              leftoverLivesBoosts.push(boost);
+              continue;
+            }
+            const apply = Math.min(boost.amount, budget);
+            target.lives = Math.min(target.lives + apply, stats.maxLives);
+            budget -= apply;
+            if (boost.amount > apply) {
+              leftoverLivesBoosts.push({ type: "lives", amount: boost.amount - apply });
+            }
+          }
+          // Keep shots boosts and any unconsumed/partial lives boosts.
+          const remaining = [
+            ...boosts.filter((b) => b.type !== "lives"),
+            ...leftoverLivesBoosts,
+          ];
+          if (remaining.length > 0) {
+            this.pendingBoosts.set(target.entityId, remaining);
+          } else {
+            this.pendingBoosts.delete(target.entityId);
+          }
+          if (target.lives > 0) return; // boost rescued the player
         }
-        const remaining = boosts.filter((b) => b.type !== "lives");
-        if (remaining.length > 0) {
-          this.pendingBoosts.set(target.entityId, remaining);
-        } else {
-          this.pendingBoosts.delete(target.entityId);
-        }
-        if (target.lives > 0) return; // boost rescued the player
       }
     }
 
