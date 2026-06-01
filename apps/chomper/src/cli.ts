@@ -1,14 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
-import {
-  findCenterByNaturalKey,
-  findGameByNaturalKey,
-  findActiveMvpModel,
-} from "@lfstats/db";
 import { parseTdf, ParseError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
-import { ingest, parseGameStartTime } from "./ingester.js";
-import { calculateMvp } from "./mvp.js";
 
 const filePath = process.argv[2];
 if (!filePath) {
@@ -17,7 +10,7 @@ if (!filePath) {
 }
 
 const absPath = resolve(filePath);
-console.log(`Ingesting: ${absPath}`);
+console.log(`Parsing: ${absPath}`);
 
 let buffer: Buffer;
 try {
@@ -48,24 +41,6 @@ console.log(
 if (parsed.meta.missionType !== 5) {
   console.warn(`Skipped: mission type ${parsed.meta.missionType} is not SM5`);
   process.exit(0);
-}
-const gameType = "sm5";
-
-// Duplicate check
-const gameStartTime = parseGameStartTime(parsed.meta.startTime);
-const existingCenter = await findCenterByNaturalKey(
-  parsed.meta.countryCode,
-  parsed.meta.siteCode,
-);
-if (existingCenter) {
-  const existingGame = await findGameByNaturalKey(
-    existingCenter.id,
-    gameStartTime,
-  );
-  if (existingGame) {
-    console.warn(`Skipped: duplicate game (gameId=${existingGame.id})`);
-    process.exit(0);
-  }
 }
 
 // Phase 2 — Simulate
@@ -98,41 +73,10 @@ const debugOut = {
     ]),
   ),
 };
+
 const debugPath = resolve(
   dirname(absPath),
   basename(absPath, ".tdf") + ".debug.json",
 );
 writeFileSync(debugPath, JSON.stringify(debugOut, null, 2));
 console.log(`Debug output: ${debugPath}`);
-
-// MVP
-const mvpModel = await findActiveMvpModel();
-if (!mvpModel) {
-  console.error("No active MVP model found");
-  process.exit(1);
-}
-
-const entityEndsById = new Map(
-  parsed.entityEnds.map((e) => [
-    e.id,
-    { score: e.score, exitType: e.exitType },
-  ]),
-);
-const mvpRows = calculateMvp(
-  simResult,
-  sm5StatsById,
-  entityEndsById,
-  mvpModel,
-  parsed.meta.duration,
-);
-
-// Phase 3 — Ingest
-const gameId = await ingest(
-  parsed,
-  simResult,
-  gameStartTime,
-  mvpRows,
-  gameType,
-);
-console.log(`Ingested: gameId=${gameId}`);
-process.exit(0);

@@ -27,7 +27,7 @@ out/
 pgdata/
 
 # TDF game log files — large raw data, not source
-*.tdf
+demo_files/
 
 # TypeScript
 *.tsbuildinfo

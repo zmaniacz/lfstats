@@ -12,7 +12,8 @@
       "Bash(pnpm --filter @lfstats/db db:generate)",
       "Bash(pnpm --filter @lfstats/db db:migrate)",
       "Bash(del \"packages\\\\db\\\\drizzle\\\\0004_handy_iron_man.sql\")",
-      "Bash(npx shadcn@latest add alert-dialog --cwd apps/web)"
+      "Bash(npx shadcn@latest add alert-dialog --cwd apps/web)",
+      "Bash(python -c ' *)"
     ]
   }
 }
