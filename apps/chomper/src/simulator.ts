@@ -764,7 +764,12 @@ class Simulator {
         }
         // -minBalance = lives needed to keep balance ≥ 0 throughout.
         // tdfFinalLives - balance = extra lives to reach target at game end.
-        const livesNeeded = Math.max(0, Math.max(-minBalance, tdfFinalLives - balance));
+        let livesNeeded = Math.max(0, Math.max(-minBalance, tdfFinalLives - balance));
+        // If the formula says 0 but there are still future events, the player
+        // needs at least 1 life to stay alive long enough to receive the next
+        // resupply (lives=0 in our simulator triggers immediate elimination,
+        // blocking receipt of any upcoming resupply that would restore them).
+        if (livesNeeded === 0 && futureEvents.length > 0) livesNeeded = 1;
 
         if (livesNeeded > 0) {
           const stats = POSITION_STATS[target.position]!;
