@@ -271,12 +271,9 @@ Running all `.tdf` files through the CLI and comparing `.debug.json` output:
 
 | Scope | Passing | Failing |
 |---|---|---|
-| `1-1_*` (1v1 games) | ~128 | 1 |
-| `3-3_*` (3-team games) | 47 | 0 |
-| **Total** | **175** | **1** |
+| All files | 574 | 0 |
 
-The single remaining failure is the yLD5LK shots case documented in §8 above.
-All other consistency checks pass.
+All consistency checks pass across the full demo file suite.
 
 The full test run takes about 3-4 minutes and is reproducible with:
 
