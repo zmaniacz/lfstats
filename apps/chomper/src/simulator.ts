@@ -69,11 +69,13 @@ class Simulator {
   // kept them alive and any pending lives boosts should be applied.
   private lastActorEventTime = new Map<string, number>();
 
-  // Per-player sorted list of {time, lives} for deactivating hits they receive
-  // (0206 = 1 life, 0306 = 2 lives). Used to cap the pending-boost rescue to
-  // exactly the number of lives needed to survive until entity-end, preventing
-  // over-application that would leave entityEndForcedLives > 0.
+  // Per-player sorted lists of lives-changing events (deactivations and
+  // resupplies). Both are used together in a forward simulation in
+  // checkElimination to compute the exact lives boost needed.
+  //   deactivationsReceived: 0206 = 1 life, 0306 = 2 lives, nuke = 3 lives
+  //   resuppliesGained: 0502 direct lives resupplies to the player
   private deactivationsReceived = new Map<string, Array<{ time: number; lives: number }>>();
+  private resuppliesGained = new Map<string, Array<{ time: number; lives: number }>>();
 
   // Entity-end time per player, for boost-cap calculations.
   private entityEndTimeById = new Map<string, number>();
@@ -130,6 +132,16 @@ class Simulator {
           const arr = this.deactivationsReceived.get(target) ?? [];
           arr.push({ time: event.time, lives: livesLost });
           this.deactivationsReceived.set(target, arr);
+        }
+        // Track lives gained from 0502 direct lives resupplies; used to offset
+        // the deactivation count in the forward simulation so we don't over-apply
+        // a pending boost when resupplies between deactivations reduce the need.
+        if (event.type === "0502") {
+          const ps = this.playerStates.get(target)!;
+          const stats = POSITION_STATS[ps.position]!;
+          const arr = this.resuppliesGained.get(target) ?? [];
+          arr.push({ time: event.time, lives: stats.resupplyLives });
+          this.resuppliesGained.set(target, arr);
         }
       }
     }
@@ -726,14 +738,33 @@ class Simulator {
       const boosts = this.pendingBoosts.get(target.entityId);
       if (boosts?.length) {
         const entityEndT = this.entityEndTimeById.get(target.entityId) ?? Infinity;
+        const tdfFinalLives = this.tdfFinalLives.get(target.entityId) ?? 0;
         const deactivations = this.deactivationsReceived.get(target.entityId) ?? [];
-        // Lives needed = deactivations remaining before entity-end + final lives
-        // from TDF (> 0 for players who survive the game, 0 for eliminated ones).
-        const livesNeeded =
-          deactivations
+        const resupplies = this.resuppliesGained.get(target.entityId) ?? [];
+
+        // Forward-simulate the player's lives from the rescue point to entity-end,
+        // merging deactivations (negative) and resupplies (positive) in time order.
+        // livesNeeded = minimum initial boost to (a) never go below 0 and (b) end
+        // with at least tdfFinalLives. This correctly accounts for resupplies
+        // between deactivations that reduce the actual boost required.
+        const futureEvents: Array<{ time: number; delta: number }> = [
+          ...deactivations
             .filter((d) => d.time > time && d.time <= entityEndT)
-            .reduce((sum, d) => sum + d.lives, 0) +
-          (this.tdfFinalLives.get(target.entityId) ?? 0);
+            .map((d) => ({ time: d.time, delta: -d.lives })),
+          ...resupplies
+            .filter((r) => r.time > time && r.time <= entityEndT)
+            .map((r) => ({ time: r.time, delta: r.lives })),
+        ].sort((a, b) => a.time - b.time);
+
+        let balance = 0;
+        let minBalance = 0;
+        for (const ev of futureEvents) {
+          balance += ev.delta;
+          if (balance < minBalance) minBalance = balance;
+        }
+        // -minBalance = lives needed to keep balance ≥ 0 throughout.
+        // tdfFinalLives - balance = extra lives to reach target at game end.
+        const livesNeeded = Math.max(0, Math.max(-minBalance, tdfFinalLives - balance));
 
         if (livesNeeded > 0) {
           const stats = POSITION_STATS[target.position]!;
