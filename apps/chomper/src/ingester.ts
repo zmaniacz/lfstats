@@ -491,6 +491,7 @@ export async function ingest(
     // 14. Insert GamePlayerStates (bulk — highest row count)
     // -----------------------------------------------------------------------
     const stateRows = [];
+    const seenStateKeys = new Set<string>();
     for (const [entityId, ps] of simResult.playerStats) {
       const scorecardId = scorecardIdByEntityId.get(entityId);
       if (!scorecardId) continue;
@@ -498,6 +499,16 @@ export async function ingest(
       for (const snap of ps.stateSnapshots) {
         const eventId = eventIdByIndex.get(snap.eventIndex);
         if (!eventId) continue;
+
+        const key = `${eventId}:${scorecardId}`;
+        if (seenStateKeys.has(key)) {
+          const ev = simResult.events[snap.eventIndex];
+          console.warn(
+            `[ingest] duplicate state snapshot suppressed: entity=${entityId} eventIndex=${snap.eventIndex} eventType=${ev?.eventType} time=${ev?.time}`,
+          );
+          continue;
+        }
+        seenStateKeys.add(key);
 
         stateRows.push({
           gameId,
