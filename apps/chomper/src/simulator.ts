@@ -63,6 +63,12 @@ class Simulator {
   // so that post-entity-end events don't affect an already-eliminated player.
   private entityEndPointer = 0;
 
+  // Last timestamp at which each entity appears as an actor in the event log.
+  // Built once at run() start. Used in checkElimination to detect premature
+  // eliminations: if a player still acts after their lives hit 0, the hardware
+  // kept them alive and any pending lives boosts should be applied.
+  private lastActorEventTime = new Map<string, number>();
+
   // Mission time
   private missionStartTime = 0;
   private missionEndTime = 0;
@@ -85,6 +91,13 @@ class Simulator {
     this.initInteractionMap();
     // Sort entity-ends by time so advanceClock can process them in order.
     this.parsed.entityEnds.sort((a, b) => a.time - b.time);
+    // Pre-build actor-event lookup used by checkElimination.
+    for (const event of this.parsed.events) {
+      if (event.actor && this.playerStates.has(event.actor)) {
+        const prev = this.lastActorEventTime.get(event.actor) ?? -1;
+        if (event.time > prev) this.lastActorEventTime.set(event.actor, event.time);
+      }
+    }
 
     // Walk all events in order
     for (const event of this.parsed.events) {
@@ -625,6 +638,29 @@ class Simulator {
   ): void {
     if (target.lives > 0) return;
     if (target.isEliminated) return;
+
+    // If the player still appears as an actor after this timestamp, the hardware
+    // kept them alive — our lives count is wrong. Apply any pending lives boosts
+    // to correct it. This handles resupply-during-state-3 radio lag: the boost
+    // was recorded but not yet applied, so lives hit 0 prematurely.
+    const lastActor = this.lastActorEventTime.get(target.entityId) ?? -1;
+    if (lastActor > time) {
+      const boosts = this.pendingBoosts.get(target.entityId);
+      if (boosts?.length) {
+        const stats = POSITION_STATS[target.position]!;
+        const livesBoosts = boosts.filter((b) => b.type === "lives");
+        for (const boost of livesBoosts) {
+          target.lives = Math.min(target.lives + boost.amount, stats.maxLives);
+        }
+        const remaining = boosts.filter((b) => b.type !== "lives");
+        if (remaining.length > 0) {
+          this.pendingBoosts.set(target.entityId, remaining);
+        } else {
+          this.pendingBoosts.delete(target.entityId);
+        }
+        if (target.lives > 0) return; // boost rescued the player
+      }
+    }
 
     // The state transition to state 3 is blocked once isEliminated is set,
     // so capture the final uptime segment now while we still can.
