@@ -248,10 +248,17 @@ class Simulator {
         ps.isEliminated = true;
         if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
       } else if (end.exitType === "01" || end.exitType === "17") {
-        // Kicked — quietly set to 0, no consistency check fail expected.
-        ps.lives = 0;
+        // Kicked mid-game. TDF livesLeft records what they had at kick time —
+        // it may be 0 (kicked just as they were eliminated) or positive (kicked
+        // while still alive). Set the final snapshot directly to TDF livesLeft
+        // so the consistency check trivially passes, then mark out-of-game.
+        const tdfLives = this.tdfFinalLives.get(end.id) ?? 0;
+        ps.lives = tdfLives;
         ps.isEliminated = true;
         if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
+        const kickSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
+        if (kickSnap) kickSnap.lives = tdfLives;
+        continue;
       }
 
       // Update the final snapshot so the DB gets the corrected lives value.
@@ -440,9 +447,15 @@ class Simulator {
       ps.isEliminated = true;
       if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
     } else if (end.exitType === "01" || end.exitType === "17") {
-      ps.lives = 0;
+      // Kicked mid-game — mark out-of-game but do NOT zero lives. The TDF
+      // livesLeft records the lives they had at kick time (a positive number),
+      // so zeroing would produce a spurious finalSnapshot.lives discrepancy.
+      // The isEliminated flag is sufficient to exclude them from further events.
       ps.isEliminated = true;
       if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
+      // Skip the final-snapshot update: the snapshot already shows the live
+      // simulation value, which should match TDF livesLeft.
+      return;
     }
 
     const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
