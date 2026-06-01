@@ -350,6 +350,8 @@ class Simulator {
         missilesHitTeam: 0,
         missilesHitOpponentMedic: 0,
         missilesHitTeamMedic: 0,
+        missilesHitOpponentMedicLives: 0,
+        missilesHitTeamMedicLives: 0,
         timesHitByMissile: 0,
         nukesActivated: 0,
         nukesDetonated: 0,
@@ -1241,6 +1243,10 @@ class Simulator {
 
     actor.missileHits++;
     target.timesHitByMissile++;
+    // Compute actual lives removed before decrementing — a missile removes 2
+    // lives, but if the target only has 1 life the actual removal is 1. TDF
+    // medicHits tracks damage dealt (not hit count), so we record both.
+    const livesRemoved = Math.min(2, Math.max(0, target.lives));
     target.lives -= 2;
 
     if (isOpponent) {
@@ -1252,9 +1258,11 @@ class Simulator {
     }
     if (isOpponent && target.position === POSITION.MEDIC) {
       actor.missilesHitOpponentMedic++;
+      actor.missilesHitOpponentMedicLives += livesRemoved;
     }
     if (isFriendly && target.position === POSITION.MEDIC) {
       actor.missilesHitTeamMedic++;
+      actor.missilesHitTeamMedicLives += livesRemoved;
     }
 
     if (target.state === 2) {
@@ -1713,12 +1721,12 @@ export function runConsistencyCheck(
       ["nukesCanceled", ps.nukesCanceled, stats.nukeCancels],
       [
         "shotsHitOpponentMedic",
-        ps.shotsHitOpponentMedic + ps.missilesHitOpponentMedic * 2,
+        ps.shotsHitOpponentMedic + ps.missilesHitOpponentMedicLives,
         stats.medicHits,
       ],
       [
         "shotsHitTeamMedic",
-        ps.shotsHitTeamMedic + ps.missilesHitTeamMedic * 2,
+        ps.shotsHitTeamMedic + ps.missilesHitTeamMedicLives,
         stats.ownMedicHits,
       ],
       ["nukesHitMedic", ps.nukesHitMedic, stats.medicNukes],

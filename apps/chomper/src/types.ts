@@ -152,6 +152,10 @@ export interface PlayerSimState {
   missilesHitTeam: number;
   missilesHitOpponentMedic: number;
   missilesHitTeamMedic: number;
+  // Actual lives removed by missiles on medics (1 when medic had only 1 life,
+  // otherwise 2). TDF medicHits counts damage dealt, not event count.
+  missilesHitOpponentMedicLives: number;
+  missilesHitTeamMedicLives: number;
   timesHitByMissile: number;
   nukesActivated: number;
   nukesDetonated: number;
