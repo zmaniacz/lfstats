@@ -188,7 +188,7 @@ report the exact discrepancy without failing silently.
 
 ---
 
-## Known open issue: pending shots boost timing
+## Pending shots boost timing (resolved)
 
 **File:** `1-1_20260420200753.tdf`  
 **Player:** `#yLD5LK` (Heavy, team 1)  
@@ -197,58 +197,33 @@ report the exact discrepancy without failing silently.
 ### Root cause
 
 A 0510 team ammo boost fires at t=265,673 while yLD5LK is in state_3 with
-35 shots remaining. The simulator correctly records a pending shots boost of
-`min(5, 40−35) = 5`... 
-
-Wait, actually — recording: at t=265,673, shots=37, so boost = `min(5, 40-37) = 3`.
-
-The hardware applies this 3-shot boost when yLD5LK exits state_3 (~t=268,558).
+shots=37.  The simulator records a pending shots boost of `min(5, 40−37) = 3`.
+The hardware applies this boost when yLD5LK exits state_3 (~t=268,558).
 The simulator defers it to `reconcilePendingBoosts()` at game end.
 
-Because the boost is not applied mid-game, yLD5LK's shots count is **2
-higher** than the hardware's at t=564,945 when a second 0510 fires.  The
-hardware has yLD5LK at 37 shots → boost gives `min(5, 40−37) = 3`.  The
-simulator has yLD5LK at 39 shots → boost gives `min(5, 40−39) = 1`.  The
-2-shot difference from this second event is what `reconcilePendingBoosts()`
-cannot recover: it can apply the 3-shot pending boost (raising computed shots
-from 12 to 15) but cannot recover the 2 additional shots that were
-under-credited by the second 0510.
+Because the boost is not applied mid-game, yLD5LK's shots count diverges from
+hardware.  When a second 0510 fires at t=564,945 (also during state_3), the
+simulator computes the pending boost from its diverged shots count rather than
+hardware's, under-recording the boost by 2 shots.  `reconcilePendingBoosts()`
+can apply the first pending boost (+3, raising computed shots from 12 to 15)
+but the under-recorded second boost (+1 vs hardware's +3) is already baked in.
 
-### Why the obvious fix causes regressions
+### Fix — two-pass shots reference (`buildShotsReference`)
 
-Applying pending shots boosts at state_2 entry (hardware timing) causes
-massive regressions across the full suite because *recorded boost amounts are
-often inflated*.  When a player's shots diverge from hardware due to prior
-un-applied pending boosts, the next 0510 records a larger-than-correct amount
-(because `maxShots - current_shots` is larger than hardware's equivalent).
-Applying that inflated amount mid-game overshoots by 10, 20, or more shots
-for many players.
+`buildShotsReference()` runs before the main event loop.  It walks the same
+events and `playerStateLog` as `advanceClock`, maintaining an authoritative
+shots count per player by applying pending shots boosts at the correct
+`state_3 → state_2` timing (mirroring the hardware).  For each 0510 event
+where a state-3 teammate would receive a pending boost, it records the
+correct shots value into `shotsRefAtBoost: Map<entityId, number[]>`.
 
-### Fix direction for the next session
+`handle0510` consumes these values in order (one entry per occurrence) when
+computing the boost amount for state-3 players, replacing the diverged
+`teammate.shots` with the hardware-correct reference value.
 
-The correct solution is one of:
-
-**Option A — Two-pass simulation.**  First pass collects the complete pending
-boost schedule from the event log.  Second pass applies each boost at the
-correct state-2-entry timestamp with the correct amount (which is now known
-because first-pass shots are authoritative).
-
-**Option B — TDF-anchored shot accounting.**  Pre-compute each player's
-correct shots count at every state-3 exit by working backwards from
-`sm5Stats.shotsLeft` through the event log.  Use these pre-computed values to
-set shots at each state-3 exit, bypassing the pending-boost accumulation
-entirely.
-
-**Option C — Constrained mid-game application.**  Apply pending shots boosts
-at state_2 entry but cap each application to `min(boost.amount, maxShots -
-current_shots_at_that_moment)`.  This doesn't fix the over-recorded-amount
-problem directly, but combining it with the forward-simulation approach used
-for lives (computing the exact shots the player needs to match TDF) might
-yield the correct amount without cascade.
-
-The one remaining test failure is this case.  It's isolated, the cause is
-completely understood, and the fix requires a structural change to how the
-simulator models shots over state_3 cycles.
+The pre-pass is skipped entirely for pre-2.005 files (`playerStateLog` empty)
+since those files use synthetic 4-second transitions and do not exhibit this
+failure mode.
 
 ---
 

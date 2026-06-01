@@ -56,6 +56,14 @@ class Simulator {
     Array<{ type: "lives" | "shots"; amount: number }>
   >();
 
+  // Two-pass shots reference: for each state-3 player that receives a 0510 boost,
+  // the pre-pass (buildShotsReference) records the authoritative shots count at
+  // that moment. The main simulation consumes these in order so that pending boost
+  // amounts are computed from hardware-correct shots rather than the potentially
+  // diverged simulator shots.
+  private shotsRefAtBoost = new Map<string, number[]>();
+  private shotsRefAtBoostIdx = new Map<string, number>();
+
   // Line type 9 pointer (2.005+ only)
   private stateLogPointer = 0;
 
@@ -173,6 +181,10 @@ class Simulator {
       }
     }
 
+    // Build authoritative shots reference before the main loop so that
+    // pending boost amounts for state-3 players use hardware-correct shots.
+    this.buildShotsReference();
+
     // Walk all events in order
     for (const event of this.parsed.events) {
       this.advanceClock(event.time);
@@ -279,6 +291,127 @@ class Simulator {
       const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
       if (finalSnap && ps.lives !== finalSnap.lives) {
         finalSnap.lives = ps.lives;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pre-pass: authoritative shots reference for pending boost amounts
+  // ---------------------------------------------------------------------------
+
+  // Builds shotsRefAtBoost: for each state-3 player that would receive a
+  // pending shots boost from a 0510 event, records the hardware-correct shots
+  // count at that moment. The main simulation consumes these in order inside
+  // handle0510 so that boost amounts aren't computed from diverged simulator shots.
+  //
+  // Only runs for 2.005+ files (explicit playerStateLog). Pre-2.005 files use
+  // synthetic 4-second transitions that would require full re-simulation here;
+  // they don't exhibit the shots-divergence failure so the fallback (teammate.shots)
+  // is safe for them.
+  private buildShotsReference(): void {
+    if (this.parsed.playerStateLog.length === 0) return;
+
+    const shots = new Map<string, number>();
+    const stateRef = new Map<string, 0 | 2 | 3>();
+    const pendingRef = new Map<string, number>();
+    const eliminatedRef = new Set<string>();
+
+    for (const [entityId, ps] of this.playerStates) {
+      shots.set(entityId, POSITION_STATS[ps.position]!.initialShots);
+      stateRef.set(entityId, 0);
+    }
+
+    // Apply accumulated pending shots when a player transitions state_3 → state_2.
+    const applyPending = (entityId: string): void => {
+      const pending = pendingRef.get(entityId) ?? 0;
+      if (pending <= 0) return;
+      const ps = this.playerStates.get(entityId);
+      if (!ps) return;
+      const max = POSITION_STATS[ps.position]!.maxShots;
+      shots.set(entityId, Math.min((shots.get(entityId) ?? 0) + pending, max));
+      pendingRef.set(entityId, 0);
+    };
+
+    let stateLogIdx = 0;
+    let entityEndIdx = 0;
+
+    for (const event of this.parsed.events) {
+      // Entity-ends before state transitions — mirrors advanceClock ordering.
+      while (
+        entityEndIdx < this.parsed.entityEnds.length &&
+        this.parsed.entityEnds[entityEndIdx]!.time <= event.time
+      ) {
+        const end = this.parsed.entityEnds[entityEndIdx++]!;
+        if (this.playerStates.has(end.id)) eliminatedRef.add(end.id);
+      }
+
+      // State transitions from playerStateLog — mirrors advanceClock.
+      while (
+        stateLogIdx < this.parsed.playerStateLog.length &&
+        this.parsed.playerStateLog[stateLogIdx]!.time <= event.time
+      ) {
+        const entry = this.parsed.playerStateLog[stateLogIdx++]!;
+        const id = entry.entity;
+        if (!this.playerStates.has(id)) continue;
+        const oldState = stateRef.get(id) ?? 0;
+        const newState = entry.state as 0 | 2 | 3;
+        if (oldState === 3 && newState === 2) applyPending(id);
+        stateRef.set(id, newState);
+      }
+
+      const actorId = event.actor;
+      const targetId = event.target;
+      const actorPs = actorId ? this.playerStates.get(actorId) : null;
+      const targetPs = targetId ? this.playerStates.get(targetId) : null;
+
+      switch (event.type) {
+        case "0201":
+        case "0202":
+        case "0203":
+        case "0204":
+        case "0205":
+        case "0206":
+          if (actorPs && actorPs.position !== POSITION.AMMO) {
+            shots.set(actorId!, (shots.get(actorId!) ?? 0) - 1);
+          }
+          break;
+
+        case "0500":
+          if (targetPs) {
+            const stats = POSITION_STATS[targetPs.position]!;
+            shots.set(
+              targetId!,
+              Math.min((shots.get(targetId!) ?? 0) + stats.resupplyShots, stats.maxShots),
+            );
+          }
+          break;
+
+        case "0510":
+          if (actorPs) {
+            for (const [entityId, ps] of this.playerStates) {
+              if (entityId === actorId) continue;
+              if (ps.teamIndex !== actorPs.teamIndex) continue;
+              if (eliminatedRef.has(entityId)) continue;
+              const state = stateRef.get(entityId) ?? 0;
+              const stats = POSITION_STATS[ps.position]!;
+              const current = shots.get(entityId) ?? 0;
+              if (state === 0) {
+                shots.set(entityId, Math.min(current + stats.resupplyShots, stats.maxShots));
+              } else if (state === 3) {
+                // Record the authoritative shots count for this boost occurrence.
+                const list = this.shotsRefAtBoost.get(entityId) ?? [];
+                list.push(current);
+                this.shotsRefAtBoost.set(entityId, list);
+                // Accumulate the pending boost so the next 0510 in the same
+                // state_3 period uses the post-boost shots as its baseline.
+                const boost = Math.min(stats.resupplyShots, stats.maxShots - current);
+                if (boost > 0) {
+                  pendingRef.set(entityId, (pendingRef.get(entityId) ?? 0) + boost);
+                }
+              }
+            }
+          }
+          break;
       }
     }
   }
@@ -1476,14 +1609,24 @@ class Simulator {
       );
       this.recordSnapshot(teammate, eventIndex);
     }
-    // Record pending shot boosts for state-3 teammates (radio lag — resolved later)
+    // Record pending shot boosts for state-3 teammates (radio lag — resolved later).
+    // Use the pre-pass reference shots rather than teammate.shots: un-applied
+    // pending boosts from earlier state-3 cycles cause teammate.shots to diverge
+    // from the hardware value, producing incorrect boost amounts that accumulate
+    // into a shots discrepancy at game end.
     for (const teammate of this.getTeammates(actor)) {
       if (teammate.state !== 3) continue;
       const stats = POSITION_STATS[teammate.position]!;
+      const refList = this.shotsRefAtBoost.get(teammate.entityId);
+      const refIdx = this.shotsRefAtBoostIdx.get(teammate.entityId) ?? 0;
+      const refShots = refList?.[refIdx] ?? teammate.shots;
+      if (refList !== undefined && refIdx < refList.length) {
+        this.shotsRefAtBoostIdx.set(teammate.entityId, refIdx + 1);
+      }
       this.recordPendingBoost(
         teammate.entityId,
         "shots",
-        Math.min(stats.resupplyShots, stats.maxShots - teammate.shots),
+        Math.min(stats.resupplyShots, stats.maxShots - refShots),
       );
     }
     void stats_actor; // suppress unused warning
