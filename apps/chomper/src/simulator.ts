@@ -1377,6 +1377,8 @@ class Simulator {
       if (target.state === 3 && !target.isEliminated) {
         this.recordSnapshot(target, eventIndex);
       }
+    } else {
+      this.recordSnapshot(target, eventIndex);
     }
 
     this.recordSnapshot(actor, eventIndex);
