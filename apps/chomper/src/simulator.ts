@@ -1936,19 +1936,41 @@ class Simulator {
 // Consistency check
 // ---------------------------------------------------------------------------
 
+export interface ConsistencyResult {
+  discrepancies: string[];
+  ghostShots: Array<{ entityId: string; count: number }>;
+}
+
 export function runConsistencyCheck(
   playerStats: Map<string, PlayerSimState>,
   sm5StatsById: Map<string, import("./types.js").ParsedSm5Stats>,
-): string[] {
+): ConsistencyResult {
   const discrepancies: string[] = [];
+  const ghostShots: Array<{ entityId: string; count: number }> = [];
 
   for (const [entityId, ps] of playerStats) {
     const stats = sm5StatsById.get(entityId);
     if (!stats) continue;
 
+    // Detect ghost shots: shots on non-player hardware targets that are counted
+    // in TDF section 7 but produce no section 4 event and no score change.
+    // Signature: fired delta equals hit delta (ghost shots always hit), and
+    // opponent/team hit counts match exactly (discrepancy is purely in target hits).
+    const dFired = stats.shotsFired - ps.shotsFired;
+    const dHit = stats.shotsHit - ps.shotsHit;
+    const isGhostShot =
+      dFired > 0 &&
+      dFired === dHit &&
+      ps.shotsHitOpponent === stats.shotOpponent &&
+      ps.shotsHitTeam === stats.shotTeam;
+
+    if (isGhostShot) ghostShots.push({ entityId, count: dFired });
+
     const checks: Array<[string, number, number]> = [
-      ["shotsHit", ps.shotsHit, stats.shotsHit],
-      ["shotsFired", ps.shotsFired, stats.shotsFired],
+      ...(!isGhostShot ? ([
+        ["shotsHit", ps.shotsHit, stats.shotsHit],
+        ["shotsFired", ps.shotsFired, stats.shotsFired],
+      ] as Array<[string, number, number]>) : []),
       ["timesHit", ps.timesHit, stats.timesZapped],
       ["timesHitByMissile", ps.timesHitByMissile, stats.timesMissiled],
       ["missileHits", ps.missileHits, stats.missileHits],
@@ -2002,7 +2024,10 @@ export function runConsistencyCheck(
           `${entityId} finalSnapshot.lives: computed=${finalSnapshot.lives} expected=${stats.livesLeft}`,
         );
       }
-      if (finalSnapshot.shots !== stats.shotsLeft) {
+      const shotsOk =
+        finalSnapshot.shots === stats.shotsLeft ||
+        (isGhostShot && finalSnapshot.shots === stats.shotsLeft + dFired);
+      if (!shotsOk) {
         discrepancies.push(
           `${entityId} finalSnapshot.shots: computed=${finalSnapshot.shots} expected=${stats.shotsLeft}`,
         );
@@ -2024,5 +2049,5 @@ export function runConsistencyCheck(
     }
   }
 
-  return discrepancies;
+  return { discrepancies, ghostShots };
 }
