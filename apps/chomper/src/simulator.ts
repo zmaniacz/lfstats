@@ -786,7 +786,11 @@ class Simulator {
     if (!ps) return;
 
     if (end.exitType === "04") {
-      if (ps.lives > 0) {
+      // Only flag a forced-lives discrepancy when the player was NOT already
+      // eliminated. A prior exitType=01 (kicked/reset) marks isEliminated=true
+      // without zeroing lives; a subsequent exitType=04 is hardware cleanup and
+      // the positive lives balance is expected, not a simulation error.
+      if (ps.lives > 0 && !ps.isEliminated) {
         ps.entityEndForcedLives = ps.lives;
       }
       ps.lives = 0;
