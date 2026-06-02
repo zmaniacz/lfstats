@@ -13,9 +13,14 @@ import {
   gameTag,
   gameTagAssignment,
 } from "../schema";
-import { eq, and, asc, desc, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
 
 export const GAMES_PER_PAGE = 10;
+
+export type GameListFilters = {
+  centerId?: string;
+  dateSearch?: string;
+};
 
 export type GameTeamSummary = {
   colourEnum: number;
@@ -35,8 +40,20 @@ export type GameListItem = {
   teams: GameTeamSummary[];
 };
 
-export async function getGamesPage(page: number): Promise<GameListItem[]> {
+function buildGameListConditions(filters: GameListFilters): SQL[] {
+  const conditions: SQL[] = [];
+  if (filters.centerId) {
+    conditions.push(eq(game.centerId, filters.centerId));
+  }
+  if (filters.dateSearch) {
+    conditions.push(sql`to_char(${game.startTime}, 'YYYY-MM-DD') ILIKE ${"%" + filters.dateSearch + "%"}`);
+  }
+  return conditions;
+}
+
+export async function getGamesPage(page: number, filters: GameListFilters = {}): Promise<GameListItem[]> {
   const offset = (page - 1) * GAMES_PER_PAGE;
+  const conditions = buildGameListConditions(filters);
 
   const rows = await db
     .select({
@@ -50,6 +67,7 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
+    .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(game.startTime))
     .limit(GAMES_PER_PAGE)
     .offset(offset);
@@ -99,10 +117,13 @@ export async function getGamesPage(page: number): Promise<GameListItem[]> {
   }));
 }
 
-export async function getGamesCount(): Promise<number> {
+export async function getGamesCount(filters: GameListFilters = {}): Promise<number> {
+  const conditions = buildGameListConditions(filters);
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(game);
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(conditions.length ? and(...conditions) : undefined);
   return row?.count ?? 0;
 }
 

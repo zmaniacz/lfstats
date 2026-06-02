@@ -1,6 +1,7 @@
 import { Fragment } from "react"
 import Link from "next/link"
-import { getGamesPage, getGamesCount, GAMES_PER_PAGE } from "@lfstats/db"
+import { getGamesPage, getGamesCount, GAMES_PER_PAGE, getCenterList } from "@lfstats/db"
+import { GamesFilters } from "@/components/games/games-filters"
 import {
   Table,
   TableBody,
@@ -16,17 +17,40 @@ import { getTeamColor } from "@/lib/team-colors"
 export default async function GamesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; center?: string; date?: string }>
 }) {
-  const { page: pageParam } = await searchParams
+  const { page: pageParam, center: centerId = "", date: dateSearch = "" } = await searchParams
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1)
+  const filters = {
+    centerId: centerId || undefined,
+    dateSearch: dateSearch || undefined,
+  }
 
-  const [games, total] = await Promise.all([getGamesPage(page), getGamesCount()])
+  const [games, total, centers] = await Promise.all([
+    getGamesPage(page, filters),
+    getGamesCount(filters),
+    getCenterList(),
+  ])
   const totalPages = Math.ceil(total / GAMES_PER_PAGE)
+
+  function pageUrl(p: number) {
+    const params = new URLSearchParams()
+    if (p > 1) params.set("page", String(p))
+    if (centerId) params.set("center", centerId)
+    if (dateSearch) params.set("date", dateSearch)
+    const qs = params.toString()
+    return `/games${qs ? `?${qs}` : ""}`
+  }
 
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">Games</h1>
+
+      <GamesFilters
+        centers={centers.map((c) => ({ id: c.id, name: c.name }))}
+        centerId={centerId}
+        dateSearch={dateSearch}
+      />
 
       <Table>
         <TableHeader>
@@ -87,7 +111,7 @@ export default async function GamesPage({
         <div className="flex gap-2">
           {page > 1 ? (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/games?page=${page - 1}`}>Previous</Link>
+              <Link href={pageUrl(page - 1)}>Previous</Link>
             </Button>
           ) : (
             <Button variant="outline" size="sm" disabled>
@@ -96,7 +120,7 @@ export default async function GamesPage({
           )}
           {page < totalPages ? (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/games?page=${page + 1}`}>Next</Link>
+              <Link href={pageUrl(page + 1)}>Next</Link>
             </Button>
           ) : (
             <Button variant="outline" size="sm" disabled>
