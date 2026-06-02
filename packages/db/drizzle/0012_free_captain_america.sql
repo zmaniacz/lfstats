@@ -1,0 +1,3 @@
+ALTER TABLE "sm5_game_target" ALTER COLUMN "game_team_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "sm5_game_event" ADD COLUMN "actor_game_target_id" uuid;--> statement-breakpoint
+ALTER TABLE "sm5_game_event" ADD CONSTRAINT "sm5_game_event_actor_game_target_id_sm5_game_target_id_fk" FOREIGN KEY ("actor_game_target_id") REFERENCES "public"."sm5_game_target"("id") ON DELETE cascade ON UPDATE no action;

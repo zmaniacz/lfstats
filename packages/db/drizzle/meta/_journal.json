@@ -85,6 +85,13 @@
       "when": 1780256358365,
       "tag": "0011_dashing_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780419828640,
+      "tag": "0012_free_captain_america",
+      "breakpoints": true
     }
   ]
 }
