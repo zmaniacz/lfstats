@@ -814,10 +814,6 @@ class Simulator {
       }
       // On entry to state 3: reset HP, track state3EnteredAt
       ps.hitPoints = stats.hitPoints;
-      if (ps.isNuking) {
-        ps.isNuking = false;
-        ps.nukeActivatedAt = null;
-      }
       ps.state3EnteredAt = time;
       // Clear assist window for this player (they are deactivated — no longer valid target)
       this.assistWindows.delete(ps.entityId);
@@ -1169,18 +1165,31 @@ class Simulator {
   // ---------------------------------------------------------------------------
 
   private handleNukeCancel(
-    actor: PlayerSimState,
+    actor: PlayerSimState | null,
     target: PlayerSimState,
   ): void {
     if (!target.isNuking) return;
 
-    // Determine relationship between actor and the COMMANDER target
-    if (this.isOpponent(actor, target)) {
-      // Actor cancelled an enemy nuke — good play
-      actor.nukesCanceled++;
-    } else if (this.isSameTeam(actor, target)) {
-      // Actor accidentally cancelled a friendly nuke — shame
-      actor.teamNukesCanceled++;
+    // Clear the nuke state here so this is the single authoritative place.
+    // applyStateTransition must NOT clear it: for 2.005+ files advanceClock
+    // processes section 9 state_3 entries before the event handler runs, so
+    // clearing isNuking there causes the event handler's handleNukeCancel call
+    // to miss the active nuke (same-timestamp race condition).
+    if (target.nukeActivatedAt !== null) {
+      target.totalNukeActivationTime += 0; // activation time up to cancel not tracked separately
+    }
+    target.isNuking = false;
+    target.nukeActivatedAt = null;
+
+    if (actor) {
+      // Determine relationship between actor and the COMMANDER target
+      if (this.isOpponent(actor, target)) {
+        // Actor cancelled an enemy nuke — good play
+        actor.nukesCanceled++;
+      } else if (this.isSameTeam(actor, target)) {
+        // Actor accidentally cancelled a friendly nuke — shame
+        actor.teamNukesCanceled++;
+      }
     }
   }
 
@@ -1339,6 +1348,7 @@ class Simulator {
     eventIndex: number,
   ): void {
     if (target.isEliminated) return;
+    this.handleNukeCancel(null, target);
     target.lives--;
     this.checkElimination(null, target, time, false);
     target.deactivationCause = "other";
@@ -1761,6 +1771,7 @@ class Simulator {
         stats.maxLives,
       );
     }
+    this.handleNukeCancel(null, target);
     target.deactivationCause = "resupply";
     this.triggerStateTransition(target, 3, time);
     this.recordSnapshot(target, eventIndex);
@@ -1861,6 +1872,7 @@ class Simulator {
       scoreValue: penaltyValue !== 0 ? -Math.abs(penaltyValue) : 0,
     });
 
+    this.handleNukeCancel(null, target);
     target.deactivationCause = "other";
     this.triggerStateTransition(target, 3, time);
     this.recordSnapshot(target, eventIndex);
