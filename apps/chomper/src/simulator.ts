@@ -145,7 +145,7 @@ class Simulator {
       const target = event.target;
       if (target && this.playerStates.has(target)) {
         const livesLost =
-          event.type === "0206"
+          event.type === "0206" || event.type === "0209"
             ? 1
             : event.type === "0306" || event.type === "0308"
               ? 2
@@ -170,10 +170,19 @@ class Simulator {
     // Nukes (0405) have no explicit per-target event in the TDF; detect them by
     // finding state_3 entries in the player state log that occur within 100 ms
     // of a nuke detonation. Count each nuke hit as 3 lives (maximum removal).
+    //
+    // Two detection passes are required:
+    //   Pass 1 — Players who TRANSITION to state_3 at nuke time: their state log
+    //            entry falls within 100ms of the nuke.
+    //   Pass 2 — Players who are ALREADY in state_3 when the nuke fires: nukes
+    //            hit all non-eliminated opponents regardless of current state, so
+    //            a player deactivated moments before a second nuke still takes the
+    //            hit even though no new state_3 entry appears in the log.
     {
-      const nukeEvents = this.parsed.events
-        .filter((e) => e.type === "0405")
-        .map((e) => e.time);
+      const nukeDetonations = this.parsed.events.filter((e) => e.type === "0405");
+      const nukeEvents = nukeDetonations.map((e) => e.time);
+
+      // Pass 1 — transition-based detection (original logic)
       for (const stateEntry of this.parsed.playerStateLog) {
         if (stateEntry.state !== 3) continue;
         if (!this.playerStates.has(stateEntry.entity)) continue;
@@ -187,6 +196,48 @@ class Simulator {
           }
         }
       }
+
+      // Pass 2 — already-in-state_3 detection
+      // Build a per-player sorted state timeline from section 9.
+      const stateTimeline = new Map<string, { time: number; state: number }[]>();
+      for (const entry of this.parsed.playerStateLog) {
+        if (!this.playerStates.has(entry.entity)) continue;
+        const arr = stateTimeline.get(entry.entity) ?? [];
+        arr.push(entry);
+        stateTimeline.set(entry.entity, arr);
+      }
+
+      for (const nukeEvent of nukeDetonations) {
+        const nukeT = nukeEvent.time;
+        const nukeActor = nukeEvent.actor
+          ? this.playerStates.get(nukeEvent.actor)
+          : null;
+        if (!nukeActor) continue;
+
+        for (const [entityId, ps] of this.playerStates) {
+          if (ps.teamIndex === nukeActor.teamIndex) continue; // skip same team
+
+          const timeline = stateTimeline.get(entityId);
+          if (!timeline) continue;
+
+          // Was this player already in state_3 strictly before the nuke?
+          const lastBefore = [...timeline]
+            .reverse()
+            .find((e) => e.time < nukeT);
+          if (!lastBefore || lastBefore.state !== 3) continue;
+
+          // Skip if Pass 1 already caught a state_3 transition at this nuke time.
+          const caughtByPass1 = timeline.some(
+            (e) => e.state === 3 && e.time >= nukeT && e.time <= nukeT + 100,
+          );
+          if (caughtByPass1) continue;
+
+          const arr = this.deactivationsReceived.get(entityId) ?? [];
+          arr.push({ time: nukeT, lives: 3 });
+          this.deactivationsReceived.set(entityId, arr);
+        }
+      }
+
       // Keep all arrays sorted by time.
       for (const arr of this.deactivationsReceived.values()) {
         arr.sort((a, b) => a.time - b.time);
@@ -915,7 +966,7 @@ class Simulator {
   // ---------------------------------------------------------------------------
 
   private checkElimination(
-    actor: PlayerSimState,
+    actor: PlayerSimState | null,
     target: PlayerSimState,
     time: number,
     isNuke: boolean,
@@ -1038,20 +1089,22 @@ class Simulator {
 
     const isMedic = target.position === POSITION.MEDIC;
 
-    if (!isNuke) {
-      // Shot or missile elimination
-      if (this.isOpponent(actor, target)) {
-        actor.eliminatedOpponent++;
-        if (isMedic) actor.eliminatedOpponentMedic++;
-      } else if (this.isSameTeam(actor, target)) {
-        actor.eliminatedTeam++;
-        if (isMedic) actor.eliminatedTeamMedic++;
-      }
-    } else {
-      // Nuke elimination — only counts as opponent elimination, never friendly
-      if (this.isOpponent(actor, target)) {
-        actor.eliminatedOpponent++;
-        if (isMedic) actor.eliminatedOpponentMedic++;
+    if (actor) {
+      if (!isNuke) {
+        // Shot or missile elimination
+        if (this.isOpponent(actor, target)) {
+          actor.eliminatedOpponent++;
+          if (isMedic) actor.eliminatedOpponentMedic++;
+        } else if (this.isSameTeam(actor, target)) {
+          actor.eliminatedTeam++;
+          if (isMedic) actor.eliminatedTeamMedic++;
+        }
+      } else {
+        // Nuke elimination — only counts as opponent elimination, never friendly
+        if (this.isOpponent(actor, target)) {
+          actor.eliminatedOpponent++;
+          if (isMedic) actor.eliminatedOpponentMedic++;
+        }
       }
     }
   }
@@ -1152,6 +1205,9 @@ class Simulator {
       case "0201":
       case "0202": // miss on a target — same as open-air miss
         if (actor) this.handle0201(actor, eventIndex);
+        break;
+      case "0209": // warbot deactivation — deducts 1 life but does not count as timesHit
+        if (target) this.handle0209(target, time, eventIndex);
         break;
       case "0203":
         if (actor) this.handle0203(actor, time, eventIndex);
@@ -1267,6 +1323,24 @@ class Simulator {
       actor.shotsFiredDuringRapid++;
     }
     this.recordSnapshot(actor, eventIndex);
+  }
+
+  // 0209 — Warbot Deactivation
+  // Fired by a non-player warbot entity; deducts 1 life like 0206 but is NOT
+  // counted in the TDF's timesZapped stat and has no actor playerState.
+  private handle0209(
+    target: PlayerSimState,
+    time: number,
+    eventIndex: number,
+  ): void {
+    if (target.isEliminated) return;
+    target.lives--;
+    this.checkElimination(null, target, time, false);
+    target.deactivationCause = "other";
+    this.triggerStateTransition(target, 3, time);
+    if (target.state === 3 && !target.isEliminated) {
+      this.recordSnapshot(target, eventIndex);
+    }
   }
 
   // 0203 — Target Hit (non-final)
