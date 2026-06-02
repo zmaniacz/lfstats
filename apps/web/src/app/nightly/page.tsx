@@ -18,25 +18,38 @@ import {
 import { Suspense } from "react";
 
 function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsItem[] {
-  const map = new Map<string, { iplId: string; callsign: string; entries: NightlyScorecardRow[] }>()
+  const map = new Map<
+    string,
+    { iplId: string; callsign: string; entries: NightlyScorecardRow[] }
+  >();
 
   for (const row of rows) {
-    if (!row.player.playerId || !row.player.iplId) continue
-    const key = row.player.playerId
+    if (!row.player.playerId || !row.player.iplId) continue;
+    const key = row.player.playerId;
     if (!map.has(key)) {
-      map.set(key, { iplId: row.player.iplId, callsign: row.player.callsign, entries: [] })
+      map.set(key, {
+        iplId: row.player.iplId,
+        callsign: row.player.callsign,
+        entries: [],
+      });
     }
-    map.get(key)!.entries.push(row)
+    map.get(key)!.entries.push(row);
   }
 
   return Array.from(map.values())
     .map(({ iplId, callsign, entries }) => {
-      const nonResup = entries.filter((r) => [1, 2, 3].includes(r.player.position))
-      const totalMedicHits = entries.reduce((s, r) => s + r.player.shotsHitOpponentMedic, 0)
-      const gamesPlayed = entries.length
-      const totalMedicHitsNonResup = nonResup.length > 0
-        ? nonResup.reduce((s, r) => s + r.player.shotsHitOpponentMedic, 0)
-        : null
+      const nonResup = entries.filter((r) =>
+        [1, 2, 3].includes(r.player.position),
+      );
+      const totalMedicHits = entries.reduce(
+        (s, r) => s + r.player.shotsHitOpponentMedic,
+        0,
+      );
+      const gamesPlayed = entries.length;
+      const totalMedicHitsNonResup =
+        nonResup.length > 0
+          ? nonResup.reduce((s, r) => s + r.player.shotsHitOpponentMedic, 0)
+          : null;
       return {
         iplId,
         callsign,
@@ -44,11 +57,14 @@ function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsItem[] {
         avgMedicHits: totalMedicHits / gamesPlayed,
         gamesPlayed,
         totalMedicHitsNonResup,
-        avgMedicHitsNonResup: nonResup.length > 0 ? (totalMedicHitsNonResup as number) / nonResup.length : null,
+        avgMedicHitsNonResup:
+          nonResup.length > 0
+            ? (totalMedicHitsNonResup as number) / nonResup.length
+            : null,
         gamesPlayedNonResup: nonResup.length,
-      }
+      };
     })
-    .sort((a, b) => b.totalMedicHits - a.totalMedicHits)
+    .sort((a, b) => b.totalMedicHits - a.totalMedicHits);
 }
 
 export default async function NightlyPage({
@@ -76,7 +92,9 @@ export default async function NightlyPage({
           </div>
         </div>
         <NightlyStateRestorer>
-          <p className="text-muted-foreground">Select a center to get started.</p>
+          <p className="text-muted-foreground">
+            Select a center to get started.
+          </p>
         </NightlyStateRestorer>
       </div>
     );
@@ -111,33 +129,30 @@ export default async function NightlyPage({
 
   return (
     <>
-    <NightlyStateManager center={centerId} date={selectedDate} />
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Nightly Stats</h1>
-        <div className="flex items-center gap-2">
-          <Suspense>
-            <NightlyCenterFilter centers={centers} selected={centerId} />
-          </Suspense>
-          <Suspense>
-            <DateFilter selected={selectedDate} gameDates={gameDates} />
-          </Suspense>
+      <NightlyStateManager center={centerId} date={selectedDate} />
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Nightly Stats</h1>
+          <div className="flex items-center gap-2">
+            <Suspense>
+              <NightlyCenterFilter centers={centers} selected={centerId} />
+            </Suspense>
+            <Suspense>
+              <DateFilter selected={selectedDate} gameDates={gameDates} />
+            </Suspense>
+          </div>
         </div>
+
+        {rows.length === 0 ? (
+          <p className="text-muted-foreground">No games found for this date.</p>
+        ) : (
+          <>
+            <NightlyStatsTable rows={rows} />
+            <NightlySummaryTable rows={rows} lifetimeAvgs={lifetimeAvgs} />
+            <MedicHitsLeaderboardTable players={deriveMedicHits(rows)} />
+          </>
+        )}
       </div>
-
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground">No games found for this date.</p>
-      ) : (
-        <>
-          <NightlyStatsTable rows={rows} />
-          <NightlySummaryTable rows={rows} lifetimeAvgs={lifetimeAvgs} />
-        </>
-      )}
-
-      {rows.length > 0 && (
-        <MedicHitsLeaderboardTable players={deriveMedicHits(rows)} />
-      )}
-    </div>
     </>
   );
 }
