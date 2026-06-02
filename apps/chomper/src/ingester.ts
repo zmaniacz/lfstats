@@ -152,7 +152,8 @@ export async function ingest(
         (e) =>
           e.type === "standard-target" ||
           e.type === "beacon" ||
-          e.type === "generator-target",
+          e.type === "generator-target" ||
+          e.type === "warbot",
       )
       .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -173,7 +174,7 @@ export async function ingest(
       targetEntityList.map((entity) => ({
         gameId,
         targetId: targetIdByHardwareId.get(entity.id)!,
-        gameTeamId: teamIdByIndex.get(entity.team)!,
+        gameTeamId: teamIdByIndex.get(entity.team) ?? null,
         type: entity.type,
       })),
     );
@@ -470,6 +471,9 @@ export async function ingest(
       eventType: e.eventType,
       actorScorecardId: e.actorEntityId
         ? (scorecardIdByEntityId.get(e.actorEntityId) ?? null)
+        : null,
+      actorGameTargetId: e.actorHardwareId
+        ? (gameTargetIdByHardwareId.get(e.actorHardwareId) ?? null)
         : null,
       targetScorecardId: e.targetEntityId
         ? (scorecardIdByEntityId.get(e.targetEntityId) ?? null)

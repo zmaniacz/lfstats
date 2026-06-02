@@ -194,9 +194,9 @@ export const sm5GameTarget = pgTable(
     targetId: uuid("target_id")
       .notNull()
       .references(() => target.id),
-    gameTeamId: uuid("game_team_id")
-      .notNull()
-      .references(() => sm5GameTeam.id, { onDelete: "cascade" }),
+    gameTeamId: uuid("game_team_id").references(() => sm5GameTeam.id, {
+      onDelete: "cascade",
+    }),
     type: text("type").notNull(),
   },
   (t) => [unique().on(t.gameId, t.targetId)],
@@ -438,9 +438,14 @@ export const sm5GameEvent = pgTable(
       .references(() => game.id, { onDelete: "cascade" }),
     time: integer("time").notNull(),
     eventType: text("event_type").notNull(),
-    // Null for events with no actor (0100/0101)
+    // Null for events with no actor (0100/0101).
+    // actorScorecardId (player) and actorGameTargetId (non-player) are mutually exclusive.
     actorScorecardId: uuid("actor_scorecard_id").references(
       () => sm5Scorecard.id,
+      { onDelete: "cascade" },
+    ),
+    actorGameTargetId: uuid("actor_game_target_id").references(
+      () => sm5GameTarget.id,
       { onDelete: "cascade" },
     ),
     // target_scorecard_id and target_game_target_id are mutually exclusive

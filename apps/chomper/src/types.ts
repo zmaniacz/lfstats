@@ -251,7 +251,8 @@ export interface SimTeam {
 export interface SimEvent {
   time: number;
   eventType: string;
-  actorEntityId: string | null;
+  actorEntityId: string | null; // player actor entity id
+  actorHardwareId: string | null; // non-player actor hardware id (warbot, beacon)
   targetEntityId: string | null; // player target entity id
   targetHardwareId: string | null; // non-player target hardware id
   description: string;

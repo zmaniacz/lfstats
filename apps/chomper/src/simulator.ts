@@ -260,11 +260,15 @@ class Simulator {
           this.entityById.get(target)?.type === "beacon" ||
           this.entityById.get(target)?.type === "generator-target"
         : false;
+      // Non-player actors (warbots, emergency-resupply beacons) are routed to
+      // actorHardwareId so the ingester can look them up in sm5_game_target.
+      const isActorNonPlayer = actor ? !this.playerStates.has(actor) : false;
 
       this.events.push({
         time: event.time,
         eventType: event.type,
-        actorEntityId: actor ?? null,
+        actorEntityId: isActorNonPlayer ? null : (actor ?? null),
+        actorHardwareId: isActorNonPlayer ? (actor ?? null) : null,
         targetEntityId: isTargetEntity ? null : (target ?? null),
         targetHardwareId: isTargetEntity ? (target ?? null) : null,
         description: event.description,
@@ -779,6 +783,7 @@ class Simulator {
       time,
       eventType,
       actorEntityId: entityId,
+      actorHardwareId: null,
       targetEntityId: null,
       targetHardwareId: null,
       description:
