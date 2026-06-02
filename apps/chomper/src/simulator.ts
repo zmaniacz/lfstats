@@ -50,17 +50,20 @@ class Simulator {
     { shotsHit: number; shotDeactivations: number; missileHits: number }
   >();
 
-  // Pending boosts for state-3 players (radio lag — applied during reconciliation)
+  // Pending boosts for state-3 and state-2 players (radio lag — applied during
+  // reconciliation). eventIndex and time record when the 0510/0512 fired so
+  // reconciliation can place the boost retroactively at the right point in the
+  // state snapshot history.
   private pendingBoosts = new Map<
     string,
-    Array<{ type: "lives" | "shots"; amount: number }>
+    Array<{ type: "lives" | "shots"; amount: number; eventIndex: number; time: number }>
   >();
 
-  // Two-pass shots reference: for each state-3 player that receives a 0510 boost,
-  // the pre-pass (buildShotsReference) records the authoritative shots count at
-  // that moment. The main simulation consumes these in order so that pending boost
-  // amounts are computed from hardware-correct shots rather than the potentially
-  // diverged simulator shots.
+  // Two-pass shots reference: for each state-3/state-2 player that receives a
+  // 0510 boost, the pre-pass (buildShotsReference) records the authoritative
+  // shots count at that moment. The main simulation consumes these in order so
+  // that pending boost amounts are computed from hardware-correct shots rather
+  // than the potentially diverged simulator shots.
   private shotsRefAtBoost = new Map<string, number[]>();
   private shotsRefAtBoostIdx = new Map<string, number>();
 
@@ -240,6 +243,8 @@ class Simulator {
       const boosts = this.pendingBoosts.get(entityId);
       if (!boosts?.length) continue;
 
+      // Lives: apply earliest-first and patch the final snapshot only (replay
+      // accuracy for lives during downtime is handled by checkElimination).
       let livesGap = stats.livesLeft - ps.lives;
       if (livesGap > 0) {
         for (const b of boosts.filter((b) => b.type === "lives")) {
@@ -249,23 +254,44 @@ class Simulator {
           if (livesGap === 0) break;
         }
       }
-
-      let shotsGap = stats.shotsLeft - ps.shots;
-      if (shotsGap > 0) {
-        for (const b of boosts.filter((b) => b.type === "shots")) {
-          const apply = Math.min(b.amount, shotsGap);
-          ps.shots += apply;
-          shotsGap -= apply;
-          if (shotsGap === 0) break;
-        }
-      }
-
       const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
       if (finalSnap) {
         finalSnap.lives = ps.lives;
-        finalSnap.shots = ps.shots;
+      }
+
+      // Shots: apply latest-first and retroactively propagate through all
+      // snapshots from each boost's eventIndex. The most recent pending boost is
+      // most likely to have applied — it is closest to a state transition (either
+      // state_2 reactivation or the trailing edge of a state_3 entry window).
+      const shotBoosts = boosts
+        .filter((b) => b.type === "shots")
+        .sort((a, b) => b.eventIndex - a.eventIndex);
+
+      let shotsGap = stats.shotsLeft - ps.shots;
+      for (const b of shotBoosts) {
+        if (shotsGap <= 0) break;
+        const apply = Math.min(b.amount, shotsGap);
+        this.applyRetroactiveShotsBoost(ps, b.eventIndex, apply);
+        shotsGap -= apply;
       }
     }
+  }
+
+  // Add `delta` shots to every state snapshot at or after `fromEventIndex` and
+  // to ps.shots, capped at maxShots. Used by reconcilePendingBoosts to place a
+  // resolved pending boost at the correct point in the replay history.
+  private applyRetroactiveShotsBoost(
+    ps: PlayerSimState,
+    fromEventIndex: number,
+    delta: number,
+  ): void {
+    const max = POSITION_STATS[ps.position]!.maxShots;
+    for (const snap of ps.stateSnapshots) {
+      if (snap.eventIndex >= fromEventIndex) {
+        snap.shots = Math.min(snap.shots + delta, max);
+      }
+    }
+    ps.shots = Math.min(ps.shots + delta, max);
   }
 
   private applyEntityEnds(): void {
@@ -330,7 +356,10 @@ class Simulator {
       stateRef.set(entityId, 0);
     }
 
-    // Apply accumulated pending shots when a player transitions state_3 → state_2.
+    // Apply accumulated pending shots when leaving the down/vulnerable cycle.
+    // Triggered on state_3 → state_2 and state_2 → state_0 so that boosts
+    // accumulated during either phase are reflected in the correct baseline for
+    // subsequent 0510 events.
     const applyPending = (entityId: string): void => {
       const pending = pendingRef.get(entityId) ?? 0;
       if (pending <= 0) return;
@@ -364,7 +393,12 @@ class Simulator {
         if (!this.playerStates.has(id)) continue;
         const oldState = stateRef.get(id) ?? 0;
         const newState = entry.state as 0 | 2 | 3;
-        if (oldState === 3 && newState === 2) applyPending(id);
+        if (
+          (oldState === 3 && newState === 2) ||
+          (oldState === 2 && newState === 0)
+        ) {
+          applyPending(id);
+        }
         stateRef.set(id, newState);
       }
 
@@ -412,13 +446,13 @@ class Simulator {
                   entityId,
                   Math.min(current + stats.resupplyShots, stats.maxShots),
                 );
-              } else if (state === 3) {
+              } else if (state === 3 || state === 2) {
                 // Record the authoritative shots count for this boost occurrence.
                 const list = this.shotsRefAtBoost.get(entityId) ?? [];
                 list.push(current);
                 this.shotsRefAtBoost.set(entityId, list);
                 // Accumulate the pending boost so the next 0510 in the same
-                // state_3 period uses the post-boost shots as its baseline.
+                // state_3/state_2 period uses the post-boost shots as its baseline.
                 const boost = Math.min(
                   stats.resupplyShots,
                   stats.maxShots - current,
@@ -861,10 +895,12 @@ class Simulator {
     entityId: string,
     type: "lives" | "shots",
     amount: number,
+    eventIndex: number,
+    time: number,
   ): void {
     if (amount <= 0) return;
     const arr = this.pendingBoosts.get(entityId) ?? [];
-    arr.push({ type, amount });
+    arr.push({ type, amount, eventIndex, time });
     this.pendingBoosts.set(entityId, arr);
   }
 
@@ -949,6 +985,8 @@ class Simulator {
           const leftoverLivesBoosts: Array<{
             type: "lives" | "shots";
             amount: number;
+            eventIndex: number;
+            time: number;
           }> = [];
           for (const boost of livesBoosts) {
             if (budget <= 0) {
@@ -962,6 +1000,8 @@ class Simulator {
               leftoverLivesBoosts.push({
                 type: "lives",
                 amount: boost.amount - apply,
+                eventIndex: boost.eventIndex,
+                time: boost.time,
               });
             }
           }
@@ -1641,7 +1681,7 @@ class Simulator {
   // 0510 — Team Ammo Boost
   private handle0510(
     actor: PlayerSimState,
-    _time: number,
+    time: number,
     eventIndex: number,
   ): void {
     actor.ammoBoost++;
@@ -1658,13 +1698,13 @@ class Simulator {
       );
       this.recordSnapshot(teammate, eventIndex);
     }
-    // Record pending shot boosts for state-3 teammates (radio lag — resolved later).
-    // Use the pre-pass reference shots rather than teammate.shots: un-applied
-    // pending boosts from earlier state-3 cycles cause teammate.shots to diverge
-    // from the hardware value, producing incorrect boost amounts that accumulate
-    // into a shots discrepancy at game end.
+    // Record pending shot boosts for state-3 and state-2 teammates (radio lag —
+    // resolved retroactively at game end). Use the pre-pass reference shots rather
+    // than teammate.shots: un-applied pending boosts from earlier state-3/state-2
+    // cycles cause teammate.shots to diverge from the hardware value, producing
+    // incorrect boost amounts that accumulate into a shots discrepancy at game end.
     for (const teammate of this.getTeammates(actor)) {
-      if (teammate.state !== 3) continue;
+      if (teammate.state !== 3 && teammate.state !== 2) continue;
       const stats = POSITION_STATS[teammate.position]!;
       const refList = this.shotsRefAtBoost.get(teammate.entityId);
       const refIdx = this.shotsRefAtBoostIdx.get(teammate.entityId) ?? 0;
@@ -1676,6 +1716,8 @@ class Simulator {
         teammate.entityId,
         "shots",
         Math.min(stats.resupplyShots, stats.maxShots - refShots),
+        eventIndex,
+        time,
       );
     }
     void stats_actor; // suppress unused warning
@@ -1684,7 +1726,7 @@ class Simulator {
   // 0512 — Team Lives Boost
   private handle0512(
     actor: PlayerSimState,
-    _time: number,
+    time: number,
     eventIndex: number,
   ): void {
     actor.lifeBoost++;
@@ -1700,14 +1742,16 @@ class Simulator {
       );
       this.recordSnapshot(teammate, eventIndex);
     }
-    // Record pending life boosts for state-3 teammates (radio lag — resolved later)
+    // Record pending life boosts for state-3 and state-2 teammates (radio lag — resolved later)
     for (const teammate of this.getTeammates(actor)) {
-      if (teammate.state !== 3) continue;
+      if (teammate.state !== 3 && teammate.state !== 2) continue;
       const stats = POSITION_STATS[teammate.position]!;
       this.recordPendingBoost(
         teammate.entityId,
         "lives",
         Math.min(stats.resupplyLives, stats.maxLives - teammate.lives),
+        eventIndex,
+        time,
       );
     }
   }
