@@ -71,6 +71,16 @@ export default async function GameDetailPage({
           {game.centerName} · {formatDateTime(game.startTime)} ·{" "}
           {formatMs(game.actualDuration)}
         </p>
+        <p className="text-muted-foreground text-sm">
+          <a
+            href={`https://lfstats-modern-archive.s3.us-west-1.amazonaws.com/${game.tdfFilename}`}
+            className="hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {game.tdfFilename}
+          </a>
+        </p>
         {game.exclude && (
           <Badge variant="destructive">Excluded from Stats</Badge>
         )}

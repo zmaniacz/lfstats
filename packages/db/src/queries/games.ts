@@ -255,6 +255,7 @@ export type GameDetail = {
   scheduledDuration: number;
   actualDuration: number;
   exclude: boolean;
+  tdfFilename: string;
   tags: GameTagSummary[];
   teams: GameDetailTeam[];
 };
@@ -274,6 +275,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       scheduledDuration: game.scheduledDuration,
       actualDuration: game.actualDuration,
       exclude: game.exclude,
+      tdfFilename: game.tdfFilename,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -579,6 +581,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       scheduledDuration: gameRow.scheduledDuration,
       actualDuration: gameRow.actualDuration,
       exclude: gameRow.exclude,
+      tdfFilename: gameRow.tdfFilename,
       tags: tagsByGame.get(gameRow.id) ?? [],
       teams: gameTeams,
     };
@@ -612,6 +615,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
       scheduledDuration: game.scheduledDuration,
       actualDuration: game.actualDuration,
       exclude: game.exclude,
+      tdfFilename: game.tdfFilename,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -924,6 +928,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     scheduledDuration: gameRow.scheduledDuration,
     actualDuration: gameRow.actualDuration,
     exclude: gameRow.exclude,
+    tdfFilename: gameRow.tdfFilename,
     tags: tagRows.map((t) => ({ id: t.id, name: t.name, color: t.color })),
     teams,
   };
