@@ -67,6 +67,13 @@ class Simulator {
   private shotsRefAtBoost = new Map<string, number[]>();
   private shotsRefAtBoostIdx = new Map<string, number>();
 
+  // Mid-game position-change routing: maps external entity IDs to their
+  // time-ordered generations (built from parsed.entityRouting).
+  private generationRouter = new Map<
+    string,
+    Array<{ startTime: number; internalId: string }>
+  >();
+
   // Line type 9 pointer (2.005+ only)
   private stateLogPointer = 0;
 
@@ -119,6 +126,12 @@ class Simulator {
   }
 
   run(): SimulatedGame {
+    // Resolve mid-game position-change generation IDs before any other pass.
+    // This rewrites actor/target/entity fields in parsed.events, parsed.scores,
+    // parsed.playerStateLog, and parsed.entityEnds so all downstream code sees
+    // the correct internal IDs without needing per-call routing logic.
+    this.buildGenerationRouting();
+    this.resolveGenerationIds();
     this.buildEntityMaps();
     this.initPlayerStates();
     this.initInteractionMap();
@@ -523,6 +536,75 @@ class Simulator {
           }
           break;
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Generation routing — mid-game position changes
+  // ---------------------------------------------------------------------------
+
+  private buildGenerationRouting(): void {
+    for (const route of this.parsed.entityRouting) {
+      this.generationRouter.set(route.externalId, route.generations);
+    }
+  }
+
+  // Returns the internal entity ID active at the given timestamp.
+  // Falls through to the original ID when no routing entry exists.
+  private resolveAtTime(externalId: string, time: number): string {
+    const gens = this.generationRouter.get(externalId);
+    if (!gens) return externalId;
+    let result = gens[0]!.internalId;
+    for (const gen of gens) {
+      if (gen.startTime <= time) result = gen.internalId;
+    }
+    return result;
+  }
+
+  // Returns the internal entity ID for the Nth occurrence of externalId in
+  // document order (used for entity-ends and sm5Stats, which can't be routed
+  // by timestamp because they may appear after the next generation starts).
+  private resolveByOrder(externalId: string, orderIndex: number): string {
+    const gens = this.generationRouter.get(externalId);
+    if (!gens) return externalId;
+    return gens[Math.min(orderIndex, gens.length - 1)]!.internalId;
+  }
+
+  // Rewrites actor/target/entity fields in all parsed data collections so every
+  // downstream pass works with internal (generation-disambiguated) IDs without
+  // needing per-call routing logic.
+  private resolveGenerationIds(): void {
+    if (this.generationRouter.size === 0) return;
+
+    for (const event of this.parsed.events) {
+      if (event.actor && this.generationRouter.has(event.actor)) {
+        event.actor = this.resolveAtTime(event.actor, event.time);
+      }
+      if (event.target && this.generationRouter.has(event.target)) {
+        event.target = this.resolveAtTime(event.target, event.time);
+      }
+    }
+
+    for (const score of this.parsed.scores) {
+      if (this.generationRouter.has(score.entity)) {
+        score.entity = this.resolveAtTime(score.entity, score.time);
+      }
+    }
+
+    for (const entry of this.parsed.playerStateLog) {
+      if (this.generationRouter.has(entry.entity)) {
+        entry.entity = this.resolveAtTime(entry.entity, entry.time);
+      }
+    }
+
+    // Entity-ends are matched by order, not time, because they can arrive after
+    // the next generation has already started.
+    const orderCount = new Map<string, number>();
+    for (const end of this.parsed.entityEnds) {
+      if (!this.generationRouter.has(end.id)) continue;
+      const n = orderCount.get(end.id) ?? 0;
+      orderCount.set(end.id, n + 1);
+      end.id = this.resolveByOrder(end.id, n);
     }
   }
 

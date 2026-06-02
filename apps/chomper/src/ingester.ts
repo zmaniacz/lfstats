@@ -60,12 +60,12 @@ export async function ingest(
     // Sort by iplId so all concurrent transactions acquire row locks in the same
     // order, preventing circular deadlocks when multiple games share players.
     const playerEntities = parsed.entities
-      .filter((e) => e.type === "player" && e.id.startsWith("#"))
-      .sort((a, b) => a.id.localeCompare(b.id));
+      .filter((e) => e.type === "player" && e.originalId.startsWith("#"))
+      .sort((a, b) => a.originalId.localeCompare(b.originalId));
 
     for (const entity of playerEntities) {
       const playerRow = await upsertPlayer(tx, {
-        iplId: entity.id,
+        iplId: entity.originalId,
         memberId: entity.memberId ?? null,
         currentCallsign: entity.desc,
         firstSeenAt: gameStartTime,
@@ -194,10 +194,10 @@ export async function ingest(
       tx,
       refereeEntities.map((entity) => ({
         gameId,
-        playerId: entity.id.startsWith("#")
+        playerId: entity.originalId.startsWith("#")
           ? (playerIdByEntityId.get(entity.id) ?? null)
           : null,
-        iplId: entity.id.startsWith("#") ? entity.id : null,
+        iplId: entity.originalId.startsWith("#") ? entity.originalId : null,
         callsign: entity.desc,
         battlesuitId: entity.battlesuit
           ? (battlesuitIdByName.get(entity.battlesuit) ?? null)
@@ -292,7 +292,7 @@ export async function ingest(
         battlesuitId: entity.battlesuit
           ? (battlesuitIdByName.get(entity.battlesuit) ?? null)
           : null,
-        iplId: entity.id.startsWith("#") ? entity.id : null,
+        iplId: entity.originalId.startsWith("#") ? entity.originalId : null,
         callsign: entity.desc,
         position: pos,
         eliminated,

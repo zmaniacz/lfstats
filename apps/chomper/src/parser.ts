@@ -86,6 +86,12 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
 
   if (meta === null) throw new ParseError("Missing line type 0 (info)");
 
+  // Detect mid-game position changes: same entity ID appearing more than once
+  // with a different category (position). Each subsequent registration becomes a
+  // new "generation" with a disambiguated internal ID. The external ID routing
+  // table lets the simulator resolve the correct state by event timestamp.
+  const entityRouting = buildEntityRouting(entities, sm5Stats);
+
   return {
     meta,
     teams,
@@ -95,6 +101,7 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
     entityEnds,
     sm5Stats: mergeDuplicateSm5Stats(sm5Stats),
     playerStateLog,
+    entityRouting,
   };
 }
 
@@ -137,6 +144,60 @@ function mergeDuplicateSm5Stats(stats: ParsedSm5Stats[]): ParsedSm5Stats[] {
     }
   }
   return [...seen.values()];
+}
+
+// Detects mid-game position changes where the same entity ID re-registers with
+// a different category. Each additional registration becomes a new generation:
+//   gen 0 keeps the original entity ID
+//   gen 1+ gets id = "{originalId}_gen{N}"
+//
+// The entities and sm5Stats arrays are mutated in place to use the internal IDs.
+// sm5Stats entries are matched to generations by order of appearance (the
+// hardware emits a separate section 7 entry per registration in order).
+//
+// Same-position duplicates (hardware glitches) are left unchanged so
+// mergeDuplicateSm5Stats can still merge them.
+function buildEntityRouting(
+  entities: import("./types.js").ParsedEntity[],
+  sm5Stats: import("./types.js").ParsedSm5Stats[],
+): import("./types.js").ParsedTdf["entityRouting"] {
+  // Group player entities by external ID (preserve insertion order = time order)
+  const groups = new Map<string, import("./types.js").ParsedEntity[]>();
+  for (const entity of entities) {
+    if (entity.type !== "player" || entity.category === 0) continue;
+    const arr = groups.get(entity.originalId) ?? [];
+    arr.push(entity);
+    groups.set(entity.originalId, arr);
+  }
+
+  const routing: import("./types.js").ParsedTdf["entityRouting"] = [];
+
+  for (const [externalId, group] of groups) {
+    if (group.length <= 1) continue;
+    // Only create separate generations when the position actually changes
+    const categories = group.map((e) => e.category);
+    if (categories.every((c) => c === categories[0])) continue; // same position = hardware glitch
+
+    const generations: { internalId: string; startTime: number }[] = [];
+    for (let i = 0; i < group.length; i++) {
+      const internalId = i === 0 ? externalId : `${externalId}_gen${i}`;
+      group[i]!.id = internalId;
+      generations.push({ internalId, startTime: group[i]!.time });
+    }
+    routing.push({ externalId, generations });
+
+    // Rename corresponding sm5Stats entries by order of appearance
+    let genIdx = 0;
+    for (const stat of sm5Stats) {
+      if (stat.id !== externalId) continue;
+      if (genIdx > 0 && genIdx < generations.length) {
+        stat.id = generations[genIdx]!.internalId;
+      }
+      genIdx++;
+    }
+  }
+
+  return routing;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,9 +281,11 @@ function parseLine3(fields: string[], columns: string[]): ParsedEntity {
   // [3, time, id, type, desc, team, level, category, ?battlesuit, ?memberId]
   const getValue = makeColReader(fields, columns);
 
+  const id = fields[2] ?? "";
   return {
     time: parseInt(fields[1] ?? "0", 10),
-    id: fields[2] ?? "",
+    id,
+    originalId: id,
     type: fields[3] ?? "",
     desc: fields[4] ?? "",
     team: parseInt(fields[5] ?? "0", 10),

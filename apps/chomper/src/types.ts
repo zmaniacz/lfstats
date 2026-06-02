@@ -21,6 +21,12 @@ export interface ParsedTdf {
   entityEnds: ParsedEntityEnd[];
   sm5Stats: ParsedSm5Stats[];
   playerStateLog: ParsedPlayerState[]; // empty if absent (pre-2.005)
+  // Mid-game position changes: each entry maps an external entity ID to its
+  // time-ordered generations, each with a disambiguated internal ID.
+  entityRouting: Array<{
+    externalId: string;
+    generations: Array<{ internalId: string; startTime: number }>;
+  }>;
 }
 
 export interface ParsedTeam {
@@ -33,7 +39,8 @@ export interface ParsedTeam {
 
 export interface ParsedEntity {
   time: number;
-  id: string; // iplId (#xxx) or hardwareId (@NNN)
+  id: string; // internal ID (may be suffixed with _genN for position-change re-registrations)
+  originalId: string; // original TDF entity ID — use for player DB lookups
   type: string;
   desc: string; // callsign or hardware name
   team: number;
