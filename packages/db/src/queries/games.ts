@@ -29,7 +29,7 @@ export type GameListItem = {
   slug: string;
   centerSlug: string;
   startTime: Date;
-  outcome: "score" | "elimination" | "draw";
+  outcome: "score" | "elimination" | "draw" | "aborted";
   centerName: string;
   description: string | null;
   teams: GameTeamSummary[];
@@ -230,7 +230,7 @@ export type GameDetail = {
   description: string | null;
   startTime: Date;
   centerName: string;
-  outcome: "score" | "elimination" | "draw";
+  outcome: "score" | "elimination" | "draw" | "aborted";
   scheduledDuration: number;
   actualDuration: number;
   exclude: boolean;

@@ -227,7 +227,7 @@ export interface GamePlayerStateSnapshot {
 
 export interface SimulatedGame {
   actualDuration: number;
-  outcome: "score" | "elimination" | "draw";
+  outcome: "score" | "elimination" | "draw" | "aborted";
   eliminationTime: number | null; // ms since mission start, only set if outcome === 'elimination'
   teams: SimTeam[];
   playerStats: Map<string, PlayerSimState>; // keyed by entityId

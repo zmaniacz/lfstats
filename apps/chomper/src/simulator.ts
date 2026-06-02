@@ -1690,6 +1690,12 @@ class Simulator {
     this.handleNukeCancel(actor, target);
     target.deactivationCause = "resupply";
     this.triggerStateTransition(target, 3, time);
+    // For 2.005+ files, triggerStateTransition is a no-op driven by section 9.
+    // If the target is already in state_3 (resupplied while down), no upcoming
+    // section 9 transition may occur before game end — capture the shots update now.
+    if (target.state === 3 && !target.isEliminated) {
+      this.recordSnapshot(target, eventIndex);
+    }
 
     this.recordSnapshot(actor, eventIndex);
   }
@@ -1955,12 +1961,23 @@ class Simulator {
     }
 
     // Game outcome
+    // An aborted game has no mission-end event (0101) and every entity was
+    // kicked mid-game (exitType "01" or "17") rather than completing normally.
+    const isAborted =
+      this.missionEndTime === 0 &&
+      this.parsed.entityEnds.length > 0 &&
+      this.parsed.entityEnds.every(
+        (e) => e.exitType === "01" || e.exitType === "17",
+      );
+
     const anyEliminated = [...teamEliminated.entries()].some(
       ([ti, e]) => e && !this.isNeutralTeam(ti),
     );
-    let outcome: "score" | "elimination" | "draw";
+    let outcome: "score" | "elimination" | "draw" | "aborted";
 
-    if (anyEliminated) {
+    if (isAborted) {
+      outcome = "aborted";
+    } else if (anyEliminated) {
       outcome = "elimination";
     } else {
       const scores = [...teamScores.values()];

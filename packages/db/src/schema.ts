@@ -23,6 +23,7 @@ export const gameOutcomeEnum = pgEnum("game_outcome", [
   "score",
   "elimination",
   "draw",
+  "aborted",
 ]);
 
 export const teamResultEnum = pgEnum("team_result", ["win", "loss", "draw"]);
