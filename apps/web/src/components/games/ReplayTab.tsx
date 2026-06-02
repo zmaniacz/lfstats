@@ -106,6 +106,14 @@ export function ReplayTab({
     return map
   }, [data])
 
+  // Pre-process: non-player actor name lookup (warbots, resupply beacons)
+  const nonPlayerActorMap = useMemo(() => {
+    if (!data) return new Map<string, string>()
+    const map = new Map<string, string>()
+    for (const a of data.nonPlayerActors) map.set(a.gameTargetId, a.name)
+    return map
+  }, [data])
+
   // Timer management
   useEffect(() => {
     if (intervalRef.current) {
@@ -341,7 +349,9 @@ export function ReplayTab({
             visibleEvents.map((event) => {
               const actor = event.actorScorecardId
                 ? playerMap.get(event.actorScorecardId)
-                : null
+                : event.actorGameTargetId
+                  ? nonPlayerActorMap.get(event.actorGameTargetId)
+                  : null
               const target = event.isPlayerTarget && event.targetScorecardId
                 ? playerMap.get(event.targetScorecardId)
                 : event.targetScorecardId === null && !event.isPlayerTarget

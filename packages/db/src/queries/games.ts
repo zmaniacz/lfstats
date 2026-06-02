@@ -7,6 +7,8 @@ import {
   sm5GamePlayerInteraction,
   sm5GameEvent,
   sm5GamePlayerState,
+  sm5GameTarget,
+  target,
   center,
   gameTag,
   gameTagAssignment,
@@ -962,8 +964,15 @@ export type ReplayEvent = {
   eventType: string;
   description: string;
   actorScorecardId: string | null;
+  actorGameTargetId: string | null;
   targetScorecardId: string | null;
   isPlayerTarget: boolean;
+};
+
+export type NonPlayerActor = {
+  gameTargetId: string;
+  name: string;
+  type: string;
 };
 
 export type ReplayPlayerState = {
@@ -984,6 +993,7 @@ export type ReplayData = {
   players: ReplayPlayer[];
   events: ReplayEvent[];
   playerStates: ReplayPlayerState[];
+  nonPlayerActors: NonPlayerActor[];
 };
 
 export async function getGameReplayData(gameId: string): Promise<ReplayData | null> {
@@ -994,7 +1004,7 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
 
   if (!gameRow) return null;
 
-  const [eventRows, stateRows, scorecardRows] = await Promise.all([
+  const [eventRows, stateRows, scorecardRows, nonPlayerActorRows] = await Promise.all([
     db
       .select({
         id: sm5GameEvent.id,
@@ -1002,6 +1012,7 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
         eventType: sm5GameEvent.eventType,
         description: sm5GameEvent.description,
         actorScorecardId: sm5GameEvent.actorScorecardId,
+        actorGameTargetId: sm5GameEvent.actorGameTargetId,
         targetScorecardId: sm5GameEvent.targetScorecardId,
         targetGameTargetId: sm5GameEvent.targetGameTargetId,
       })
@@ -1041,6 +1052,16 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       .where(
         and(eq(sm5Scorecard.gameId, gameId), eq(sm5GameTeam.isNeutral, false)),
       ),
+
+    db
+      .select({
+        gameTargetId: sm5GameTarget.id,
+        name: target.name,
+        type: sm5GameTarget.type,
+      })
+      .from(sm5GameTarget)
+      .innerJoin(target, eq(sm5GameTarget.targetId, target.id))
+      .where(eq(sm5GameTarget.gameId, gameId)),
   ]);
 
   return {
@@ -1060,6 +1081,7 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       eventType: e.eventType,
       description: e.description,
       actorScorecardId: e.actorScorecardId,
+      actorGameTargetId: e.actorGameTargetId,
       targetScorecardId: e.targetScorecardId,
       isPlayerTarget: e.targetScorecardId !== null,
     })),
@@ -1075,5 +1097,6 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       accuracy: s.accuracy,
       hitDiff: s.hitDiff,
     })),
+    nonPlayerActors: nonPlayerActorRows,
   };
 }
