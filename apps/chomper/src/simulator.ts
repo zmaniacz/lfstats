@@ -1872,6 +1872,8 @@ class Simulator {
     this.recordSnapshot(actor, eventIndex);
 
     for (const teammate of this.getActiveTeammates(actor)) {
+      // Skip players whose hardware hadn't registered yet when the boost fired.
+      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
       const stats = POSITION_STATS[teammate.position]!;
       teammate.shots = Math.min(
         teammate.shots + stats.resupplyShots,
@@ -1886,6 +1888,7 @@ class Simulator {
     // incorrect boost amounts that accumulate into a shots discrepancy at game end.
     for (const teammate of this.getTeammates(actor)) {
       if (teammate.state !== 3 && teammate.state !== 2) continue;
+      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
       const stats = POSITION_STATS[teammate.position]!;
       const refList = this.shotsRefAtBoost.get(teammate.entityId);
       const refIdx = this.shotsRefAtBoostIdx.get(teammate.entityId) ?? 0;
@@ -1916,6 +1919,7 @@ class Simulator {
     this.recordSnapshot(actor, eventIndex);
 
     for (const teammate of this.getActiveTeammates(actor)) {
+      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
       const stats = POSITION_STATS[teammate.position]!;
       teammate.lives = Math.min(
         teammate.lives + stats.resupplyLives,
@@ -1926,6 +1930,7 @@ class Simulator {
     // Record pending life boosts for state-3 and state-2 teammates (radio lag — resolved later)
     for (const teammate of this.getTeammates(actor)) {
       if (teammate.state !== 3 && teammate.state !== 2) continue;
+      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
       const stats = POSITION_STATS[teammate.position]!;
       this.recordPendingBoost(
         teammate.entityId,
