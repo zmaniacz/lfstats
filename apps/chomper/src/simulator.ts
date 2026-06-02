@@ -1206,6 +1206,9 @@ class Simulator {
       case "0600":
         if (actor) this.handle0600(null, actor, time, eventIndex);
         break;
+      case "0B00":
+        if (actor) this.handle0B00(actor, eventIndex);
+        break;
       case "0B03":
         if (actor) this.handle0B03(actor, eventIndex, targetId);
         break;
@@ -1778,6 +1781,22 @@ class Simulator {
     this.recordSnapshot(target, eventIndex);
   }
 
+  // 0B00 — Beacon Claim
+  // Requires 3 shots at the beacon to trigger; counted in TDF section 7 as 3
+  // shots fired and 3 hits. Not counted as opponent/team hits (beacon is neutral).
+  private handle0B00(actor: PlayerSimState, eventIndex: number): void {
+    actor.shotsFired += 3;
+    actor.shotsHit += 3;
+    if (actor.position !== POSITION.AMMO) {
+      actor.shots = Math.max(0, actor.shots - 3);
+    }
+    if (actor.isRapidFire) {
+      actor.shotsFiredDuringRapid += 3;
+      actor.shotsHitDuringRapid += 3;
+    }
+    this.recordSnapshot(actor, eventIndex);
+  }
+
   // 0B03 — Base Award (post-elimination target award)
   private handle0B03(
     actor: PlayerSimState,
@@ -2024,9 +2043,15 @@ export function runConsistencyCheck(
           `${entityId} finalSnapshot.lives: computed=${finalSnapshot.lives} expected=${stats.livesLeft}`,
         );
       }
+      // Ghost shots consume ammo the simulator never sees. The remaining-shots
+      // discrepancy is bounded by [0, dFired]: 0 if the player was resupplied
+      // to max after the ghost shots, dFired if they were not resupplied at all,
+      // and anywhere in between if resupplied partially.
       const shotsOk =
         finalSnapshot.shots === stats.shotsLeft ||
-        (isGhostShot && finalSnapshot.shots === stats.shotsLeft + dFired);
+        (isGhostShot &&
+          finalSnapshot.shots >= stats.shotsLeft &&
+          finalSnapshot.shots <= stats.shotsLeft + dFired);
       if (!shotsOk) {
         discrepancies.push(
           `${entityId} finalSnapshot.shots: computed=${finalSnapshot.shots} expected=${stats.shotsLeft}`,
