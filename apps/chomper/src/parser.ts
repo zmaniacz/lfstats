@@ -93,9 +93,50 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
     events,
     scores,
     entityEnds,
-    sm5Stats,
+    sm5Stats: mergeDuplicateSm5Stats(sm5Stats),
     playerStateLog,
   };
+}
+
+// When hardware glitches, a player's section 7 scorecard can appear twice in
+// the same TDF. The accumulated counters (shots fired, hits, etc.) reflect only
+// one of the two periods, while section 4 events cover both. Merge duplicates
+// by summing accumulated fields and keeping the last entry's residuals
+// (livesLeft, shotsLeft), which represent the true end-of-game state.
+function mergeDuplicateSm5Stats(stats: ParsedSm5Stats[]): ParsedSm5Stats[] {
+  const seen = new Map<string, ParsedSm5Stats>();
+  for (const s of stats) {
+    const existing = seen.get(s.id);
+    if (!existing) {
+      seen.set(s.id, { ...s });
+    } else {
+      existing.shotsHit += s.shotsHit;
+      existing.shotsFired += s.shotsFired;
+      existing.timesZapped += s.timesZapped;
+      existing.timesMissiled += s.timesMissiled;
+      existing.missileHits += s.missileHits;
+      existing.nukesDetonated += s.nukesDetonated;
+      existing.nukesActivated += s.nukesActivated;
+      existing.nukeCancels += s.nukeCancels;
+      existing.medicHits += s.medicHits;
+      existing.ownMedicHits += s.ownMedicHits;
+      existing.medicNukes += s.medicNukes;
+      existing.scoutRapid += s.scoutRapid;
+      existing.lifeBoost += s.lifeBoost;
+      existing.ammoBoost += s.ammoBoost;
+      existing.penalties += s.penalties;
+      existing.shot3Hit += s.shot3Hit;
+      existing.ownNukeCancels += s.ownNukeCancels;
+      existing.shotOpponent += s.shotOpponent;
+      existing.shotTeam += s.shotTeam;
+      existing.missiledOpponent += s.missiledOpponent;
+      existing.missiledTeam += s.missiledTeam;
+      // Residuals: last entry wins (true end-of-game state)
+      existing.livesLeft = s.livesLeft;
+      existing.shotsLeft = s.shotsLeft;
+    }
+  }
+  return [...seen.values()];
 }
 
 // ---------------------------------------------------------------------------
