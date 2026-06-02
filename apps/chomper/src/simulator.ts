@@ -74,6 +74,11 @@ class Simulator {
     Array<{ startTime: number; internalId: string }>
   >();
 
+  // For each non-final generation, the time at which the next generation takes
+  // over. Used to exclude superseded entities from getOpposingActivePlayers and
+  // team-boost loops even before their entity-end is processed.
+  private supersededAt = new Map<string, number>();
+
   // Line type 9 pointer (2.005+ only)
   private stateLogPointer = 0;
 
@@ -546,7 +551,23 @@ class Simulator {
   private buildGenerationRouting(): void {
     for (const route of this.parsed.entityRouting) {
       this.generationRouter.set(route.externalId, route.generations);
+      // Mark each non-final generation as superseded at the next generation's start.
+      for (let i = 0; i < route.generations.length - 1; i++) {
+        this.supersededAt.set(
+          route.generations[i]!.internalId,
+          route.generations[i + 1]!.startTime,
+        );
+      }
     }
+  }
+
+  // Returns true if an entity is "active" at the given time: already registered
+  // and not yet superseded by a subsequent generation.
+  private isEntityActiveAt(entityId: string, time: number): boolean {
+    const joinTime = this.entityById.get(entityId)?.time ?? 0;
+    if (joinTime > time) return false;
+    const supersedeTime = this.supersededAt.get(entityId) ?? Infinity;
+    return supersedeTime > time;
   }
 
   // Returns the internal entity ID active at the given timestamp.
@@ -1042,9 +1063,15 @@ class Simulator {
     this.pendingBoosts.set(entityId, arr);
   }
 
-  private getOpposingActivePlayers(ps: PlayerSimState): PlayerSimState[] {
+  private getOpposingActivePlayers(
+    ps: PlayerSimState,
+    time: number,
+  ): PlayerSimState[] {
     return [...this.playerStates.values()].filter(
-      (p) => !p.isEliminated && this.isOpponent(ps, p),
+      (p) =>
+        !p.isEliminated &&
+        this.isOpponent(ps, p) &&
+        this.isEntityActiveAt(p.entityId, time),
     );
   }
 
@@ -1721,7 +1748,7 @@ class Simulator {
       actor.nukeActivatedAt = null;
     }
 
-    const opponents = this.getOpposingActivePlayers(actor);
+    const opponents = this.getOpposingActivePlayers(actor, time);
 
     for (const target of opponents) {
       const livesLost = Math.min(3, target.lives);
@@ -1876,8 +1903,8 @@ class Simulator {
     this.recordSnapshot(actor, eventIndex);
 
     for (const teammate of this.getActiveTeammates(actor)) {
-      // Skip players whose hardware hadn't registered yet when the boost fired.
-      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
+      // Skip players not yet registered or already superseded by a later generation.
+      if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
       teammate.shots = Math.min(
         teammate.shots + stats.resupplyShots,
@@ -1892,7 +1919,7 @@ class Simulator {
     // incorrect boost amounts that accumulate into a shots discrepancy at game end.
     for (const teammate of this.getTeammates(actor)) {
       if (teammate.state !== 3 && teammate.state !== 2) continue;
-      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
+      if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
       const refList = this.shotsRefAtBoost.get(teammate.entityId);
       const refIdx = this.shotsRefAtBoostIdx.get(teammate.entityId) ?? 0;
@@ -1923,7 +1950,7 @@ class Simulator {
     this.recordSnapshot(actor, eventIndex);
 
     for (const teammate of this.getActiveTeammates(actor)) {
-      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
+      if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
       teammate.lives = Math.min(
         teammate.lives + stats.resupplyLives,
@@ -1934,7 +1961,7 @@ class Simulator {
     // Record pending life boosts for state-3 and state-2 teammates (radio lag — resolved later)
     for (const teammate of this.getTeammates(actor)) {
       if (teammate.state !== 3 && teammate.state !== 2) continue;
-      if ((this.entityById.get(teammate.entityId)?.time ?? 0) > time) continue;
+      if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
       this.recordPendingBoost(
         teammate.entityId,

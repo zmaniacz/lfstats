@@ -90,7 +90,7 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
   // with a different category (position). Each subsequent registration becomes a
   // new "generation" with a disambiguated internal ID. The external ID routing
   // table lets the simulator resolve the correct state by event timestamp.
-  const entityRouting = buildEntityRouting(entities, sm5Stats);
+  const entityRouting = buildEntityRouting(entities, sm5Stats, entityEnds);
 
   return {
     meta,
@@ -146,20 +146,27 @@ function mergeDuplicateSm5Stats(stats: ParsedSm5Stats[]): ParsedSm5Stats[] {
   return [...seen.values()];
 }
 
-// Detects mid-game position changes where the same entity ID re-registers with
-// a different category. Each additional registration becomes a new generation:
-//   gen 0 keeps the original entity ID
-//   gen 1+ gets id = "{originalId}_gen{N}"
+// Detects two scenarios that require separate simulation generations:
+//
+//   1. Mid-game position change — same entity ID, different category on re-registration.
+//      Each additional registration becomes a new generation (gen0 = original ID,
+//      gen1+ = "{originalId}_gen{N}").
+//
+//   2. Same-position hardware restart — same entity ID, same category, but a
+//      mid-game exitType="01" entity-end followed by a second section 7 scorecard.
+//      The hardware reset the player's ammo/lives counters; continuing to treat
+//      them as a single period produces incorrect shots and nuke-hit stats. A
+//      synthetic entity is created for the second period so the simulator
+//      initialises it from scratch.
 //
 // The entities and sm5Stats arrays are mutated in place to use the internal IDs.
-// sm5Stats entries are matched to generations by order of appearance (the
-// hardware emits a separate section 7 entry per registration in order).
-//
-// Same-position duplicates (hardware glitches) are left unchanged so
-// mergeDuplicateSm5Stats can still merge them.
+// sm5Stats entries are matched to generations by order of appearance.
+// Same-position duplicates without a mid-game exitType=01 (hardware glitches like
+// double-printed scorecards) are left unchanged for mergeDuplicateSm5Stats.
 function buildEntityRouting(
   entities: import("./types.js").ParsedEntity[],
   sm5Stats: import("./types.js").ParsedSm5Stats[],
+  entityEnds: import("./types.js").ParsedEntityEnd[],
 ): import("./types.js").ParsedTdf["entityRouting"] {
   // Group player entities by external ID (preserve insertion order = time order)
   const groups = new Map<string, import("./types.js").ParsedEntity[]>();
@@ -170,13 +177,34 @@ function buildEntityRouting(
     groups.set(entity.originalId, arr);
   }
 
+  // Group entity-ends by external ID (order = document order)
+  const endsByEntity = new Map<string, import("./types.js").ParsedEntityEnd[]>();
+  for (const end of entityEnds) {
+    const arr = endsByEntity.get(end.id) ?? [];
+    arr.push(end);
+    endsByEntity.set(end.id, arr);
+  }
+
+  // Count sm5Stats entries per external ID
+  const statCountById = new Map<string, number>();
+  for (const stat of sm5Stats) {
+    statCountById.set(stat.id, (statCountById.get(stat.id) ?? 0) + 1);
+  }
+
   const routing: import("./types.js").ParsedTdf["entityRouting"] = [];
 
+  // --- Case 1: multiple section 3 registrations (position change or restart) ---
   for (const [externalId, group] of groups) {
     if (group.length <= 1) continue;
-    // Only create separate generations when the position actually changes
     const categories = group.map((e) => e.category);
-    if (categories.every((c) => c === categories[0])) continue; // same position = hardware glitch
+    const allSamePosition = categories.every((c) => c === categories[0]);
+    if (allSamePosition) {
+      // Same position — could be a hardware glitch (double-print) or a mid-game
+      // restart. Distinguish by checking for a mid-game exitType=01 entity-end.
+      const ends = endsByEntity.get(externalId) ?? [];
+      const hasRestart = ends.some((e) => e.exitType === "01" || e.exitType === "17");
+      if (!hasRestart) continue; // no restart → hardware glitch, leave for mergeDuplicateSm5Stats
+    }
 
     const generations: { internalId: string; startTime: number }[] = [];
     for (let i = 0; i < group.length; i++) {
@@ -185,19 +213,57 @@ function buildEntityRouting(
       generations.push({ internalId, startTime: group[i]!.time });
     }
     routing.push({ externalId, generations });
+    renameStats(sm5Stats, externalId, generations);
+  }
 
-    // Rename corresponding sm5Stats entries by order of appearance
-    let genIdx = 0;
-    for (const stat of sm5Stats) {
-      if (stat.id !== externalId) continue;
-      if (genIdx > 0 && genIdx < generations.length) {
-        stat.id = generations[genIdx]!.internalId;
-      }
-      genIdx++;
-    }
+  // --- Case 2: same-position hardware restart (one section 3 but multiple section 7) ---
+  // Detected by: single section 3 registration + mid-game exitType=01 entity-end
+  // + more than one section 7 scorecard for this entity.
+  for (const [externalId, group] of groups) {
+    if (group.length !== 1) continue; // handled above or truly single
+    if ((statCountById.get(externalId) ?? 0) <= 1) continue; // only one scorecard, nothing to split
+    const ends = endsByEntity.get(externalId) ?? [];
+    const restartEnd = ends.find((e) => e.exitType === "01" || e.exitType === "17");
+    if (!restartEnd) continue; // no mid-game exit, treat as normal hardware glitch
+
+    const original = group[0]!;
+    const gen1Id = `${externalId}_gen1`;
+
+    // Synthesise a second-period entity from the original (same position/team).
+    // Start time is the restart entity-end time so all events after that point
+    // route to the fresh state.
+    const syntheticEntity: import("./types.js").ParsedEntity = {
+      ...original,
+      id: gen1Id,
+      originalId: original.originalId,
+      time: restartEnd.time,
+    };
+    entities.push(syntheticEntity);
+
+    const generations = [
+      { internalId: externalId, startTime: original.time },
+      { internalId: gen1Id, startTime: restartEnd.time },
+    ];
+    routing.push({ externalId, generations });
+    renameStats(sm5Stats, externalId, generations);
   }
 
   return routing;
+}
+
+function renameStats(
+  sm5Stats: import("./types.js").ParsedSm5Stats[],
+  externalId: string,
+  generations: { internalId: string; startTime: number }[],
+): void {
+  let genIdx = 0;
+  for (const stat of sm5Stats) {
+    if (stat.id !== externalId) continue;
+    if (genIdx > 0 && genIdx < generations.length) {
+      stat.id = generations[genIdx]!.internalId;
+    }
+    genIdx++;
+  }
 }
 
 // ---------------------------------------------------------------------------
