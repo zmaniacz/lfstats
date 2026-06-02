@@ -81,6 +81,9 @@ export default async function GameDetailPage({
             {game.tdfFilename}
           </a>
         </p>
+        {game.outcome === "aborted" && (
+          <Badge variant="destructive">Aborted</Badge>
+        )}
         {game.exclude && (
           <Badge variant="destructive">Excluded from Stats</Badge>
         )}
