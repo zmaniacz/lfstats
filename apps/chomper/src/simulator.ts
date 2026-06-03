@@ -482,10 +482,14 @@ class Simulator {
     const stateRef = new Map<string, 0 | 2 | 3>();
     const pendingRef = new Map<string, number>();
     const eliminatedRef = new Set<string>();
+    // Mirrors lastTransitionToActiveAt from the main sim so the pre-pass applies
+    // the same 250ms respawn-window deferral logic as handle0510.
+    const lastTransitionToActiveAtRef = new Map<string, number | null>();
 
     for (const [entityId, ps] of this.playerStates) {
       shots.set(entityId, POSITION_STATS[ps.position]!.initialShots);
       stateRef.set(entityId, 0);
+      lastTransitionToActiveAtRef.set(entityId, null);
     }
 
     // Apply accumulated pending shots when leaving the down/vulnerable cycle.
@@ -531,6 +535,9 @@ class Simulator {
         ) {
           applyPending(id);
         }
+        if (newState === 0) {
+          lastTransitionToActiveAtRef.set(id, entry.time);
+        }
         stateRef.set(id, newState);
       }
 
@@ -573,12 +580,15 @@ class Simulator {
               const state = stateRef.get(entityId) ?? 0;
               const stats = POSITION_STATS[ps.position]!;
               const current = shots.get(entityId) ?? 0;
-              if (state === 0) {
+              const lastActiveAt = lastTransitionToActiveAtRef.get(entityId) ?? null;
+              const withinRespawnWindow =
+                lastActiveAt !== null && event.time - lastActiveAt <= 250;
+              if (state === 0 && !withinRespawnWindow) {
                 shots.set(
                   entityId,
                   Math.min(current + stats.resupplyShots, stats.maxShots),
                 );
-              } else if (state === 3 || state === 2) {
+              } else if (state === 0 || state === 3 || state === 2) {
                 // Record the authoritative shots count for this boost occurrence.
                 const list = this.shotsRefAtBoost.get(entityId) ?? [];
                 list.push(current);
@@ -722,6 +732,7 @@ class Simulator {
         state: 0,
         stateEnteredAt: 0,
         state3EnteredAt: null,
+        lastTransitionToActiveAt: null,
         hitPoints: stats.hitPoints,
         lives: stats.initialLives,
         shots: stats.initialShots,
@@ -999,6 +1010,7 @@ class Simulator {
       ps.deactivationCause = null;
       ps.receivedAmmoResupplyThisCycle = false;
       ps.receivedLivesResupplyThisCycle = false;
+      ps.lastTransitionToActiveAt = time;
     }
 
     ps.state = newState;
@@ -1980,11 +1992,32 @@ class Simulator {
       // Skip players not yet registered or already superseded by a later generation.
       if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
-      teammate.shots = Math.min(
-        teammate.shots + stats.resupplyShots,
-        stats.maxShots,
-      );
-      this.recordSnapshot(teammate, eventIndex);
+      const withinRespawnWindow =
+        teammate.lastTransitionToActiveAt !== null &&
+        time - teammate.lastTransitionToActiveAt <= 250;
+      if (withinRespawnWindow) {
+        // Within the respawn uncertainty window — defer to pending. Consume from
+        // the pre-pass reference (same as state_3/state_2) so the amount is correct.
+        const refList = this.shotsRefAtBoost.get(teammate.entityId);
+        const refIdx = this.shotsRefAtBoostIdx.get(teammate.entityId) ?? 0;
+        const refShots = refList?.[refIdx] ?? teammate.shots;
+        if (refList !== undefined && refIdx < refList.length) {
+          this.shotsRefAtBoostIdx.set(teammate.entityId, refIdx + 1);
+        }
+        this.recordPendingBoost(
+          teammate.entityId,
+          "shots",
+          Math.min(stats.resupplyShots, stats.maxShots - refShots),
+          eventIndex,
+          time,
+        );
+      } else {
+        teammate.shots = Math.min(
+          teammate.shots + stats.resupplyShots,
+          stats.maxShots,
+        );
+        this.recordSnapshot(teammate, eventIndex);
+      }
     }
     // Record pending shot boosts for state-3 and state-2 teammates (radio lag —
     // resolved retroactively at game end). Use the pre-pass reference shots rather
@@ -2026,11 +2059,26 @@ class Simulator {
     for (const teammate of this.getActiveTeammates(actor)) {
       if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
-      teammate.lives = Math.min(
-        teammate.lives + stats.resupplyLives,
-        stats.maxLives,
-      );
-      this.recordSnapshot(teammate, eventIndex);
+      const withinRespawnWindow =
+        teammate.lastTransitionToActiveAt !== null &&
+        time - teammate.lastTransitionToActiveAt <= 250;
+      if (withinRespawnWindow) {
+        // Within the respawn uncertainty window — defer to pending so reconciliation
+        // can decide based on TDF final stats whether the boost actually registered.
+        this.recordPendingBoost(
+          teammate.entityId,
+          "lives",
+          Math.min(stats.resupplyLives, stats.maxLives - teammate.lives),
+          eventIndex,
+          time,
+        );
+      } else {
+        teammate.lives = Math.min(
+          teammate.lives + stats.resupplyLives,
+          stats.maxLives,
+        );
+        this.recordSnapshot(teammate, eventIndex);
+      }
     }
     // Record pending life boosts for state-3 and state-2 teammates (radio lag — resolved later)
     for (const teammate of this.getTeammates(actor)) {
@@ -2071,17 +2119,19 @@ class Simulator {
   }
 
   // 0B00 — Beacon Claim
-  // Requires 3 shots at the beacon to trigger; counted in TDF section 7 as 3
-  // shots fired and 3 hits. Not counted as opponent/team hits (beacon is neutral).
+  // Counted in TDF section 7 as 1 shot fired and 1 hit (the claim shot). The
+  // 2 warm-up hits on the beacon before the claim do not generate section 4
+  // events; they appear in TDF section 7 as ghost shots and are caught by the
+  // ghost-shot detection in runConsistencyCheck.
   private handle0B00(actor: PlayerSimState, eventIndex: number): void {
-    actor.shotsFired += 3;
-    actor.shotsHit += 3;
+    actor.shotsFired += 1;
+    actor.shotsHit += 1;
     if (actor.position !== POSITION.AMMO) {
-      actor.shots = Math.max(0, actor.shots - 3);
+      actor.shots = Math.max(0, actor.shots - 1);
     }
     if (actor.isRapidFire) {
-      actor.shotsFiredDuringRapid += 3;
-      actor.shotsHitDuringRapid += 3;
+      actor.shotsFiredDuringRapid += 1;
+      actor.shotsHitDuringRapid += 1;
     }
     this.recordSnapshot(actor, eventIndex);
   }

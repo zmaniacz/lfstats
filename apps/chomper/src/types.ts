@@ -120,6 +120,7 @@ export interface PlayerSimState {
   state: 0 | 2 | 3;
   stateEnteredAt: number;
   state3EnteredAt: number | null; // when the current downtime period started (state 3 entry)
+  lastTransitionToActiveAt: number | null; // when the player last transitioned to state_0; null = never been down
   hitPoints: number;
   lives: number;
   shots: number;
