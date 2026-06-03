@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { resolve, join } from "node:path";
-import { parseTdf, ParseError } from "./parser.js";
+import { parseTdf, ParseError, RejectionError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
 
 const demoDir = resolve(import.meta.dirname, "../../../demo_files");
@@ -46,6 +46,12 @@ for (const file of files) {
   try {
     parsed = parseTdf(buffer);
   } catch (err) {
+    if (err instanceof RejectionError) {
+      console.log(`PASS [rejected] ${file} — ${err.message}`);
+      passes.push(file);
+      passed++;
+      continue;
+    }
     const reason =
       err instanceof ParseError ? err.message : String(err);
     console.error(`FAIL [parse error] ${file}`);

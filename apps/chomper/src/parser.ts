@@ -16,6 +16,15 @@ export class ParseError extends Error {
   }
 }
 
+// A RejectionError signals a game that is structurally invalid and should be
+// routed to the error bucket with status "rejected" rather than "failed".
+export class RejectionError extends ParseError {
+  constructor(message: string) {
+    super(message);
+    this.name = "RejectionError";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -196,6 +205,14 @@ function buildEntityRouting(
   // --- Case 1: multiple section 3 registrations (position change or restart) ---
   for (const [externalId, group] of groups) {
     if (group.length <= 1) continue;
+
+    // A player re-registering on a different team is a hardware error we cannot
+    // model — reject the whole game rather than producing garbage stats.
+    const teams = new Set(group.map((e) => e.team));
+    if (teams.size > 1) {
+      throw new RejectionError("Rejected - player logged in on multiple teams");
+    }
+
     const categories = group.map((e) => e.category);
     const allSamePosition = categories.every((c) => c === categories[0]);
     if (allSamePosition) {

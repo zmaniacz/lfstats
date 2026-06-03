@@ -10,7 +10,7 @@ import {
 import type { S3Handler } from "aws-lambda";
 import { buildArchiveKey, ingest, parseGameStartTime } from "./ingester.js";
 import { calculateMvp } from "./mvp.js";
-import { ParseError, parseTdf } from "./parser.js";
+import { ParseError, RejectionError, parseTdf } from "./parser.js";
 import { archiveTdf, deleteTdf, fetchTdf } from "./s3.js";
 import { runConsistencyCheck, simulate } from "./simulator.js";
 
@@ -75,6 +75,15 @@ export const handler: S3Handler = async (event, context) => {
     try {
       parsed = parseTdf(buffer);
     } catch (err) {
+      if (err instanceof RejectionError) {
+        await updateChomperJob(job.id, {
+          status: "rejected",
+          errorMessage: err.message,
+          completedAt: new Date(),
+        });
+        await archiveTdf(bucket, key, ERROR_BUCKET, key);
+        return;
+      }
       if (err instanceof ParseError) {
         await updateChomperJob(job.id, {
           status: "failed",
