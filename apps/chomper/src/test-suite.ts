@@ -67,6 +67,7 @@ for (const file of files) {
       ghostShots,
       warnings,
     },
+    events: simResult.events.map((e, i) => ({ index: i, ...e })),
     playerStates: Object.fromEntries(
       [...simResult.playerStats.entries()].map(([id, ps]) => [
         id,
@@ -75,6 +76,7 @@ for (const file of files) {
           stateSnapshots: ps.stateSnapshots.map((snap) => ({
             ...snap,
             time: simResult.events[snap.eventIndex]?.time ?? null,
+            eventType: simResult.events[snap.eventIndex]?.eventType ?? null,
           })),
           tdf: sm5StatsById.get(id) ?? null,
         },

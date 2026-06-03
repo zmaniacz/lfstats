@@ -105,6 +105,14 @@ class Simulator {
     string,
     Array<{ time: number; lives: number }>
   >();
+  // Direct 0512 team-lives-boost gains for a player while they are in state_0
+  // (active). These are not tracked in resuppliesGained (which only covers 0502)
+  // but are needed by checkElimination's forward balance so it doesn't over-apply
+  // pending boosts for state_3 players who will receive a direct 0512 later.
+  private directTeamBoostsReceived = new Map<
+    string,
+    Array<{ time: number; lives: number }>
+  >();
 
   // Entity-end time per player, for boost-cap calculations.
   private entityEndTimeById = new Map<string, number>();
@@ -259,6 +267,57 @@ class Simulator {
       // Keep all arrays sorted by time.
       for (const arr of this.deactivationsReceived.values()) {
         arr.sort((a, b) => a.time - b.time);
+      }
+    }
+
+    // Pre-build directTeamBoostsReceived: for each 0512 event, record a direct
+    // boost entry for every teammate who is in state_0 at the time it fires.
+    // Used by checkElimination to correctly compute livesNeeded without
+    // over-applying pending boosts for future direct 0512 gains.
+    if (this.parsed.playerStateLog.length > 0) {
+      // Index section-9 state log by entity for fast state-at-time lookups.
+      const stateHistoryByEntity = new Map<
+        string,
+        Array<{ time: number; state: number }>
+      >();
+      for (const entry of this.parsed.playerStateLog) {
+        if (!this.playerStates.has(entry.entity)) continue;
+        const arr = stateHistoryByEntity.get(entry.entity) ?? [];
+        arr.push({ time: entry.time, state: entry.state });
+        stateHistoryByEntity.set(entry.entity, arr);
+      }
+
+      for (const event of this.parsed.events) {
+        if (event.type !== "0512") continue;
+        const actorId = event.actor;
+        if (!actorId) continue;
+        const actorPs = this.playerStates.get(actorId);
+        if (!actorPs) continue;
+        const T = event.time;
+
+        for (const [entityId, ps] of this.playerStates) {
+          if (entityId === actorId) continue;
+          if (ps.teamIndex !== actorPs.teamIndex) continue;
+          if (!this.isEntityActiveAt(entityId, T)) continue;
+
+          // Find state at time T: last state-log entry for this entity at or
+          // before T (default state_0 since all players start active).
+          const history = stateHistoryByEntity.get(entityId);
+          let stateAtT: 0 | 2 | 3 = 0;
+          if (history) {
+            for (const h of history) {
+              if (h.time <= T) stateAtT = h.state as 0 | 2 | 3;
+              else break;
+            }
+          }
+
+          if (stateAtT === 0) {
+            const stats = POSITION_STATS[ps.position]!;
+            const arr = this.directTeamBoostsReceived.get(entityId) ?? [];
+            arr.push({ time: T, lives: stats.resupplyLives });
+            this.directTeamBoostsReceived.set(entityId, arr);
+          }
+        }
       }
     }
 
@@ -1107,12 +1166,15 @@ class Simulator {
         const deactivations =
           this.deactivationsReceived.get(target.entityId) ?? [];
         const resupplies = this.resuppliesGained.get(target.entityId) ?? [];
+        const teamBoosts =
+          this.directTeamBoostsReceived.get(target.entityId) ?? [];
 
         // Forward-simulate the player's lives from the rescue point to entity-end,
-        // merging deactivations (negative) and resupplies (positive) in time order.
-        // livesNeeded = minimum initial boost to (a) never go below 0 and (b) end
-        // with at least tdfFinalLives. This correctly accounts for resupplies
-        // between deactivations that reduce the actual boost required.
+        // merging deactivations (negative), direct resupplies (positive), and
+        // direct 0512 team-boost gains (positive, only when player is in state_0)
+        // in time order. livesNeeded = minimum initial boost to (a) never go below 0
+        // and (b) end with at least tdfFinalLives. Including team boosts here
+        // prevents over-applying pending boosts for future direct 0512 gains.
         const futureEvents: Array<{ time: number; delta: number }> = [
           ...deactivations
             .filter((d) => d.time > time && d.time <= entityEndT)
@@ -1120,6 +1182,9 @@ class Simulator {
           ...resupplies
             .filter((r) => r.time > time && r.time <= entityEndT)
             .map((r) => ({ time: r.time, delta: r.lives })),
+          ...teamBoosts
+            .filter((b) => b.time > time && b.time <= entityEndT)
+            .map((b) => ({ time: b.time, delta: b.lives })),
         ].sort((a, b) => a.time - b.time);
 
         let balance = 0;
