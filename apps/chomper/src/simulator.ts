@@ -319,6 +319,34 @@ class Simulator {
           }
         }
       }
+    } else {
+      // Pre-2.005 files: derive state at each 0512 time using the synthetic
+      // 4-second state machine (state_3 → state_2 at +4 s → state_0 at +8 s).
+      // A deactivation while already in state_3 costs a life but does not
+      // restart the cycle — only state_0 and state_2 deactivations start a
+      // new state_3 cycle.
+      for (const event of this.parsed.events) {
+        if (event.type !== "0512") continue;
+        const actorId = event.actor;
+        if (!actorId) continue;
+        const actorPs = this.playerStates.get(actorId);
+        if (!actorPs) continue;
+        const T = event.time;
+
+        for (const [entityId, ps] of this.playerStates) {
+          if (entityId === actorId) continue;
+          if (ps.teamIndex !== actorPs.teamIndex) continue;
+          if (!this.isEntityActiveAt(entityId, T)) continue;
+
+          const deactivations = this.deactivationsReceived.get(entityId) ?? [];
+          if (this.syntheticStateAt(deactivations, T) === 0) {
+            const stats = POSITION_STATS[ps.position]!;
+            const arr = this.directTeamBoostsReceived.get(entityId) ?? [];
+            arr.push({ time: T, lives: stats.resupplyLives });
+            this.directTeamBoostsReceived.set(entityId, arr);
+          }
+        }
+      }
     }
 
     // Build authoritative shots reference before the main loop so that
@@ -514,6 +542,48 @@ class Simulator {
         finalSnap.lives = ps.lives;
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Synthetic state helper (pre-2.005 files)
+  // ---------------------------------------------------------------------------
+
+  // Returns the synthetic state (0, 2, or 3) for a player at time T using the
+  // pre-2.005 4-second transition model: deactivation → state_3 for 4 s →
+  // state_2 for 4 s → state_0. A deactivation while already in state_3 costs a
+  // life but does NOT restart the cycle; only state_0 or state_2 deactivations
+  // start a new cycle.
+  private syntheticStateAt(
+    deactivations: Array<{ time: number; lives: number }>,
+    T: number,
+  ): 0 | 2 | 3 {
+    let state: 0 | 2 | 3 = 0;
+    let nextTransitionTime = Infinity;
+    let nextTransitionState: 0 | 2 = 0;
+
+    const applyPending = (upTo: number): void => {
+      while (nextTransitionTime <= upTo) {
+        state = nextTransitionState;
+        if (nextTransitionState === 2) {
+          nextTransitionTime += 4000;
+          nextTransitionState = 0;
+        } else {
+          nextTransitionTime = Infinity;
+        }
+      }
+    };
+
+    for (const d of deactivations) {
+      if (d.time > T) break;
+      applyPending(d.time);
+      if (state !== 3) {
+        state = 3;
+        nextTransitionTime = d.time + 4000;
+        nextTransitionState = 2;
+      }
+    }
+    applyPending(T);
+    return state;
   }
 
   // ---------------------------------------------------------------------------
@@ -2114,9 +2184,15 @@ class Simulator {
     for (const teammate of this.getActiveTeammates(actor)) {
       if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
+      // Pre-2.005 files use synthetic 4+4 = 8 s transitions which are only
+      // approximate — the real state_0 start can be off by ~1 s. Use a wider
+      // 2 s uncertainty window so borderline cases are deferred to pending
+      // rather than incorrectly applied as a direct boost.
+      const respawnWindowMs =
+        this.parsed.playerStateLog.length > 0 ? 250 : 2000;
       const withinRespawnWindow =
         teammate.lastTransitionToActiveAt !== null &&
-        time - teammate.lastTransitionToActiveAt <= 250;
+        time - teammate.lastTransitionToActiveAt <= respawnWindowMs;
       if (withinRespawnWindow) {
         // Within the respawn uncertainty window — defer to pending so reconciliation
         // can decide based on TDF final stats whether the boost actually registered.

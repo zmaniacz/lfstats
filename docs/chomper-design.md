@@ -264,13 +264,30 @@ Built in a single O(N) pass before the main event loop:
 | `tdfFinalLives` | entityId | `sm5Stats.livesLeft` | Forward simulation target |
 | `deactivationsReceived` | entityId | Sorted `{time, lives}[]` | Forward simulation deactivations |
 | `resuppliesGained` | entityId | Sorted `{time, lives}[]` | Direct lives resupplies received (0502 events) |
-| `directTeamBoostsReceived` | entityId | Sorted `{time, lives}[]` | Team lives boosts (0512) received while in state_0 |
+| `directTeamBoostsReceived` | entityId | Sorted `{time, lives}[]` | Team lives boosts (0512) received while in state_0 (excludes boosts that fall within the respawn uncertainty window — see 0512 handler) |
 
 `deactivationsReceived` life costs: `0206`/`0209` = 1 life; `0306`/`0308` = 2 lives; nuke hits = 3 lives.
 
 **Two-pass nuke detection for `deactivationsReceived`:**
 - *Pass 1:* Any state_3 entry in the state log within 100ms of a `0405` event (player transitioned to state_3 at nuke time)
 - *Pass 2:* Players already in state_3 strictly before the nuke (no new state_3 entry appears in the log because they were already down — but nukes hit all non-eliminated opponents regardless of current state)
+
+### `directTeamBoostsReceived` Pre-Build
+
+For 2.005+ files, this map is built by walking the type-9 state log to determine each player's exact state at each 0512 event time. For pre-2.005 files (empty state log), the synthetic 4+4-second state machine (`syntheticStateAt`) is run instead — replaying each player's deactivation history to determine their synthetic state at each 0512 time.
+
+A player whose synthetic state_0 started within the last 2000ms is excluded from `directTeamBoostsReceived` (treated as pending, not direct) because the real state_0 start time can be off from the synthetic value by up to ~1 second. Including those boosts as "direct" in the forward simulation would cause `checkElimination` to under-compute `livesNeeded`. The 2000ms threshold matches the wider respawn uncertainty window used in `handle0512` for pre-2.005 files (see 0512 handler).
+
+### 0512 Respawn Uncertainty Window
+
+The 0512 handler applies a direct boost to state_0 teammates unless the player just became active (the **respawn uncertainty window**). Within this window, the boost is deferred to pending and `reconcilePendingBoosts` decides whether to apply it based on the TDF final lives gap.
+
+The window width differs by file version because timing precision differs:
+
+| File version | Window | Rationale |
+|---|---|---|
+| 2.005+ | 250 ms | State log is authoritative; radio lag is the only uncertainty source |
+| Pre-2.005 | 2000 ms | Synthetic 4+4-second transitions are approximations; real state_0 start can be off by ~1 second |
 
 ### Two-Pass Shots Reference (`buildShotsReference`)
 
@@ -359,7 +376,7 @@ A post-loop `applyEntityEnds()` still runs as a safety net for files where the l
 | `0500` Ammo Resupply | Restore target shots to max; end rapid fire if active; transition target to state_3 (resupply cause) |
 | `0502` Lives Resupply | Restore target lives to max; transition target to state_3 (resupply cause) |
 | `0510` Team Ammo Boost | Restore shots for all state_0 teammates; state_3/state_2 teammates receive a pending boost recorded for reconciliation |
-| `0512` Team Lives Boost | Restore lives for all state_0 teammates; state_3/state_2 teammates receive a pending boost |
+| `0512` Team Lives Boost | Restore lives for all state_0 teammates (unless within the respawn uncertainty window — see below); state_3/state_2 teammates receive a pending boost |
 | `0600` Referee Penalty | Increment `penalties`; transition target to state_3 |
 | `0204` Target Destroy | Increment `targetsDestroyed`; earn +5 SP |
 | `0303` Missile Destroy Target | Increment `targetsDestroyed`; earn +5 SP; deduct missile |
