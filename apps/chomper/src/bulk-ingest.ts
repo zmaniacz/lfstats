@@ -140,6 +140,14 @@ async function processKey(key: string): Promise<void> {
     return;
   }
 
+  // 3b. Skip playerless games (cancelled before anyone joined)
+  if (!parsed.entities.some((e) => e.type === "player")) {
+    log(`SKIP ${key} (no players — game cancelled before anyone joined)`);
+    results.push({ key, status: "skipped", reason: "No player entities — game cancelled before anyone joined" });
+    skipped++;
+    return;
+  }
+
   // 4. Duplicate check
   const gameStartTime = parseGameStartTime(parsed.meta.startTime);
   const existingCenter = await findCenterByNaturalKey(

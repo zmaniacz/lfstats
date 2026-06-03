@@ -99,6 +99,18 @@ export const handler: S3Handler = async (event, context) => {
     }
     const gameType = "sm5";
 
+    // 4b. Skip playerless games (started and immediately cancelled before anyone joined)
+    const hasPlayers = parsed.entities.some((e) => e.type === "player");
+    if (!hasPlayers) {
+      await updateChomperJob(job.id, {
+        status: "skipped",
+        skipReason: "No player entities — game cancelled before anyone joined",
+        completedAt: new Date(),
+      });
+      await deleteTdf(bucket, key);
+      return;
+    }
+
     // 5. Check for duplicate game
     const gameStartTime = parseGameStartTime(parsed.meta.startTime);
 
