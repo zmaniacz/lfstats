@@ -52,13 +52,14 @@ console.log(
 );
 
 const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-const { discrepancies, ghostShots } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+const { discrepancies, ghostShots, warnings } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
 
 const debugOut = {
   consistencyCheck: {
     passed: discrepancies.length === 0,
     discrepancies,
     ghostShots,
+    warnings,
   },
   playerStates: Object.fromEntries(
     [...simResult.playerStats.entries()].map(([id, ps]) => [
