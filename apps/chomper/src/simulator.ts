@@ -1204,6 +1204,12 @@ class Simulator {
         // resupply (lives=0 in our simulator triggers immediate elimination,
         // blocking receipt of any upcoming resupply that would restore them).
         if (livesNeeded === 0 && futureEvents.length > 0) livesNeeded = 1;
+        // Inside if (lastActor > time) && if (boosts?.length): the player
+        // provably fires again and has pending boosts — always apply at least 1
+        // life. The forward simulation can produce livesNeeded=0 in older TDFs
+        // when future deactivations (e.g., nuke hits) are absent from
+        // deactivationsReceived, leaving livesNeeded under-counted.
+        if (livesNeeded === 0) livesNeeded = 1;
 
         if (livesNeeded > 0) {
           const stats = POSITION_STATS[target.position]!;
