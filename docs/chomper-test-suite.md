@@ -2,50 +2,70 @@
 
 ## Overview
 
-The chomper test suite ingests every TDF file in `demo_files/` and verifies that the parser and simulator produce consistent output. It does not touch the database — it runs the parse and simulate phases only and validates the `.debug.json` output that `cli.ts` writes next to each TDF file.
+The chomper test suite ingests every TDF file in `demo_files/` and verifies that the parser and simulator produce consistent output. It does not touch the database — it runs Phase 1 (parse) and Phase 2 (simulate) only, then validates the `.debug.json` output written next to each TDF file.
 
-## Running the tests
+## Running the Tests
 
-```
+```bash
 pnpm --filter chomper run test
 ```
 
-Or from the repo root you can also run it directly:
+Or from `apps/chomper` directly:
 
+```bash
+node_modules/.bin/tsx src/test-suite.ts
 ```
-cd apps/chomper && node_modules/.bin/tsx src/test-suite.ts
-```
 
-## What it does
+## What It Does
 
-1. Reads every `*.tdf` file in `demo_files/` (sorted alphabetically).
-2. For each file, runs Phase 1 (parse) and Phase 2 (simulate) inline using the same `parseTdf`, `simulate`, and `runConsistencyCheck` functions as the CLI, then writes `<filename>.debug.json` alongside the TDF file.
-3. Reads `consistencyCheck` — the first object in the `.debug.json`:
-   - `consistencyCheck.passed` must be `true`
-   - `consistencyCheck.discrepancies` must be an empty array
-4. Prints `PASS`, `FAIL`, or `SKIP` for each file with a reason on failure.
-5. Exits with code 1 if any file fails; code 0 if all pass.
+1. Deletes any stale `.debug.json` files from `demo_files/` before starting.
+2. Reads every `*.tdf` file in `demo_files/` (sorted alphabetically).
+3. For each file:
+   - Runs Phase 1 (`parseTdf`) and Phase 2 (`simulate` + `runConsistencyCheck`)
+   - Writes `<filename>.debug.json` alongside the TDF file
+   - Reports `PASS`, `FAIL`, or `SKIP` for each file
+4. Writes a timestamped log file to `apps/chomper/logs/` with the full run summary.
+5. Exits with code 1 if any file fails; code 0 if all pass or skip.
 
-## Pass criteria
+## Pass / Fail / Skip Criteria
 
-A file passes when the simulator's computed stat values match the authoritative `sm5Stats` (line type 7) values from the TDF exactly. The full list of checked fields is in `docs/chomper-handoff.md` under **Consistency Checks**.
+| Result | When |
+|---|---|
+| `PASS` | `consistencyCheck.discrepancies` is empty, **or** the file threw a `RejectionError` (structurally invalid game — correctly identified and rejected) |
+| `SKIP` | Mission type is not 5 (non-SM5 game) |
+| `FAIL` | `consistencyCheck.discrepancies` is non-empty, or an unexpected parse/simulation error |
 
-## Debug output
+A `RejectionError` (e.g. player registered on multiple teams) is treated as `PASS` because the parser correctly identified the file as invalid. Only unexpected errors or consistency discrepancies are failures.
 
-Each `*.debug.json` file in `demo_files/` contains:
+## Debug Output
+
+Each `*.tdf` file produces a `*.debug.json` alongside it:
 
 ```json
 {
   "consistencyCheck": {
     "passed": true,
-    "discrepancies": []
+    "discrepancies": [],
+    "ghostShots": [],
+    "warnings": []
   },
+  "events": [...],
   "playerStates": { ... }
 }
 ```
 
-`discrepancies` is an array of objects describing each mismatch when `passed` is `false`. These files are gitignored and regenerated on every test run.
+- `discrepancies` — array of objects describing each mismatch between computed stats and TDF `sm5Stats` (line type 7). Non-empty means `FAIL`.
+- `ghostShots` — shots-related anomalies that don't produce a discrepancy but indicate edge cases.
+- `warnings` — informational notes about edge cases encountered during simulation.
+- `events` — the full simulated event list with indices, for replay debugging.
+- `playerStates` — per-player computed state including all stat accumulators and the full state snapshot history, side-by-side with the TDF `sm5Stats` for comparison.
 
-## Adding new test files
+These files are gitignored and regenerated on every test run.
 
-Drop any SM5 `.tdf` file into `demo_files/` and it will automatically be included in the next test run.
+## Adding New Test Files
+
+Drop any SM5 `.tdf` file into `demo_files/` and it will automatically be included in the next test run. Non-SM5 files are silently skipped.
+
+## Log Files
+
+Each run writes a log to `apps/chomper/logs/test-suite-<timestamp>.log` with the full list of passes, skips, and failures. These are useful for comparing results across runs when diagnosing regressions.

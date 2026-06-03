@@ -48,6 +48,8 @@ When parsing older files, absent fields should be treated as `null` or a defined
 ### Ingestion Rules
 
 - Files where line type `1` `type` is not `5` (SM5) should be skipped entirely.
+- Files with no `player` entities (game initialized but cancelled before anyone joined) should be skipped.
+- Files where a `player` entity re-registers with a different `team` index represent a hardware error that cannot be modeled and should be rejected (moved to an error bucket without ingestion).
 - Files containing exit codes `01` or `17` on line type `6` may appear in the archive. When encountered, the affected players should be treated as eliminated with `livesLeft = 0`.
 
 ---
@@ -390,7 +392,8 @@ Resupply tags do not consume the Medic's shots. Shots are only used on misses, o
 | Player | `player` | Full stat tracking if iplId present; stored but no stats if `@NNN` guest |
 | Referee | `referee` | Stored as game participant, listed per game; no stats tracked even if iplId present |
 | Target | `standard-target`, `beacon`, `generator-target` | Stored for interaction context; all treated identically for event purposes |
-| Edge case | `warbot`, `flag`, `phaser-station`, `gallery-target`, `serpent`, `reload`, `vortex`, `mini-target`, `unknown` | Stored as non-player entities for completeness; interactions not interpreted |
+| Warbot | `warbot` | Non-player combat entity that can deactivate players via `0209` events. Stored as a target-type entity; warbot deactivations cost the target 1 life but are not counted in `timesZapped`. |
+| Edge case | `flag`, `phaser-station`, `gallery-target`, `serpent`, `reload`, `vortex`, `mini-target`, `unknown` | Stored as non-player entities for completeness; interactions not interpreted |
 
 **Position stats reference:**
 
@@ -447,6 +450,7 @@ Resupply tags do not consume the Medic's shots. Shots are only used on misses, o
 | `0204` | Target Destroy | `actor	 destroys	target` | Actor landed the 3rd consecutive hit, destroying the target. Awards +1001 points to actor. Always preceded by exactly two `0203` events against the same target with no intervening miss. |
 | `0205` | Player Hit | `actor	 zaps	target` | Actor hit a player who was not deactivated by this hit (target has remaining hit points after applying shot power). Awards +100 to actor if target is an opponent; -100 if target is a teammate. Target always loses 20 points regardless of team. |
 | `0206` | Player Deactivate | `actor	 zaps	target` | Actor's hit reduced target's hit points to 0, deactivating them. Same scoring as `0205`. Always the final hit in a sequence since the target's last respawn. |
+| `0209` | Warbot Deactivate | `actor	 zaps	target` | A non-player warbot entity deactivated a player. Deducts 1 life and triggers the standard respawn cycle. Unlike `0206`, warbot deactivations are **not** counted in the target's `timesZapped` stat in line type 7. No score change. |
 
 **Hit point and shot power by position:**
 
@@ -469,6 +473,7 @@ Hit points are reduced by the shooter's shot power per hit (straight subtraction
 | `0303` | Missile Destroy Target | `actor	 destroys	target` | Actor's missile destroyed a non-player target in one hit. Awards +1001 points to actor. Always a one-hit destruction regardless of current hit counter state. |
 | `0304` | Missile Miss vs Player | `actor	 misses	target` | Actor fired a missile that missed a player target. No score change. |
 | `0306` | Missile Hit Player | `actor	 missiles	target` | Actor's missile deactivated a player in one hit regardless of remaining hit points or position. Awards +500 to actor if target is an opponent; -500 if target is a teammate. Target loses 100 points regardless of team. |
+| `0308` | Missile Hit Player (friendly) | `actor	 missiles	target` | Friendly-fire missile deactivation. Identical mechanics to `0306` but target is always a teammate. Actor receives -500; target loses 100 points. |
 
 ### Special Ability Events
 
@@ -503,6 +508,7 @@ A simultaneous individual resupply by both an Ammo Carrier and a Medic targeting
 |------|------|-----------|-------------|
 | `0900` | Achievement | `actor	 completes an achievement!` | Actor completed an in-game achievement. Informational only — stored but not interpreted. No score impact. |
 | `0902` | Reward | `actor	 earns a reward!` | Actor earned a site-based reward such as a free game. Informational only — stored but not interpreted. No score impact. Present in `2.005` and later. |
+| `0B00` | Beacon Claim | `actor	 claims	target` | Actor landed the final (3rd) hit on a beacon-mode target, claiming it. The two warm-up hits that precede the claim do not generate section 4 events — they appear only in the section 7 stat totals (`shotsHit`, `shotsFired`) as unattributed hits, referred to as **ghost shots**. The `0B00` event itself counts as 1 shot fired and 1 hit. This event should not appear in a normal SM5 game, but can occur if arena beacons are left active from a prior game mode. |
 | `0B03` | Base Award | `actor	 is awarded	target` | A non-player target is automatically awarded to a player on the winning team at the end of a game that ended early due to full opposing team elimination. Awarded for each target the player did not personally destroy during the game. Awards +1001 points to actor, consistent with a normal `0204` target destroy. Only triggered by early team elimination. |
 
 **Notes:**
@@ -721,11 +727,13 @@ During state 2, ALL incoming tags are treated as standard damage regardless of t
 | `0204` | Target Destroy | player | target | +1001 | 0 |
 | `0205` | Player Hit | player | player | ±100 | -20 |
 | `0206` | Player Deactivate | player | player | ±100 | -20 |
+| `0209` | Warbot Deactivate | warbot | player | 0 | 0 |
 | `0300` | Missile Lock | player | any | 0 | 0 |
 | `0301` | Missile Miss vs Target | player | target | 0 | 0 |
 | `0303` | Missile Destroy Target | player | target | +1001 | 0 |
 | `0304` | Missile Miss vs Player | player | player | 0 | 0 |
 | `0306` | Missile Hit Player | player | player | ±500 | -100 |
+| `0308` | Missile Hit Player (friendly) | player | player | -500 | -100 |
 | `0400` | Rapid Fire Activate | scout | — | 0 | — |
 | `0404` | Nuke Activate | commander | — | 0 | — |
 | `0405` | Nuke Detonate | commander | — | +500 | 0 |
@@ -736,6 +744,7 @@ During state 2, ALL incoming tags are treated as standard damage regardless of t
 | `0600` | Penalty | player (penalized) | — | -penalty | — |
 | `0900` | Achievement | player | — | 0 | — |
 | `0902` | Reward | player | — | 0 | — |
+| `0B00` | Beacon Claim | player | target | 0 | 0 |
 | `0B03` | Base Award | player | target | +1001 | 0 |
 
 *For `0205`/`0206` and `0306`: actor delta is +value vs opponent, -value vs teammate.*

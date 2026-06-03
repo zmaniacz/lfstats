@@ -23,6 +23,8 @@ The specs live in /docs:
 - TDF_Spec.md — raw game log file format
 - Scorecard_Table_Spec.md — per-player stat definitions
 - Core_Schema.md — full database schema spec
+- chomper-design.md — chomper architecture, parsing, simulation, and ingest design
+- chomper-test-suite.md — how to run the chomper test suite
 
 ## Skills
 - shadcn/ui — `npx skills add https://github.com/shadcn/ui --skill shadcn`
