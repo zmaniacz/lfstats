@@ -1803,11 +1803,13 @@ class Simulator {
     target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
 
     // End rapid fire if active
+    let targetSnapshotRecorded = false;
     if (target.isRapidFire && target.rapidFireStartedAt !== null) {
       target.totalRapidTime += time - target.rapidFireStartedAt;
       target.isRapidFire = false;
       target.rapidFireStartedAt = null;
       this.recordSnapshot(target, eventIndex);
+      targetSnapshotRecorded = true;
     }
 
     this.handleNukeCancel(actor, target);
@@ -1816,7 +1818,8 @@ class Simulator {
     // For 2.005+ files, triggerStateTransition is a no-op driven by section 9.
     // If the target is already in state_3 (resupplied while down), no upcoming
     // section 9 transition may occur before game end — capture the shots update now.
-    if (target.state === 3 && !target.isEliminated) {
+    // Guard against double-recording when the rapid-fire snapshot was already taken.
+    if (!targetSnapshotRecorded && target.state === 3 && !target.isEliminated) {
       this.recordSnapshot(target, eventIndex);
     }
 
