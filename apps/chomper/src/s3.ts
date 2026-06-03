@@ -3,9 +3,33 @@ import {
   GetObjectCommand,
   CopyObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 
 const s3 = new S3Client({});
+
+export async function listTdfs(bucket: string, prefix: string): Promise<string[]> {
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const response = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+
+    for (const obj of response.Contents ?? []) {
+      if (obj.Key?.endsWith(".tdf")) keys.push(obj.Key);
+    }
+
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+
+  return keys.sort();
+}
 
 export async function fetchTdf(bucket: string, key: string): Promise<Buffer> {
   const response = await s3.send(
