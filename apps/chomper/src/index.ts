@@ -57,14 +57,18 @@ export const handler: S3Handler = async (event, context) => {
   //    Check first so re-invocations with the same request ID are idempotent.
   const existing = await findChomperJobByLambdaRequestId(lambdaRequestId);
   if (existing?.completedAt !== null && existing?.completedAt !== undefined) {
-    console.log(`Job already completed for request ${lambdaRequestId} (${existing.status}), skipping`);
+    console.log(
+      `Job already completed for request ${lambdaRequestId} (${existing.status}), skipping`,
+    );
     return;
   }
-  const job = existing ?? await createChomperJob({
-    s3Key: key,
-    status: "processing",
-    lambdaRequestId,
-  });
+  const job =
+    existing ??
+    (await createChomperJob({
+      s3Key: key,
+      status: "processing",
+      lambdaRequestId,
+    }));
 
   try {
     // 2. Fetch TDF file from S3
@@ -81,7 +85,7 @@ export const handler: S3Handler = async (event, context) => {
           errorMessage: err.message,
           completedAt: new Date(),
         });
-        await archiveTdf(bucket, key, ERROR_BUCKET, key);
+        await archiveTdf(bucket, key, ERROR_BUCKET, key, true);
         return;
       }
       if (err instanceof ParseError) {
@@ -90,7 +94,7 @@ export const handler: S3Handler = async (event, context) => {
           errorMessage: `Parse error: ${err.message}`,
           completedAt: new Date(),
         });
-        await archiveTdf(bucket, key, ERROR_BUCKET, key);
+        await archiveTdf(bucket, key, ERROR_BUCKET, key, true);
         return;
       }
       throw err;
@@ -149,7 +153,10 @@ export const handler: S3Handler = async (event, context) => {
 
     // 6a. Consistency check — throws if any discrepancy found
     const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-    const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+    const { discrepancies } = runConsistencyCheck(
+      simResult.playerStats,
+      sm5StatsById,
+    );
     if (discrepancies.length > 0) {
       throw new Error(`Consistency check failed:\n${discrepancies.join("\n")}`);
     }
@@ -197,7 +204,7 @@ export const handler: S3Handler = async (event, context) => {
       parsed.meta.siteCode,
       parsed.meta.startTime,
     );
-    await archiveTdf(bucket, key, ARCHIVE_BUCKET, archiveKey);
+    await archiveTdf(bucket, key, ARCHIVE_BUCKET, archiveKey, true);
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     await updateChomperJob(job.id, {
@@ -205,7 +212,7 @@ export const handler: S3Handler = async (event, context) => {
       errorMessage: error.message,
       completedAt: new Date(),
     });
-    await archiveTdf(bucket, key, ERROR_BUCKET, key);
+    await archiveTdf(bucket, key, ERROR_BUCKET, key, true);
     throw err;
   }
 };

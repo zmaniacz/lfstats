@@ -1,14 +1,17 @@
 import {
-  S3Client,
-  GetObjectCommand,
   CopyObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
   ListObjectsV2Command,
+  S3Client,
 } from "@aws-sdk/client-s3";
 
-const s3 = new S3Client({});
+const s3 = new S3Client({ followRegionRedirects: true });
 
-export async function listTdfs(bucket: string, prefix: string): Promise<string[]> {
+export async function listTdfs(
+  bucket: string,
+  prefix: string,
+): Promise<string[]> {
   const keys: string[] = [];
   let continuationToken: string | undefined;
 
@@ -56,6 +59,7 @@ export async function archiveTdf(
   sourceKey: string,
   destBucket: string,
   destKey: string,
+  deleteSourceTdf: boolean,
 ): Promise<void> {
   // Copy to archive bucket
   await s3.send(
@@ -67,10 +71,12 @@ export async function archiveTdf(
   );
 
   // Delete from source bucket
-  await s3.send(
-    new DeleteObjectCommand({
-      Bucket: sourceBucket,
-      Key: sourceKey,
-    }),
-  );
+  if (deleteSourceTdf) {
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: sourceBucket,
+        Key: sourceKey,
+      }),
+    );
+  }
 }
