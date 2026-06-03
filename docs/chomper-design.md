@@ -199,7 +199,7 @@ interface ParsedTdf {
   scores: ParsedScore[]
   entityEnds: ParsedEntityEnd[]
   sm5Stats: ParsedSm5Stats[] // duplicate entries merged by mergeDuplicateSm5Stats
-  playerStateLog: ParsedPlayerState[]  // empty array for pre-2.005 files
+  playerStateLog: ParsedPlayerState[]  // empty array for pre-2.005 files (type 9 lines discarded if fileVersion < 2.005)
   entityRouting: EntityRouting[]       // routing table for multi-generation players
 }
 ```
@@ -213,7 +213,7 @@ interface ParsedTdf {
 | `battlesuit` (line type 3) | `null` |
 | `memberId` (line type 3) | `null` |
 | `colourRgb` (line type 2) | `null` |
-| Line type 9 entirely | Empty array — simulator uses synthetic 4-second state reconstruction |
+| Line type 9 entirely | Empty array — simulator uses synthetic 4-second state reconstruction. Type 9 lines present in pre-2.005 files (early test artefacts) are discarded by the parser. |
 
 ### Entity Type Classification
 

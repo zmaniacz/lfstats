@@ -706,7 +706,7 @@ During state 2, ALL incoming tags are treated as standard damage regardless of t
 - Players must be in state `0` to receive any resupply.
 
 **Notes:**
-- Line type 9 is absent in `2.004` and earlier. For older files, state transitions must be synthetically generated during ingestion by simulating the 4000ms + 4000ms timer from each deactivating event (`0206`, `0306`, `0405`, `0600`). This mirrors the approach used in the legacy system.
+- Line type 9 is absent in `2.004` and earlier. For older files, state transitions must be synthetically generated during ingestion by simulating the 4000ms + 4000ms timer from each deactivating event (`0206`, `0306`, `0405`, `0600`). This mirrors the approach used in the legacy system. Some `2.004` files from the first deployment of the state-log feature (notably early test sessions at site `1-1` in late 2023) contain type 9 lines despite the version number; those lines are unreliable and must be discarded — treat any file with `fileVersion < 2.005` as having no state log regardless of whether type 9 lines are present.
 - A player eliminated via lives exhaustion (`04` exit code on line type `6`) will have their final state transition to `3` with no subsequent `2` or `0` transitions.
 - The total respawn duration is always exactly 8000ms (4000ms invulnerable + 4000ms vulnerable) regardless of position or game configuration.
 - Hit points only reset on transition to state 3. Partial damage sustained during state 2 that does not result in full deactivation carries over into state 0.
@@ -780,6 +780,6 @@ During state 2, ALL incoming tags are treated as standard damage regardless of t
 | `penalty` | `1` | `2.003` | `0` | Absent in `2.000` and `2.001` |
 | `battlesuit` | `3` | `2.003` | `null` | Absent in `2.000` and `2.001` |
 | `colour-rgb` | `2` | `2.004` | Derive from `colour-enum` lookup | Absent in `2.003` and earlier |
-| Player state log | `9` | `2.005` | Reconstruct synthetically | Absent in `2.004` and earlier; use 4000ms + 4000ms timers from deactivating events |
+| Player state log | `9` | `2.005` | Reconstruct synthetically | Absent in `2.004` and earlier; use 4000ms + 4000ms timers from deactivating events. Discard any type 9 lines found in pre-2.005 files — they are early test artefacts and are unreliable. |
 | `0902` reward event | `4` | `2.005` | N/A — event simply won't appear | Absent in `2.004` and earlier |
 | `memberId` | `3` | `2.006` (partial) | `null` | Rolled out incrementally — presence determined by schema comment line, not `file-version` |

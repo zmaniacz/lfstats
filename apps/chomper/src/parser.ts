@@ -87,7 +87,12 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
         sm5Stats.push(parseLine7(fields));
         break;
       case "9":
-        playerStateLog.push(parseLine9(fields));
+        // Type 9 lines were introduced in 2.005. In 2.004 and earlier files they
+        // may appear as a test artefact but their data is unreliable — discard
+        // them so the simulator falls back to synthetic 4000ms+4000ms timers.
+        if (meta !== null && meta.fileVersion >= 2.005) {
+          playerStateLog.push(parseLine9(fields));
+        }
         break;
       // Ignore unknown line types
     }
