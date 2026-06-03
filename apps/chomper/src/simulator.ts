@@ -356,6 +356,7 @@ class Simulator {
       this.handleEvent(event.time, event.type, actor, target);
     }
 
+    this.detectAndFixStatSwaps();
     this.reconcilePendingBoosts();
     this.applyEntityEnds();
 
@@ -365,6 +366,59 @@ class Simulator {
   // ---------------------------------------------------------------------------
   // Post-simulation reconciliation and entity-end processing
   // ---------------------------------------------------------------------------
+
+  // Detects and corrects swapped section-7 stat assignments for generation pairs.
+  // When a player's newer vest gets kicked before the older vest's game-end record
+  // is written, the TDF writes entity-ends (and paired section-7 stats) in the
+  // opposite of generation order. resolveByOrder assigns the wrong TDF stat to each
+  // generation, producing perfectly mirrored discrepancies. This method detects that
+  // case by comparing sim-computed shotsFired+shotsHit against TDF stats and, when
+  // swapping produces a strictly smaller total discrepancy, swaps both the sm5Stats
+  // IDs and the entity-end IDs so all downstream steps use the correct mapping.
+  private detectAndFixStatSwaps(): void {
+    for (const [entityId, genPs] of this.playerStates) {
+      if (!entityId.endsWith("_gen1")) continue;
+      const baseId = entityId.slice(0, -5); // strip "_gen1"
+
+      const basePs = this.playerStates.get(baseId);
+      if (!basePs) continue;
+
+      const baseStatIdx = this.parsed.sm5Stats.findIndex((s) => s.id === baseId);
+      const genStatIdx = this.parsed.sm5Stats.findIndex((s) => s.id === entityId);
+      if (baseStatIdx < 0 || genStatIdx < 0) continue;
+
+      const baseStats = this.parsed.sm5Stats[baseStatIdx]!;
+      const genStats = this.parsed.sm5Stats[genStatIdx]!;
+
+      const origDiff =
+        Math.abs(basePs.shotsFired - baseStats.shotsFired) +
+        Math.abs(basePs.shotsHit - baseStats.shotsHit) +
+        Math.abs(genPs.shotsFired - genStats.shotsFired) +
+        Math.abs(genPs.shotsHit - genStats.shotsHit);
+
+      const swapDiff =
+        Math.abs(basePs.shotsFired - genStats.shotsFired) +
+        Math.abs(basePs.shotsHit - genStats.shotsHit) +
+        Math.abs(genPs.shotsFired - baseStats.shotsFired) +
+        Math.abs(genPs.shotsHit - baseStats.shotsHit);
+
+      if (swapDiff >= origDiff) continue;
+
+      // Swap sm5Stats IDs so each generation gets the correct TDF stat
+      baseStats.id = entityId;
+      genStats.id = baseId;
+
+      // Swap entity-end assignments so applyEntityEnds uses the correct exit types
+      for (const end of this.parsed.entityEnds) {
+        if (end.id === baseId) end.id = entityId;
+        else if (end.id === entityId) end.id = baseId;
+      }
+
+      // Update tdfFinalLives so any remaining checkElimination calls are correct
+      this.tdfFinalLives.set(baseId, genStats.livesLeft);
+      this.tdfFinalLives.set(entityId, baseStats.livesLeft);
+    }
+  }
 
   private reconcilePendingBoosts(): void {
     const sm5ById = new Map(this.parsed.sm5Stats.map((s) => [s.id, s]));
@@ -688,7 +742,8 @@ class Simulator {
     }
 
     // Entity-ends are matched by order, not time, because they can arrive after
-    // the next generation has already started.
+    // the next generation has already started. detectAndFixStatSwaps() corrects
+    // any cases where the TDF writes entity-ends in the reverse of generation order.
     const orderCount = new Map<string, number>();
     for (const end of this.parsed.entityEnds) {
       if (!this.generationRouter.has(end.id)) continue;
