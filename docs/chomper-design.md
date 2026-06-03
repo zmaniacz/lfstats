@@ -234,6 +234,8 @@ The parser detects scenarios where the same entity ID has multiple registrations
 
 **Case 3 (fatal): Player registered on multiple teams** — a player re-registering with a different `team` index is a hardware error that cannot be modeled. The parser throws a `RejectionError`, which routes the job to `status: "rejected"` and moves the file to the error bucket.
 
+**Case 4 (fatal): Incomplete TDF** — if the file contains player entities but no section 7 scorecard lines, the game ended prematurely (e.g. server crash, aborted mission) and cannot be ingested. The parser throws a `RejectionError("Incomplete TDF - missing scorecard data")`.
+
 **Hardware glitch (not multi-generation):** If a player ID has duplicate section 7 scorecards but no restart entity-end and no position change, it is treated as a double-printed scorecard. Duplicate entries are merged by `mergeDuplicateSm5Stats`: accumulated counters are summed; residuals (`livesLeft`, `shotsLeft`) use the last entry's values.
 
 The entity routing table maps each external ID to an ordered list of `{ internalId, startTime }` generations. The simulator's `resolveGenerationIds()` rewrites actor/target/entity fields in events, scores, state log, and entity-ends to use internal generation IDs before the main loop — all downstream code sees the correct IDs without per-call routing logic.

@@ -100,6 +100,13 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
 
   if (meta === null) throw new ParseError("Missing line type 0 (info)");
 
+  const playerEntities = entities.filter(
+    (e) => e.type === "player" && e.category > 0,
+  );
+  if (playerEntities.length > 0 && sm5Stats.length === 0) {
+    throw new RejectionError("Incomplete TDF - missing scorecard data");
+  }
+
   // Detect mid-game position changes: same entity ID appearing more than once
   // with a different category (position). Each subsequent registration becomes a
   // new "generation" with a disambiguated internal ID. The external ID routing
