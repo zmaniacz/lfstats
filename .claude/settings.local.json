@@ -15,7 +15,13 @@
       "Bash(npx shadcn@latest add alert-dialog --cwd apps/web)",
       "Bash(python -c ' *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(pnpm test *)",
+      "Bash(powershell -Command ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node *)",
+      "Bash(python3 *)",
+      "Bash(pnpm test-suite *)"
     ]
   }
 }
