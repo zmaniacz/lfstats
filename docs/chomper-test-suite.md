@@ -62,6 +62,20 @@ Each `*.tdf` file produces a `*.debug.json` alongside it:
 
 These files are gitignored and regenerated on every test run.
 
+## Single-File Testing
+
+To quickly check parse + simulate on one file without running the full suite:
+
+```bash
+pnpm --filter chomper run ingest <path/to/file.tdf>
+```
+
+This runs Phase 1 (parse) and Phase 2 (simulate + consistency check) and writes a `.debug.json` next to the TDF file. **It does not touch the database** — it is identical in coverage to the test suite, just scoped to one file.
+
+> **Note:** The `pnpm ingest` root script passes its argument directly to the chomper package, but path handling can be unreliable on Windows. Running `pnpm --filter chomper run ingest` from the repo root with a relative path (e.g. `../../demo_files/foo.tdf`) or from `apps/chomper` directly is more reliable.
+
+There is no single-file tool that tests Phase 3 (database ingest). To verify DB ingestion end-to-end, the file must go through the Lambda handler (e.g. via a bulk-ingest run against S3).
+
 ## Adding New Test Files
 
 Drop any SM5 `.tdf` file into `demo_files/` and it will automatically be included in the next test run. Non-SM5 files are silently skipped.

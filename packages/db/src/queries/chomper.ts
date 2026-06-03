@@ -201,6 +201,7 @@ export async function insertGameTargets(
   tx: Tx,
   rows: (typeof sm5GameTarget.$inferInsert)[],
 ) {
+  if (rows.length === 0) return [];
   return tx.insert(sm5GameTarget).values(rows).returning();
 }
 
