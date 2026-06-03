@@ -1,14 +1,6 @@
 "use client";
 
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ReferenceLine,
-} from "recharts";
-import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
@@ -16,9 +8,17 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { MvpComponentItem } from "@lfstats/db";
-import { POSITIONS } from "@/lib/positions";
 import { getMvpComponentLabel } from "@/lib/mvp-components";
+import { POSITIONS } from "@/lib/positions";
+import type { MvpComponentItem } from "@lfstats/db";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 type Props = {
   data: MvpComponentItem[];
@@ -76,7 +76,8 @@ export function MvpComponentsChart({ data }: Props) {
         position: POSITIONS[pos]?.label ?? String(pos),
       };
       for (const item of posData) {
-        row[item.component] = parseFloat(item.avgPoints.toFixed(3));
+        if (parseFloat(item.avgPoints.toFixed(3)) !== 0)
+          row[item.component] = parseFloat(item.avgPoints.toFixed(3));
       }
       return row;
     })
@@ -106,9 +107,6 @@ export function MvpComponentsChart({ data }: Props) {
           tickFormatter={(v) => v.toFixed(1)}
           domain={[0, "dataMax"]}
         />
-        <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.3} />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <ChartLegend content={<ChartLegendContent />} />
         {allComponents.map((component) => (
           <Bar
             key={component}
@@ -117,6 +115,9 @@ export function MvpComponentsChart({ data }: Props) {
             fill={`var(--color-${component})`}
           />
         ))}
+        <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.3} />
+        <ChartLegend content={<ChartLegendContent />} />
+        <ChartTooltip content={<ChartTooltipContent />} />
       </BarChart>
     </ChartContainer>
   );

@@ -1,13 +1,13 @@
 "use client";
 
-import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { MvpBoxPlotItem } from "@lfstats/db";
 import { POSITIONS } from "@/lib/positions";
+import type { MvpBoxPlotItem } from "@lfstats/db";
+import { Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 
 // Custom bar shapes — recharts clones these elements and passes x/y/width/height as props
 type ShapeProps = {

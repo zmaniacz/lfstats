@@ -1,13 +1,6 @@
 "use client";
 
 import {
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-} from "recharts";
-import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
@@ -15,6 +8,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+} from "recharts";
 
 export type PositionRadarPoint = {
   positionLabel: string;
@@ -51,6 +51,7 @@ export function PositionRadarChart({ data }: Props) {
           strokeWidth={2}
           fill="var(--color-playerAvg)"
           fillOpacity={0}
+          isAnimationActive={false}
         />
         <Radar
           name="globalAvg"
@@ -59,8 +60,10 @@ export function PositionRadarChart({ data }: Props) {
           strokeWidth={2}
           fill="var(--color-globalAvg)"
           fillOpacity={0}
+          isAnimationActive={false}
         />
         <ChartTooltip
+          isAnimationActive={false}
           content={
             <ChartTooltipContent
               formatter={(value, name) => (
