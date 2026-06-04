@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getCompetitionById, getCompetitionGames, getCenterList } from "@lfstats/db"
+import { getCompetitionById, getCompetitionGames, getCenterList, getCompetitionTeams, getCompetitionRounds } from "@lfstats/db"
 import { CompetitionForm } from "@/components/admin/CompetitionForm"
 import { BulkAssignForm } from "@/components/admin/BulkAssignForm"
 import { DeleteCompetitionButton } from "@/components/admin/DeleteCompetitionButton"
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { formatDateTime, formatGameName } from "@/lib/format"
 import {
   updateCompetitionAction,
@@ -26,10 +27,12 @@ export default async function CompetitionDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [comp, games, centers] = await Promise.all([
+  const [comp, games, centers, teams, rounds] = await Promise.all([
     getCompetitionById(id),
     getCompetitionGames(id),
     getCenterList(),
+    getCompetitionTeams(id),
+    getCompetitionRounds(id),
   ])
 
   if (!comp) notFound()
@@ -83,6 +86,34 @@ export default async function CompetitionDetailPage({
           />
         </CardContent>
       </Card>
+
+      {comp.type === "competitive" && (
+        <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Teams</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-2xl font-bold tabular-nums">{teams.length}</p>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/admin/competitions/${id}/teams`}>Manage Teams</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Rounds</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-2xl font-bold tabular-nums">{rounds.length}</p>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/admin/competitions/${id}/rounds`}>Manage Rounds</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

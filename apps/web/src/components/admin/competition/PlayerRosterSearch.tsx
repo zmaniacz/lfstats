@@ -1,0 +1,80 @@
+"use client"
+
+import { useState, useTransition } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import type { PlayerSearchResult } from "@lfstats/db"
+
+type Props = {
+  teamId: string
+  searchAction: (query: string) => Promise<PlayerSearchResult[]>
+  addAction: (playerId: string) => Promise<void>
+}
+
+export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<PlayerSearchResult[]>([])
+  const [searched, setSearched] = useState(false)
+  const [isPendingSearch, startSearch] = useTransition()
+  const [addingId, setAddingId] = useState<string | null>(null)
+  const [isPendingAdd, startAdd] = useTransition()
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    if (!query.trim()) return
+    startSearch(async () => {
+      const found = await searchAction(query.trim())
+      setResults(found)
+      setSearched(true)
+    })
+  }
+
+  function handleAdd(playerId: string) {
+    setAddingId(playerId)
+    startAdd(async () => {
+      await addAction(playerId)
+      setAddingId(null)
+    })
+  }
+
+  return (
+    <div className="space-y-3">
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by callsign…"
+          className="w-60"
+        />
+        <Button type="submit" variant="secondary" size="sm" disabled={isPendingSearch}>
+          {isPendingSearch ? "Searching…" : "Search"}
+        </Button>
+      </form>
+
+      {searched && results.length === 0 && (
+        <p className="text-sm text-muted-foreground">No players found.</p>
+      )}
+
+      {results.length > 0 && (
+        <ul className="divide-y border rounded-md">
+          {results.map((p) => (
+            <li key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+              <span>
+                <span className="font-medium">{p.currentCallsign}</span>{" "}
+                <span className="text-muted-foreground">{p.iplId}</span>
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isPendingAdd && addingId === p.id}
+                onClick={() => handleAdd(p.id)}
+              >
+                {isPendingAdd && addingId === p.id ? "Adding…" : "Add"}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
