@@ -1299,8 +1299,19 @@ class Simulator {
     // and their entity-end. Applying only that many lives prevents over-inflation
     // that would cause entityEndForcedLives > 0.
     const lastActor = this.lastActorEventTime.get(target.entityId) ?? -1;
-    if (lastActor > time) {
-      const boosts = this.pendingBoosts.get(target.entityId);
+    const provablyAlive = lastActor > time;
+    const boosts = this.pendingBoosts.get(target.entityId);
+    const hasPendingLives = boosts?.some((b) => b.type === "lives") ?? false;
+
+    // Rescue when either:
+    //   (a) the player provably fires again after this timestamp — our lives
+    //       count is wrong, pending boosts can correct it; or
+    //   (b) the player has pending lives boosts that were recorded while they
+    //       were in state_3/state_2 (0512 radio lag) and were never consumed
+    //       because they returned to state_0 before being hit. Without rescue,
+    //       these players are prematurely eliminated and miss subsequent events
+    //       (e.g. a 0510 ammo boost that fires 20 s after the nuke).
+    if (provablyAlive || hasPendingLives) {
       if (boosts?.length) {
         const entityEndT =
           this.entityEndTimeById.get(target.entityId) ?? Infinity;
@@ -1346,12 +1357,12 @@ class Simulator {
         // resupply (lives=0 in our simulator triggers immediate elimination,
         // blocking receipt of any upcoming resupply that would restore them).
         if (livesNeeded === 0 && futureEvents.length > 0) livesNeeded = 1;
-        // Inside if (lastActor > time) && if (boosts?.length): the player
-        // provably fires again and has pending boosts — always apply at least 1
-        // life. The forward simulation can produce livesNeeded=0 in older TDFs
-        // when future deactivations (e.g., nuke hits) are absent from
-        // deactivationsReceived, leaving livesNeeded under-counted.
-        if (livesNeeded === 0) livesNeeded = 1;
+        // Only force "at least 1" when provably alive (player fires again): the
+        // forward simulation may miss some nuke hits in older TDFs. For the
+        // pending-lives-only path the forward simulation is the sole authority,
+        // so we don't add the unconditional floor — it would over-apply lives for
+        // players who happen to have unconsumed pending boosts at game end.
+        if (livesNeeded === 0 && provablyAlive) livesNeeded = 1;
 
         if (livesNeeded > 0) {
           const stats = POSITION_STATS[target.position]!;
