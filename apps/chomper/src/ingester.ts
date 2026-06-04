@@ -578,5 +578,5 @@ export function parseGameStartTime(startTimeStr: string): Date {
   const hour = parseInt(startTimeStr.slice(8, 10), 10);
   const minute = parseInt(startTimeStr.slice(10, 12), 10);
   const second = parseInt(startTimeStr.slice(12, 14), 10);
-  return new Date(year, month, day, hour, minute, second);
+  return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
