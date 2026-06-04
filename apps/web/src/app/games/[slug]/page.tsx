@@ -69,6 +69,18 @@ export default async function GameDetailPage({
       canDelete ? getGameMatchAssignment(game.id) : Promise.resolve(null),
     ]);
 
+  const displayTeams = matchAssignment
+    ? game.teams.map((t) => ({
+        ...t,
+        name:
+          t.id === matchAssignment.team1GameTeamId
+            ? matchAssignment.team1Name
+            : t.id === matchAssignment.team2GameTeamId
+              ? matchAssignment.team2Name
+              : t.name,
+      }))
+    : game.teams
+
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
@@ -120,7 +132,7 @@ export default async function GameDetailPage({
         {canDelete && (
           <GameCompetitionManager
             gameId={game.id}
-            gameTeams={game.teams.map((t) => ({
+            gameTeams={displayTeams.map((t) => ({
               id: t.id,
               name: t.name,
               colourEnum: t.colourEnum,
@@ -152,7 +164,7 @@ export default async function GameDetailPage({
         duration={game.actualDuration}
         scoreboardContent={
           <>
-            {game.teams.map((team) => {
+            {displayTeams.map((team) => {
               const color = getTeamColor(team.colourEnum);
               const baseScore = team.score ?? 0;
               const elimBonus = team.eliminationBonus ?? 0;

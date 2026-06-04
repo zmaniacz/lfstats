@@ -548,7 +548,9 @@ export type GameMatchAssignment = {
   matchNumber: number;
   gameNumber: number;
   roundName: string;
+  team1GameTeamId: string;
   team1Name: string;
+  team2GameTeamId: string;
   team2Name: string;
 };
 
@@ -625,6 +627,8 @@ export async function getGameMatchAssignment(
       roundName: competitionRound.name,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
+      team1GameTeamId: competitionMatchGame.team1GameTeamId,
+      team2GameTeamId: competitionMatchGame.team2GameTeamId,
     })
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
@@ -645,7 +649,9 @@ export async function getGameMatchAssignment(
     matchNumber: row.matchNumber,
     gameNumber: row.gameNumber,
     roundName: row.roundName,
+    team1GameTeamId: row.team1GameTeamId,
     team1Name: teamMap.get(row.team1Id) ?? "Unknown",
+    team2GameTeamId: row.team2GameTeamId,
     team2Name: teamMap.get(row.team2Id) ?? "Unknown",
   };
 }
