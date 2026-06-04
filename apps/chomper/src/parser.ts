@@ -229,9 +229,13 @@ function buildEntityRouting(
     const allSamePosition = categories.every((c) => c === categories[0]);
     if (allSamePosition) {
       // Same position — could be a hardware glitch (double-print) or a mid-game
-      // restart. Distinguish by checking for a mid-game exitType=01 entity-end.
+      // restart. Prefer an explicit mid-game exitType=01 entity-end, but also
+      // treat multiple entity-ends (one per registration period, both exitType=02)
+      // as evidence of a genuine restart: a single entity can only have one end.
       const ends = endsByEntity.get(externalId) ?? [];
-      const hasRestart = ends.some((e) => e.exitType === "01" || e.exitType === "17");
+      const hasRestart =
+        ends.some((e) => e.exitType === "01" || e.exitType === "17") ||
+        ends.length >= group.length;
       if (!hasRestart) continue; // no restart → hardware glitch, leave for mergeDuplicateSm5Stats
     }
 

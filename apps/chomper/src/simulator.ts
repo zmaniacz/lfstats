@@ -1365,6 +1365,12 @@ class Simulator {
         if (livesNeeded === 0 && provablyAlive) livesNeeded = 1;
 
         if (livesNeeded > 0) {
+          // Missiles remove 2 lives, so target.lives may be negative when we
+          // rescue. The forward simulation starts from balance=0, implicitly
+          // assuming lives=0, but if lives=-N we need N+1 extra lives just to
+          // surface above zero. Bump livesNeeded to cover the deficit.
+          livesNeeded = Math.max(livesNeeded, 1 - target.lives);
+
           const stats = POSITION_STATS[target.position]!;
           let budget = livesNeeded;
           const livesBoosts = boosts.filter((b) => b.type === "lives");
@@ -2561,9 +2567,15 @@ export function runConsistencyCheck(
       }
     }
 
-    // Final game_player_state snapshot must match line-7 residual values
+    // Final game_player_state snapshot must match line-7 residual values.
+    // Exception: for gen0 entities in a multi-period restart the TDF records
+    // the old vest's state at *mission end*, not at restart time, so the
+    // hardware's team boosts (0510/0512) after the switch inflate shotsLeft
+    // and livesLeft beyond what the gen0 simulation can compute. Skip
+    // those two residual checks for gen0 when a gen1 sibling exists.
+    const isGen0WithSibling = playerStats.has(`${entityId}_gen1`);
     const finalSnapshot = ps.stateSnapshots[ps.stateSnapshots.length - 1];
-    if (finalSnapshot) {
+    if (finalSnapshot && !isGen0WithSibling) {
       if (finalSnapshot.lives !== stats.livesLeft) {
         discrepancies.push(
           `${entityId} finalSnapshot.lives: computed=${finalSnapshot.lives} expected=${stats.livesLeft}`,
