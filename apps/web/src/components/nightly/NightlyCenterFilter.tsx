@@ -27,14 +27,14 @@ export function NightlyCenterFilter({
 
   return (
     <Select value={selected ?? ""} onValueChange={handleChange}>
-      <SelectTrigger className="w-[240px]">
+      <SelectTrigger className="w-full sm:w-[240px]">
         <SelectValue placeholder="Select a center…" />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
           <SelectLabel>Centers</SelectLabel>
           {centers.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
+            <SelectItem key={c.id} value={c.slug}>
               {c.name}
             </SelectItem>
           ))}

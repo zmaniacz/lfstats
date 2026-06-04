@@ -44,7 +44,7 @@ export function DateFilter({
 
   return (
     <Combobox value={selected} onValueChange={handleSelect}>
-      <ComboboxInput className="w-[200px]" placeholder="Select date…" />
+      <ComboboxInput className="w-full sm:w-[200px]" placeholder="Select date…" />
       <ComboboxEmpty>No dates found</ComboboxEmpty>
       <ComboboxContent>
         <ComboboxList>
