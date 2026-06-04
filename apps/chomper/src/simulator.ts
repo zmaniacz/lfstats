@@ -536,10 +536,14 @@ class Simulator {
         continue;
       }
 
-      // Update the final snapshot so the DB gets the corrected lives value.
+      // Update the final snapshot so the DB gets the corrected lives and shots
+      // values. shots can diverge when a resupply fires after a player's last life
+      // is taken but before their entity-end — handle0500 updates ps.shots but
+      // isEliminated blocks the state transition that would record a new snapshot.
       const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
-      if (finalSnap && ps.lives !== finalSnap.lives) {
-        finalSnap.lives = ps.lives;
+      if (finalSnap) {
+        if (ps.lives !== finalSnap.lives) finalSnap.lives = ps.lives;
+        if (ps.shots !== finalSnap.shots) finalSnap.shots = ps.shots;
       }
     }
   }
@@ -1025,8 +1029,9 @@ class Simulator {
     }
 
     const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
-    if (finalSnap && ps.lives !== finalSnap.lives) {
-      finalSnap.lives = ps.lives;
+    if (finalSnap) {
+      if (ps.lives !== finalSnap.lives) finalSnap.lives = ps.lives;
+      if (ps.shots !== finalSnap.shots) finalSnap.shots = ps.shots;
     }
   }
 
