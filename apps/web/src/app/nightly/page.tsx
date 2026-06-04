@@ -8,6 +8,7 @@ import {
 } from "@/components/nightly/NightlyStatsTable";
 import { NightlySummaryTable } from "@/components/nightly/NightlySummaryTable";
 import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable";
+import { GamesTable } from "@/components/games/GamesTable";
 import {
   getCenterList,
   getGameDatesForCenter,
@@ -150,6 +151,7 @@ export default async function NightlyPage({
             <NightlyStatsTable rows={rows} />
             <NightlySummaryTable rows={rows} lifetimeAvgs={lifetimeAvgs} />
             <MedicHitsLeaderboardTable players={deriveMedicHits(rows)} />
+            <GamesTable games={gameDetails} />
           </>
         )}
       </div>

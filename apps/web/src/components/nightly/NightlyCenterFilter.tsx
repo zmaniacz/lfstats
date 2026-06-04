@@ -1,26 +1,28 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { CenterListItem } from "@lfstats/db"
+} from "@/components/ui/select";
+import type { CenterListItem } from "@lfstats/db";
+import { useRouter } from "next/navigation";
 
 export function NightlyCenterFilter({
   centers,
   selected,
 }: {
-  centers: CenterListItem[]
-  selected?: string
+  centers: CenterListItem[];
+  selected?: string;
 }) {
-  const router = useRouter()
+  const router = useRouter();
 
   function handleChange(value: string) {
-    router.push(`/nightly?center=${value}`)
+    router.push(`/nightly?center=${value}`);
   }
 
   return (
@@ -29,12 +31,15 @@ export function NightlyCenterFilter({
         <SelectValue placeholder="Select a center…" />
       </SelectTrigger>
       <SelectContent>
-        {centers.map((c) => (
-          <SelectItem key={c.id} value={c.id}>
-            {c.name}
-          </SelectItem>
-        ))}
+        <SelectGroup>
+          <SelectLabel>Centers</SelectLabel>
+          {centers.map((c) => (
+            <SelectItem key={c.id} value={c.id}>
+              {c.name}
+            </SelectItem>
+          ))}
+        </SelectGroup>
       </SelectContent>
     </Select>
-  )
+  );
 }
