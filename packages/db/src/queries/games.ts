@@ -10,6 +10,7 @@ import {
   sm5GameTarget,
   target,
   center,
+  competition,
   gameTag,
   gameTagAssignment,
 } from "../schema";
@@ -248,6 +249,7 @@ export type GameDetail = {
   centerId: string;
   centerSlug: string;
   competitionId: string | null;
+  competitionName: string | null;
   description: string | null;
   startTime: Date;
   centerName: string;
@@ -268,6 +270,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       centerId: game.centerId,
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       competitionId: game.competitionId,
+      competitionName: sql<string | null>`null`,
       description: game.description,
       startTime: game.startTime,
       centerName: center.name,
@@ -574,6 +577,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       centerId: gameRow.centerId,
       centerSlug: gameRow.centerSlug,
       competitionId: gameRow.competitionId,
+      competitionName: null,
       description: gameRow.description,
       startTime: gameRow.startTime,
       centerName: gameRow.centerName,
@@ -608,6 +612,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
       centerId: game.centerId,
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       competitionId: game.competitionId,
+      competitionName: competition.name,
       description: game.description,
       startTime: game.startTime,
       centerName: center.name,
@@ -619,6 +624,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
+    .leftJoin(competition, eq(game.competitionId, competition.id))
     .where(eq(game.id, id));
 
   if (!gameRow) return null;
@@ -921,6 +927,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     centerId: gameRow.centerId,
     centerSlug: gameRow.centerSlug,
     competitionId: gameRow.competitionId,
+    competitionName: gameRow.competitionName ?? null,
     description: gameRow.description,
     startTime: gameRow.startTime,
     centerName: gameRow.centerName,

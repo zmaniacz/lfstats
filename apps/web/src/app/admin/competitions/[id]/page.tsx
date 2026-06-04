@@ -14,11 +14,13 @@ import {
 } from "@/components/ui/table"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
 import { formatDateTime, formatGameName } from "@/lib/format"
 import {
   updateCompetitionAction,
   deleteCompetitionAction,
   bulkAssignGamesAction,
+  removeGameFromCompetitionAction,
 } from "../actions"
 
 export default async function CompetitionDetailPage({
@@ -38,6 +40,7 @@ export default async function CompetitionDetailPage({
   if (!comp) notFound()
 
   const boundUpdate = updateCompetitionAction.bind(null, id)
+  const boundRemoveGame = removeGameFromCompetitionAction.bind(null, id)
 
   return (
     <div className="space-y-8">
@@ -130,6 +133,7 @@ export default async function CompetitionDetailPage({
                   <TableHead>Center</TableHead>
                   <TableHead>Started</TableHead>
                   <TableHead>Outcome</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -148,6 +152,14 @@ export default async function CompetitionDetailPage({
                       {formatDateTime(g.startTime)}
                     </TableCell>
                     <TableCell className="capitalize">{g.outcome}</TableCell>
+                    <TableCell className="text-right">
+                      <DeleteEntityButton
+                        id={g.id}
+                        label={formatGameName(g.description, g.startTime)}
+                        description="This removes the game from the competition. The game itself is not deleted."
+                        action={boundRemoveGame}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

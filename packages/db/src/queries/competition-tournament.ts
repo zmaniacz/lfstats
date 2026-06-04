@@ -10,6 +10,7 @@ import {
   game,
   sm5GameTeam,
   center,
+  competition,
 } from "../schema";
 import { eq, and, asc, ilike, inArray, not, or, sql } from "drizzle-orm";
 
@@ -353,6 +354,14 @@ export async function reorderCompetitionMatches(
   reorders: { id: string; matchNumber: number }[],
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    // First pass: set temporary negative values to sidestep the unique constraint
+    for (const { id, matchNumber } of reorders) {
+      await tx
+        .update(competitionMatch)
+        .set({ matchNumber: -matchNumber })
+        .where(eq(competitionMatch.id, id));
+    }
+    // Second pass: set the final values
     for (const { id, matchNumber } of reorders) {
       await tx
         .update(competitionMatch)
@@ -518,4 +527,125 @@ export async function getUnassignedCompetitionGames(
       colourEnum: t.colourEnum,
     })),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Game-page competition management
+// ---------------------------------------------------------------------------
+
+export type AvailableMatch = {
+  id: string;
+  matchNumber: number;
+  roundName: string;
+  team1Name: string;
+  team2Name: string;
+  availableGameNumbers: number[];
+};
+
+export type GameMatchAssignment = {
+  matchGameId: string;
+  matchId: string;
+  matchNumber: number;
+  gameNumber: number;
+  roundName: string;
+  team1Name: string;
+  team2Name: string;
+};
+
+export async function getAvailableMatchesForGame(
+  competitionId: string,
+): Promise<AvailableMatch[]> {
+  const matchRows = await db
+    .select({
+      id: competitionMatch.id,
+      matchNumber: competitionMatch.matchNumber,
+      roundName: competitionRound.name,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+    })
+    .from(competitionMatch)
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(asc(competitionRound.roundNumber), asc(competitionMatch.matchNumber));
+
+  if (matchRows.length === 0) return [];
+
+  const teamIds = [
+    ...new Set([
+      ...matchRows.map((m) => m.team1Id),
+      ...matchRows.map((m) => m.team2Id),
+    ]),
+  ];
+  const teams = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .from(competitionTeam)
+    .where(inArray(competitionTeam.id, teamIds));
+  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+
+  const matchIds = matchRows.map((m) => m.id);
+  const assignments = await db
+    .select({
+      matchId: competitionMatchGame.matchId,
+      gameNumber: competitionMatchGame.gameNumber,
+    })
+    .from(competitionMatchGame)
+    .where(inArray(competitionMatchGame.matchId, matchIds));
+
+  const takenMap = new Map<string, Set<number>>();
+  for (const a of assignments) {
+    if (!takenMap.has(a.matchId)) takenMap.set(a.matchId, new Set());
+    takenMap.get(a.matchId)!.add(a.gameNumber);
+  }
+
+  return matchRows
+    .map((m) => {
+      const taken = takenMap.get(m.id) ?? new Set();
+      const availableGameNumbers = [1, 2].filter((n) => !taken.has(n));
+      return {
+        id: m.id,
+        matchNumber: m.matchNumber,
+        roundName: m.roundName,
+        team1Name: teamMap.get(m.team1Id) ?? "Unknown",
+        team2Name: teamMap.get(m.team2Id) ?? "Unknown",
+        availableGameNumbers,
+      };
+    })
+    .filter((m) => m.availableGameNumbers.length > 0);
+}
+
+export async function getGameMatchAssignment(
+  gameId: string,
+): Promise<GameMatchAssignment | null> {
+  const [row] = await db
+    .select({
+      matchGameId: competitionMatchGame.id,
+      matchId: competitionMatch.id,
+      matchNumber: competitionMatch.matchNumber,
+      gameNumber: competitionMatchGame.gameNumber,
+      roundName: competitionRound.name,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .where(eq(competitionMatchGame.gameId, gameId));
+
+  if (!row) return null;
+
+  const teams = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .from(competitionTeam)
+    .where(inArray(competitionTeam.id, [row.team1Id, row.team2Id]));
+  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+
+  return {
+    matchGameId: row.matchGameId,
+    matchId: row.matchId,
+    matchNumber: row.matchNumber,
+    gameNumber: row.gameNumber,
+    roundName: row.roundName,
+    team1Name: teamMap.get(row.team1Id) ?? "Unknown",
+    team2Name: teamMap.get(row.team2Id) ?? "Unknown",
+  };
 }

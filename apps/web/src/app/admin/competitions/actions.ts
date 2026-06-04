@@ -1,11 +1,13 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
 import {
   createCompetition,
   updateCompetition,
   deleteCompetition,
   bulkAssignGamesToCompetition,
+  removeGameFromCompetition,
   getCompetitionById,
 } from "@lfstats/db"
 import { redirect } from "next/navigation"
@@ -75,6 +77,17 @@ export async function deleteCompetitionAction(id: string) {
   await requireCompetitionAccess(competition.hostCenterId ?? null)
   await deleteCompetition(id)
   redirect("/admin/competitions")
+}
+
+export async function removeGameFromCompetitionAction(
+  competitionId: string,
+  gameId: string,
+): Promise<void> {
+  const competition = await getCompetitionById(competitionId)
+  if (!competition) throw new Error("Not found")
+  await requireCompetitionAccess(competition.hostCenterId ?? null)
+  await removeGameFromCompetition(gameId)
+  revalidatePath(`/admin/competitions/${competitionId}`)
 }
 
 export async function bulkAssignGamesAction(

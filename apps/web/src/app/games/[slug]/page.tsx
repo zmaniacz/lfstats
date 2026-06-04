@@ -13,14 +13,26 @@ import {
   formatScore,
 } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
-import { getGameDetailBySlug, getTagsByCenter, isFavorite } from "@lfstats/db";
+import {
+  getGameDetailBySlug,
+  getTagsByCenter,
+  isFavorite,
+  getCompetitions,
+  getAvailableMatchesForGame,
+  getGameMatchAssignment,
+} from "@lfstats/db";
 import { notFound } from "next/navigation";
+import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
 import {
   addFavoriteAction,
   assignTagAction,
   removeFavoriteAction,
   removeTagAction,
   toggleExcludeAction,
+  addGameToCompetitionAction,
+  removeGameFromCompetitionAction,
+  assignGameToMatchAction,
+  removeGameFromMatchAction,
 } from "./actions";
 
 export default async function GameDetailPage({
@@ -44,12 +56,18 @@ export default async function GameDetailPage({
       (r.role === "centerAdmin" && r.centerId === game.centerId),
   );
 
-  const [centerTags, favorited] = await Promise.all([
-    canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
-    session?.user?.id
-      ? isFavorite(session.user.id, game.id)
-      : Promise.resolve(false),
-  ]);
+  const [centerTags, favorited, availableCompetitions, availableMatches, matchAssignment] =
+    await Promise.all([
+      canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
+      session?.user?.id
+        ? isFavorite(session.user.id, game.id)
+        : Promise.resolve(false),
+      canDelete ? getCompetitions() : Promise.resolve([]),
+      canDelete && game.competitionId
+        ? getAvailableMatchesForGame(game.competitionId)
+        : Promise.resolve([]),
+      canDelete ? getGameMatchAssignment(game.id) : Promise.resolve(null),
+    ]);
 
   return (
     <div className="p-6 space-y-8">
@@ -99,6 +117,25 @@ export default async function GameDetailPage({
             </>
           )}
         </div>
+        {canDelete && (
+          <GameCompetitionManager
+            gameId={game.id}
+            gameTeams={game.teams.map((t) => ({
+              id: t.id,
+              name: t.name,
+              colourEnum: t.colourEnum,
+            }))}
+            competitionId={game.competitionId}
+            competitionName={game.competitionName}
+            matchAssignment={matchAssignment}
+            availableCompetitions={availableCompetitions}
+            availableMatches={availableMatches}
+            addToCompetitionAction={addGameToCompetitionAction}
+            removeFromCompetitionAction={removeGameFromCompetitionAction}
+            assignToMatchAction={assignGameToMatchAction}
+            removeFromMatchAction={removeGameFromMatchAction}
+          />
+        )}
         {canDelete && (
           <GameTagManager
             gameId={game.id}

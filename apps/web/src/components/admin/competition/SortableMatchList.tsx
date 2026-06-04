@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useId, useEffect } from "react"
 import {
   DndContext,
   closestCenter,
@@ -109,6 +109,11 @@ export function SortableMatchList({
 }: Props) {
   const [matches, setMatches] = useState(initialMatches)
   const [isPending, startTransition] = useTransition()
+  const dndId = useId()
+
+  useEffect(() => {
+    setMatches(initialMatches)
+  }, [initialMatches])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -138,6 +143,7 @@ export function SortableMatchList({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}

@@ -283,3 +283,14 @@ export async function getTagsForGame(gameId: string): Promise<GameTagListItem[]>
 export async function setGameExcluded(id: string, exclude: boolean): Promise<void> {
   await db.update(game).set({ exclude }).where(eq(game.id, id));
 }
+
+export async function removeGameFromCompetition(gameId: string): Promise<void> {
+  await db.update(game).set({ competitionId: null }).where(eq(game.id, gameId));
+}
+
+export async function setGameCompetition(
+  gameId: string,
+  competitionId: string,
+): Promise<void> {
+  await db.update(game).set({ competitionId }).where(eq(game.id, gameId));
+}

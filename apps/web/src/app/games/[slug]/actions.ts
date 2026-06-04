@@ -10,6 +10,10 @@ import {
   removeFavorite,
   removeTagFromGame,
   setGameExcluded,
+  removeGameFromCompetition,
+  setGameCompetition,
+  assignGameToMatch,
+  removeGameFromMatch,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -73,6 +77,42 @@ export async function removeTagAction(gameId: string, tagId: string) {
   await requireCenterAdmin(gameId);
   await removeTagFromGame(gameId, tagId);
   await revalidateGame(gameId);
+}
+
+export async function addGameToCompetitionAction(
+  gameId: string,
+  competitionId: string,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await setGameCompetition(gameId, competitionId)
+  await revalidateGame(gameId)
+}
+
+export async function removeGameFromCompetitionAction(gameId: string): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await removeGameFromCompetition(gameId)
+  await revalidateGame(gameId)
+}
+
+export async function assignGameToMatchAction(
+  gameId: string,
+  matchId: string,
+  gameNumber: number,
+  team1GameTeamId: string,
+  team2GameTeamId: string,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
+  await revalidateGame(gameId)
+}
+
+export async function removeGameFromMatchAction(
+  gameId: string,
+  matchGameId: string,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await removeGameFromMatch(matchGameId)
+  await revalidateGame(gameId)
 }
 
 export async function addFavoriteAction(gameId: string, note?: string) {
