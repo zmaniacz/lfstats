@@ -120,6 +120,18 @@ export async function getCenterBySlug(slug: string): Promise<CenterDetail | null
   return row ?? null;
 }
 
+export async function getMostRecentCenterSlug(): Promise<string | null> {
+  const [row] = await db
+    .select({
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .orderBy(desc(game.startTime))
+    .limit(1);
+  return row?.slug ?? null;
+}
+
 export async function getCenterGameCount(id: string): Promise<number> {
   const [row] = await db
     .select({ count: count(game.id) })

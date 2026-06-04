@@ -1,7 +1,6 @@
 import { DateFilter } from "@/components/nightly/DateFilter";
 import { NightlyCenterFilter } from "@/components/nightly/NightlyCenterFilter";
 import { NightlyStateManager } from "@/components/nightly/NightlyStateManager";
-import { NightlyStateRestorer } from "@/components/nightly/NightlyStateRestorer";
 import {
   NightlyStatsTable,
   type NightlyScorecardRow,
@@ -10,8 +9,10 @@ import { NightlySummaryTable } from "@/components/nightly/NightlySummaryTable";
 import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable";
 import { GamesTable } from "@/components/games/GamesTable";
 import {
+  getCenterBySlug,
   getCenterList,
   getGameDatesForCenter,
+  getMostRecentCenterSlug,
   getNightlyDetails,
   getPlayerSocialAveragesByCenter,
   type PlayerMedicHitsItem,
@@ -73,40 +74,55 @@ export default async function NightlyPage({
 }: {
   searchParams: Promise<{ center?: string; date?: string }>;
 }) {
-  const { center: centerId, date } = await searchParams;
+  const { center: centerSlugParam, date } = await searchParams;
   const today = new Date().toISOString().split("T")[0];
 
-  const centers = await getCenterList();
+  const [centers, defaultSlug] = await Promise.all([
+    getCenterList(),
+    centerSlugParam ? Promise.resolve(null) : getMostRecentCenterSlug(),
+  ]);
 
-  if (!centerId) {
+  const centerSlug = centerSlugParam ?? defaultSlug ?? undefined;
+
+  if (!centerSlug) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Suspense>
-              <NightlyCenterFilter centers={centers} selected={centerId} />
-            </Suspense>
-            <Suspense>
-              <DateFilter selected={date ?? today} gameDates={[]} />
+              <NightlyCenterFilter centers={centers} selected={undefined} />
             </Suspense>
           </div>
         </div>
-        <NightlyStateRestorer>
-          <p className="text-muted-foreground">
-            Select a center to get started.
-          </p>
-        </NightlyStateRestorer>
+        <p className="text-muted-foreground">No game data available.</p>
       </div>
     );
   }
 
-  const gameDates = await getGameDatesForCenter(centerId);
+  const center = await getCenterBySlug(centerSlug);
+  if (!center) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold">Nightly Stats</h1>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Suspense>
+              <NightlyCenterFilter centers={centers} selected={undefined} />
+            </Suspense>
+          </div>
+        </div>
+        <p className="text-muted-foreground">Center not found.</p>
+      </div>
+    );
+  }
+
+  const gameDates = await getGameDatesForCenter(center.id);
   const selectedDate = date ?? gameDates[0] ?? today;
 
   const [gameDetails, lifetimeAvgsArr] = await Promise.all([
-    getNightlyDetails(centerId, selectedDate),
-    getPlayerSocialAveragesByCenter(centerId),
+    getNightlyDetails(center.id, selectedDate),
+    getPlayerSocialAveragesByCenter(center.id),
   ]);
 
   const lifetimeAvgs = new Map(lifetimeAvgsArr.map((a) => [a.playerId, a]));
@@ -130,13 +146,13 @@ export default async function NightlyPage({
 
   return (
     <>
-      <NightlyStateManager center={centerId} date={selectedDate} />
+      <NightlyStateManager center={centerSlug} date={selectedDate} />
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Suspense>
-              <NightlyCenterFilter centers={centers} selected={centerId} />
+              <NightlyCenterFilter centers={centers} selected={centerSlug} />
             </Suspense>
             <Suspense>
               <DateFilter selected={selectedDate} gameDates={gameDates} />
