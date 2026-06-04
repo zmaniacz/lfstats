@@ -106,6 +106,7 @@ type ResultEntry =
 const results: ResultEntry[] = [];
 let ingested = 0;
 let skipped = 0;
+let rejected = 0;
 let failed = 0;
 let done = 0;
 
@@ -113,7 +114,7 @@ let currentStatus = "";
 
 function printStatus(): void {
   const pct = Math.floor((done / keys.length) * 100);
-  currentStatus = `${done}/${keys.length} (${pct}%)  ingested=${ingested}  skipped=${skipped}  failed=${failed}`;
+  currentStatus = `${done}/${keys.length} (${pct}%)  ingested=${ingested}  skipped=${skipped}  rejected=${rejected}  failed=${failed}`;
   process.stdout.write(`\r${currentStatus}`);
 }
 
@@ -145,7 +146,7 @@ async function processKey(key: string): Promise<void> {
       const reason = `Rejected: ${err.message}`;
       log(`REJECT ${key}: ${reason}`);
       results.push({ key, status: "rejected", reason });
-      skipped++;
+      rejected++;
       await archiveTdf(ARCHIVE_BUCKET!, key, ERROR_BUCKET!, key, false);
       return;
     }
