@@ -470,7 +470,7 @@ export const sm5GameEvent = pgTable(
 export const chomperJob = pgTable("chomper_job", {
   id: uuid("id").primaryKey().defaultRandom(),
   s3Key: text("s3_key").notNull(),
-  status: text("status").notNull(), // 'processing' | 'completed' | 'failed' | 'skipped'
+  status: text("status").notNull(), // 'processing' | 'completed' | 'failed' | 'rejected' | 'skipped'
   lambdaRequestId: text("lambda_request_id"),
   gameId: uuid("game_id").references(() => game.id, { onDelete: "cascade" }),
   skipReason: text("skip_reason"),

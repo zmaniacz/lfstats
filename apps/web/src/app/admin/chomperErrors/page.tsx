@@ -36,6 +36,7 @@ export default async function ChomperErrorsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>S3 Key</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Started At</TableHead>
               <TableHead>Completed At</TableHead>
               <TableHead>Error Message</TableHead>
@@ -46,6 +47,9 @@ export default async function ChomperErrorsPage() {
             {jobs.map((job) => (
               <TableRow key={job.id}>
                 <TableCell className="font-mono text-sm">{job.s3Key}</TableCell>
+                <TableCell className="whitespace-nowrap text-sm capitalize">
+                  {job.status}
+                </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {job.startedAt.toLocaleString()}
                 </TableCell>
