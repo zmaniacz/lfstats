@@ -230,11 +230,13 @@ The parser detects scenarios where the same entity ID has multiple registrations
 
 **Case 1: Mid-game position change** — same entity ID registered twice with different `category` values. Each additional registration becomes a new generation: gen0 uses the original ID, gen1 uses `{originalId}_gen1`. This models a player who literally changed their position mid-game via the Laserforce console.
 
-**Case 2: Same-position hardware restart** — same entity ID, same category, but a mid-game `exitType=01`/`17` entity-end followed by a second section 7 scorecard. The hardware reset the player's suit mid-game, resetting their shot and lives counters. A synthetic entity is created for the second period (starting at the restart entity-end time) so the simulator initializes it from scratch.
+**Case 2: Same-position hardware restart** — same entity ID, same category, multiple registrations, and at least one of: a mid-game `exitType=01`/`17` entity-end, or multiple entity-ends (one per registration period, all `exitType=02`). The latter arises when the player switched to a new vest during play without a kick event being recorded — both periods ended naturally at mission complete. Each registration becomes a new generation initialized from scratch. Note: the old vest's section 7 residuals (`shotsLeft`, `livesLeft`) are recorded at mission end and include team boosts received after the player switched; the consistency check skips those fields for gen0 when a gen1 sibling exists.
 
-**Case 3 (fatal): Player registered on multiple teams** — a player re-registering with a different `team` index is a hardware error that cannot be modeled. The parser throws a `RejectionError`, which routes the job to `status: "rejected"` and moves the file to the error bucket.
+**Case 3: Same-position hardware restart (single registration)** — same entity ID, ONE registration, but a mid-game `exitType=01`/`17` entity-end followed by a second section 7 scorecard. The hardware reset mid-game. A synthetic entity is created for the second period starting at the restart entity-end time.
 
-**Case 4 (fatal): Incomplete TDF** — if the file contains player entities but no section 7 scorecard lines, the game ended prematurely (e.g. server crash, aborted mission) and cannot be ingested. The parser throws a `RejectionError("Incomplete TDF - missing scorecard data")`.
+**Case 4 (fatal): Player registered on multiple teams** — a player re-registering with a different `team` index is a hardware error that cannot be modeled. The parser throws a `RejectionError`, which routes the job to `status: "rejected"` and moves the file to the error bucket.
+
+**Case 5 (fatal): Incomplete TDF** — if the file contains player entities but no section 7 scorecard lines, the game ended prematurely (e.g. server crash, aborted mission) and cannot be ingested. The parser throws a `RejectionError("Incomplete TDF - missing scorecard data")`.
 
 **Hardware glitch (not multi-generation):** If a player ID has duplicate section 7 scorecards but no restart entity-end and no position change, it is treated as a double-printed scorecard. Duplicate entries are merged by `mergeDuplicateSm5Stats`: accumulated counters are summed; residuals (`livesLeft`, `shotsLeft`) use the last entry's values.
 
