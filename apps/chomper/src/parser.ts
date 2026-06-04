@@ -107,6 +107,24 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
     throw new RejectionError("Incomplete TDF - missing scorecard data");
   }
 
+  // Reject games where a standard-target is loaded on a non-neutral team.
+  const neutralTeamIndices = new Set(
+    teams
+      .filter(
+        (t) =>
+          t.desc.toLowerCase() === "neutral" ||
+          t.desc.toLowerCase() === "neutral team",
+      )
+      .map((t) => t.index),
+  );
+  if (
+    entities.some(
+      (e) => e.type === "standard-target" && !neutralTeamIndices.has(e.team),
+    )
+  ) {
+    throw new RejectionError("Target loaded on non-neutral team");
+  }
+
   // Detect mid-game position changes: same entity ID appearing more than once
   // with a different category (position). Each subsequent registration becomes a
   // new "generation" with a disambiguated internal ID. The external ID routing
