@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { auth } from "@/auth";
+import { Button } from "@/components/ui/button";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
@@ -20,6 +22,7 @@ import {
   getCompetitions,
   getAvailableMatchesForGame,
   getGameMatchAssignment,
+  getCompetitionGameNavigation,
 } from "@lfstats/db";
 import { notFound } from "next/navigation";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
@@ -56,7 +59,7 @@ export default async function GameDetailPage({
       (r.role === "centerAdmin" && r.centerId === game.centerId),
   );
 
-  const [centerTags, favorited, availableCompetitions, availableMatches, matchAssignment] =
+  const [centerTags, favorited, availableCompetitions, availableMatches, matchAssignment, gameNav] =
     await Promise.all([
       canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
       session?.user?.id
@@ -67,6 +70,9 @@ export default async function GameDetailPage({
         ? getAvailableMatchesForGame(game.competitionId)
         : Promise.resolve([]),
       canDelete ? getGameMatchAssignment(game.id) : Promise.resolve(null),
+      game.competitionId
+        ? getCompetitionGameNavigation(game.competitionId, game.id)
+        : Promise.resolve(null),
     ]);
 
   const displayTeams = matchAssignment
@@ -83,6 +89,27 @@ export default async function GameDetailPage({
 
   return (
     <div className="p-6 space-y-8">
+      {gameNav && (
+        <div className="flex items-center gap-2">
+          {gameNav.prevSlug ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/games/${gameNav.prevSlug}`}>← Previous</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>← Previous</Button>
+          )}
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {gameNav.position} / {gameNav.total}
+          </span>
+          {gameNav.nextSlug ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/games/${gameNav.nextSlug}`}>Next →</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>Next →</Button>
+          )}
+        </div>
+      )}
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">

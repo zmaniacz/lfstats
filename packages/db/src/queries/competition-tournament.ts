@@ -615,6 +615,45 @@ export async function getAvailableMatchesForGame(
     .filter((m) => m.availableGameNumbers.length > 0);
 }
 
+export type CompetitionGameNav = {
+  prevSlug: string | null;
+  nextSlug: string | null;
+  position: number;
+  total: number;
+};
+
+export async function getCompetitionGameNavigation(
+  competitionId: string,
+  currentGameId: string,
+): Promise<CompetitionGameNav | null> {
+  const rows = await db
+    .select({
+      gameId: competitionMatchGame.gameId,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(
+      asc(competitionRound.roundNumber),
+      asc(competitionMatch.matchNumber),
+      asc(competitionMatchGame.gameNumber),
+    );
+
+  const idx = rows.findIndex((r) => r.gameId === currentGameId);
+  if (idx === -1) return null;
+
+  return {
+    prevSlug: idx > 0 ? rows[idx - 1].slug : null,
+    nextSlug: idx < rows.length - 1 ? rows[idx + 1].slug : null,
+    position: idx + 1,
+    total: rows.length,
+  };
+}
+
 export async function getGameMatchAssignment(
   gameId: string,
 ): Promise<GameMatchAssignment | null> {
