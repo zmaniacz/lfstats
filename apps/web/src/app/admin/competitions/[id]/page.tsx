@@ -1,6 +1,13 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getCompetitionById, getCompetitionGames, getCenterList, getCompetitionTeams, getCompetitionRounds } from "@lfstats/db"
+import {
+  getCompetitionById,
+  getCenterList,
+  getCompetitionTeams,
+  getCompetitionRounds,
+  getCompetitionUnassignedGamesForAdmin,
+  getCompetitionAssignedGamesForAdmin,
+} from "@lfstats/db"
 import { CompetitionForm } from "@/components/admin/CompetitionForm"
 import { BulkAssignForm } from "@/components/admin/BulkAssignForm"
 import { DeleteCompetitionButton } from "@/components/admin/DeleteCompetitionButton"
@@ -21,6 +28,7 @@ import {
   deleteCompetitionAction,
   bulkAssignGamesAction,
   removeGameFromCompetitionAction,
+  unassignGameFromMatchAction,
 } from "../actions"
 
 export default async function CompetitionDetailPage({
@@ -29,9 +37,10 @@ export default async function CompetitionDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [comp, games, centers, teams, rounds] = await Promise.all([
+  const [comp, unassignedGames, assignedGames, centers, teams, rounds] = await Promise.all([
     getCompetitionById(id),
-    getCompetitionGames(id),
+    getCompetitionUnassignedGamesForAdmin(id),
+    getCompetitionAssignedGamesForAdmin(id),
     getCenterList(),
     getCompetitionTeams(id),
     getCompetitionRounds(id),
@@ -41,6 +50,7 @@ export default async function CompetitionDetailPage({
 
   const boundUpdate = updateCompetitionAction.bind(null, id)
   const boundRemoveGame = removeGameFromCompetitionAction.bind(null, id)
+  const boundUnassignGame = unassignGameFromMatchAction.bind(null, id)
 
   return (
     <div className="space-y-8">
@@ -120,11 +130,11 @@ export default async function CompetitionDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Assigned Games ({games.length})</CardTitle>
+          <CardTitle>Unassigned Games ({unassignedGames.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {games.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No games assigned yet.</p>
+          {unassignedGames.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No unassigned games.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -137,20 +147,15 @@ export default async function CompetitionDetailPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {games.map((g) => (
+                {unassignedGames.map((g) => (
                   <TableRow key={g.id}>
                     <TableCell>
-                      <Link
-                        href={`/games/${g.slug}`}
-                        className="hover:underline font-medium"
-                      >
+                      <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
                         {formatGameName(g.description, g.startTime)}
                       </Link>
                     </TableCell>
                     <TableCell>{g.centerName}</TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(g.startTime)}
-                    </TableCell>
+                    <TableCell className="tabular-nums">{formatDateTime(g.startTime)}</TableCell>
                     <TableCell className="capitalize">{g.outcome}</TableCell>
                     <TableCell className="text-right">
                       <DeleteEntityButton
@@ -158,10 +163,58 @@ export default async function CompetitionDetailPage({
                         label={formatGameName(g.description, g.startTime)}
                         description="This removes the game from the competition. The game itself is not deleted."
                         action={boundRemoveGame}
+                        confirmLabel="Remove"
                       />
                     </TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Games ({assignedGames.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {assignedGames.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No games assigned to matches yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Game</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Outcome</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignedGames.map((g) => {
+                  const label = `${g.roundName} · Match ${g.matchNumber} · Game ${g.gameNumber} · ${g.team1Name} vs ${g.team2Name}`
+                  return (
+                    <TableRow key={g.id}>
+                      <TableCell>
+                        <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
+                          {label}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{formatDateTime(g.startTime)}</TableCell>
+                      <TableCell className="capitalize">{g.outcome}</TableCell>
+                      <TableCell className="text-right">
+                        <DeleteEntityButton
+                          id={g.matchGameId}
+                          label={label}
+                          description="This removes the game from its match slot. The game stays in the competition."
+                          action={boundUnassignGame}
+                          confirmLabel="Unassign"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

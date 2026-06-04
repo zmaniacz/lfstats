@@ -8,6 +8,7 @@ import {
   deleteCompetition,
   bulkAssignGamesToCompetition,
   removeGameFromCompetition,
+  removeGameFromMatch,
   getCompetitionById,
 } from "@lfstats/db"
 import { redirect } from "next/navigation"
@@ -87,6 +88,17 @@ export async function removeGameFromCompetitionAction(
   if (!competition) throw new Error("Not found")
   await requireCompetitionAccess(competition.hostCenterId ?? null)
   await removeGameFromCompetition(gameId)
+  revalidatePath(`/admin/competitions/${competitionId}`)
+}
+
+export async function unassignGameFromMatchAction(
+  competitionId: string,
+  matchGameId: string,
+): Promise<void> {
+  const competition = await getCompetitionById(competitionId)
+  if (!competition) throw new Error("Not found")
+  await requireCompetitionAccess(competition.hostCenterId ?? null)
+  await removeGameFromMatch(matchGameId)
   revalidatePath(`/admin/competitions/${competitionId}`)
 }
 

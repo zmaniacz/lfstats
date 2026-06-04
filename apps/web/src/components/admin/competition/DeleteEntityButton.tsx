@@ -20,6 +20,7 @@ type Props = {
   description?: string
   action: (id: string) => Promise<void>
   size?: "sm" | "default" | "lg" | "icon"
+  confirmLabel?: string
 }
 
 export function DeleteEntityButton({
@@ -28,6 +29,7 @@ export function DeleteEntityButton({
   description = "This action cannot be undone.",
   action,
   size = "sm",
+  confirmLabel = "Delete",
 }: Props) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -43,7 +45,7 @@ export function DeleteEntityButton({
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button variant="ghost" size={size} className="text-destructive hover:text-destructive" disabled={isPending}>
-          Delete
+          {confirmLabel}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -54,7 +56,7 @@ export function DeleteEntityButton({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
-            {isPending ? "Deleting…" : "Delete"}
+            {isPending ? `${confirmLabel}…` : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

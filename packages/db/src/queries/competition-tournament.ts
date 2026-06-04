@@ -615,6 +615,115 @@ export async function getAvailableMatchesForGame(
     .filter((m) => m.availableGameNumbers.length > 0);
 }
 
+// ---------------------------------------------------------------------------
+// Competition admin game tables
+// ---------------------------------------------------------------------------
+
+export type CompetitionUnassignedGame = {
+  id: string;
+  slug: string;
+  startTime: Date;
+  description: string | null;
+  centerName: string;
+  outcome: "score" | "elimination" | "draw" | "aborted";
+};
+
+export type CompetitionAssignedGame = {
+  id: string;
+  slug: string;
+  matchGameId: string;
+  roundName: string;
+  matchNumber: number;
+  gameNumber: number;
+  team1Name: string;
+  team2Name: string;
+  startTime: Date;
+  outcome: "score" | "elimination" | "draw" | "aborted";
+  centerName: string;
+};
+
+export async function getCompetitionUnassignedGamesForAdmin(
+  competitionId: string,
+): Promise<CompetitionUnassignedGame[]> {
+  const assignedIds = db
+    .select({ gameId: competitionMatchGame.gameId })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .where(eq(competitionMatch.competitionId, competitionId));
+
+  return db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      startTime: game.startTime,
+      description: game.description,
+      centerName: center.name,
+      outcome: game.outcome,
+    })
+    .from(game)
+    .innerJoin(center, eq(center.id, game.centerId))
+    .where(
+      and(
+        eq(game.competitionId, competitionId),
+        not(inArray(game.id, assignedIds)),
+      ),
+    )
+    .orderBy(asc(game.startTime));
+}
+
+export async function getCompetitionAssignedGamesForAdmin(
+  competitionId: string,
+): Promise<CompetitionAssignedGame[]> {
+  const rows = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      matchGameId: competitionMatchGame.id,
+      roundName: competitionRound.name,
+      matchNumber: competitionMatch.matchNumber,
+      gameNumber: competitionMatchGame.gameNumber,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      centerName: center.name,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(
+      asc(competitionRound.roundNumber),
+      asc(competitionMatch.matchNumber),
+      asc(competitionMatchGame.gameNumber),
+    );
+
+  if (rows.length === 0) return [];
+
+  const teamIds = [...new Set([...rows.map((r) => r.team1Id), ...rows.map((r) => r.team2Id)])];
+  const teams = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .from(competitionTeam)
+    .where(inArray(competitionTeam.id, teamIds));
+  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+
+  return rows.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    matchGameId: r.matchGameId,
+    roundName: r.roundName,
+    matchNumber: r.matchNumber,
+    gameNumber: r.gameNumber,
+    team1Name: teamMap.get(r.team1Id) ?? "Unknown",
+    team2Name: teamMap.get(r.team2Id) ?? "Unknown",
+    startTime: r.startTime,
+    outcome: r.outcome,
+    centerName: r.centerName,
+  }));
+}
+
 export type CompetitionGameNav = {
   prevSlug: string | null;
   nextSlug: string | null;
