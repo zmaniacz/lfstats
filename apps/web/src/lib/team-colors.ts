@@ -119,6 +119,20 @@ export const TEAM_COLORS: Readonly<Record<number, TeamColor>> = {
     border: "border-purple-500",
     hex: "#a855f7",
   },
+  17: {
+    label: "Red",
+    bg: "bg-red-500",
+    text: "text-red-700",
+    border: "border-red-500",
+    hex: "#ef4444",
+  },
+  18: {
+    label: "Blue",
+    bg: "bg-blue-500",
+    text: "text-blue-700",
+    border: "border-blue-500",
+    hex: "#3b82f6",
+  },
 } as const;
 
 export function getTeamColor(n: number): TeamColor | undefined {
