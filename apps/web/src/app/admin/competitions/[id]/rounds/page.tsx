@@ -9,10 +9,16 @@ import {
 import { CompetitionRoundForm } from "@/components/admin/competition/CompetitionRoundForm"
 import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm"
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
+import { SortableMatchList } from "@/components/admin/competition/SortableMatchList"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { createRoundAction, deleteRoundAction, createMatchAction, deleteMatchAction } from "./actions"
+import {
+  createRoundAction,
+  deleteRoundAction,
+  createMatchAction,
+  deleteMatchAction,
+  reorderMatchesAction,
+} from "./actions"
 
 export default async function RoundsPage({
   params,
@@ -28,7 +34,6 @@ export default async function RoundsPage({
 
   if (!comp) notFound()
 
-  // Fetch matches for all rounds in parallel
   const matchesByRound = await Promise.all(
     rounds.map((r) => getCompetitionMatchesByRound(r.id)),
   )
@@ -36,6 +41,7 @@ export default async function RoundsPage({
   const boundCreateRound = createRoundAction.bind(null, id)
   const boundDeleteRound = deleteRoundAction.bind(null, id)
   const boundDeleteMatch = deleteMatchAction.bind(null, id)
+  const boundReorder = reorderMatchesAction.bind(null, id)
 
   const nextRoundNumber =
     rounds.length > 0 ? Math.max(...rounds.map((r) => r.roundNumber)) + 1 : 1
@@ -95,49 +101,13 @@ export default async function RoundsPage({
                 {matches.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No matches yet.</p>
                 ) : (
-                  <div className="divide-y border rounded-md">
-                    {matches.map((match) => (
-                      <div
-                        key={match.id}
-                        className="flex items-center justify-between px-3 py-2"
-                      >
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="font-medium">
-                            {match.team1Name} vs {match.team2Name}
-                          </span>
-                          <div className="flex gap-1">
-                            <Badge
-                              variant={match.game1Assigned ? "default" : "outline"}
-                              className="text-xs"
-                            >
-                              G1
-                            </Badge>
-                            <Badge
-                              variant={match.game2Assigned ? "default" : "outline"}
-                              className="text-xs"
-                            >
-                              G2
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button asChild variant="outline" size="sm">
-                            <Link
-                              href={`/admin/competitions/${id}/rounds/${round.id}/matches/${match.id}`}
-                            >
-                              Assign Games
-                            </Link>
-                          </Button>
-                          <DeleteEntityButton
-                            id={match.id}
-                            label={`${match.team1Name} vs ${match.team2Name}`}
-                            description="This removes the match and any assigned game links."
-                            action={boundDeleteMatch}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <SortableMatchList
+                    competitionId={id}
+                    roundId={round.id}
+                    matches={matches}
+                    deleteAction={boundDeleteMatch}
+                    reorderAction={boundReorder}
+                  />
                 )}
 
                 {teams.length >= 2 ? (
@@ -152,10 +122,7 @@ export default async function RoundsPage({
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Add at least 2 teams before creating matches.{" "}
-                    <Link
-                      href={`/admin/competitions/${id}/teams`}
-                      className="underline"
-                    >
+                    <Link href={`/admin/competitions/${id}/teams`} className="underline">
                       Manage teams
                     </Link>
                   </p>

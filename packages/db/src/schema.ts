@@ -183,23 +183,28 @@ export const competitionRound = pgTable(
   (t) => [unique().on(t.competitionId, t.roundNumber)],
 );
 
-export const competitionMatch = pgTable("competition_match", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  competitionId: uuid("competition_id")
-    .notNull()
-    .references(() => competition.id, { onDelete: "cascade" }),
-  roundId: uuid("round_id")
-    .notNull()
-    .references(() => competitionRound.id, { onDelete: "cascade" }),
-  team1Id: uuid("team1_id")
-    .notNull()
-    .references(() => competitionTeam.id),
-  team2Id: uuid("team2_id")
-    .notNull()
-    .references(() => competitionTeam.id),
-  scheduledTime: timestamp("scheduled_time"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const competitionMatch = pgTable(
+  "competition_match",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitionId: uuid("competition_id")
+      .notNull()
+      .references(() => competition.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => competitionRound.id, { onDelete: "cascade" }),
+    matchNumber: integer("match_number").notNull(),
+    team1Id: uuid("team1_id")
+      .notNull()
+      .references(() => competitionTeam.id),
+    team2Id: uuid("team2_id")
+      .notNull()
+      .references(() => competitionTeam.id),
+    scheduledTime: timestamp("scheduled_time"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.roundId, t.matchNumber)],
+);
 
 // ---------------------------------------------------------------------------
 // Game Structure Tables

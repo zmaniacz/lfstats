@@ -17,7 +17,8 @@
       "Bash(node *)",
       "Bash(python3 *)",
       "Bash(pnpm test-suite *)",
-      "Bash(pnpm --filter chomper run test)"
+      "Bash(pnpm --filter chomper run test)",
+      "PowerShell(head -20)"
     ]
   }
 }

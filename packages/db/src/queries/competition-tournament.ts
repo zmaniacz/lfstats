@@ -6,11 +6,12 @@ import {
   competitionMatch,
   competitionMatchGame,
   player,
+  playerCallsignHistory,
   game,
   sm5GameTeam,
   center,
 } from "../schema";
-import { eq, and, asc, ilike, inArray, not, sql } from "drizzle-orm";
+import { eq, and, asc, ilike, inArray, not, or, sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,6 +44,7 @@ export type CompetitionRoundListItem = {
 export type CompetitionMatchListItem = {
   id: string;
   roundId: string;
+  matchNumber: number;
   team1Id: string;
   team1Name: string;
   team2Id: string;
@@ -191,13 +193,19 @@ export async function searchPlayersForRoster(
   limit = 10,
 ): Promise<PlayerSearchResult[]> {
   return db
-    .select({
+    .selectDistinct({
       id: player.id,
       iplId: player.iplId,
       currentCallsign: player.currentCallsign,
     })
     .from(player)
-    .where(ilike(player.currentCallsign, `%${query}%`))
+    .leftJoin(playerCallsignHistory, eq(playerCallsignHistory.playerId, player.id))
+    .where(
+      or(
+        ilike(player.currentCallsign, `%${query}%`),
+        ilike(playerCallsignHistory.callsign, `%${query}%`),
+      ),
+    )
     .orderBy(asc(player.currentCallsign))
     .limit(limit);
 }
@@ -258,13 +266,14 @@ export async function getCompetitionMatchesByRound(
     .select({
       id: competitionMatch.id,
       roundId: competitionMatch.roundId,
+      matchNumber: competitionMatch.matchNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
       scheduledTime: competitionMatch.scheduledTime,
     })
     .from(competitionMatch)
     .where(eq(competitionMatch.roundId, roundId))
-    .orderBy(asc(competitionMatch.createdAt));
+    .orderBy(asc(competitionMatch.matchNumber));
 
   if (matchRows.length === 0) return [];
 
@@ -300,6 +309,7 @@ export async function getCompetitionMatchesByRound(
   return matchRows.map((m) => ({
     id: m.id,
     roundId: m.roundId,
+    matchNumber: m.matchNumber,
     team1Id: m.team1Id,
     team1Name: teamMap.get(m.team1Id) ?? "Unknown",
     team2Id: m.team2Id,
@@ -339,9 +349,23 @@ export async function getCompetitionMatchById(
   };
 }
 
+export async function reorderCompetitionMatches(
+  reorders: { id: string; matchNumber: number }[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (const { id, matchNumber } of reorders) {
+      await tx
+        .update(competitionMatch)
+        .set({ matchNumber })
+        .where(eq(competitionMatch.id, id));
+    }
+  });
+}
+
 export async function createCompetitionMatch(data: {
   competitionId: string;
   roundId: string;
+  matchNumber: number;
   team1Id: string;
   team2Id: string;
   scheduledTime?: Date | null;

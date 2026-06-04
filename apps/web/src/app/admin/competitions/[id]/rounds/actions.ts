@@ -6,6 +6,8 @@ import {
   deleteCompetitionRound,
   createCompetitionMatch,
   deleteCompetitionMatch,
+  getCompetitionMatchesByRound,
+  reorderCompetitionMatches,
 } from "@lfstats/db"
 import { auth } from "@/auth"
 
@@ -45,7 +47,13 @@ export async function createMatchAction(
   await requireAdmin()
   const team1Id = formData.get("team1Id") as string
   const team2Id = formData.get("team2Id") as string
-  await createCompetitionMatch({ competitionId, roundId, team1Id, team2Id })
+  // Auto-assign next match number within this round
+  const existing = await getCompetitionMatchesByRound(roundId)
+  const matchNumber =
+    existing.length > 0
+      ? Math.max(...existing.map((m) => m.matchNumber)) + 1
+      : 1
+  await createCompetitionMatch({ competitionId, roundId, matchNumber, team1Id, team2Id })
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }
 
@@ -55,5 +63,14 @@ export async function deleteMatchAction(
 ): Promise<void> {
   await requireAdmin()
   await deleteCompetitionMatch(matchId)
+  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+}
+
+export async function reorderMatchesAction(
+  competitionId: string,
+  reorders: { id: string; matchNumber: number }[],
+): Promise<void> {
+  await requireAdmin()
+  await reorderCompetitionMatches(reorders)
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }
