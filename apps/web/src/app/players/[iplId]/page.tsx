@@ -10,7 +10,14 @@ import {
   getPlayerAvgScoreByPosition,
   getGlobalAvgScoreByPosition,
   getPlayerGames,
+  isPlayerFavorite,
 } from "@lfstats/db"
+import { auth } from "@/auth"
+import { FavoriteButton } from "@/components/players/FavoriteButton"
+import {
+  addFavoritePlayerAction,
+  removeFavoritePlayerAction,
+} from "./actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlayerWinsByColorChart } from "@/components/players/PlayerWinsByColorChart"
 import { PositionRadarChart, type PositionRadarPoint } from "@/components/charts/PositionRadarChart"
@@ -26,7 +33,7 @@ export default async function PlayerDetailPage({
 }) {
   const { iplId } = await params
 
-  const playerDetail = await getPlayerByIplId(iplId)
+  const [playerDetail, session] = await Promise.all([getPlayerByIplId(iplId), auth()])
   if (!playerDetail) notFound()
 
   const [
@@ -38,6 +45,7 @@ export default async function PlayerDetailPage({
     playerScore,
     globalScore,
     playerGames,
+    favorited,
   ] = await Promise.all([
     getPlayerCallsignHistory(playerDetail.id),
     getPlayerResultsByColor(playerDetail.id),
@@ -47,6 +55,9 @@ export default async function PlayerDetailPage({
     getPlayerAvgScoreByPosition(playerDetail.id),
     getGlobalAvgScoreByPosition(),
     getPlayerGames(playerDetail.id),
+    session?.user?.id
+      ? isPlayerFavorite(session.user.id, playerDetail.id)
+      : Promise.resolve(false),
   ])
 
   const otherCallsigns = callsignHistory.filter(
@@ -87,6 +98,14 @@ export default async function PlayerDetailPage({
           >
             <ExternalLink className="h-5 w-5" />
           </a>
+          {session?.user && (
+            <FavoriteButton
+              playerId={playerDetail.id}
+              isFavorited={favorited}
+              addAction={addFavoritePlayerAction.bind(null, iplId)}
+              removeAction={removeFavoritePlayerAction.bind(null, iplId)}
+            />
+          )}
         </h1>
         {otherCallsigns.length > 0 && (
           <p className="text-sm text-muted-foreground">

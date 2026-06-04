@@ -99,6 +99,13 @@
       "when": 1780422141275,
       "tag": "0013_volatile_quasimodo",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1780598397977,
+      "tag": "0014_unknown_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

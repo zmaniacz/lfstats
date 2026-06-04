@@ -1,7 +1,15 @@
 import { db } from "../client";
-import { userFavoriteGame, game, sm5GameTeam, center } from "../schema";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { userFavoriteGame, userFavoritePlayer, game, sm5GameTeam, sm5Scorecard, center, player } from "../schema";
+import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import type { GameListItem } from "./games";
+
+export type FavoritePlayerItem = {
+  id: string
+  iplId: string
+  currentCallsign: string
+  totalGames: number
+  lastGameAt: Date | null
+}
 
 export async function getUserFavorites(userId: string): Promise<GameListItem[]> {
   const favoriteRows = await db
@@ -91,5 +99,67 @@ export async function isFavorite(userId: string, gameId: string): Promise<boolea
     .select({ id: userFavoriteGame.id })
     .from(userFavoriteGame)
     .where(and(eq(userFavoriteGame.userId, userId), eq(userFavoriteGame.gameId, gameId)));
+  return row !== undefined;
+}
+
+export async function getUserFavoritePlayers(userId: string): Promise<FavoritePlayerItem[]> {
+  const favoriteRows = await db
+    .select({ playerId: userFavoritePlayer.playerId })
+    .from(userFavoritePlayer)
+    .where(eq(userFavoritePlayer.userId, userId))
+    .orderBy(desc(userFavoritePlayer.createdAt));
+
+  if (favoriteRows.length === 0) return [];
+
+  const playerIds = favoriteRows.map((r) => r.playerId);
+
+  const statsRows = await db
+    .select({
+      id: player.id,
+      iplId: player.iplId,
+      currentCallsign: player.currentCallsign,
+      totalGames: count(sm5Scorecard.id),
+      lastGameAt: sql<string | null>`MAX(${game.startTime})`,
+    })
+    .from(player)
+    .leftJoin(sm5Scorecard, eq(sm5Scorecard.playerId, player.id))
+    .leftJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .leftJoin(game, eq(sm5GameTeam.gameId, game.id))
+    .where(inArray(player.id, playerIds))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  const statsMap = new Map(statsRows.map((r) => [r.id, r]));
+
+  return playerIds
+    .map((id) => statsMap.get(id))
+    .filter((r): r is NonNullable<typeof r> => r !== undefined)
+    .map((r) => ({
+      ...r,
+      lastGameAt: r.lastGameAt ? new Date(r.lastGameAt) : null,
+    }));
+}
+
+export async function addFavoritePlayer(
+  userId: string,
+  playerId: string,
+  note?: string,
+): Promise<void> {
+  await db
+    .insert(userFavoritePlayer)
+    .values({ userId, playerId, note })
+    .onConflictDoNothing();
+}
+
+export async function removeFavoritePlayer(userId: string, playerId: string): Promise<void> {
+  await db
+    .delete(userFavoritePlayer)
+    .where(and(eq(userFavoritePlayer.userId, userId), eq(userFavoritePlayer.playerId, playerId)));
+}
+
+export async function isPlayerFavorite(userId: string, playerId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: userFavoritePlayer.id })
+    .from(userFavoritePlayer)
+    .where(and(eq(userFavoritePlayer.userId, userId), eq(userFavoritePlayer.playerId, playerId)));
   return row !== undefined;
 }

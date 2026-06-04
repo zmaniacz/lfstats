@@ -648,3 +648,19 @@ export const userFavoriteGame = pgTable(
   },
   (t) => [unique().on(t.userId, t.gameId)],
 );
+
+export const userFavoritePlayer = pgTable(
+  "user_favorite_player",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id, { onDelete: "cascade" }),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.playerId)],
+);

@@ -2,7 +2,7 @@ import { Fragment } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { auth } from "@/auth"
-import { getUserFavorites } from "@lfstats/db"
+import { getUserFavorites, getUserFavoritePlayers } from "@lfstats/db"
 import {
   Table,
   TableBody,
@@ -18,7 +18,10 @@ export default async function FavoritesPage() {
   const session = await auth()
   if (!session?.user?.id) redirect("/")
 
-  const games = await getUserFavorites(session.user.id)
+  const [games, favoritePlayers] = await Promise.all([
+    getUserFavorites(session.user.id),
+    getUserFavoritePlayers(session.user.id),
+  ])
 
   return (
     <div className="p-6 space-y-4">
@@ -81,6 +84,44 @@ export default async function FavoritesPage() {
           </TableBody>
         </Table>
       )}
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Favorite Players</h2>
+
+        {favoritePlayers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No favorite players yet. Heart a player on their profile page to save them here.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Callsign</TableHead>
+                <TableHead>Games</TableHead>
+                <TableHead>Last Played</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {favoritePlayers.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>
+                    <Link
+                      href={`/players/${p.iplId}`}
+                      className="hover:underline font-medium"
+                    >
+                      {p.currentCallsign}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="tabular-nums">{p.totalGames}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {p.lastGameAt ? formatDateTime(p.lastGameAt) : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   )
 }
