@@ -401,11 +401,13 @@ where `missilesHitOpponentMedicLives` accumulates `Math.min(2, Math.max(0, targe
 
 When a player's lives reach 0 or below after any hit, `checkElimination()` runs:
 
-1. Check `lastActorEventTime.get(entityId) > currentTime`. If the player still appears as an actor later in the event stream, the hardware kept them alive — the game computer sends the line-type-6 entity-end record seconds after the hardware actually processes elimination.
+1. Check either:
+   - `lastActorEventTime.get(entityId) > currentTime` (**provably alive**) — the player still appears as an actor later in the event stream, so the hardware kept them alive; or
+   - the player has pending lives boosts in `pendingBoosts` (**unapplied 0512 boost**) — a 0512 team-lives boost fired while the player was in state_3, was recorded as pending, and was never consumed when they returned to state_0. Without rescue the player would be prematurely eliminated and miss subsequent events (e.g. a 0510 ammo boost that fires 20 s later).
 
-2. If still acting later: look for pending lives boosts in `pendingBoosts`. Apply the minimum needed (via forward simulation — see below). If no pending boost is available but the player still acts, eliminate anyway (shots shortfall case — the hardware kept them alive on 0 lives, which the simulator cannot fully replicate without a boost source).
+2. If either condition is true and there are pending lives boosts: apply the minimum needed via forward simulation (see below). If no pending lives boost is available but the player is provably alive, eliminate anyway (shots shortfall — hardware kept them alive on 0 lives, which the simulator cannot replicate without a boost source).
 
-3. If not acting later: mark `isEliminated = true`, `eliminatedAt = currentTime`.
+3. Otherwise: mark `isEliminated = true`, `eliminatedAt = currentTime`.
 
 **Forward simulation for lives needed:** When applying a pending lives boost, compute the minimum lives to grant:
 
@@ -415,8 +417,12 @@ livesNeeded = max(
   tdfFinalLives - finalBalance // enough to match the TDF's residual livesLeft
 )
 livesNeeded = max(0, livesNeeded)
-// Edge case: if livesNeeded = 0 but future events still exist, force to 1
-// so the player survives long enough to receive the next resupply
+// If livesNeeded = 0 but future events still exist, force to 1
+// so the player survives long enough to receive the next resupply —
+// ONLY applied on the "provably alive" path, not the "pending lives" path.
+// (On the pending-lives-only path the forward simulation is the sole
+//  authority; applying the floor would over-inflate lives for surviving
+//  players whose pending boosts happen not to be needed by the formula.)
 ```
 
 The forward simulation merges `deactivationsReceived`, `resuppliesGained`, and `directTeamBoostsReceived` from the current timestamp to `entityEndTimeById[entityId]`.
@@ -450,6 +456,8 @@ Safety net for entity-ends not yet processed in-loop, plus special handling for 
 | `02` (mission complete) | No action needed |
 
 Kicked players are treated differently because TDF records their lives at the moment of kick, not at elimination. Zeroing lives as if they were eliminated produces spurious consistency check failures.
+
+After applying exit-type logic, the final snapshot is synced from `ps.lives` **and** `ps.shots`. The shots sync handles one specific edge case: when a post-elimination `0500` ammo resupply fires after a player's last life is taken but before their entity-end, `handle0500` correctly updates `ps.shots`, but the state transition that would record a new snapshot is blocked (`isEliminated = true`). Without this sync the final snapshot would show the pre-resupply shots count, failing the consistency check.
 
 ---
 
