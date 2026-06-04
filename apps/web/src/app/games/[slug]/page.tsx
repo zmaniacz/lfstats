@@ -1,13 +1,13 @@
-import Link from "next/link";
 import { auth } from "@/auth";
-import { Button } from "@/components/ui/button";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
+import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
 import { GameTabs } from "@/components/games/GameTabs";
 import { GameTagManager } from "@/components/games/GameTagManager";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   formatDateTime,
   formatGameName,
@@ -16,26 +16,26 @@ import {
 } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import {
+  getAvailableMatchesForGame,
+  getCompetitionGameNavigation,
+  getCompetitions,
   getGameDetailBySlug,
+  getGameMatchAssignment,
   getTagsByCenter,
   isFavorite,
-  getCompetitions,
-  getAvailableMatchesForGame,
-  getGameMatchAssignment,
-  getCompetitionGameNavigation,
 } from "@lfstats/db";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
 import {
   addFavoriteAction,
+  addGameToCompetitionAction,
+  assignGameToMatchAction,
   assignTagAction,
   removeFavoriteAction,
+  removeGameFromCompetitionAction,
+  removeGameFromMatchAction,
   removeTagAction,
   toggleExcludeAction,
-  addGameToCompetitionAction,
-  removeGameFromCompetitionAction,
-  assignGameToMatchAction,
-  removeGameFromMatchAction,
 } from "./actions";
 
 export default async function GameDetailPage({
@@ -59,21 +59,27 @@ export default async function GameDetailPage({
       (r.role === "centerAdmin" && r.centerId === game.centerId),
   );
 
-  const [centerTags, favorited, availableCompetitions, availableMatches, matchAssignment, gameNav] =
-    await Promise.all([
-      canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
-      session?.user?.id
-        ? isFavorite(session.user.id, game.id)
-        : Promise.resolve(false),
-      canDelete ? getCompetitions() : Promise.resolve([]),
-      canDelete && game.competitionId
-        ? getAvailableMatchesForGame(game.competitionId)
-        : Promise.resolve([]),
-      canDelete ? getGameMatchAssignment(game.id) : Promise.resolve(null),
-      game.competitionId
-        ? getCompetitionGameNavigation(game.competitionId, game.id)
-        : Promise.resolve(null),
-    ]);
+  const [
+    centerTags,
+    favorited,
+    availableCompetitions,
+    availableMatches,
+    matchAssignment,
+    gameNav,
+  ] = await Promise.all([
+    canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
+    session?.user?.id
+      ? isFavorite(session.user.id, game.id)
+      : Promise.resolve(false),
+    canDelete ? getCompetitions() : Promise.resolve([]),
+    canDelete && game.competitionId
+      ? getAvailableMatchesForGame(game.competitionId)
+      : Promise.resolve([]),
+    getGameMatchAssignment(game.id),
+    game.competitionId
+      ? getCompetitionGameNavigation(game.competitionId, game.id)
+      : Promise.resolve(null),
+  ]);
 
   const displayTeams = matchAssignment
     ? game.teams.map((t) => ({
@@ -85,35 +91,21 @@ export default async function GameDetailPage({
               ? matchAssignment.team2Name
               : t.name,
       }))
-    : game.teams
+    : game.teams;
 
   return (
     <div className="p-6 space-y-8">
-      {gameNav && (
-        <div className="flex items-center gap-2">
-          {gameNav.prevSlug ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/games/${gameNav.prevSlug}`}>← Previous</Link>
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" disabled>← Previous</Button>
-          )}
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {gameNav.position} / {gameNav.total}
-          </span>
-          {gameNav.nextSlug ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/games/${gameNav.nextSlug}`}>Next →</Link>
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" disabled>Next →</Button>
-          )}
-        </div>
-      )}
       <div className="space-y-2">
+        {game.competitionName && (
+          <p className="text-sm font-medium text-muted-foreground">
+            {game.competitionName}
+          </p>
+        )}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
-            {formatGameName(game.description, game.startTime)}
+            {matchAssignment
+              ? `${matchAssignment.roundName} · Match ${matchAssignment.matchNumber} · Game ${matchAssignment.gameNumber} · ${displayTeams.map((t) => t.name).join(" vs ")}`
+              : formatGameName(game.description, game.startTime)}
           </h1>
           {session?.user && (
             <FavoriteButton
@@ -174,6 +166,31 @@ export default async function GameDetailPage({
             assignToMatchAction={assignGameToMatchAction}
             removeFromMatchAction={removeGameFromMatchAction}
           />
+        )}
+        {gameNav && (
+          <div className="flex items-center gap-2">
+            {gameNav.prevSlug ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/games/${gameNav.prevSlug}`}>← Previous</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>
+                ← Previous
+              </Button>
+            )}
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {gameNav.position} / {gameNav.total}
+            </span>
+            {gameNav.nextSlug ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/games/${gameNav.nextSlug}`}>Next →</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>
+                Next →
+              </Button>
+            )}
+          </div>
         )}
         {canDelete && (
           <GameTagManager
