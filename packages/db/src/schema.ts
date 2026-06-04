@@ -39,6 +39,11 @@ export const competitionTypeEnum = pgEnum("competition_type", [
   "social",
 ]);
 
+export const competitionRoundTypeEnum = pgEnum("competition_round_type", [
+  "pool",
+  "finals",
+]);
+
 // ---------------------------------------------------------------------------
 // Reference & Identity Tables
 // ---------------------------------------------------------------------------
@@ -134,6 +139,68 @@ export const competition = pgTable("competition", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const competitionTeam = pgTable(
+  "competition_team",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitionId: uuid("competition_id")
+      .notNull()
+      .references(() => competition.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    shortName: text("short_name"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.competitionId, t.name)],
+);
+
+export const competitionTeamPlayer = pgTable(
+  "competition_team_player",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitionTeamId: uuid("competition_team_id")
+      .notNull()
+      .references(() => competitionTeam.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.competitionTeamId, t.playerId)],
+);
+
+export const competitionRound = pgTable(
+  "competition_round",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitionId: uuid("competition_id")
+      .notNull()
+      .references(() => competition.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    roundNumber: integer("round_number").notNull(),
+    type: competitionRoundTypeEnum("type").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.competitionId, t.roundNumber)],
+);
+
+export const competitionMatch = pgTable("competition_match", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  competitionId: uuid("competition_id")
+    .notNull()
+    .references(() => competition.id, { onDelete: "cascade" }),
+  roundId: uuid("round_id")
+    .notNull()
+    .references(() => competitionRound.id, { onDelete: "cascade" }),
+  team1Id: uuid("team1_id")
+    .notNull()
+    .references(() => competitionTeam.id),
+  team2Id: uuid("team2_id")
+    .notNull()
+    .references(() => competitionTeam.id),
+  scheduledTime: timestamp("scheduled_time"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------------------
 // Game Structure Tables
 // ---------------------------------------------------------------------------
@@ -179,6 +246,30 @@ export const sm5GameTeam = pgTable(
     eliminated: boolean("eliminated"),
   },
   (t) => [unique().on(t.gameId, t.tdfTeamIndex)],
+);
+
+export const competitionMatchGame = pgTable(
+  "competition_match_game",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => competitionMatch.id, { onDelete: "cascade" }),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    gameNumber: integer("game_number").notNull(),
+    team1GameTeamId: uuid("team1_game_team_id")
+      .notNull()
+      .references(() => sm5GameTeam.id),
+    team2GameTeamId: uuid("team2_game_team_id")
+      .notNull()
+      .references(() => sm5GameTeam.id),
+  },
+  (t) => [
+    unique().on(t.matchId, t.gameNumber),
+    unique().on(t.gameId),
+  ],
 );
 
 // ---------------------------------------------------------------------------
@@ -237,6 +328,7 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   position: integer("position").notNull(),
   eliminated: boolean("eliminated").notNull(),
   endTime: timestamp("end_time").notNull(),
+  isMercenary: boolean("is_mercenary").notNull().default(false),
 
   // Shot Stats
   shotsFired: integer("shots_fired").notNull(),
