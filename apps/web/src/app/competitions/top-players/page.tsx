@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { notFound } from "next/navigation"
-import { getCompetitiveCompetitions, getCompetitionTopPlayers, getCompetitionCommanderPlayers, getCompetitionHeavyPlayers, getCompetitionScoutPlayers, getCompetitionAmmoPlayers, getCompetitionMedicPlayers } from "@lfstats/db"
+import { getCompetitiveCompetitions, getCompetitionTopPlayers, getCompetitionCommanderPlayers, getCompetitionHeavyPlayers, getCompetitionScoutPlayers, getCompetitionAmmoPlayers, getCompetitionMedicPlayers, getCompetitionMedicHitsLeaderboard } from "@lfstats/db"
 import { CompetitionSelector } from "../standings/CompetitionSelector"
 import { TopPlayersAveragesTable } from "@/components/competitions/TopPlayersAveragesTable"
 import { CommanderPlayersTable } from "@/components/competitions/CommanderPlayersTable"
@@ -10,6 +10,7 @@ import { HeavyPlayersTable } from "@/components/competitions/HeavyPlayersTable"
 import { ScoutPlayersTable } from "@/components/competitions/ScoutPlayersTable"
 import { AmmoPlayersTable } from "@/components/competitions/AmmoPlayersTable"
 import { MedicPlayersTable } from "@/components/competitions/MedicPlayersTable"
+import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable"
 import { TopPlayersFilters } from "./TopPlayersFilters"
 
 
@@ -40,13 +41,14 @@ export default async function TopPlayersPage({
   if (!activeComp) notFound()
 
   const options = { showPool, showFinals, showMercs }
-  const [players, commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers] = await Promise.all([
+  const [players, commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers, medicHits] = await Promise.all([
     getCompetitionTopPlayers(activeId, options),
     getCompetitionCommanderPlayers(activeId, options),
     getCompetitionHeavyPlayers(activeId, options),
     getCompetitionScoutPlayers(activeId, options),
     getCompetitionAmmoPlayers(activeId, options),
     getCompetitionMedicPlayers(activeId, options),
+    getCompetitionMedicHitsLeaderboard(activeId, options),
   ])
 
   return (
@@ -78,6 +80,8 @@ export default async function TopPlayersPage({
       <AmmoPlayersTable players={ammoPlayers} />
 
       <MedicPlayersTable players={medicPlayers} />
+
+      <MedicHitsLeaderboardTable players={medicHits} />
     </div>
   )
 }

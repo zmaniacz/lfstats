@@ -17,6 +17,7 @@ import {
   competition,
 } from "../schema";
 import { eq, and, asc, desc, ilike, inArray, not, or, sql } from "drizzle-orm";
+import type { PlayerMedicHitsItem } from "./players";
 
 // ---------------------------------------------------------------------------
 // Competition lookup
@@ -1957,6 +1958,66 @@ export async function getCompetitionMedicPlayers(
     avgResuppliesGiven: r.avgResuppliesGiven !== null ? Number(r.avgResuppliesGiven) : null,
     avgDoubleResuppliesGiven: r.avgDoubleResuppliesGiven !== null ? Number(r.avgDoubleResuppliesGiven) : null,
     survivalRate: Number(r.totalGames) > 0 ? Number(r.survived) / Number(r.totalGames) : 0,
+  }));
+}
+
+export async function getCompetitionMedicHitsLeaderboard(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<PlayerMedicHitsItem[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+    eq(sm5GameTeam.isNeutral, false),
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::int`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::float`,
+      gamesPlayed: sql<number>`count(*)::int`,
+      totalMedicHitsNonResup: sql<number | null>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
+      avgMedicHitsNonResup: sql<number | null>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::float`,
+      gamesPlayedNonResup: sql<number>`count(*) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .innerJoin(player, eq(sm5Scorecard.playerId, player.id))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign)
+    .orderBy(sql`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) desc`);
+
+  return rows.map((r) => ({
+    iplId: r.iplId,
+    callsign: r.callsign,
+    totalMedicHits: Number(r.totalMedicHits),
+    avgMedicHits: Number(r.avgMedicHits),
+    gamesPlayed: Number(r.gamesPlayed),
+    totalMedicHitsNonResup: r.totalMedicHitsNonResup !== null ? Number(r.totalMedicHitsNonResup) : null,
+    avgMedicHitsNonResup: r.avgMedicHitsNonResup !== null ? Number(r.avgMedicHitsNonResup) : null,
+    gamesPlayedNonResup: Number(r.gamesPlayedNonResup),
   }));
 }
 
