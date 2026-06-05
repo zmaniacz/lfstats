@@ -2,10 +2,16 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { notFound } from "next/navigation"
-import { getCompetitiveCompetitions, getCompetitionTopPlayers } from "@lfstats/db"
+import { getCompetitiveCompetitions, getCompetitionTopPlayers, getCompetitionCommanderPlayers, getCompetitionHeavyPlayers, getCompetitionScoutPlayers, getCompetitionAmmoPlayers, getCompetitionMedicPlayers } from "@lfstats/db"
 import { CompetitionSelector } from "../standings/CompetitionSelector"
 import { TopPlayersAveragesTable } from "@/components/competitions/TopPlayersAveragesTable"
+import { CommanderPlayersTable } from "@/components/competitions/CommanderPlayersTable"
+import { HeavyPlayersTable } from "@/components/competitions/HeavyPlayersTable"
+import { ScoutPlayersTable } from "@/components/competitions/ScoutPlayersTable"
+import { AmmoPlayersTable } from "@/components/competitions/AmmoPlayersTable"
+import { MedicPlayersTable } from "@/components/competitions/MedicPlayersTable"
 import { TopPlayersFilters } from "./TopPlayersFilters"
+
 
 export default async function TopPlayersPage({
   searchParams,
@@ -33,7 +39,15 @@ export default async function TopPlayersPage({
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 
-  const players = await getCompetitionTopPlayers(activeId, { showPool, showFinals, showMercs })
+  const options = { showPool, showFinals, showMercs }
+  const [players, commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers] = await Promise.all([
+    getCompetitionTopPlayers(activeId, options),
+    getCompetitionCommanderPlayers(activeId, options),
+    getCompetitionHeavyPlayers(activeId, options),
+    getCompetitionScoutPlayers(activeId, options),
+    getCompetitionAmmoPlayers(activeId, options),
+    getCompetitionMedicPlayers(activeId, options),
+  ])
 
   return (
     <div className="space-y-6">
@@ -54,6 +68,16 @@ export default async function TopPlayersPage({
       />
 
       <TopPlayersAveragesTable players={players} />
+
+      <CommanderPlayersTable players={commanders} />
+
+      <HeavyPlayersTable players={heavyPlayers} />
+
+      <ScoutPlayersTable players={scoutPlayers} />
+
+      <AmmoPlayersTable players={ammoPlayers} />
+
+      <MedicPlayersTable players={medicPlayers} />
     </div>
   )
 }
