@@ -1,6 +1,6 @@
 "use client"
 
-import type { GameDetailPlayer } from "@lfstats/db"
+import type { GameDetailPlayer, PenaltyRecord } from "@lfstats/db"
 import {
   Sheet,
   SheetContent,
@@ -10,11 +10,18 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { formatPct, formatMs } from "@/lib/format"
 import { getPosition } from "@/lib/positions"
+import { PenaltyManager } from "@/components/games/PenaltyManager"
+
+type PenaltyActions = React.ComponentProps<typeof PenaltyManager>["actions"]
 
 type Props = {
   player: GameDetailPlayer | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  gameId: string
+  penalties: PenaltyRecord[]
+  canEdit: boolean
+  penaltyActions: PenaltyActions
 }
 
 const EM_DASH = "—"
@@ -50,7 +57,7 @@ function StatSection({
   )
 }
 
-export function PlayerStatsSheet({ player, open, onOpenChange }: Props) {
+export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties, canEdit, penaltyActions }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-md overflow-y-auto" aria-describedby={undefined}>
@@ -163,7 +170,16 @@ export function PlayerStatsSheet({ player, open, onOpenChange }: Props) {
 
               <StatSection title="Misc">
                 <StatRow label="Targets Destroyed" value={fmt(player.targetsDestroyed)} />
-                <StatRow label="Penalties" value={fmt(player.penalties)} />
+              </StatSection>
+
+              <StatSection title="Penalties">
+                <PenaltyManager
+                  gameId={gameId}
+                  scorecardId={player.id}
+                  penalties={penalties}
+                  canEdit={canEdit}
+                  actions={penaltyActions}
+                />
               </StatSection>
             </div>
           </>

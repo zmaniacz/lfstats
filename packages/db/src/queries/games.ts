@@ -15,6 +15,7 @@ import {
   gameTagAssignment,
 } from "../schema";
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
+import { getTeamPenaltyTotals } from "./penalties";
 
 export const GAMES_PER_PAGE = 10;
 
@@ -35,7 +36,7 @@ export type GameListItem = {
   slug: string;
   centerSlug: string;
   startTime: Date;
-  outcome: "score" | "elimination" | "draw" | "aborted";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
   centerName: string;
   description: string | null;
   teams: GameTeamSummary[];
@@ -232,6 +233,7 @@ export type GameDetailTeam = {
   colourEnum: number;
   score: number | null;
   eliminationBonus: number | null;
+  penaltyScore: number;
   result: "win" | "loss" | "draw" | null;
   eliminated: boolean | null;
   players: GameDetailPlayer[];
@@ -253,7 +255,7 @@ export type GameDetail = {
   description: string | null;
   startTime: Date;
   centerName: string;
-  outcome: "score" | "elimination" | "draw" | "aborted";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
   scheduledDuration: number;
   actualDuration: number;
   exclude: boolean;
@@ -566,6 +568,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         colourEnum: team.colourEnum,
         score: team.score,
         eliminationBonus: team.eliminationBonus,
+        penaltyScore: 0,
         result: team.result,
         eliminated: team.eliminated,
         players: buildPlayers(team.id, team.id),
@@ -629,7 +632,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 
   if (!gameRow) return null;
 
-  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows] =
+  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows, penaltyTotals] =
     await Promise.all(
     [
       db
@@ -766,6 +769,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         .from(gameTag)
         .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
         .where(eq(gameTagAssignment.gameId, id)),
+
+      getTeamPenaltyTotals(id),
     ],
   );
 
@@ -824,6 +829,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
       colourEnum: team.colourEnum,
       score: team.score,
       eliminationBonus: team.eliminationBonus,
+      penaltyScore: penaltyTotals.get(team.id) ?? 0,
       result: team.result,
       eliminated: team.eliminated,
       players: (scorecardsByTeam.get(team.id) ?? []).map((sc) => ({

@@ -338,6 +338,15 @@ export function NightlyStatsTable({ rows }: Props) {
         player={selectedPlayer}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        gameId=""
+        penalties={[]}
+        canEdit={false}
+        penaltyActions={{
+          addAction: async () => {},
+          updateAction: async () => {},
+          rescindAction: async () => {},
+          deleteAction: async () => {},
+        }}
       />
     </>
   )

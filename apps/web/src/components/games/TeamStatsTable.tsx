@@ -14,15 +14,34 @@ import {
 } from "@/components/ui/table";
 import { formatPct, formatScore } from "@/lib/format";
 import { getPosition } from "@/lib/positions";
-import type { GameDetailPlayer, GameDetailTeam } from "@lfstats/db";
+import type {
+  GameDetailPlayer,
+  GameDetailTeam,
+  PenaltyRecord,
+} from "@lfstats/db";
+import { CardsIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 
+type PenaltyActions = React.ComponentProps<
+  typeof PlayerStatsSheet
+>["penaltyActions"];
+
 type Props = {
   team: GameDetailTeam;
+  gameId: string;
+  penaltiesByScorecard: Map<string, PenaltyRecord[]>;
+  canEdit: boolean;
+  penaltyActions: PenaltyActions;
 };
 
-export function TeamStatsTable({ team }: Props) {
+export function TeamStatsTable({
+  team,
+  gameId,
+  penaltiesByScorecard,
+  canEdit,
+  penaltyActions,
+}: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(
     null,
@@ -59,7 +78,7 @@ export function TeamStatsTable({ team }: Props) {
                 className={`cursor-pointer hover:bg-muted/50 `}
                 onClick={() => openSheet(player)}
               >
-                <TableCell className="flex font-medium items-center">
+                <TableCell className="flex font-medium items-center gap-1.5">
                   {player.playerId !== null ? (
                     <Link
                       href={`/players/${player.iplId?.replace(/^#/, "")}`}
@@ -70,7 +89,19 @@ export function TeamStatsTable({ team }: Props) {
                     </Link>
                   ) : (
                     player.callsign
-                  )}{" "}
+                  )}
+                  {(() => {
+                    const count = (
+                      penaltiesByScorecard.get(player.id) ?? []
+                    ).filter((p) => !p.rescinded).length;
+                    if (count === 0) return null;
+                    return (
+                      <span className="flex items-center gap-0.5 text-yellow-500 text-xs font-normal shrink-0">
+                        <CardsIcon weight="fill" className="size-3.5" />
+                        {count > 1 && `(x${count})`}
+                      </span>
+                    );
+                  })()}
                   {player.eliminated && (
                     <Badge
                       variant="destructive"
@@ -84,7 +115,22 @@ export function TeamStatsTable({ team }: Props) {
                   {getPosition(player.position)?.abbr ?? player.position}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {formatScore(player.score)}
+                  {(() => {
+                    const penaltySum = (penaltiesByScorecard.get(player.id) ?? [])
+                      .filter((p) => !p.rescinded)
+                      .reduce((s, p) => s + p.scoreValue, 0)
+                    const adjusted = (player.score ?? 0) + penaltySum
+                    return (
+                      <>
+                        {formatScore(adjusted)}
+                        {penaltySum !== 0 && (
+                          <span className="text-destructive font-normal ml-1">
+                            ({formatScore(penaltySum)})
+                          </span>
+                        )}
+                      </>
+                    )
+                  })()}
                 </TableCell>
                 <TableCell
                   className="text-center"
@@ -141,6 +187,14 @@ export function TeamStatsTable({ team }: Props) {
         onOpenChange={(open) => {
           setSheetOpen(open);
         }}
+        gameId={gameId}
+        penalties={
+          selectedPlayer
+            ? (penaltiesByScorecard.get(selectedPlayer.id) ?? [])
+            : []
+        }
+        canEdit={canEdit}
+        penaltyActions={penaltyActions}
       />
     </>
   );

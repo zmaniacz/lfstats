@@ -21,6 +21,7 @@ import {
   getCompetitions,
   getGameDetailBySlug,
   getGameMatchAssignment,
+  getGamePenalties,
   getTagsByCenter,
   isFavorite,
 } from "@lfstats/db";
@@ -29,13 +30,17 @@ import { notFound } from "next/navigation";
 import {
   addFavoriteAction,
   addGameToCompetitionAction,
+  addPenaltyAction,
   assignGameToMatchAction,
   assignTagAction,
+  deletePenaltyAction,
   removeFavoriteAction,
   removeGameFromCompetitionAction,
   removeGameFromMatchAction,
   removeTagAction,
+  rescindPenaltyAction,
   toggleExcludeAction,
+  updatePenaltyAction,
 } from "./actions";
 
 export default async function GameDetailPage({
@@ -66,6 +71,7 @@ export default async function GameDetailPage({
     availableMatches,
     matchAssignment,
     gameNav,
+    allPenalties,
   ] = await Promise.all([
     canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id
@@ -79,7 +85,24 @@ export default async function GameDetailPage({
     game.competitionId
       ? getCompetitionGameNavigation(game.competitionId, game.id)
       : Promise.resolve(null),
+    getGamePenalties(game.id),
   ]);
+
+  const penaltiesByScorecard = new Map(
+    allPenalties.reduce((acc, p) => {
+      const list = acc.get(p.scorecardId) ?? [];
+      list.push(p);
+      acc.set(p.scorecardId, list);
+      return acc;
+    }, new Map<string, typeof allPenalties>()),
+  );
+
+  const penaltyActions = {
+    addAction: addPenaltyAction,
+    updateAction: updatePenaltyAction,
+    rescindAction: rescindPenaltyAction,
+    deleteAction: deletePenaltyAction,
+  };
 
   const displayTeams = matchAssignment
     ? game.teams.map((t) => ({
@@ -223,6 +246,7 @@ export default async function GameDetailPage({
               const color = getTeamColor(team.colourEnum);
               const baseScore = team.score ?? 0;
               const elimBonus = team.eliminationBonus ?? 0;
+              const penaltyScore = team.penaltyScore ?? 0;
               const totalScore = baseScore + elimBonus;
 
               return (
@@ -255,16 +279,27 @@ export default async function GameDetailPage({
                       )}
                     </div>
                     <span className="tabular-nums font-semibold">
-                      {formatScore(totalScore)}
+                      {formatScore(totalScore + penaltyScore)}
                       {elimBonus > 0 && (
                         <span className="text-muted-foreground font-normal ml-1">
                           ({formatScore(elimBonus)})
                         </span>
                       )}
+                      {penaltyScore < 0 && (
+                        <span className="text-destructive font-normal ml-1">
+                          ({formatScore(penaltyScore)} pen)
+                        </span>
+                      )}
                     </span>
                   </div>
 
-                  <TeamStatsTable team={team} />
+                  <TeamStatsTable
+                    team={team}
+                    gameId={game.id}
+                    penaltiesByScorecard={penaltiesByScorecard}
+                    canEdit={canDelete}
+                    penaltyActions={penaltyActions}
+                  />
                 </section>
               );
             })}

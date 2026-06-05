@@ -1,5 +1,6 @@
 export { db, getDb, initDb } from "./client";
 export * from "./queries/admin";
+export * from "./queries/penalties";
 export * from "./queries/competition-tournament";
 export * from "./queries/centers";
 export * from "./queries/chomper";

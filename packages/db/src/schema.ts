@@ -24,6 +24,7 @@ export const gameOutcomeEnum = pgEnum("game_outcome", [
   "elimination",
   "draw",
   "aborted",
+  "forfeit",
 ]);
 
 export const teamResultEnum = pgEnum("team_result", ["win", "loss", "draw"]);
@@ -471,6 +472,10 @@ export const sm5GamePenalty = pgTable("sm5_game_penalty", {
   scoreValue: integer("score_value").notNull(),
   description: text("description").notNull(),
   time: integer("time"),
+  type: text("type").notNull().default("Common Foul"),
+  mvpValue: doublePrecision("mvp_value").notNull().default(0),
+  inGame: boolean("in_game").notNull().default(true),
+  rescinded: boolean("rescinded").notNull().default(false),
 });
 
 export const sm5GamePlayerInteraction = pgTable(

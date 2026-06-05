@@ -14,6 +14,9 @@ import {
   setGameCompetition,
   assignGameToMatch,
   removeGameFromMatch,
+  addPenalty,
+  updatePenalty,
+  deletePenalty,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -112,6 +115,58 @@ export async function removeGameFromMatchAction(
 ): Promise<void> {
   await requireCenterAdmin(gameId)
   await removeGameFromMatch(matchGameId)
+  await revalidateGame(gameId)
+}
+
+export async function addPenaltyAction(
+  gameId: string,
+  scorecardId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await addPenalty({
+    scorecardId,
+    gameId,
+    type: (formData.get("type") as string) || "Common Foul",
+    description: (formData.get("description") as string) || "",
+    scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
+    mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
+    inGame: false,
+  })
+  await revalidateGame(gameId)
+}
+
+export async function updatePenaltyAction(
+  gameId: string,
+  penaltyId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await updatePenalty(penaltyId, {
+    type: formData.get("type") as string,
+    description: formData.get("description") as string,
+    scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
+    mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
+  })
+  await revalidateGame(gameId)
+}
+
+export async function rescindPenaltyAction(
+  gameId: string,
+  penaltyId: string,
+  rescinded: boolean,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await updatePenalty(penaltyId, { rescinded })
+  await revalidateGame(gameId)
+}
+
+export async function deletePenaltyAction(
+  gameId: string,
+  penaltyId: string,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await deletePenalty(penaltyId)
   await revalidateGame(gameId)
 }
 
