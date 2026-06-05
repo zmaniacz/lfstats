@@ -23,6 +23,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
 import { formatDateTime, formatGameName } from "@/lib/format"
+import { getTeamColor } from "@/lib/team-colors"
 import {
   updateCompetitionAction,
   deleteCompetitionAction,
@@ -193,12 +194,16 @@ export default async function CompetitionDetailPage({
               </TableHeader>
               <TableBody>
                 {assignedGames.map((g) => {
-                  const label = `${g.roundName} · Match ${g.matchNumber} · Game ${g.gameNumber} · ${g.team1Name} vs ${g.team2Name}`
+                  const t1Color = getTeamColor(g.team1ColourEnum)
+                  const t2Color = getTeamColor(g.team2ColourEnum)
                   return (
                     <TableRow key={g.id}>
                       <TableCell>
                         <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
-                          {label}
+                          {g.roundName} · Match {g.matchNumber} · Game {g.gameNumber} ·{" "}
+                          <span className={t1Color?.text}>{g.team1Name}</span>
+                          {" vs "}
+                          <span className={t2Color?.text}>{g.team2Name}</span>
                         </Link>
                       </TableCell>
                       <TableCell className="tabular-nums">{formatDateTime(g.startTime)}</TableCell>
@@ -206,7 +211,7 @@ export default async function CompetitionDetailPage({
                       <TableCell className="text-right">
                         <DeleteEntityButton
                           id={g.matchGameId}
-                          label={label}
+                          label={`${g.roundName} · Match ${g.matchNumber} · Game ${g.gameNumber} · ${g.team1Name} vs ${g.team2Name}`}
                           description="This removes the game from its match slot. The game stays in the competition."
                           action={boundUnassignGame}
                           confirmLabel="Unassign"

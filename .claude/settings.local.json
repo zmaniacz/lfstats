@@ -18,7 +18,8 @@
       "Bash(python3 *)",
       "Bash(pnpm test-suite *)",
       "Bash(pnpm --filter chomper run test)",
-      "PowerShell(head -20)"
+      "PowerShell(head -20)",
+      "Bash(xargs grep -l \"penalties\\\\|GamePenalty\")"
     ]
   }
 }

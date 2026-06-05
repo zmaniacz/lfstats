@@ -103,9 +103,20 @@ export default async function GameDetailPage({
         )}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
-            {matchAssignment
-              ? `${matchAssignment.roundName} · Match ${matchAssignment.matchNumber} · Game ${matchAssignment.gameNumber} · ${displayTeams.map((t) => t.name).join(" vs ")}`
-              : formatGameName(game.description, game.startTime)}
+            {matchAssignment ? (() => {
+              const t1 = displayTeams.find((t) => t.id === matchAssignment.team1GameTeamId)
+              const t2 = displayTeams.find((t) => t.id === matchAssignment.team2GameTeamId)
+              const t1Color = t1 ? getTeamColor(t1.colourEnum) : undefined
+              const t2Color = t2 ? getTeamColor(t2.colourEnum) : undefined
+              return (
+                <>
+                  {matchAssignment.roundName} · Match {matchAssignment.matchNumber} · Game {matchAssignment.gameNumber} ·{" "}
+                  <span className={t1Color?.text}>{matchAssignment.team1Name}</span>
+                  {" vs "}
+                  <span className={t2Color?.text}>{matchAssignment.team2Name}</span>
+                </>
+              )
+            })() : formatGameName(game.description, game.startTime)}
           </h1>
           {session?.user && (
             <FavoriteButton

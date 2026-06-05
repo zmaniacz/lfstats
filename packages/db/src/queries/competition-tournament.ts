@@ -636,7 +636,9 @@ export type CompetitionAssignedGame = {
   matchNumber: number;
   gameNumber: number;
   team1Name: string;
+  team1ColourEnum: number;
   team2Name: string;
+  team2ColourEnum: number;
   startTime: Date;
   outcome: "score" | "elimination" | "draw" | "aborted";
   centerName: string;
@@ -684,6 +686,8 @@ export async function getCompetitionAssignedGamesForAdmin(
       gameNumber: competitionMatchGame.gameNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
+      team1ColourEnum: sql<number>`t1.colour_enum`,
+      team2ColourEnum: sql<number>`t2.colour_enum`,
       startTime: game.startTime,
       outcome: game.outcome,
       centerName: center.name,
@@ -693,6 +697,8 @@ export async function getCompetitionAssignedGamesForAdmin(
     .innerJoin(center, eq(center.id, game.centerId))
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(eq(competitionMatch.competitionId, competitionId))
     .orderBy(
       asc(competitionRound.roundNumber),
@@ -717,7 +723,9 @@ export async function getCompetitionAssignedGamesForAdmin(
     matchNumber: r.matchNumber,
     gameNumber: r.gameNumber,
     team1Name: teamMap.get(r.team1Id) ?? "Unknown",
+    team1ColourEnum: r.team1ColourEnum,
     team2Name: teamMap.get(r.team2Id) ?? "Unknown",
+    team2ColourEnum: r.team2ColourEnum,
     startTime: r.startTime,
     outcome: r.outcome,
     centerName: r.centerName,

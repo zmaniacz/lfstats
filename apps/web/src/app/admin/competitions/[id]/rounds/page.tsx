@@ -98,18 +98,6 @@ export default async function RoundsPage({
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {matches.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No matches yet.</p>
-                ) : (
-                  <SortableMatchList
-                    competitionId={id}
-                    roundId={round.id}
-                    matches={matches}
-                    deleteAction={boundDeleteMatch}
-                    reorderAction={boundReorder}
-                  />
-                )}
-
                 {teams.length >= 2 ? (
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Add Match</p>
@@ -126,6 +114,18 @@ export default async function RoundsPage({
                       Manage teams
                     </Link>
                   </p>
+                )}
+
+                {matches.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No matches yet.</p>
+                ) : (
+                  <SortableMatchList
+                    competitionId={id}
+                    roundId={round.id}
+                    matches={matches}
+                    deleteAction={boundDeleteMatch}
+                    reorderAction={boundReorder}
+                  />
                 )}
               </CardContent>
             </Card>
