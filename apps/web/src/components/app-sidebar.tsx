@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   CalendarIcon,
+  CardsIcon,
   CrosshairIcon,
   GameControllerIcon,
   HeartIcon,
@@ -70,6 +71,11 @@ const competitionNavItems = [
     title: "All Star",
     url: "/competitions/all-star",
     icon: <StarIcon />,
+  },
+  {
+    title: "Penalties",
+    url: "/competitions/penalties",
+    icon: <CardsIcon />,
   },
 ];
 

@@ -12,16 +12,18 @@ import {
 export function CompetitionSelector({
   competitions,
   activeId,
+  activeParamBase = "/competitions/standings",
 }: {
   competitions: { id: string; name: string }[]
   activeId: string
+  activeParamBase?: string
 }) {
   const router = useRouter()
 
   return (
     <Select
       value={activeId}
-      onValueChange={(id) => router.push(`/competitions/standings?competition=${id}`)}
+      onValueChange={(id) => router.push(`${activeParamBase}?competition=${id}`)}
     >
       <SelectTrigger className="w-64">
         <SelectValue />

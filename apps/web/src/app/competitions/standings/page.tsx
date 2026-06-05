@@ -100,7 +100,12 @@ export default async function StandingsPage({
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {i + 1}
                       </TableCell>
-                      <TableCell className="font-medium">{row.teamName}</TableCell>
+                      <TableCell className="font-medium">
+                        {row.teamName}
+                        {row.teamShortName && (
+                          <span className="text-muted-foreground font-normal ml-1">({row.teamShortName})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">
                         {row.matchPoints}
                       </TableCell>
@@ -180,7 +185,7 @@ function MatchCard({ match }: { match: CompetitionMatchResult }) {
           {(() => {
             const t1Total = (game1?.team1Score ?? 0) + (game2?.team1Score ?? 0)
             const t2Total = (game1?.team2Score ?? 0) + (game2?.team2Score ?? 0)
-            const diff = game1 && game2 ? t1Total - t2Total : null
+            const diff = (game1 || game2) ? t1Total - t2Total : null
             return (
               <>
                 {/* Team 1 row */}
@@ -191,7 +196,7 @@ function MatchCard({ match }: { match: CompetitionMatchResult }) {
                 <GameScore score={game2?.team1Score ?? null} result={game2?.team1Result ?? null} colourEnum={game2?.team1ColourEnum} slug={game2?.gameSlug} />
                 <ScoreDiff diff={diff} />
                 <span className="tabular-nums text-right font-semibold">
-                  {incomplete ? "" : `+${match.team1TotalPoints}`}
+                  {match.team1TotalPoints > 0 ? `+${match.team1TotalPoints}` : ""}
                 </span>
 
                 {/* Team 2 row */}
@@ -202,7 +207,7 @@ function MatchCard({ match }: { match: CompetitionMatchResult }) {
                 <GameScore score={game2?.team2Score ?? null} result={game2?.team2Result ?? null} colourEnum={game2?.team2ColourEnum} slug={game2?.gameSlug} />
                 <ScoreDiff diff={diff !== null ? -diff : null} />
                 <span className="tabular-nums text-right font-semibold">
-                  {incomplete ? "" : `+${match.team2TotalPoints}`}
+                  {match.team2TotalPoints > 0 ? `+${match.team2TotalPoints}` : ""}
                 </span>
               </>
             )
