@@ -10,6 +10,7 @@ import {
   createCompetitionMatch,
   deleteCompetitionMatch,
   getCompetitionMatchesByRound,
+  getCompetitionTeams,
   reorderCompetitionMatches,
 } from "@lfstats/db"
 import { auth } from "@/auth"
@@ -66,6 +67,33 @@ export async function deleteMatchAction(
 ): Promise<void> {
   await requireAdmin()
   await deleteCompetitionMatch(matchId)
+  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+}
+
+export async function generatePoolMatchesAction(
+  competitionId: string,
+  roundId: string,
+): Promise<void> {
+  await requireAdmin()
+  const [teams, existing] = await Promise.all([
+    getCompetitionTeams(competitionId),
+    getCompetitionMatchesByRound(roundId),
+  ])
+  let matchNumber =
+    existing.length > 0
+      ? Math.max(...existing.map((m) => m.matchNumber)) + 1
+      : 1
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      await createCompetitionMatch({
+        competitionId,
+        roundId,
+        matchNumber: matchNumber++,
+        team1Id: teams[i].id,
+        team2Id: teams[j].id,
+      })
+    }
+  }
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }
 

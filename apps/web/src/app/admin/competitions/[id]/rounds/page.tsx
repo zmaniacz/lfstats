@@ -13,6 +13,7 @@ import { CompetitionRoundForm } from "@/components/admin/competition/Competition
 import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm"
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
 import { SortableMatchList } from "@/components/admin/competition/SortableMatchList"
+import { GeneratePoolMatchesButton } from "@/components/admin/competition/GeneratePoolMatchesButton"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -21,6 +22,7 @@ import {
   createMatchAction,
   deleteMatchAction,
   reorderMatchesAction,
+  generatePoolMatchesAction,
 } from "./actions"
 
 export default async function RoundsPage({
@@ -103,6 +105,13 @@ export default async function RoundsPage({
               <CardContent className="space-y-4">
                 {teams.length >= 2 ? (
                   <div>
+                    {round.type === "pool" && (
+                      <div className="mb-4">
+                        <GeneratePoolMatchesButton
+                          action={generatePoolMatchesAction.bind(null, id, round.id)}
+                        />
+                      </div>
+                    )}
                     <p className="text-sm text-muted-foreground mb-2">Add Match</p>
                     <CompetitionMatchForm
                       roundId={round.id}
