@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation"
+import Link from "next/link"
 import {
   getCompetitiveCompetitions,
   getCompetitionStandings,
+  getCompetitionMatchResults,
+  type CompetitionMatchResult,
 } from "@lfstats/db"
 import {
   Table,
@@ -12,7 +15,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { CompetitionSelector } from "./CompetitionSelector"
+import { getTeamColor } from "@/lib/team-colors"
 
 export default async function StandingsPage({
   searchParams,
@@ -33,11 +38,27 @@ export default async function StandingsPage({
   }
 
   const activeId = competitionId ?? competitions[0].id
-
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 
-  const standings = await getCompetitionStandings(activeId)
+  const [standings, matchResults] = await Promise.all([
+    getCompetitionStandings(activeId),
+    getCompetitionMatchResults(activeId),
+  ])
+
+  // Group matches by round
+  const rounds = new Map<string, { roundName: string; roundNumber: number; matches: CompetitionMatchResult[] }>()
+  for (const match of matchResults) {
+    if (!rounds.has(match.roundId)) {
+      rounds.set(match.roundId, {
+        roundName: match.roundName,
+        roundNumber: match.roundNumber,
+        matches: [],
+      })
+    }
+    rounds.get(match.roundId)!.matches.push(match)
+  }
+  const sortedRounds = [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber)
 
   return (
     <div className="space-y-6">
@@ -103,7 +124,135 @@ export default async function StandingsPage({
           )}
         </CardContent>
       </Card>
+
+      {sortedRounds.map((round) => (
+        <div key={round.roundName} className="space-y-3">
+          <h3 className="text-lg font-semibold">{round.roundName}</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {round.matches.map((match) => (
+              <MatchCard key={match.matchId} match={match} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
+function MatchCard({ match }: { match: CompetitionMatchResult }) {
+  const game1 = match.games.find((g) => g.gameNumber === 1)
+  const game2 = match.games.find((g) => g.gameNumber === 2)
+  const incomplete = match.matchWinner === "incomplete"
+
+  const t1Label = match.team1ShortName ?? match.team1Name
+  const t2Label = match.team2ShortName ?? match.team2Name
+  const winnerLabel =
+    match.matchWinner === "team1" ? t1Label :
+    match.matchWinner === "team2" ? t2Label : null
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">
+            Match {match.matchNumber}
+          </span>
+          {!incomplete && (
+            <Badge variant={match.matchWinner === "draw" ? "secondary" : "default"} className="text-xs">
+              {match.matchWinner === "draw" ? "Draw" : `${winnerLabel} wins`}
+            </Badge>
+          )}
+          {incomplete && (
+            <Badge variant="outline" className="text-xs">In progress</Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-[1fr_auto_auto_auto_1fr] items-center gap-x-2 text-sm">
+          {/* Header row */}
+          <span />
+          <span className="text-xs text-muted-foreground text-center">G1</span>
+          <span className="text-xs text-muted-foreground text-center">G2</span>
+          <span className="text-xs text-muted-foreground text-center">+/-</span>
+          <span />
+
+          {/* Compute diff once */}
+          {(() => {
+            const t1Total = (game1?.team1Score ?? 0) + (game2?.team1Score ?? 0)
+            const t2Total = (game1?.team2Score ?? 0) + (game2?.team2Score ?? 0)
+            const diff = game1 && game2 ? t1Total - t2Total : null
+            return (
+              <>
+                {/* Team 1 row */}
+                <span className={match.matchWinner === "team1" ? "font-semibold truncate" : "truncate text-muted-foreground"}>
+                  {t1Label}
+                </span>
+                <GameScore score={game1?.team1Score ?? null} result={game1?.team1Result ?? null} colourEnum={game1?.team1ColourEnum} slug={game1?.gameSlug} />
+                <GameScore score={game2?.team1Score ?? null} result={game2?.team1Result ?? null} colourEnum={game2?.team1ColourEnum} slug={game2?.gameSlug} />
+                <ScoreDiff diff={diff} />
+                <span className="tabular-nums text-right font-semibold">
+                  {incomplete ? "" : `+${match.team1TotalPoints}`}
+                </span>
+
+                {/* Team 2 row */}
+                <span className={match.matchWinner === "team2" ? "font-semibold truncate" : "truncate text-muted-foreground"}>
+                  {t2Label}
+                </span>
+                <GameScore score={game1?.team2Score ?? null} result={game1?.team2Result ?? null} colourEnum={game1?.team2ColourEnum} slug={game1?.gameSlug} />
+                <GameScore score={game2?.team2Score ?? null} result={game2?.team2Result ?? null} colourEnum={game2?.team2ColourEnum} slug={game2?.gameSlug} />
+                <ScoreDiff diff={diff !== null ? -diff : null} />
+                <span className="tabular-nums text-right font-semibold">
+                  {incomplete ? "" : `+${match.team2TotalPoints}`}
+                </span>
+              </>
+            )
+          })()}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ScoreDiff({ diff }: { diff: number | null }) {
+  if (diff === null) {
+    return <span className="tabular-nums text-center text-muted-foreground">—</span>
+  }
+  const label = diff > 0 ? `+${diff.toLocaleString("en-US")}` : diff.toLocaleString("en-US")
+  const colorClass =
+    diff > 0 ? "text-green-600 dark:text-green-400" :
+    diff < 0 ? "text-destructive" :
+    "text-muted-foreground"
+  return <span className={`tabular-nums text-center font-medium ${colorClass}`}>{label}</span>
+}
+
+function GameScore({
+  score,
+  result,
+  colourEnum,
+  slug,
+}: {
+  score: number | null
+  result: string | null
+  colourEnum?: number
+  slug?: string
+}) {
+  if (score === null) {
+    return <span className="tabular-nums text-center text-muted-foreground">—</span>
+  }
+  const color = colourEnum != null ? getTeamColor(colourEnum) : undefined
+  const colorClass = color?.text ?? "text-muted-foreground"
+  const formatted = score.toLocaleString("en-US")
+  const cell = (
+    <span className={`tabular-nums text-center font-medium ${colorClass}`}>
+      {formatted}
+    </span>
+  )
+  if (slug) {
+    return (
+      <Link href={`/games/${slug}`} className="hover:underline">
+        {cell}
+      </Link>
+    )
+  }
+  return cell
+}

@@ -946,6 +946,166 @@ export async function getCompetitionStandings(
   }).sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
 }
 
+// ---------------------------------------------------------------------------
+// Match results (standings page)
+// ---------------------------------------------------------------------------
+
+export type CompetitionMatchResult = {
+  matchId: string;
+  matchNumber: number;
+  roundId: string;
+  roundName: string;
+  roundNumber: number;
+  team1Id: string;
+  team1Name: string;
+  team1ShortName: string | null;
+  team2Id: string;
+  team2Name: string;
+  team2ShortName: string | null;
+  games: {
+    gameNumber: number;
+    gameId: string;
+    gameSlug: string;
+    team1Score: number | null;
+    team2Score: number | null;
+    team1Result: string | null;
+    team2Result: string | null;
+    team1ColourEnum: number;
+    team2ColourEnum: number;
+  }[];
+  // match-level outcome (compare combined scores across both games)
+  matchWinner: "team1" | "team2" | "draw" | "incomplete";
+  team1MatchPoints: number; // match bonus only (2/1/0)
+  team2MatchPoints: number;
+  team1TotalPoints: number; // game points + match bonus
+  team2TotalPoints: number;
+};
+
+export async function getCompetitionMatchResults(
+  competitionId: string,
+): Promise<CompetitionMatchResult[]> {
+  const gameRows = await db
+    .select({
+      matchId: competitionMatch.id,
+      matchNumber: competitionMatch.matchNumber,
+      roundId: competitionRound.id,
+      roundName: competitionRound.name,
+      roundNumber: competitionRound.roundNumber,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+      gameNumber: competitionMatchGame.gameNumber,
+      gameId: game.id,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      team1Score: sql<number>`t1.score + t1.elimination_bonus`,
+      team2Score: sql<number>`t2.score + t2.elimination_bonus`,
+      team1Result: sql<string>`t1.result`,
+      team2Result: sql<string>`t2.result`,
+      team1ColourEnum: sql<number>`t1.colour_enum`,
+      team2ColourEnum: sql<number>`t2.colour_enum`,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(
+      asc(competitionRound.roundNumber),
+      asc(competitionMatch.matchNumber),
+      asc(competitionMatchGame.gameNumber),
+    );
+
+  if (gameRows.length === 0) return [];
+
+  // Fetch team names and short names
+  const teamIds = [...new Set(gameRows.flatMap((r) => [r.team1Id, r.team2Id]))];
+  const teams = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName })
+    .from(competitionTeam)
+    .where(inArray(competitionTeam.id, teamIds));
+  const teamMap = new Map(teams.map((t) => [t.id, t]));
+
+  // Group into matches
+  const matchOrder: string[] = [];
+  const matchMap = new Map<string, Omit<CompetitionMatchResult, "matchWinner" | "team1MatchPoints" | "team2MatchPoints" | "team1TotalPoints" | "team2TotalPoints"> & { games: CompetitionMatchResult["games"] }>();
+
+  for (const row of gameRows) {
+    if (!matchMap.has(row.matchId)) {
+      matchOrder.push(row.matchId);
+      const t1 = teamMap.get(row.team1Id);
+      const t2 = teamMap.get(row.team2Id);
+      matchMap.set(row.matchId, {
+        matchId: row.matchId,
+        matchNumber: row.matchNumber,
+        roundId: row.roundId,
+        roundName: row.roundName,
+        roundNumber: row.roundNumber,
+        team1Id: row.team1Id,
+        team1Name: t1?.name ?? "Unknown",
+        team1ShortName: t1?.shortName ?? null,
+        team2Id: row.team2Id,
+        team2Name: t2?.name ?? "Unknown",
+        team2ShortName: t2?.shortName ?? null,
+        games: [],
+      });
+    }
+    matchMap.get(row.matchId)!.games.push({
+      gameNumber: row.gameNumber,
+      gameId: row.gameId,
+      gameSlug: row.gameSlug,
+      team1Score: row.team1Score,
+      team2Score: row.team2Score,
+      team1Result: row.team1Result,
+      team2Result: row.team2Result,
+      team1ColourEnum: row.team1ColourEnum,
+      team2ColourEnum: row.team2ColourEnum,
+    });
+  }
+
+  return matchOrder.map((id) => {
+    const m = matchMap.get(id)!;
+    if (m.games.length < 2) {
+      return { ...m, matchWinner: "incomplete" as const, team1MatchPoints: 0, team2MatchPoints: 0, team1TotalPoints: 0, team2TotalPoints: 0 };
+    }
+    const t1Total = m.games.reduce((s, g) => s + (g.team1Score ?? 0), 0);
+    const t2Total = m.games.reduce((s, g) => s + (g.team2Score ?? 0), 0);
+    let matchWinner: CompetitionMatchResult["matchWinner"];
+    let team1MatchPoints: number;
+    let team2MatchPoints: number;
+    if (t1Total > t2Total) {
+      matchWinner = "team1";
+      team1MatchPoints = 2;
+      team2MatchPoints = 0;
+    } else if (t2Total > t1Total) {
+      matchWinner = "team2";
+      team1MatchPoints = 0;
+      team2MatchPoints = 2;
+    } else {
+      matchWinner = "draw";
+      team1MatchPoints = 1;
+      team2MatchPoints = 1;
+    }
+    // Game points: 2 per win, 1 per draw
+    let t1GamePoints = 0;
+    let t2GamePoints = 0;
+    for (const g of m.games) {
+      if (g.team1Result === "win") { t1GamePoints += 2; }
+      else if (g.team2Result === "win") { t2GamePoints += 2; }
+      else { t1GamePoints += 1; t2GamePoints += 1; }
+    }
+    return {
+      ...m,
+      matchWinner,
+      team1MatchPoints,
+      team2MatchPoints,
+      team1TotalPoints: t1GamePoints + team1MatchPoints,
+      team2TotalPoints: t2GamePoints + team2MatchPoints,
+    };
+  });
+}
+
 export async function getGameMatchAssignment(
   gameId: string,
 ): Promise<GameMatchAssignment | null> {
