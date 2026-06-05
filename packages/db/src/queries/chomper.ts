@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { eq, isNull, and, sql, inArray, gte, desc } from "drizzle-orm";
+import { eq, isNull, and, sql, inArray, gte, desc, ne } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -312,4 +312,121 @@ export async function insertScorecardMvps(
 ) {
   if (rows.length === 0) return;
   await tx.insert(sm5ScorecardMvp).values(rows);
+}
+
+// ---------------------------------------------------------------------------
+// MVP Recalculation
+// ---------------------------------------------------------------------------
+
+export async function getAllMvpModels() {
+  return db.select().from(sm5MvpModel);
+}
+
+export async function getGameIdsPage(limit: number, offset: number) {
+  return db
+    .select({ id: game.id })
+    .from(game)
+    .orderBy(game.id)
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getGameForRecalc(gameId: string) {
+  const [row] = await db
+    .select({
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      outcome: game.outcome,
+    })
+    .from(game)
+    .where(eq(game.id, gameId));
+  return row ?? null;
+}
+
+export async function getTeamsForRecalc(gameId: string) {
+  return db
+    .select({
+      id: sm5GameTeam.id,
+      tdfTeamIndex: sm5GameTeam.tdfTeamIndex,
+      result: sm5GameTeam.result,
+    })
+    .from(sm5GameTeam)
+    .where(eq(sm5GameTeam.gameId, gameId));
+}
+
+export async function getScorecardsForRecalc(gameId: string) {
+  return db
+    .select({
+      id: sm5Scorecard.id,
+      position: sm5Scorecard.position,
+      score: sm5Scorecard.score,
+      eliminated: sm5Scorecard.eliminated,
+      mvpModelId: sm5Scorecard.mvpModelId,
+      shotsHit: sm5Scorecard.shotsHit,
+      shotsFired: sm5Scorecard.shotsFired,
+      timesHit: sm5Scorecard.timesHit,
+      timesHitByMissile: sm5Scorecard.timesHitByMissile,
+      missileHits: sm5Scorecard.missileHits,
+      nukesDetonated: sm5Scorecard.nukesDetonated,
+      nukesActivated: sm5Scorecard.nukesActivated,
+      nukesCanceled: sm5Scorecard.nukesCanceled,
+      teamNukesCanceled: sm5Scorecard.teamNukesCanceled,
+      shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
+      shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+      shotsHitOpponent3hit: sm5Scorecard.shotsHitOpponent3hit,
+      shotsHitOpponent: sm5Scorecard.shotsHitOpponent,
+      shotsHitTeam: sm5Scorecard.shotsHitTeam,
+      missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
+      missilesHitTeam: sm5Scorecard.missilesHitTeam,
+      missilesHitOpponentMedic: sm5Scorecard.missilesHitOpponentMedic,
+      missilesHitTeamMedic: sm5Scorecard.missilesHitTeamMedic,
+      lifeBoost: sm5Scorecard.lifeBoost,
+      ammoBoost: sm5Scorecard.ammoBoost,
+      livesLeft: sm5Scorecard.livesLeft,
+      shotsLeft: sm5Scorecard.shotsLeft,
+      penalties: sm5Scorecard.penalties,
+      tdfTeamIndex: sm5GameTeam.tdfTeamIndex,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .where(eq(sm5Scorecard.gameId, gameId));
+}
+
+export async function getPenaltyMvpAggregatesForGame(gameId: string) {
+  return db
+    .select({
+      scorecardId: sm5GamePenalty.scorecardId,
+      total: sql<number>`coalesce(sum(${sm5GamePenalty.mvpValue}), 0)`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(sm5GamePenalty)
+    .where(
+      and(
+        eq(sm5GamePenalty.gameId, gameId),
+        eq(sm5GamePenalty.rescinded, false),
+        ne(sm5GamePenalty.mvpValue, 0),
+      ),
+    )
+    .groupBy(sm5GamePenalty.scorecardId);
+}
+
+export async function recalcMvpForGame(
+  tx: Tx,
+  scorecardIds: string[],
+  updates: { id: string; mvpPoints: number; mvpModelId: string }[],
+  components: (typeof sm5ScorecardMvp.$inferInsert)[],
+) {
+  if (scorecardIds.length === 0) return;
+  await tx
+    .delete(sm5ScorecardMvp)
+    .where(inArray(sm5ScorecardMvp.scorecardId, scorecardIds));
+  for (const u of updates) {
+    await tx
+      .update(sm5Scorecard)
+      .set({ mvpPoints: u.mvpPoints, mvpModelId: u.mvpModelId })
+      .where(eq(sm5Scorecard.id, u.id));
+  }
+  if (components.length > 0) {
+    await tx.insert(sm5ScorecardMvp).values(components);
+  }
 }
