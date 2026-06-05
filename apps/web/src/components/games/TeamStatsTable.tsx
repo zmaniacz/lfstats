@@ -19,7 +19,7 @@ import type {
   GameDetailTeam,
   PenaltyRecord,
 } from "@lfstats/db";
-import { CardsIcon } from "@phosphor-icons/react";
+import { CardsIcon, WarningIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -33,6 +33,7 @@ type Props = {
   penaltiesByScorecard: Map<string, PenaltyRecord[]>;
   canEdit: boolean;
   penaltyActions: PenaltyActions;
+  mercenaryAction?: (scorecardId: string, isMercenary: boolean) => Promise<void>;
 };
 
 export function TeamStatsTable({
@@ -41,6 +42,7 @@ export function TeamStatsTable({
   penaltiesByScorecard,
   canEdit,
   penaltyActions,
+  mercenaryAction,
 }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(
@@ -79,6 +81,9 @@ export function TeamStatsTable({
                 onClick={() => openSheet(player)}
               >
                 <TableCell className="flex font-medium items-center gap-1.5">
+                  {(player.isMercenary || !player.playerId) && (
+                    <WarningIcon className="size-3.5 text-orange-500 shrink-0" />
+                  )}
                   {player.playerId !== null ? (
                     <Link
                       href={`/players/${player.iplId?.replace(/^#/, "")}`}
@@ -116,10 +121,12 @@ export function TeamStatsTable({
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
                   {(() => {
-                    const penaltySum = (penaltiesByScorecard.get(player.id) ?? [])
+                    const penaltySum = (
+                      penaltiesByScorecard.get(player.id) ?? []
+                    )
                       .filter((p) => !p.rescinded)
-                      .reduce((s, p) => s + p.scoreValue, 0)
-                    const adjusted = (player.score ?? 0) + penaltySum
+                      .reduce((s, p) => s + p.scoreValue, 0);
+                    const adjusted = (player.score ?? 0) + penaltySum;
                     return (
                       <>
                         {formatScore(adjusted)}
@@ -129,7 +136,7 @@ export function TeamStatsTable({
                           </span>
                         )}
                       </>
-                    )
+                    );
                   })()}
                 </TableCell>
                 <TableCell
@@ -195,6 +202,7 @@ export function TeamStatsTable({
         }
         canEdit={canEdit}
         penaltyActions={penaltyActions}
+        mercenaryAction={mercenaryAction}
       />
     </>
   );

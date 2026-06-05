@@ -9,6 +9,7 @@ import {
   playerCallsignHistory,
   game,
   sm5GameTeam,
+  sm5Scorecard,
   center,
   competition,
 } from "../schema";
@@ -147,6 +148,16 @@ export async function getCompetitionTeamById(
   return row ?? null;
 }
 
+export async function updateCompetitionTeam(
+  id: string,
+  data: { name: string; shortName: string | null },
+): Promise<void> {
+  await db
+    .update(competitionTeam)
+    .set({ name: data.name, shortName: data.shortName })
+    .where(eq(competitionTeam.id, id));
+}
+
 export async function getCompetitionTeamRoster(
   teamId: string,
 ): Promise<CompetitionTeamRosterEntry[]> {
@@ -163,6 +174,81 @@ export async function getCompetitionTeamRoster(
     .orderBy(asc(player.currentCallsign));
 
   return rows;
+}
+
+export type TeamGameParticipant = {
+  playerId: string;
+  iplId: string;
+  currentCallsign: string;
+  isMercenary: boolean;
+};
+
+export async function getTeamGameParticipants(
+  competitionTeamId: string,
+): Promise<TeamGameParticipant[]> {
+  // Find all players who have a scorecard on this competition team's game-team rows,
+  // excluding those already on the official roster.
+  // The join path: competition_team -> competition_match (team1_id or team2_id)
+  //   -> competition_match_game -> sm5_game_team (the right side) -> sm5_scorecard -> player
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      currentCallsign: player.currentCallsign,
+      isMercenary: sm5Scorecard.isMercenary,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(
+      and(
+        // scorecard's game team must be one assigned to this competition team
+        sql`${sm5Scorecard.teamId} IN (
+          SELECT
+            CASE
+              WHEN cm.team1_id = ${competitionTeamId} THEN cmg.team1_game_team_id
+              ELSE cmg.team2_game_team_id
+            END
+          FROM competition_match cm
+          JOIN competition_match_game cmg ON cmg.match_id = cm.id
+          WHERE cm.team1_id = ${competitionTeamId} OR cm.team2_id = ${competitionTeamId}
+        )`,
+        // exclude players already on the official roster
+        sql`${sm5Scorecard.playerId} NOT IN (
+          SELECT player_id FROM competition_team_player
+          WHERE competition_team_id = ${competitionTeamId}
+        )`,
+      ),
+    )
+    .groupBy(player.id, player.iplId, player.currentCallsign, sm5Scorecard.isMercenary)
+    .orderBy(asc(player.currentCallsign));
+
+  return rows;
+}
+
+export async function setPlayerMercenary(
+  competitionTeamId: string,
+  playerId: string,
+  isMercenary: boolean,
+): Promise<void> {
+  // Update all scorecards for this player on game-teams belonging to this competition team
+  await db
+    .update(sm5Scorecard)
+    .set({ isMercenary })
+    .where(
+      and(
+        eq(sm5Scorecard.playerId, playerId),
+        sql`${sm5Scorecard.teamId} IN (
+          SELECT
+            CASE
+              WHEN cm.team1_id = ${competitionTeamId} THEN cmg.team1_game_team_id
+              ELSE cmg.team2_game_team_id
+            END
+          FROM competition_match cm
+          JOIN competition_match_game cmg ON cmg.match_id = cm.id
+          WHERE cm.team1_id = ${competitionTeamId} OR cm.team2_id = ${competitionTeamId}
+        )`,
+      ),
+    );
 }
 
 export async function createCompetitionTeam(data: {

@@ -8,9 +8,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { formatPct, formatMs } from "@/lib/format"
 import { getPosition } from "@/lib/positions"
 import { PenaltyManager } from "@/components/games/PenaltyManager"
+import { WarningIcon } from "@phosphor-icons/react"
+import { useTransition } from "react"
 
 type PenaltyActions = React.ComponentProps<typeof PenaltyManager>["actions"]
 
@@ -22,6 +25,7 @@ type Props = {
   penalties: PenaltyRecord[]
   canEdit: boolean
   penaltyActions: PenaltyActions
+  mercenaryAction?: (scorecardId: string, isMercenary: boolean) => Promise<void>
 }
 
 const EM_DASH = "—"
@@ -57,7 +61,9 @@ function StatSection({
   )
 }
 
-export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties, canEdit, penaltyActions }: Props) {
+export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties, canEdit, penaltyActions, mercenaryAction }: Props) {
+  const [isMercPending, startMercTransition] = useTransition()
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-md overflow-y-auto" aria-describedby={undefined}>
@@ -70,6 +76,27 @@ export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties
                   {getPosition(player.position)?.label ?? `Pos ${player.position}`}
                 </Badge>
               </div>
+              {(player.isMercenary || canEdit) && (
+                <div className="flex items-center gap-2 pt-1">
+                  {player.isMercenary && (
+                    <span className="flex items-center gap-1 text-orange-500 text-sm">
+                      <WarningIcon className="size-4" />
+                      Mercenary
+                    </span>
+                  )}
+                  {canEdit && mercenaryAction && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs ml-auto"
+                      disabled={isMercPending}
+                      onClick={() => startMercTransition(() => mercenaryAction(player.id, !player.isMercenary))}
+                    >
+                      {player.isMercenary ? "Unmark Merc" : "Mark as Merc"}
+                    </Button>
+                  )}
+                </div>
+              )}
             </SheetHeader>
 
             <div className="space-y-5 px-4 pb-6">

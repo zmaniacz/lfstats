@@ -219,6 +219,7 @@ export type GameDetailPlayer = {
   // Targets and penalties
   targetsDestroyed: number;
   penalties: number;
+  isMercenary: boolean;
   // Uptime & downtime (ms)
   uptime: number;
   resupplyDowntime: number;
@@ -380,6 +381,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         spSpent: sm5Scorecard.spSpent,
         targetsDestroyed: sm5Scorecard.targetsDestroyed,
         penalties: sm5Scorecard.penalties,
+        isMercenary: sm5Scorecard.isMercenary,
         uptime: sm5Scorecard.uptime,
         resupplyDowntime: sm5Scorecard.resupplyDowntime,
         otherDowntime: sm5Scorecard.otherDowntime,
@@ -531,6 +533,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       spSpent: sc.spSpent,
       targetsDestroyed: sc.targetsDestroyed,
       penalties: sc.penalties,
+      isMercenary: sc.isMercenary,
       uptime: sc.uptime,
       resupplyDowntime: sc.resupplyDowntime,
       otherDowntime: sc.otherDowntime,
@@ -727,6 +730,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
           // Targets and penalties
           targetsDestroyed: sm5Scorecard.targetsDestroyed,
           penalties: sm5Scorecard.penalties,
+          isMercenary: sm5Scorecard.isMercenary,
           // Uptime & downtime
           uptime: sm5Scorecard.uptime,
           resupplyDowntime: sm5Scorecard.resupplyDowntime,
@@ -897,6 +901,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         spSpent: sc.spSpent,
         targetsDestroyed: sc.targetsDestroyed,
         penalties: sc.penalties,
+        isMercenary: sc.isMercenary,
         uptime: sc.uptime,
         resupplyDowntime: sc.resupplyDowntime,
         otherDowntime: sc.otherDowntime,
@@ -1138,4 +1143,14 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
     })),
     nonPlayerActors: nonPlayerActorRows,
   };
+}
+
+export async function setScorecardMercenary(
+  scorecardId: string,
+  isMercenary: boolean,
+): Promise<void> {
+  await db
+    .update(sm5Scorecard)
+    .set({ isMercenary })
+    .where(eq(sm5Scorecard.id, scorecardId));
 }

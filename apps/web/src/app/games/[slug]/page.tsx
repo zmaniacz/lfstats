@@ -41,6 +41,7 @@ import {
   rescindPenaltyAction,
   toggleExcludeAction,
   updatePenaltyAction,
+  setScorecardMercenaryAction,
 } from "./actions";
 
 export default async function GameDetailPage({
@@ -103,6 +104,10 @@ export default async function GameDetailPage({
     rescindAction: rescindPenaltyAction,
     deleteAction: deletePenaltyAction,
   };
+
+  const mercenaryAction = canDelete
+    ? setScorecardMercenaryAction.bind(null, game.id)
+    : undefined;
 
   const displayTeams = matchAssignment
     ? game.teams.map((t) => ({
@@ -299,6 +304,7 @@ export default async function GameDetailPage({
                     penaltiesByScorecard={penaltiesByScorecard}
                     canEdit={canDelete}
                     penaltyActions={penaltyActions}
+                    mercenaryAction={mercenaryAction}
                   />
                 </section>
               );

@@ -4,6 +4,7 @@ import {
   getCompetitionById,
   getCompetitionTeamById,
   getCompetitionTeamRoster,
+  getTeamGameParticipants,
 } from "@lfstats/db"
 import { PlayerRosterSearch } from "@/components/admin/competition/PlayerRosterSearch"
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
@@ -16,7 +17,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { addPlayerAction, removePlayerAction, searchPlayersAction } from "./actions"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { addPlayerAction, removePlayerAction, searchPlayersAction, updateTeamAction, setMercenaryAction, addParticipantToRosterAction } from "./actions"
+import { ParticipantActions } from "./ParticipantActions"
 
 export default async function TeamRosterPage({
   params,
@@ -24,16 +29,20 @@ export default async function TeamRosterPage({
   params: Promise<{ id: string; teamId: string }>
 }) {
   const { id, teamId } = await params
-  const [comp, team, roster] = await Promise.all([
+  const [comp, team, roster, participants] = await Promise.all([
     getCompetitionById(id),
     getCompetitionTeamById(teamId),
     getCompetitionTeamRoster(teamId),
+    getTeamGameParticipants(teamId),
   ])
 
   if (!comp || !team) notFound()
 
+  const boundUpdate = updateTeamAction.bind(null, id, teamId)
   const boundAdd = addPlayerAction.bind(null, id, teamId)
   const boundRemove = removePlayerAction.bind(null, id, teamId)
+  const boundAddParticipant = addParticipantToRosterAction.bind(null, id, teamId)
+  const boundSetMerc = setMercenaryAction.bind(null, id, teamId)
 
   return (
     <div className="space-y-6">
@@ -49,6 +58,25 @@ export default async function TeamRosterPage({
           <p className="text-sm text-muted-foreground">{team.shortName}</p>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Edit Team</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={boundUpdate} className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="team-name" className="text-xs">Name</Label>
+              <Input id="team-name" name="name" defaultValue={team.name} className="h-8 text-sm w-64" required />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="team-short-name" className="text-xs">Short Name</Label>
+              <Input id="team-short-name" name="shortName" defaultValue={team.shortName ?? ""} placeholder="e.g. ALPH" className="h-8 text-sm w-28" />
+            </div>
+            <Button type="submit" size="sm">Save</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -112,6 +140,52 @@ export default async function TeamRosterPage({
           )}
         </CardContent>
       </Card>
+
+      {participants.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Game Participants ({participants.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Players who appeared in games for this team but are not on the official roster.
+            </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Callsign</TableHead>
+                  <TableHead>IPL ID</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {participants.map((p) => (
+                  <TableRow key={p.playerId} className={p.isMercenary ? "opacity-60" : ""}>
+                    <TableCell className="font-medium">
+                      <Link href={`/players/${p.iplId.replace("#", "")}`} className="hover:underline">
+                        {p.currentCallsign}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">{p.iplId}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {p.isMercenary ? "Mercenary" : "Unclassified"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ParticipantActions
+                        playerId={p.playerId}
+                        isMercenary={p.isMercenary}
+                        addAction={boundAddParticipant}
+                        mercAction={boundSetMerc}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

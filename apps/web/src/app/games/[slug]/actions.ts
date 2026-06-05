@@ -17,6 +17,7 @@ import {
   addPenalty,
   updatePenalty,
   deletePenalty,
+  setScorecardMercenary,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -167,6 +168,16 @@ export async function deletePenaltyAction(
 ): Promise<void> {
   await requireCenterAdmin(gameId)
   await deletePenalty(penaltyId)
+  await revalidateGame(gameId)
+}
+
+export async function setScorecardMercenaryAction(
+  gameId: string,
+  scorecardId: string,
+  isMercenary: boolean,
+): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await setScorecardMercenary(scorecardId, isMercenary)
   await revalidateGame(gameId)
 }
 

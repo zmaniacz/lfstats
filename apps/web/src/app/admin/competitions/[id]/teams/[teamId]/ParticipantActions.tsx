@@ -1,0 +1,40 @@
+"use client"
+
+import { useTransition } from "react"
+import { Button } from "@/components/ui/button"
+
+type Props = {
+  playerId: string
+  isMercenary: boolean
+  addAction: (playerId: string) => Promise<void>
+  mercAction: (playerId: string, isMercenary: boolean) => Promise<void>
+}
+
+export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
+  const [isPending, startTransition] = useTransition()
+
+  return (
+    <div className="flex gap-1 justify-end">
+      {!isMercenary && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          disabled={isPending}
+          onClick={() => startTransition(() => addAction(playerId))}
+        >
+          Add to Roster
+        </Button>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs"
+        disabled={isPending}
+        onClick={() => startTransition(() => mercAction(playerId, !isMercenary))}
+      >
+        {isMercenary ? "Unmark Merc" : "Mark as Merc"}
+      </Button>
+    </div>
+  )
+}
