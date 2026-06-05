@@ -12,7 +12,7 @@ import {
   center,
   competition,
 } from "../schema";
-import { eq, and, asc, ilike, inArray, not, or, sql } from "drizzle-orm";
+import { eq, and, asc, desc, ilike, inArray, not, or, sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -761,6 +761,189 @@ export async function getCompetitionGameNavigation(
     position: idx + 1,
     total: rows.length,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Competitive competition list (public-facing pages)
+// ---------------------------------------------------------------------------
+
+export type CompetitiveCompetitionSummary = {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string | null;
+};
+
+export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetitionSummary[]> {
+  return db
+    .select({
+      id: competition.id,
+      name: competition.name,
+      startDate: competition.startDate,
+      endDate: competition.endDate,
+    })
+    .from(competition)
+    .where(eq(competition.type, "competitive"))
+    .orderBy(desc(competition.startDate));
+}
+
+// ---------------------------------------------------------------------------
+// Standings
+// ---------------------------------------------------------------------------
+
+export type CompetitionStandingsRow = {
+  teamId: string;
+  teamName: string;
+  matchPoints: number;
+  matchWins: number;
+  matchLosses: number;
+  matchDraws: number;
+  gameWins: number;
+  gameLosses: number;
+  gameDraws: number;
+  teamEliminations: number; // # of games where the opposing team was fully eliminated
+  scoreFor: number;
+  scoreAgainst: number;
+};
+
+export async function getCompetitionStandings(
+  competitionId: string,
+): Promise<CompetitionStandingsRow[]> {
+  // Pull every assigned match-game with both teams' scores and results.
+  // We need:
+  //   - match-level W/L/D (compare combined score+elim_bonus across both games)
+  //   - game-level W/L/D (sm5_game_team.result per game)
+  //   - full-team eliminations (opposing sm5_game_team.eliminated = true)
+  //   - score totals for ratio
+
+  const gameRows = await db
+    .select({
+      matchId: competitionMatch.id,
+      gameNumber: competitionMatchGame.gameNumber,
+      // team1 perspective
+      team1Id: competitionMatch.team1Id,
+      team1Score: sql<number>`t1.score + t1.elimination_bonus`,
+      team1Result: sql<string>`t1.result`,
+      team1EliminatedOpponent: sql<boolean>`t2.eliminated`,
+      // team2 perspective
+      team2Id: competitionMatch.team2Id,
+      team2Score: sql<number>`t2.score + t2.elimination_bonus`,
+      team2Result: sql<string>`t2.result`,
+      team2EliminatedOpponent: sql<boolean>`t1.eliminated`,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(
+      sql`sm5_game_team t1`,
+      sql`t1.id = ${competitionMatchGame.team1GameTeamId}`,
+    )
+    .innerJoin(
+      sql`sm5_game_team t2`,
+      sql`t2.id = ${competitionMatchGame.team2GameTeamId}`,
+    )
+    .where(eq(competitionMatch.competitionId, competitionId));
+
+  if (gameRows.length === 0) return [];
+
+  // Group games by match
+  const matchMap = new Map<
+    string,
+    { team1Id: string; team2Id: string; games: typeof gameRows }
+  >();
+  for (const row of gameRows) {
+    if (!matchMap.has(row.matchId)) {
+      matchMap.set(row.matchId, { team1Id: row.team1Id, team2Id: row.team2Id, games: [] });
+    }
+    matchMap.get(row.matchId)!.games.push(row);
+  }
+
+  // Accumulate per-team stats
+  const stats = new Map<
+    string,
+    {
+      matchPoints: number;
+      matchWins: number;
+      matchLosses: number;
+      matchDraws: number;
+      gameWins: number;
+      gameLosses: number;
+      gameDraws: number;
+      teamEliminations: number;
+      scoreFor: number;
+      scoreAgainst: number;
+    }
+  >();
+
+  function ensureTeam(id: string) {
+    if (!stats.has(id)) {
+      stats.set(id, {
+        matchPoints: 0, matchWins: 0, matchLosses: 0, matchDraws: 0,
+        gameWins: 0, gameLosses: 0, gameDraws: 0,
+        teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
+      });
+    }
+    return stats.get(id)!;
+  }
+
+  for (const [, { team1Id, team2Id, games }] of matchMap) {
+    const t1 = ensureTeam(team1Id);
+    const t2 = ensureTeam(team2Id);
+
+    let t1TotalScore = 0;
+    let t2TotalScore = 0;
+
+    for (const g of games) {
+      const t1s = Number(g.team1Score ?? 0);
+      const t2s = Number(g.team2Score ?? 0);
+      t1TotalScore += t1s;
+      t2TotalScore += t2s;
+
+      t1.scoreFor += t1s;
+      t1.scoreAgainst += t2s;
+      t2.scoreFor += t2s;
+      t2.scoreAgainst += t1s;
+
+      if (g.team1EliminatedOpponent) t1.teamEliminations += 1;
+      if (g.team2EliminatedOpponent) t2.teamEliminations += 1;
+
+      const r1 = g.team1Result;
+      const r2 = g.team2Result;
+      if (r1 === "win") { t1.gameWins += 1; t2.gameLosses += 1; }
+      else if (r2 === "win") { t2.gameWins += 1; t1.gameLosses += 1; }
+      else { t1.gameDraws += 1; t2.gameDraws += 1; }
+    }
+
+    // Match bonus: compare combined scores
+    if (t1TotalScore > t2TotalScore) {
+      t1.matchPoints += 2; t1.matchWins += 1; t2.matchLosses += 1;
+    } else if (t2TotalScore > t1TotalScore) {
+      t2.matchPoints += 2; t2.matchWins += 1; t1.matchLosses += 1;
+    } else {
+      t1.matchPoints += 1; t1.matchDraws += 1;
+      t2.matchPoints += 1; t2.matchDraws += 1;
+    }
+  }
+
+  // Also add game points into matchPoints (2 per game win, 1 per draw)
+  for (const s of stats.values()) {
+    s.matchPoints += s.gameWins * 2 + s.gameDraws;
+  }
+
+  // Fetch team names for all teams in competition (including 0-game teams)
+  const allTeams = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .from(competitionTeam)
+    .where(eq(competitionTeam.competitionId, competitionId))
+    .orderBy(asc(competitionTeam.name));
+
+  return allTeams.map((team) => {
+    const s = stats.get(team.id) ?? {
+      matchPoints: 0, matchWins: 0, matchLosses: 0, matchDraws: 0,
+      gameWins: 0, gameLosses: 0, gameDraws: 0,
+      teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
+    };
+    return { teamId: team.id, teamName: team.name, ...s };
+  }).sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
 }
 
 export async function getGameMatchAssignment(

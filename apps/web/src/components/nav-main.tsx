@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/collapsible"
 import {
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
@@ -20,8 +21,10 @@ import {
 import { CaretRightIcon } from "@phosphor-icons/react"
 
 export function NavMain({
+  label,
   items,
 }: {
+  label?: string
   items: {
     title: string
     url: string
@@ -41,6 +44,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
+      {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible key={item.title} asChild defaultOpen={item.isActive}>

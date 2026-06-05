@@ -18,6 +18,8 @@ import {
   HeartIcon,
   MapPinIcon,
   ShieldIcon,
+  StarIcon,
+  TrophyIcon,
   UploadSimpleIcon,
   UsersIcon,
 } from "@phosphor-icons/react";
@@ -25,7 +27,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import * as React from "react";
 
-const baseNavItems = [
+const socialNavItems = [
   {
     title: "Nightly Stats",
     url: "/nightly",
@@ -48,6 +50,29 @@ const baseNavItems = [
   },
 ];
 
+const competitionNavItems = [
+  {
+    title: "Standings",
+    url: "/competitions/standings",
+    icon: <TrophyIcon />,
+  },
+  {
+    title: "Top Players",
+    url: "/competitions/top-players",
+    icon: <StarIcon />,
+  },
+  {
+    title: "Games",
+    url: "/competitions/games",
+    icon: <GameControllerIcon />,
+  },
+  {
+    title: "All Star",
+    url: "/competitions/all-star",
+    icon: <StarIcon />,
+  },
+];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
   const roles = session?.user?.roles ?? [];
@@ -64,8 +89,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       r.role === "uploader",
   );
 
-  const navItems = [
-    ...baseNavItems,
+  const socialItems = [
+    ...socialNavItems,
     ...(isLoggedIn
       ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }]
       : []),
@@ -103,7 +128,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
+        <NavMain label="Social" items={socialItems} />
+        <NavMain label="Competitions" items={competitionNavItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
