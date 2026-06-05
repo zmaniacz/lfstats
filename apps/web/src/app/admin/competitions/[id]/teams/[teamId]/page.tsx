@@ -32,7 +32,7 @@ export default async function TeamRosterPage({
   params: Promise<{ id: string; teamId: string }>
 }) {
   const { id, teamId } = await params
-  const [comp, team, roster, participants] = await Promise.all([
+  const [comp, team, roster, unassigned] = await Promise.all([
     getCompetitionById(id),
     getCompetitionTeamById(teamId),
     getCompetitionTeamRoster(teamId),
@@ -40,6 +40,9 @@ export default async function TeamRosterPage({
   ])
 
   if (!comp || !team) notFound()
+
+  const regularRoster = roster.filter((e) => !e.isMercenary)
+  const mercs = roster.filter((e) => e.isMercenary)
 
   const boundUpdate = updateTeamAction.bind(null, id, teamId)
   const boundAdd = addPlayerAction.bind(null, id, teamId)
@@ -96,10 +99,10 @@ export default async function TeamRosterPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Roster ({roster.length})</CardTitle>
+          <CardTitle>Roster ({regularRoster.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {roster.length === 0 ? (
+          {regularRoster.length === 0 ? (
             <p className="text-sm text-muted-foreground">No players on roster yet.</p>
           ) : (
             <Table>
@@ -107,26 +110,26 @@ export default async function TeamRosterPage({
                 <TableRow>
                   <TableHead>Callsign</TableHead>
                   <TableHead>IPL ID</TableHead>
+                  <TableHead className="text-right">Games</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {roster.map((entry) => (
+                {regularRoster.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">
-                      {entry.playerId ? (
-                        <Link
-                          href={`/players/${entry.iplId.replace("#", "")}`}
-                          className="hover:underline"
-                        >
-                          {entry.currentCallsign}
-                        </Link>
-                      ) : (
-                        entry.currentCallsign
-                      )}
+                      <Link
+                        href={`/players/${entry.iplId.replace("#", "")}`}
+                        className="hover:underline"
+                      >
+                        {entry.currentCallsign}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
                       {entry.iplId}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {entry.gamesPlayed}
                     </TableCell>
                     <TableCell className="text-right">
                       <DeleteEntityButton
@@ -144,36 +147,84 @@ export default async function TeamRosterPage({
         </CardContent>
       </Card>
 
-      {participants.length > 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle>Mercenaries ({mercs.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {mercs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No mercenaries recorded.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Callsign</TableHead>
+                  <TableHead>IPL ID</TableHead>
+                  <TableHead className="text-right">Games</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mercs.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/players/${entry.iplId.replace("#", "")}`}
+                        className="hover:underline"
+                      >
+                        {entry.currentCallsign}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {entry.iplId}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {entry.gamesPlayed}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DeleteEntityButton
+                        id={entry.id}
+                        label={entry.currentCallsign}
+                        description="Remove this player from the mercenary list."
+                        action={boundRemove}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {unassigned.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Game Participants ({participants.length})</CardTitle>
+            <CardTitle>Unassigned ({unassigned.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
-              Players who appeared in games for this team but are not on the official roster.
+              Players who appeared in games for this team but have not been classified.
             </p>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Callsign</TableHead>
                   <TableHead>IPL ID</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Games</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {participants.map((p) => (
-                  <TableRow key={p.playerId} className={p.isMercenary ? "opacity-60" : ""}>
+                {unassigned.map((p) => (
+                  <TableRow key={p.playerId}>
                     <TableCell className="font-medium">
                       <Link href={`/players/${p.iplId.replace("#", "")}`} className="hover:underline">
                         {p.currentCallsign}
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">{p.iplId}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {p.isMercenary ? "Mercenary" : "Unclassified"}
-                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{p.gamesPlayed}</TableCell>
                     <TableCell className="text-right">
                       <ParticipantActions
                         playerId={p.playerId}

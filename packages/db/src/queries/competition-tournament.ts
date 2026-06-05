@@ -50,6 +50,8 @@ export type CompetitionTeamRosterEntry = {
   playerId: string;
   iplId: string;
   currentCallsign: string;
+  isMercenary: boolean;
+  gamesPlayed: number;
 };
 
 export type CompetitionRoundListItem = {
@@ -171,6 +173,18 @@ export async function getCompetitionTeamRoster(
       playerId: player.id,
       iplId: player.iplId,
       currentCallsign: player.currentCallsign,
+      isMercenary: competitionTeamPlayer.isMercenary,
+      gamesPlayed: sql<number>`(
+        SELECT count(*)::int FROM sm5_scorecard sc
+        WHERE sc.player_id = ${player.id}
+          AND sc.team_id IN (
+            SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
+                        ELSE cmg.team2_game_team_id END
+            FROM competition_match cm
+            JOIN competition_match_game cmg ON cmg.match_id = cm.id
+            WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
+          )
+      )`,
     })
     .from(competitionTeamPlayer)
     .innerJoin(player, eq(player.id, competitionTeamPlayer.playerId))
@@ -185,6 +199,7 @@ export type TeamGameParticipant = {
   iplId: string;
   currentCallsign: string;
   isMercenary: boolean;
+  gamesPlayed: number;
 };
 
 export async function getTeamGameParticipants(
@@ -199,7 +214,8 @@ export async function getTeamGameParticipants(
       playerId: player.id,
       iplId: player.iplId,
       currentCallsign: player.currentCallsign,
-      isMercenary: sm5Scorecard.isMercenary,
+      isMercenary: sql<boolean>`bool_or(${sm5Scorecard.isMercenary})`,
+      gamesPlayed: sql<number>`count(*)::int`,
     })
     .from(sm5Scorecard)
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
@@ -223,7 +239,7 @@ export async function getTeamGameParticipants(
         )`,
       ),
     )
-    .groupBy(player.id, player.iplId, player.currentCallsign, sm5Scorecard.isMercenary)
+    .groupBy(player.id, player.iplId, player.currentCallsign)
     .orderBy(asc(player.currentCallsign));
 
   return rows;
@@ -234,7 +250,14 @@ export async function setPlayerMercenary(
   playerId: string,
   isMercenary: boolean,
 ): Promise<void> {
-  // Update all scorecards for this player on game-teams belonging to this competition team
+  await db
+    .insert(competitionTeamPlayer)
+    .values({ competitionTeamId, playerId, isMercenary })
+    .onConflictDoUpdate({
+      target: [competitionTeamPlayer.competitionTeamId, competitionTeamPlayer.playerId],
+      set: { isMercenary },
+    });
+  // Update all existing scorecards for this player on game-teams belonging to this competition team
   await db
     .update(sm5Scorecard)
     .set({ isMercenary })
@@ -559,6 +582,29 @@ export async function assignGameToMatch(
     team1GameTeamId,
     team2GameTeamId,
   });
+
+  // Apply mercenary flags from competition_team_player to the newly assigned game's scorecards.
+  // For each side, find players with is_mercenary=true on the roster and mark their scorecards.
+  for (const [gameTeamId, side] of [
+    [team1GameTeamId, "team1_id"],
+    [team2GameTeamId, "team2_id"],
+  ] as const) {
+    await db
+      .update(sm5Scorecard)
+      .set({ isMercenary: true })
+      .where(
+        and(
+          eq(sm5Scorecard.teamId, gameTeamId),
+          sql`${sm5Scorecard.playerId} IN (
+            SELECT ctp.player_id
+            FROM competition_team_player ctp
+            JOIN competition_match cm ON cm.${sql.raw(side)} = ctp.competition_team_id
+            WHERE cm.id = ${matchId}
+              AND ctp.is_mercenary = true
+          )`,
+        ),
+      );
+  }
 }
 
 export async function removeGameFromMatch(matchGameId: string): Promise<void> {

@@ -167,6 +167,7 @@ export const competitionTeamPlayer = pgTable(
     playerId: uuid("player_id")
       .notNull()
       .references(() => player.id, { onDelete: "cascade" }),
+    isMercenary: boolean("is_mercenary").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.competitionTeamId, t.playerId)],
