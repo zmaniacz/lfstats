@@ -36,7 +36,7 @@ export default function RootLayout({
             <SidebarProvider>
               <SiteHeader />
               <AppSidebar />
-              <SidebarInset className="pt-(--header-height)">
+              <SidebarInset className="pt-(--header-height) min-w-0">
                 {children}
               </SidebarInset>
             </SidebarProvider>

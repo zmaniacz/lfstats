@@ -1267,6 +1267,13 @@ export async function getGameMatchAssignment(
 // Top Players
 // ---------------------------------------------------------------------------
 
+export type PositionStats = {
+  avgMvp: number | null;
+  avgAccuracy: number | null;
+  wins: number;
+  totalGames: number;
+};
+
 export type CompetitionTopPlayer = {
   playerId: string;
   iplId: string;
@@ -1278,6 +1285,7 @@ export type CompetitionTopPlayer = {
   avgHitDiff: number;
   wins: number;
   totalGames: number;
+  byPosition: Partial<Record<number, PositionStats>>;
 };
 
 export type CompetitionTopPlayersOptions = {
@@ -1327,6 +1335,27 @@ export async function getCompetitionTopPlayers(
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       wins: sql<number>`count(*) filter (where ${sm5GameTeam.result} = 'win')::int`,
       totalGames: sql<number>`count(*)::int`,
+      // Per-position stats (positions 1–5)
+      p1AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1 and ${sm5GameTeam.result} = 'win')::int`,
+      p1Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1)::int`,
+      p2AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2 and ${sm5GameTeam.result} = 'win')::int`,
+      p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
+      p3AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3 and ${sm5GameTeam.result} = 'win')::int`,
+      p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
+      p4AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4 and ${sm5GameTeam.result} = 'win')::int`,
+      p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
+      p5AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5 and ${sm5GameTeam.result} = 'win')::int`,
+      p5Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5)::int`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -1334,6 +1363,16 @@ export async function getCompetitionTopPlayers(
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
     .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+
+  function posStats(avgMvp: number | null, avgAccuracy: number | null, wins: number, games: number): PositionStats | undefined {
+    if (Number(games) === 0) return undefined;
+    return {
+      avgMvp: avgMvp !== null ? Number(avgMvp) : null,
+      avgAccuracy: avgAccuracy !== null ? Number(avgAccuracy) : null,
+      wins: Number(wins),
+      totalGames: Number(games),
+    };
+  }
 
   return rows.map((r) => ({
     playerId: r.playerId,
@@ -1346,6 +1385,13 @@ export async function getCompetitionTopPlayers(
     avgHitDiff: Number(r.avgHitDiff),
     wins: Number(r.wins),
     totalGames: Number(r.totalGames),
+    byPosition: {
+      1: posStats(r.p1AvgMvp, r.p1AvgAccuracy, r.p1Wins, r.p1Games),
+      2: posStats(r.p2AvgMvp, r.p2AvgAccuracy, r.p2Wins, r.p2Games),
+      3: posStats(r.p3AvgMvp, r.p3AvgAccuracy, r.p3Wins, r.p3Games),
+      4: posStats(r.p4AvgMvp, r.p4AvgAccuracy, r.p4Wins, r.p4Games),
+      5: posStats(r.p5AvgMvp, r.p5AvgAccuracy, r.p5Wins, r.p5Games),
+    },
   }));
 }
 
