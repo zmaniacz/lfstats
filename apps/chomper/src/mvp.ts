@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import type { PlayerSimState, ParsedSm5Stats, SimulatedGame } from "./types.js";
+import type { ParsedSm5Stats, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -100,8 +100,8 @@ export function calculateMvp(
     // Elimination bonus input: seconds of game time remaining above 3-min threshold
     let eliminationBonusInput = 0;
     let eliminationBonusPoints = 0;
-    if (teamWonByElimination && simResult.eliminationTime !== null) {
-      const remaining = (scheduledDuration - simResult.eliminationTime) / 1000; // seconds
+    if (teamWonByElimination) {
+      const remaining = (scheduledDuration - simResult.actualDuration) / 1000; // seconds
       const threshold = params.universal.elimination_bonus_seconds_threshold; // 180
       const secondsAbove = Math.max(0, remaining - threshold);
       eliminationBonusInput = r3(secondsAbove);
