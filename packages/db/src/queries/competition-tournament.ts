@@ -1263,6 +1263,92 @@ export async function getGameMatchAssignment(
 // Forfeit
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Top Players
+// ---------------------------------------------------------------------------
+
+export type CompetitionTopPlayer = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  avgMvp: number;
+  mvpPerMinute: number;
+  totalMvp: number;
+  avgAccuracy: number;
+  avgHitDiff: number;
+  wins: number;
+  totalGames: number;
+};
+
+export type CompetitionTopPlayersOptions = {
+  showPool?: boolean;
+  showFinals?: boolean;
+  showMercs?: boolean;
+};
+
+export async function getCompetitionTopPlayers(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionTopPlayer[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
+      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      totalTimeInGameSec: sql<number>`sum(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}) / 1000.0`,
+      avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
+      avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
+      wins: sql<number>`count(*) filter (where ${sm5GameTeam.result} = 'win')::int`,
+      totalGames: sql<number>`count(*)::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign)
+    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+
+  return rows.map((r) => ({
+    playerId: r.playerId,
+    iplId: r.iplId,
+    callsign: r.callsign,
+    avgMvp: Number(r.avgMvp),
+    totalMvp: Number(r.totalMvp),
+    mvpPerMinute: r.totalTimeInGameSec > 0 ? Number(r.totalMvp) / (Number(r.totalTimeInGameSec) / 60) : 0,
+    avgAccuracy: Number(r.avgAccuracy),
+    avgHitDiff: Number(r.avgHitDiff),
+    wins: Number(r.wins),
+    totalGames: Number(r.totalGames),
+  }));
+}
+
 export async function createForfeitGame(data: {
   matchId: string;
   competitionId: string;
