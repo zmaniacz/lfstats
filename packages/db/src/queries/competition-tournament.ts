@@ -15,6 +15,20 @@ import {
 import { eq, and, asc, desc, ilike, inArray, not, or, sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
+// Competition lookup
+// ---------------------------------------------------------------------------
+
+export async function getCompetitionHostCenterId(
+  competitionId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ hostCenterId: competition.hostCenterId })
+    .from(competition)
+    .where(eq(competition.id, competitionId));
+  return row?.hostCenterId ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -625,7 +639,7 @@ export type CompetitionUnassignedGame = {
   startTime: Date;
   description: string | null;
   centerName: string;
-  outcome: "score" | "elimination" | "draw" | "aborted";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
 };
 
 export type CompetitionAssignedGame = {
@@ -640,7 +654,7 @@ export type CompetitionAssignedGame = {
   team2Name: string;
   team2ColourEnum: number;
   startTime: Date;
-  outcome: "score" | "elimination" | "draw" | "aborted";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
   centerName: string;
 };
 
@@ -802,6 +816,7 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
 export type CompetitionStandingsRow = {
   teamId: string;
   teamName: string;
+  teamShortName: string | null;
   matchPoints: number;
   matchWins: number;
   matchLosses: number;
@@ -939,7 +954,7 @@ export async function getCompetitionStandings(
 
   // Fetch team names for all teams in competition (including 0-game teams)
   const allTeams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName })
     .from(competitionTeam)
     .where(eq(competitionTeam.competitionId, competitionId))
     .orderBy(asc(competitionTeam.name));
@@ -950,7 +965,7 @@ export async function getCompetitionStandings(
       gameWins: 0, gameLosses: 0, gameDraws: 0,
       teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
     };
-    return { teamId: team.id, teamName: team.name, ...s };
+    return { teamId: team.id, teamName: team.name, teamShortName: team.shortName, ...s };
   }).sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
 }
 
@@ -1153,4 +1168,102 @@ export async function getGameMatchAssignment(
     team2GameTeamId: row.team2GameTeamId,
     team2Name: teamMap.get(row.team2Id) ?? "Unknown",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Forfeit
+// ---------------------------------------------------------------------------
+
+export async function createForfeitGame(data: {
+  matchId: string;
+  competitionId: string;
+  centerId: string;
+  gameNumber: number;
+  team1Id: string;
+  team2Id: string;
+  forfeitingTeam: "team1" | "team2";
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const teams = await tx
+      .select({ id: competitionTeam.id, name: competitionTeam.name })
+      .from(competitionTeam)
+      .where(inArray(competitionTeam.id, [data.team1Id, data.team2Id]));
+    const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+    const team1Name = teamMap.get(data.team1Id) ?? "Team 1";
+    const team2Name = teamMap.get(data.team2Id) ?? "Team 2";
+
+    const winnerName = data.forfeitingTeam === "team1" ? team2Name : team1Name;
+    const loserName = data.forfeitingTeam === "team1" ? team1Name : team2Name;
+
+    const [gameRow] = await tx
+      .insert(game)
+      .values({
+        centerId: data.centerId,
+        competitionId: data.competitionId,
+        startTime: new Date(),
+        tdfFilename: "",
+        outcome: "forfeit",
+        scheduledDuration: 900,
+        actualDuration: 0,
+        type: "SM5",
+        description: "Forfeit",
+      })
+      .returning({ id: game.id });
+
+    const [winnerTeam] = await tx
+      .insert(sm5GameTeam)
+      .values({
+        gameId: gameRow.id,
+        tdfTeamIndex: 0,
+        isNeutral: false,
+        name: winnerName,
+        colourEnum: 0,
+        score: 0,
+        eliminationBonus: 10000,
+        result: "win",
+        eliminated: false,
+      })
+      .returning({ id: sm5GameTeam.id });
+
+    const [loserTeam] = await tx
+      .insert(sm5GameTeam)
+      .values({
+        gameId: gameRow.id,
+        tdfTeamIndex: 1,
+        isNeutral: false,
+        name: loserName,
+        colourEnum: 1,
+        score: 0,
+        eliminationBonus: 0,
+        result: "loss",
+        eliminated: true,
+      })
+      .returning({ id: sm5GameTeam.id });
+
+    await tx.insert(sm5GameTeam).values({
+      gameId: gameRow.id,
+      tdfTeamIndex: 2,
+      isNeutral: true,
+      name: "Neutral",
+      colourEnum: 2,
+      score: null,
+      eliminationBonus: null,
+      result: null,
+      eliminated: null,
+    });
+
+    // Map team1/team2 game team IDs preserving match team identity
+    const team1GameTeamId =
+      data.forfeitingTeam === "team1" ? loserTeam.id : winnerTeam.id;
+    const team2GameTeamId =
+      data.forfeitingTeam === "team2" ? loserTeam.id : winnerTeam.id;
+
+    await tx.insert(competitionMatchGame).values({
+      matchId: data.matchId,
+      gameId: gameRow.id,
+      gameNumber: data.gameNumber,
+      team1GameTeamId,
+      team2GameTeamId,
+    });
+  });
 }

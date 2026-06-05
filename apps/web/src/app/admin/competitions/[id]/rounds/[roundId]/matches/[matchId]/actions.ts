@@ -1,7 +1,13 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { assignGameToMatch, removeGameFromMatch } from "@lfstats/db"
+import {
+  assignGameToMatch,
+  removeGameFromMatch,
+  getCompetitionMatchById,
+  createForfeitGame,
+  getCompetitionHostCenterId,
+} from "@lfstats/db"
 import { auth } from "@/auth"
 
 async function requireAdmin() {
@@ -32,5 +38,35 @@ export async function removeGameAction(
 ): Promise<void> {
   await requireAdmin()
   await removeGameFromMatch(matchGameId)
+  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+}
+
+export async function createForfeitAction(
+  competitionId: string,
+  matchId: string,
+  forfeitingTeam: "team1" | "team2",
+  gameNumber: number,
+): Promise<void> {
+  await requireAdmin()
+
+  const [centerId, match] = await Promise.all([
+    getCompetitionHostCenterId(competitionId),
+    getCompetitionMatchById(matchId),
+  ])
+
+  if (!centerId || !match) throw new Error("Competition or match not found")
+  if (!centerId) throw new Error("Competition has no host center")
+
+  await createForfeitGame({
+    matchId,
+    competitionId,
+    centerId,
+    gameNumber,
+    team1Id: match.team1Id,
+    team2Id: match.team2Id,
+    forfeitingTeam,
+  })
+
+  revalidatePath(`/admin/competitions/${competitionId}/rounds/${match.roundId}/matches/${matchId}`)
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }

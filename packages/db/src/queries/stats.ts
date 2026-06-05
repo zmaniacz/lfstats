@@ -3,7 +3,7 @@ import { game, sm5GameTeam, sm5Scorecard, center, competition, gameTagAssignment
 import { eq, and, isNull, isNotNull, or, inArray, gte, lte, sql, desc } from "drizzle-orm";
 import type { GameListItem } from "./games";
 
-async function attachTeams(rows: { id: string; slug: string; centerSlug: string; startTime: Date; outcome: "score" | "elimination" | "draw" | "aborted"; centerName: string; description: string | null }[]): Promise<GameListItem[]> {
+async function attachTeams(rows: { id: string; slug: string; centerSlug: string; startTime: Date; outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit"; centerName: string; description: string | null }[]): Promise<GameListItem[]> {
   if (rows.length === 0) return [];
 
   const gameIds = rows.map((r) => r.id);

@@ -9,9 +9,11 @@ import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAss
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { TEAM_COLORS } from "@/lib/team-colors"
 import { formatGameName, formatDateTime } from "@/lib/format"
-import { assignGameAction, removeGameAction } from "./actions"
+import { assignGameAction, removeGameAction, createForfeitAction } from "./actions"
+import { ForfeitButtons } from "./ForfeitButtons"
 
 export default async function MatchDetailPage({
   params,
@@ -32,6 +34,7 @@ export default async function MatchDetailPage({
 
   const boundAssign = assignGameAction.bind(null, id, matchId)
   const boundRemove = removeGameAction.bind(null, id, matchId)
+  const boundForfeit = createForfeitAction.bind(null, id, matchId)
 
   return (
     <div className="space-y-6">
@@ -114,6 +117,15 @@ export default async function MatchDetailPage({
                 action={boundAssign}
               />
             )}
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground mb-2">Record a forfeit for game slot {availableGameNumbers[0]}:</p>
+              <ForfeitButtons
+                team1Name={match.team1Name}
+                team2Name={match.team2Name}
+                gameNumber={availableGameNumbers[0]}
+                action={boundForfeit}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
