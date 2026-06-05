@@ -166,12 +166,20 @@ export function TeamStatsTable({
                   {formatPct(player.accuracy)}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {player.shotsHitOpponentMedic}
-                  {player.position === 1 && player.nukesHitMedic !== null && (
-                    <span className="text-muted-foreground ml-1">
-                      ({player.nukesHitMedic})
-                    </span>
-                  )}
+                  {(player.shotsHitOpponentMedic ?? 0) +
+                    (player.missilesHitOpponentMedic ?? 0) * 2}
+                  {(() => {
+                    const parts = [];
+                    if (player.missilesHitOpponentMedic)
+                      parts.push(`${player.missilesHitOpponentMedic}m`);
+                    if (player.nukesHitMedic)
+                      parts.push(`${player.nukesHitMedic}n`);
+                    return parts.length > 0 ? (
+                      <span className="text-muted-foreground ml-1">
+                        ({parts.join(" ")})
+                      </span>
+                    ) : null;
+                  })()}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
                   {player.missilesHitOpponent}
