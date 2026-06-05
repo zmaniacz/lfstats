@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../client";
 import { authUser, center, userRole } from "../schema";

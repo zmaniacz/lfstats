@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import Link from "next/link"
 import { getCenterList } from "@lfstats/db"
 import { CompetitionForm } from "@/components/admin/CompetitionForm"

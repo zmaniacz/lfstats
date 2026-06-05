@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { Fragment } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"

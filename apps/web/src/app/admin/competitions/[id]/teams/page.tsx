@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getCompetitionById, getCompetitionTeams } from "@lfstats/db"

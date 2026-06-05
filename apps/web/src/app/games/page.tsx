@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { getGamesPage, getGamesCount, GAMES_PER_PAGE, getCenterList } from "@lfstats/db"
 import { GamesFilters } from "@/components/games/games-filters"
 import { GamesTable } from "@/components/games/GamesTable"

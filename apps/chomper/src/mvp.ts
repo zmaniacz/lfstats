@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import type { PlayerSimState, ParsedSm5Stats, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
 

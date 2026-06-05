@@ -35,6 +35,14 @@ The specs live in /docs:
 - Position-specific nullable columns: null = not applicable, 0 = applicable but zero
 - See SM5_Core_Schema.md for full table definitions
 
+## File Headers
+Every `.ts` and `.tsx` file must begin with these two lines:
+```
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+```
+Always insert this header when creating a new `.ts` or `.tsx` file.
+
 ## Commands
 - `pnpm dev` — start web app in dev mode
 - `pnpm db:migrate` — run migrations

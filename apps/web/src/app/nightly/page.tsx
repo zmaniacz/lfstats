@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { DateFilter } from "@/components/nightly/DateFilter";
 import { NightlyCenterFilter } from "@/components/nightly/NightlyCenterFilter";
 import { NightlyStateManager } from "@/components/nightly/NightlyStateManager";

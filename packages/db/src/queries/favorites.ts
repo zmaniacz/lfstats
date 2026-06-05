@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { db } from "../client";
 import { userFavoriteGame, userFavoritePlayer, game, sm5GameTeam, sm5Scorecard, center, player } from "../schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";

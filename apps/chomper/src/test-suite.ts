@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
 import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { parseTdf, ParseError, RejectionError } from "./parser.js";
