@@ -2770,7 +2770,13 @@ export type CompetitionGameListItem = {
   startTime: Date;
   outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
   centerName: string;
-  description: string;
+  prefix: string; // e.g. "R1 M1 G1"
+  team1Label: string;
+  team1ColourEnum: number;
+  team1Result: "win" | "loss" | "draw" | null;
+  team2Label: string;
+  team2ColourEnum: number;
+  team2Result: "win" | "loss" | "draw" | null;
   teams: {
     colourEnum: number;
     score: number | null;
@@ -2778,34 +2784,6 @@ export type CompetitionGameListItem = {
     result: "win" | "loss" | "draw" | null;
   }[];
 };
-
-async function fetchCompetitionGameRows(competitionId: string) {
-  return db
-    .select({
-      id: game.id,
-      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
-      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
-      startTime: game.startTime,
-      outcome: game.outcome,
-      centerName: center.name,
-      roundNumber: competitionRound.roundNumber,
-      matchNumber: competitionMatch.matchNumber,
-      gameNumber: competitionMatchGame.gameNumber,
-      team1Id: competitionMatch.team1Id,
-      team2Id: competitionMatch.team2Id,
-    })
-    .from(competitionMatchGame)
-    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
-    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
-    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
-    .innerJoin(center, eq(center.id, game.centerId))
-    .where(eq(competitionMatch.competitionId, competitionId))
-    .orderBy(
-      asc(competitionRound.roundNumber),
-      asc(competitionMatch.matchNumber),
-      asc(competitionMatchGame.gameNumber),
-    );
-}
 
 export async function getCompetitionGamesCount(competitionId: string): Promise<number> {
   const [row] = await db
@@ -2835,12 +2813,18 @@ export async function getCompetitionGamesPage(
       gameNumber: competitionMatchGame.gameNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
+      team1ColourEnum: sql<number>`t1.colour_enum`,
+      team1Result: sql<"win" | "loss" | "draw" | null>`t1.result`,
+      team2ColourEnum: sql<number>`t2.colour_enum`,
+      team2Result: sql<"win" | "loss" | "draw" | null>`t2.result`,
     })
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .innerJoin(center, eq(center.id, game.centerId))
+    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(eq(competitionMatch.competitionId, competitionId))
     .orderBy(
       asc(competitionRound.roundNumber),
@@ -2882,9 +2866,6 @@ export async function getCompetitionGamesPage(
   return rows.map((row) => {
     const t1 = teamMap.get(row.team1Id);
     const t2 = teamMap.get(row.team2Id);
-    const t1Label = t1?.shortName ?? t1?.name ?? "?";
-    const t2Label = t2?.shortName ?? t2?.name ?? "?";
-    const description = `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber} ${t1Label} v ${t2Label}`;
     return {
       id: row.id,
       slug: row.slug,
@@ -2892,7 +2873,13 @@ export async function getCompetitionGamesPage(
       startTime: row.startTime,
       outcome: row.outcome,
       centerName: row.centerName,
-      description,
+      prefix: `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber}`,
+      team1Label: t1?.shortName ?? t1?.name ?? "?",
+      team1ColourEnum: row.team1ColourEnum,
+      team1Result: row.team1Result,
+      team2Label: t2?.shortName ?? t2?.name ?? "?",
+      team2ColourEnum: row.team2ColourEnum,
+      team2Result: row.team2Result,
       teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
         colourEnum: t.colourEnum,
         score: t.score,
