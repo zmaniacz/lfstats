@@ -20,6 +20,15 @@ export function formatMs(ms: number | null): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+export function formatMsDuration(ms: number | null): string {
+  if (ms === null) return EM_DASH;
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function formatHitDiff(n: number | null): string {
   if (n === null) return EM_DASH;
   return n.toFixed(2);

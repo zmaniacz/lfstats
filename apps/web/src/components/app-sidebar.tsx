@@ -66,6 +66,11 @@ const competitionNavItems = [
     icon: <StarIcon />,
   },
   {
+    title: "Leader(loser) Boards",
+    url: "/competitions/leader-boards",
+    icon: <TrophyIcon />,
+  },
+  {
     title: "Games",
     url: "/competitions/games",
     icon: <GameControllerIcon />,

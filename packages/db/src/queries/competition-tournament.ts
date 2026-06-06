@@ -2007,6 +2007,199 @@ export async function getCompetitionMedicPlayers(
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Per-position scorecard leaderboards (individual game scorecards, not averages)
+// ---------------------------------------------------------------------------
+
+export type CompetitionPositionScorecard = {
+  scorecardId: string;
+  gameSlug: string;
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  score: number;
+  mvpPoints: number;
+};
+
+export async function getCompetitionPositionScorecards(
+  competitionId: string,
+  position: number,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionPositionScorecard[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+    eq(sm5Scorecard.position, position),
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      scorecardId: sm5Scorecard.id,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      score: sm5Scorecard.score,
+      mvpPoints: sm5Scorecard.mvpPoints,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .orderBy(desc(sm5Scorecard.mvpPoints))
+    .limit(100);
+
+  return rows.map((r) => ({
+    scorecardId: r.scorecardId,
+    gameSlug: r.gameSlug,
+    playerId: r.playerId,
+    iplId: r.iplId,
+    callsign: r.callsign,
+    score: Number(r.score),
+    mvpPoints: Number(r.mvpPoints),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Games and points leaderboards (all positions combined)
+// ---------------------------------------------------------------------------
+
+export type CompetitionGamesPlayedItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalGames: number;
+};
+
+export type CompetitionTotalScoreItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalScore: number;
+};
+
+export type CompetitionTotalTimeItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalTimeMs: number;
+};
+
+async function getCompetitionAllPositionRows(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions,
+) {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  return db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalGames: sql<number>`count(*)::int`,
+      totalScore: sql<number>`sum(${sm5Scorecard.score})::int`,
+      totalTimeMs: sql<number>`sum(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime})::bigint`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+}
+
+export async function getCompetitionGamesPlayed(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionGamesPlayedItem[]> {
+  const rows = await getCompetitionAllPositionRows(competitionId, options);
+  return rows
+    .map((r) => ({
+      playerId: r.playerId,
+      iplId: r.iplId,
+      callsign: r.callsign,
+      totalGames: Number(r.totalGames),
+    }))
+    .sort((a, b) => b.totalGames - a.totalGames)
+    .slice(0, 100);
+}
+
+export async function getCompetitionTotalScore(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionTotalScoreItem[]> {
+  const rows = await getCompetitionAllPositionRows(competitionId, options);
+  return rows
+    .map((r) => ({
+      playerId: r.playerId,
+      iplId: r.iplId,
+      callsign: r.callsign,
+      totalScore: Number(r.totalScore),
+    }))
+    .sort((a, b) => b.totalScore - a.totalScore)
+    .slice(0, 100);
+}
+
+export async function getCompetitionTotalTime(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionTotalTimeItem[]> {
+  const rows = await getCompetitionAllPositionRows(competitionId, options);
+  return rows
+    .map((r) => ({
+      playerId: r.playerId,
+      iplId: r.iplId,
+      callsign: r.callsign,
+      totalTimeMs: Number(r.totalTimeMs),
+    }))
+    .sort((a, b) => b.totalTimeMs - a.totalTimeMs)
+    .slice(0, 100);
+}
+
 export async function getCompetitionMedicHitsLeaderboard(
   competitionId: string,
   options: CompetitionTopPlayersOptions = {},
