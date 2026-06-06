@@ -134,6 +134,39 @@ number — surface this when displaying historical comparisons across model vers
 The cap is 99; `sp_earned` reflects actual accrual respecting that cap, not a theoretical
 uncapped total.
 
+## Server Actions and UI Updates
+
+Client components that call server actions must explicitly call `router.refresh()` after the action completes. `revalidatePath` alone does not reliably clear the Next.js client-side router cache in production — the RSC re-fetch returns 200 but React applies a stale cached payload, leaving the button in a permanent loading state.
+
+**Required pattern for any client component that calls a server action:**
+
+```tsx
+"use client"
+import { useTransition } from "react"
+import { useRouter } from "next/navigation"
+
+export function MyActionButton({ action }: { action: () => Promise<void> }) {
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+
+  return (
+    <Button
+      disabled={isPending}
+      onClick={() => startTransition(async () => {
+        await action()
+        router.refresh()
+      })}
+    >
+      {isPending ? "Saving…" : "Save"}
+    </Button>
+  )
+}
+```
+
+`router.refresh()` must come **after** `await action()` and **inside** the `startTransition` callback. This forces a fresh server fetch that bypasses the client router cache, ensuring the UI reflects the updated data before the transition ends.
+
+Server actions should still call `revalidatePath` — it clears the server-side cache so the fresh fetch returns updated data. The two work together: `revalidatePath` on the server, `router.refresh()` on the client.
+
 ## What Not to Build
 
 - **No ingestion UI** — ingestion is `apps/chomper`, triggered by S3 events, not the web app
