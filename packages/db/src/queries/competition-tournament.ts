@@ -2651,3 +2651,254 @@ export async function createForfeitGame(data: {
     });
   });
 }
+
+// ---------------------------------------------------------------------------
+// All-Star Rankings
+// ---------------------------------------------------------------------------
+
+export type AllStarPlayer = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  positionGames: number;
+  totalGames: number;
+  avgMvp: number;
+};
+
+export type AllStarRankings = {
+  1: AllStarPlayer[];
+  2: AllStarPlayer[];
+  3: AllStarPlayer[];
+  4: AllStarPlayer[];
+  5: AllStarPlayer[];
+};
+
+export async function getCompetitionAllStarRankings(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<AllStarRankings> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return { 1: [], 2: [], 3: [], 4: [], 5: [] };
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalGames: sql<number>`count(*)::int`,
+      p1Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1)::int`,
+      p1AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
+      p2AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
+      p3AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
+      p4AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      p5Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5)::int`,
+      p5AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  const result: AllStarRankings = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+
+  for (const r of rows) {
+    const total = Number(r.totalGames);
+    const posData: [keyof AllStarRankings, number, number | null][] = [
+      [1, Number(r.p1Games), r.p1AvgMvp !== null ? Number(r.p1AvgMvp) : null],
+      [2, Number(r.p2Games), r.p2AvgMvp !== null ? Number(r.p2AvgMvp) : null],
+      [3, Number(r.p3Games), r.p3AvgMvp !== null ? Number(r.p3AvgMvp) : null],
+      [4, Number(r.p4Games), r.p4AvgMvp !== null ? Number(r.p4AvgMvp) : null],
+      [5, Number(r.p5Games), r.p5AvgMvp !== null ? Number(r.p5AvgMvp) : null],
+    ];
+    for (const [pos, posGames, avgMvp] of posData) {
+      if (posGames > total / 2 && avgMvp !== null) {
+        result[pos].push({
+          playerId: r.playerId,
+          iplId: r.iplId,
+          callsign: r.callsign,
+          positionGames: posGames,
+          totalGames: total,
+          avgMvp,
+        });
+      }
+    }
+  }
+
+  for (const pos of [1, 2, 3, 4, 5] as const) {
+    result[pos].sort((a, b) => b.avgMvp - a.avgMvp);
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Competition games list (paginated, with computed label)
+// ---------------------------------------------------------------------------
+
+export const COMPETITION_GAMES_PER_PAGE = 10;
+
+export type CompetitionGameListItem = {
+  id: string;
+  slug: string;
+  centerSlug: string;
+  startTime: Date;
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
+  centerName: string;
+  description: string;
+  teams: {
+    colourEnum: number;
+    score: number | null;
+    eliminationBonus: number | null;
+    result: "win" | "loss" | "draw" | null;
+  }[];
+};
+
+async function fetchCompetitionGameRows(competitionId: string) {
+  return db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      centerName: center.name,
+      roundNumber: competitionRound.roundNumber,
+      matchNumber: competitionMatch.matchNumber,
+      gameNumber: competitionMatchGame.gameNumber,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(
+      asc(competitionRound.roundNumber),
+      asc(competitionMatch.matchNumber),
+      asc(competitionMatchGame.gameNumber),
+    );
+}
+
+export async function getCompetitionGamesCount(competitionId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .where(eq(competitionMatch.competitionId, competitionId));
+  return row?.count ?? 0;
+}
+
+export async function getCompetitionGamesPage(
+  competitionId: string,
+  page: number,
+): Promise<CompetitionGameListItem[]> {
+  const offset = (page - 1) * COMPETITION_GAMES_PER_PAGE;
+
+  const rows = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      centerName: center.name,
+      roundNumber: competitionRound.roundNumber,
+      matchNumber: competitionMatch.matchNumber,
+      gameNumber: competitionMatchGame.gameNumber,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(
+      asc(competitionRound.roundNumber),
+      asc(competitionMatch.matchNumber),
+      asc(competitionMatchGame.gameNumber),
+    )
+    .limit(COMPETITION_GAMES_PER_PAGE)
+    .offset(offset);
+
+  if (rows.length === 0) return [];
+
+  const teamIds = [...new Set(rows.flatMap((r) => [r.team1Id, r.team2Id]))];
+  const teams = await db
+    .select({ id: competitionTeam.id, shortName: competitionTeam.shortName, name: competitionTeam.name })
+    .from(competitionTeam)
+    .where(inArray(competitionTeam.id, teamIds));
+  const teamMap = new Map(teams.map((t) => [t.id, t]));
+
+  const gameIds = rows.map((r) => r.id);
+  const teamRows = await db
+    .select({
+      gameId: sm5GameTeam.gameId,
+      colourEnum: sm5GameTeam.colourEnum,
+      score: sm5GameTeam.score,
+      eliminationBonus: sm5GameTeam.eliminationBonus,
+      result: sm5GameTeam.result,
+    })
+    .from(sm5GameTeam)
+    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
+    .orderBy(sm5GameTeam.tdfTeamIndex);
+
+  const teamsByGame = new Map<string, typeof teamRows>();
+  for (const t of teamRows) {
+    const list = teamsByGame.get(t.gameId) ?? [];
+    list.push(t);
+    teamsByGame.set(t.gameId, list);
+  }
+
+  return rows.map((row) => {
+    const t1 = teamMap.get(row.team1Id);
+    const t2 = teamMap.get(row.team2Id);
+    const t1Label = t1?.shortName ?? t1?.name ?? "?";
+    const t2Label = t2?.shortName ?? t2?.name ?? "?";
+    const description = `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber} ${t1Label} v ${t2Label}`;
+    return {
+      id: row.id,
+      slug: row.slug,
+      centerSlug: row.centerSlug,
+      startTime: row.startTime,
+      outcome: row.outcome,
+      centerName: row.centerName,
+      description,
+      teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
+        colourEnum: t.colourEnum,
+        score: t.score,
+        eliminationBonus: t.eliminationBonus,
+        result: t.result,
+      })),
+    };
+  });
+}
