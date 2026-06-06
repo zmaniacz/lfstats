@@ -126,9 +126,33 @@ Two jobs:
 
 ### `docker-compose.yml` (on the deploy host, not in the repo)
 
+```yaml
+services:
+  web:
+    image: ghcr.io/zmaniacz/lfstats-web:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@host.docker.internal:5432/lfstats_modern"
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: "https://modern.lfstats.com"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3000:3000"
+    sysctls:
+      net.ipv4.tcp_keepalive_time: 60
+      net.ipv4.tcp_keepalive_intvl: 10
+      net.ipv4.tcp_keepalive_probes: 3
+```
+
 Single `web` service. Pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. `host.docker.internal:host-gateway` lets the web container reach Postgres on the same host's published port. Publishes 3000 to the host so Traefik on a separate host can reach it.
 
 Auth-related env vars: `AUTH_TRUST_HOST=true` and explicit `AUTH_URL=https://modern.lfstats.com` because Traefik terminates TLS and forwards plain HTTP — Auth.js needs to trust the forwarded headers and know its real public URL.
+
+The `sysctls` block enables TCP keepalives from the container's side — see [Why TCP keepalives are required](#why-tcp-keepalives-are-required) below.
 
 ### `.env` (on the deploy host, never committed)
 
@@ -258,6 +282,19 @@ The runner user owns the deploy directory so the systemd service can manage it w
 ### Why the deploy job has no checkout step
 
 Minimal attack surface. The deploy job runs on the self-hosted runner — the only code it ever executes is the three lines in the workflow file (`docker compose pull`, `up -d`, `docker logout`). No repo code is checked out, no third-party actions beyond `docker/login-action`, no build steps that could be influenced by repo content. Even if the workflow file were ever modified maliciously and merged to main, what runs on the host is bounded.
+
+### Why TCP keepalives are required
+
+The web container connects to Postgres via `host.docker.internal`, which routes through Docker's bridge network and Linux's `conntrack` NAT table. `conntrack` has its own idle connection timeout (as low as 30s on some kernel configs) that is completely independent of Postgres or the OS TCP stack. When a pooled connection sits idle past this threshold, `conntrack` silently drops the NAT entry. The next query tries to use what appears to be a live connection but is dead at the network level, and hangs for the full TCP timeout (~30s) before the OS gives up and the pool reconnects.
+
+Three things work together to prevent this:
+
+1. **`idle_timeout: 20` in `packages/db/src/client.ts`** — closes pooled connections after 20s idle, before `conntrack` can drop them. The cost is a brief new-connection handshake on the next query instead of a 30s hang.
+2. **`sysctls` in `docker-compose.yml`** — enables TCP keepalives from the container (client) side, so idle connections send probes every 10s, resetting the `conntrack` timer.
+3. **`-c tcp_keepalives_*` in the Postgres `docker-compose.yml`** — enables keepalives from the Postgres (server) side as well.
+4. **Host sysctl** (`/etc/sysctl.d/99-tcp-keepalive.conf`) — sets system-wide keepalive timers to the same values so the kernel baseline matches.
+
+Note: postgres.js's `connection: { keepalives: 1, ... }` option does **not** work — postgres.js passes those as Postgres GUC parameters at connection time, and Postgres rejects them with "unrecognized configuration parameter". The keepalives must be set at the OS/container/server level, not via the connection string.
 
 ### Why the deploy job has an explicit `if:` guard
 
