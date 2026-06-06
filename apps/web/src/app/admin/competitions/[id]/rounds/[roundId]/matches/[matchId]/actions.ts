@@ -30,8 +30,14 @@ export async function assignGameAction(
   const gameId = formData.get("gameId") as string
   const team1GameTeamId = formData.get("team1GameTeamId") as string
   const team2GameTeamId = formData.get("team2GameTeamId") as string
+
+  const t0 = Date.now()
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
+  console.log(`[assignGameAction] db write: ${Date.now() - t0}ms`)
+
+  const t1 = Date.now()
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  console.log(`[assignGameAction] revalidatePath: ${Date.now() - t1}ms`)
 }
 
 export async function removeGameAction(
