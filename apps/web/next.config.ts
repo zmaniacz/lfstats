@@ -10,10 +10,8 @@ const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../");
 
 const config = (phase: string): NextConfig => {
   const base: NextConfig = {
-    experimental: {
-      staleTimes: {
-        dynamic: 0,
-      },
+    staleTimes: {
+      dynamic: 0,
     },
   };
 
