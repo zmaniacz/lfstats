@@ -4,7 +4,6 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { after } from "next/server"
 import {
   assignGameToMatch,
   removeGameFromMatch,
@@ -32,7 +31,7 @@ export async function assignGameAction(
   const team1GameTeamId = formData.get("team1GameTeamId") as string
   const team2GameTeamId = formData.get("team2GameTeamId") as string
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
-  after(() => revalidatePath(`/admin/competitions/${competitionId}/rounds`))
+  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }
 
 export async function removeGameAction(
@@ -42,7 +41,7 @@ export async function removeGameAction(
 ): Promise<void> {
   await requireAdmin()
   await removeGameFromMatch(matchGameId)
-  after(() => revalidatePath(`/admin/competitions/${competitionId}/rounds`))
+  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }
 
 export async function createForfeitAction(
@@ -71,8 +70,6 @@ export async function createForfeitAction(
     forfeitingTeam,
   })
 
-  after(() => {
-    revalidatePath(`/admin/competitions/${competitionId}/rounds/${match.roundId}/matches/${matchId}`)
-    revalidatePath(`/admin/competitions/${competitionId}/rounds`)
-  })
+  revalidatePath(`/admin/competitions/${competitionId}/rounds/${match.roundId}/matches/${matchId}`)
+  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
 }
