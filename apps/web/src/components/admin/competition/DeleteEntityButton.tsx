@@ -4,6 +4,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -36,11 +37,13 @@ export function DeleteEntityButton({
 }: Props) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   function handleConfirm() {
     startTransition(async () => {
       await action(id)
       setOpen(false)
+      router.refresh()
     })
   }
 

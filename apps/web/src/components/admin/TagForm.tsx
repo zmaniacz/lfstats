@@ -4,6 +4,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,6 +35,7 @@ export function TagForm({
   updateAction,
 }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -45,6 +47,7 @@ export function TagForm({
         await createAction(centerId, formData)
       }
       onOpenChange(false)
+      router.refresh()
     })
   }
 

@@ -4,6 +4,7 @@
 "use client"
 
 import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +15,7 @@ type Props = {
 
 export function CompetitionTeamForm({ action }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -22,6 +24,7 @@ export function CompetitionTeamForm({ action }: Props) {
     startTransition(async () => {
       await action(formData)
       form.reset()
+      router.refresh()
     })
   }
 

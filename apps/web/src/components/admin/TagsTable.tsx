@@ -4,6 +4,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -57,6 +58,7 @@ export function TagsTable({
   mergeAction,
 }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const [showArchived, setShowArchived] = useState(false)
   const [tagFormOpen, setTagFormOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<GameTagListItem | undefined>()
@@ -152,6 +154,7 @@ export function TagsTable({
                             } else {
                               await archiveAction(tag.id, centerId)
                             }
+                            router.refresh()
                           })
                         }}
                         disabled={isPending}
@@ -217,6 +220,7 @@ export function TagsTable({
                   startTransition(async () => {
                     await deleteAction(deleteTarget.id, centerId)
                     setDeleteTarget(undefined)
+                    router.refresh()
                   })
                 }}
                 disabled={isPending}

@@ -4,6 +4,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -37,6 +38,7 @@ export function MatchGameAssignForm({
   const [team1GameTeamId, setTeam1GameTeamId] = useState("")
   const [team2GameTeamId, setTeam2GameTeamId] = useState("")
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   const selectedGame = unassignedGames.find((g) => g.id === gameId)
 
@@ -58,6 +60,7 @@ export function MatchGameAssignForm({
       setGameId("")
       setTeam1GameTeamId("")
       setTeam2GameTeamId("")
+      router.refresh()
     })
   }
 

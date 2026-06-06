@@ -4,6 +4,7 @@
 "use client"
 
 import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   return (
     <div className="flex gap-1 justify-end">
@@ -24,7 +26,10 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
           size="sm"
           className="h-7 px-2 text-xs"
           disabled={isPending}
-          onClick={() => startTransition(() => addAction(playerId))}
+          onClick={() => startTransition(async () => {
+            await addAction(playerId)
+            router.refresh()
+          })}
         >
           Add to Roster
         </Button>
@@ -34,7 +39,10 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
         size="sm"
         className="h-7 px-2 text-xs"
         disabled={isPending}
-        onClick={() => startTransition(() => mercAction(playerId, !isMercenary))}
+        onClick={() => startTransition(async () => {
+          await mercAction(playerId, !isMercenary)
+          router.refresh()
+        })}
       >
         {isMercenary ? "Unmark Merc" : "Mark as Merc"}
       </Button>

@@ -4,6 +4,7 @@
 "use client"
 
 import { useState, useTransition, useId, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   DndContext,
   closestCenter,
@@ -112,6 +113,7 @@ export function SortableMatchList({
 }: Props) {
   const [matches, setMatches] = useState(initialMatches)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const dndId = useId()
 
   useEffect(() => {
@@ -139,6 +141,7 @@ export function SortableMatchList({
 
     startTransition(async () => {
       await reorderAction(withNewNumbers.map(({ id, matchNumber }) => ({ id, matchNumber })))
+      router.refresh()
     })
   }
 

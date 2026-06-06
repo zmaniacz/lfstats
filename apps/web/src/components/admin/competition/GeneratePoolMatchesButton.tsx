@@ -4,6 +4,7 @@
 "use client"
 
 import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
 interface Props {
@@ -12,13 +13,14 @@ interface Props {
 
 export function GeneratePoolMatchesButton({ action }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   return (
     <Button
       variant="secondary"
       size="sm"
       disabled={isPending}
-      onClick={() => startTransition(() => action())}
+      onClick={() => startTransition(async () => { await action(); router.refresh() })}
     >
       {isPending ? "Generating…" : "Generate Matches"}
     </Button>
