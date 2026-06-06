@@ -33,11 +33,11 @@ export async function assignGameAction(
 
   const t0 = Date.now()
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
-  console.log(`[assignGameAction] db write: ${Date.now() - t0}ms`)
+  console.warn(`[assignGameAction] db write: ${Date.now() - t0}ms`)
 
   const t1 = Date.now()
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
-  console.log(`[assignGameAction] revalidatePath: ${Date.now() - t1}ms`)
+  console.warn(`[assignGameAction] revalidatePath: ${Date.now() - t1}ms`)
 }
 
 export async function removeGameAction(
