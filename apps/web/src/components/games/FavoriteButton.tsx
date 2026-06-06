@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { HeartIcon } from "@phosphor-icons/react"
 
 type Props = {
@@ -14,16 +15,21 @@ type Props = {
 }
 
 export function FavoriteButton({ gameId, isFavorited, addAction, removeAction }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
 
-  function handleClick() {
-    startTransition(async () => {
+  async function handleClick() {
+    setIsPending(true)
+    try {
       if (isFavorited) {
         await removeAction(gameId)
       } else {
         await addAction(gameId)
       }
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

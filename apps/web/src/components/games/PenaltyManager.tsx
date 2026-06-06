@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import type { PenaltyRecord } from "@lfstats/db"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,32 +35,49 @@ export function PenaltyManager({
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
 
-  function handleAdd(formData: FormData) {
-    startTransition(async () => {
+  async function handleAdd(formData: FormData) {
+    setIsPending(true)
+    try {
       await actions.addAction(gameId, scorecardId, formData)
       setShowAdd(false)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleUpdate(penaltyId: string, formData: FormData) {
-    startTransition(async () => {
+  async function handleUpdate(penaltyId: string, formData: FormData) {
+    setIsPending(true)
+    try {
       await actions.updateAction(gameId, penaltyId, formData)
       setEditingId(null)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleRescind(penaltyId: string, rescinded: boolean) {
-    startTransition(async () => {
+  async function handleRescind(penaltyId: string, rescinded: boolean) {
+    setIsPending(true)
+    try {
       await actions.rescindAction(gameId, penaltyId, rescinded)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleDelete(penaltyId: string) {
-    startTransition(async () => {
+  async function handleDelete(penaltyId: string) {
+    setIsPending(true)
+    try {
       await actions.deleteAction(gameId, penaltyId)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
   if (penalties.length === 0 && !canEdit) return null

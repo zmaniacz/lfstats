@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { PlayerSearchResult } from "@lfstats/db"
@@ -18,26 +19,34 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<PlayerSearchResult[]>([])
   const [searched, setSearched] = useState(false)
-  const [isPendingSearch, startSearch] = useTransition()
+  const [isPendingSearch, setIsPendingSearch] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
-  const [isPendingAdd, startAdd] = useTransition()
+  const [isPendingAdd, setIsPendingAdd] = useState(false)
+  const router = useRouter()
 
-  function handleSearch(e: React.FormEvent) {
+  async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
-    startSearch(async () => {
+    setIsPendingSearch(true)
+    try {
       const found = await searchAction(query.trim())
       setResults(found)
       setSearched(true)
-    })
+    } finally {
+      setIsPendingSearch(false)
+    }
   }
 
-  function handleAdd(playerId: string) {
+  async function handleAdd(playerId: string) {
     setAddingId(playerId)
-    startAdd(async () => {
+    setIsPendingAdd(true)
+    try {
       await addAction(playerId)
       setAddingId(null)
-    })
+      router.refresh()
+    } finally {
+      setIsPendingAdd(false)
+    }
   }
 
   return (

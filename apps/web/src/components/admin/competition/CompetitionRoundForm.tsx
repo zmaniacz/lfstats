@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,20 +23,23 @@ type Props = {
 
 export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
   const [type, setType] = useState<"pool" | "finals">("pool")
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const router = useRouter()
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set("type", type)
     const form = e.currentTarget
-    startTransition(async () => {
+    setIsPending(true)
+    try {
       await action(formData)
       form.reset()
       setType("pool")
       router.refresh()
-    })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

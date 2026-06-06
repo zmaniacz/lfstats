@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -24,14 +25,19 @@ type Props = {
 }
 
 export function ExcludeToggleButton({ gameId, excluded, action }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
-  function handleConfirm() {
-    startTransition(async () => {
+  async function handleConfirm() {
+    setIsPending(true)
+    try {
       await action(gameId, !excluded)
       setOpen(false)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

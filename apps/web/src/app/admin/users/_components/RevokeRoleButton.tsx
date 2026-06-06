@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -25,13 +26,18 @@ type Props = {
 
 export function RevokeRoleButton({ roleId, label }: Props) {
   const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
 
-  function handleConfirm() {
-    startTransition(async () => {
+  async function handleConfirm() {
+    setIsPending(true)
+    try {
       await revokeRoleAction(roleId)
       setOpen(false)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

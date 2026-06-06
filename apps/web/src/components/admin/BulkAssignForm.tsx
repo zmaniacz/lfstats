@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,19 +23,22 @@ type Props = {
 }
 
 export function BulkAssignForm({ competitionId, centers, action }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const [centerId, setCenterId] = useState("")
   const [result, setResult] = useState<number | null>(null)
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set("centerId", centerId)
     setResult(null)
-    startTransition(async () => {
+    setIsPending(true)
+    try {
       const count = await action(competitionId, formData)
       setResult(count)
-    })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

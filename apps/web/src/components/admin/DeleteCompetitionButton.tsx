@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -24,13 +24,16 @@ type Props = {
 }
 
 export function DeleteCompetitionButton({ competitionId, competitionName, action }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const [open, setOpen] = useState(false)
 
-  function handleConfirm() {
-    startTransition(async () => {
+  async function handleConfirm() {
+    setIsPending(true)
+    try {
       await action(competitionId)
-    })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

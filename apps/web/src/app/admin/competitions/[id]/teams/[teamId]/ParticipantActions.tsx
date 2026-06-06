@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
@@ -15,8 +15,28 @@ type Props = {
 }
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const router = useRouter()
+
+  async function handleAddToRoster() {
+    setIsPending(true)
+    try {
+      await addAction(playerId)
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleMercAction() {
+    setIsPending(true)
+    try {
+      await mercAction(playerId, !isMercenary)
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
+  }
 
   return (
     <div className="flex gap-1 justify-end">
@@ -26,10 +46,7 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
           size="sm"
           className="h-7 px-2 text-xs"
           disabled={isPending}
-          onClick={() => startTransition(async () => {
-            await addAction(playerId)
-            router.refresh()
-          })}
+          onClick={handleAddToRoster}
         >
           Add to Roster
         </Button>
@@ -39,10 +56,7 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
         size="sm"
         className="h-7 px-2 text-xs"
         disabled={isPending}
-        onClick={() => startTransition(async () => {
-          await mercAction(playerId, !isMercenary)
-          router.refresh()
-        })}
+        onClick={handleMercAction}
       >
         {isMercenary ? "Unmark Merc" : "Mark as Merc"}
       </Button>

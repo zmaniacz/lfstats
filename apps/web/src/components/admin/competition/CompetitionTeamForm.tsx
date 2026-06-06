@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,18 +14,21 @@ type Props = {
 }
 
 export function CompetitionTeamForm({ action }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const router = useRouter()
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const form = e.currentTarget
-    startTransition(async () => {
+    setIsPending(true)
+    try {
       await action(formData)
       form.reset()
       router.refresh()
-    })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

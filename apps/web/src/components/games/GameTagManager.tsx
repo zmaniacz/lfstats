@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,7 +30,8 @@ export function GameTagManager({
   assignAction,
   removeAction,
 }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
 
   const assignedIds = new Set(tags.map((t) => t.id))
   const unassigned = availableTags.filter((t) => !assignedIds.has(t.id) && !t.archived)
@@ -39,10 +41,14 @@ export function GameTagManager({
       {tags.map((tag) => (
         <button
           key={tag.id}
-          onClick={() => {
-            startTransition(async () => {
+          onClick={async () => {
+            setIsPending(true)
+            try {
               await removeAction(gameId, tag.id)
-            })
+              router.refresh()
+            } finally {
+              setIsPending(false)
+            }
           }}
           disabled={isPending}
           title="Click to remove tag"
@@ -64,10 +70,14 @@ export function GameTagManager({
             {unassigned.map((tag) => (
               <DropdownMenuItem
                 key={tag.id}
-                onClick={() => {
-                  startTransition(async () => {
+                onClick={async () => {
+                  setIsPending(true)
+                  try {
                     await assignAction(gameId, tag.id)
-                  })
+                    router.refresh()
+                  } finally {
+                    setIsPending(false)
+                  }
                 }}
               >
                 <span

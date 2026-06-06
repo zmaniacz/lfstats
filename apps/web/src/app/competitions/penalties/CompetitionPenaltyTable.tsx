@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useState, useTransition, useMemo } from "react"
+import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type { CompetitionPenaltyRecord } from "@lfstats/db"
 import { Badge } from "@/components/ui/badge"
@@ -55,7 +56,8 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   const [sortKey, setSortKey] = useState<SortKey>("game")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -91,23 +93,35 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
     })
   }, [filtered, sortKey, sortDir])
 
-  function handleUpdate(penaltyId: string, formData: FormData) {
-    startTransition(async () => {
+  async function handleUpdate(penaltyId: string, formData: FormData) {
+    setIsPending(true)
+    try {
       await actions.updateAction(competitionId, penaltyId, formData)
       setEditingId(null)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleRescind(penaltyId: string, rescinded: boolean) {
-    startTransition(async () => {
+  async function handleRescind(penaltyId: string, rescinded: boolean) {
+    setIsPending(true)
+    try {
       await actions.rescindAction(competitionId, penaltyId, rescinded)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleDelete(penaltyId: string) {
-    startTransition(async () => {
+  async function handleDelete(penaltyId: string) {
+    setIsPending(true)
+    try {
       await actions.deleteAction(competitionId, penaltyId)
-    })
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
   function SortIcon({ col }: { col: SortKey }) {

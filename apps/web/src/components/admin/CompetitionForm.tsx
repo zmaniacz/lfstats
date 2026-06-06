@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,18 +24,23 @@ type Props = {
 }
 
 export function CompetitionForm({ competition, centers, action }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const [type, setType] = useState<string>(competition?.type ?? "competitive")
   const [hostCenterId, setHostCenterId] = useState<string>(
     competition?.hostCenterId ?? "none",
   )
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set("type", type)
     formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId)
-    startTransition(() => action(formData))
+    setIsPending(true)
+    try {
+      await action(formData)
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

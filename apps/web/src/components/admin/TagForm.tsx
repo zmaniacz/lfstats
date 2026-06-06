@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,13 +34,14 @@ export function TagForm({
   createAction,
   updateAction,
 }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const router = useRouter()
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    startTransition(async () => {
+    setIsPending(true)
+    try {
       if (tag) {
         await updateAction(tag.id, centerId, formData)
       } else {
@@ -48,7 +49,9 @@ export function TagForm({
       }
       onOpenChange(false)
       router.refresh()
-    })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (

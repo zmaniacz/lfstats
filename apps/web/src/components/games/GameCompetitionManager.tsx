@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -56,7 +57,8 @@ export function GameCompetitionManager({
   assignToMatchAction,
   removeFromMatchAction,
 }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const router = useRouter()
 
   // Add-to-competition form state
   const [selectedCompetitionId, setSelectedCompetitionId] = useState("")
@@ -76,31 +78,53 @@ export function GameCompetitionManager({
     setTeam2GameTeamId("")
   }
 
-  function handleAddToCompetition() {
+  async function handleAddToCompetition() {
     if (!selectedCompetitionId) return
-    startTransition(() => addToCompetitionAction(gameId, selectedCompetitionId))
+    setIsPending(true)
+    try {
+      await addToCompetitionAction(gameId, selectedCompetitionId)
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleRemoveFromCompetition() {
-    startTransition(() => removeFromCompetitionAction(gameId))
+  async function handleRemoveFromCompetition() {
+    setIsPending(true)
+    try {
+      await removeFromCompetitionAction(gameId)
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleAssignToMatch() {
+  async function handleAssignToMatch() {
     if (!selectedMatchId || !selectedGameNumber || !team1GameTeamId || !team2GameTeamId) return
-    startTransition(() =>
-      assignToMatchAction(
+    setIsPending(true)
+    try {
+      await assignToMatchAction(
         gameId,
         selectedMatchId,
         parseInt(selectedGameNumber, 10),
         team1GameTeamId,
         team2GameTeamId,
-      ),
-    )
+      )
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
-  function handleRemoveFromMatch() {
+  async function handleRemoveFromMatch() {
     if (!matchAssignment) return
-    startTransition(() => removeFromMatchAction(gameId, matchAssignment.matchGameId))
+    setIsPending(true)
+    try {
+      await removeFromMatchAction(gameId, matchAssignment.matchGameId)
+      router.refresh()
+    } finally {
+      setIsPending(false)
+    }
   }
 
   // ── No competition ──────────────────────────────────────────────────────

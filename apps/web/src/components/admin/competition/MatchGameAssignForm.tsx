@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -37,7 +37,7 @@ export function MatchGameAssignForm({
   const [gameId, setGameId] = useState("")
   const [team1GameTeamId, setTeam1GameTeamId] = useState("")
   const [team2GameTeamId, setTeam2GameTeamId] = useState("")
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const router = useRouter()
 
   const selectedGame = unassignedGames.find((g) => g.id === gameId)
@@ -48,20 +48,23 @@ export function MatchGameAssignForm({
     setTeam2GameTeamId("")
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData()
     formData.set("gameNumber", gameNumber)
     formData.set("gameId", gameId)
     formData.set("team1GameTeamId", team1GameTeamId)
     formData.set("team2GameTeamId", team2GameTeamId)
-    startTransition(async () => {
+    setIsPending(true)
+    try {
       await action(formData)
       setGameId("")
       setTeam1GameTeamId("")
       setTeam2GameTeamId("")
       router.refresh()
-    })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   const canSubmit = gameId && team1GameTeamId && team2GameTeamId && team1GameTeamId !== team2GameTeamId

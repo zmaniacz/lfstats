@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -57,7 +57,7 @@ export function TagsTable({
   deleteAction,
   mergeAction,
 }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const router = useRouter()
   const [showArchived, setShowArchived] = useState(false)
   const [tagFormOpen, setTagFormOpen] = useState(false)
@@ -147,15 +147,18 @@ export function TagsTable({
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => {
-                          startTransition(async () => {
+                        onClick={async () => {
+                          setIsPending(true)
+                          try {
                             if (tag.archived) {
                               await unarchiveAction(tag.id, centerId)
                             } else {
                               await archiveAction(tag.id, centerId)
                             }
                             router.refresh()
-                          })
+                          } finally {
+                            setIsPending(false)
+                          }
                         }}
                         disabled={isPending}
                       >
@@ -216,12 +219,15 @@ export function TagsTable({
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => {
-                  startTransition(async () => {
+                onClick={async () => {
+                  setIsPending(true)
+                  try {
                     await deleteAction(deleteTarget.id, centerId)
                     setDeleteTarget(undefined)
                     router.refresh()
-                  })
+                  } finally {
+                    setIsPending(false)
+                  }
                 }}
                 disabled={isPending}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
