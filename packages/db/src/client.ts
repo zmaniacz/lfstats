@@ -65,7 +65,7 @@ const globalForDb = globalThis as typeof globalThis & {
 };
 
 function build(url: string): PostgresJsDatabase<typeof schema> {
-  globalForDb._pgClient ??= postgres(url, { max: 10, idle_timeout: 20, connection: { keepalives: 1, keepalives_idle: 10, keepalives_interval: 5, keepalives_count: 3 } });
+  globalForDb._pgClient ??= postgres(url, { max: 10, idle_timeout: 20 });
   globalForDb._db ??= drizzle(globalForDb._pgClient, { schema });
   return globalForDb._db;
 }
