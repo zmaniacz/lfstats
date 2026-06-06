@@ -25,7 +25,10 @@ export async function assignGameAction(
   matchId: string,
   formData: FormData,
 ): Promise<void> {
+  const tAuth = Date.now()
   await requireAdmin()
+  process.stderr.write(`[assignGameAction] auth: ${Date.now() - tAuth}ms\n`)
+
   const gameNumber = parseInt(formData.get("gameNumber") as string, 10)
   const gameId = formData.get("gameId") as string
   const team1GameTeamId = formData.get("team1GameTeamId") as string
@@ -33,11 +36,11 @@ export async function assignGameAction(
 
   const t0 = Date.now()
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
-  console.warn(`[assignGameAction] db write: ${Date.now() - t0}ms`)
+  process.stderr.write(`[assignGameAction] db write: ${Date.now() - t0}ms\n`)
 
   const t1 = Date.now()
   revalidatePath(`/admin/competitions/${competitionId}/rounds`)
-  console.warn(`[assignGameAction] revalidatePath: ${Date.now() - t1}ms`)
+  process.stderr.write(`[assignGameAction] revalidatePath: ${Date.now() - t1}ms\n`)
 }
 
 export async function removeGameAction(
