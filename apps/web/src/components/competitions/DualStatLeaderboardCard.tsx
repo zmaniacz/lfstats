@@ -17,8 +17,12 @@ import { formatScore, formatMsDuration, formatMs } from "@/lib/format"
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
+import type { StatFormat } from "./StatLeaderboardCard"
 
-export type StatFormat = "integer" | "score" | "duration" | "decimal" | "ms"
+const PAGE_SIZE = 5
+
+type SortCol = "value1" | "value2"
+type SortDir = "asc" | "desc"
 
 function applyFormat(v: number, format: StatFormat): string {
   switch (format) {
@@ -30,34 +34,32 @@ function applyFormat(v: number, format: StatFormat): string {
   }
 }
 
-const PAGE_SIZE = 5
-
-type SortDir = "asc" | "desc"
-
 type Row = {
   playerId: string
   iplId: string
   callsign: string
-  value: number
+  value1: number
+  value2: number
 }
 
 function SortableHead({
-  active,
-  dir,
+  col,
+  sort,
   onSort,
   children,
 }: {
-  active: boolean
-  dir: SortDir
-  onSort: () => void
+  col: SortCol
+  sort: { col: SortCol; dir: SortDir }
+  onSort: (col: SortCol) => void
   children: React.ReactNode
 }) {
-  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  const active = sort.col === col
+  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
   return (
     <TableHead className="text-right">
       <button
         className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors"
-        onClick={onSort}
+        onClick={() => onSort(col)}
       >
         {children}
         <Icon className={`h-3 w-3 ${active ? "" : "opacity-40"}`} />
@@ -66,27 +68,38 @@ function SortableHead({
   )
 }
 
-export function StatLeaderboardCard({
+export function DualStatLeaderboardCard({
   title,
-  colLabel,
+  col1Label,
+  col2Label,
   rows,
-  format,
+  format1,
+  format2,
 }: {
   title: string
-  colLabel: string
+  col1Label: string
+  col2Label: string
   rows: Row[]
-  format: StatFormat
+  format1: StatFormat
+  format2: StatFormat
 }) {
-  const [sort, setSort] = useState<SortDir>("desc")
+  const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: "value1", dir: "desc" })
   const [page, setPage] = useState(1)
 
-  function toggleSort() {
-    setSort((prev) => (prev === "asc" ? "desc" : "asc"))
+  function handleSort(col: SortCol) {
+    setSort((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: "desc" }
+    )
     setPage(1)
   }
 
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => sort === "desc" ? b.value - a.value : a.value - b.value),
+    () => [...rows].sort((a, b) => {
+      const diff = a[sort.col] - b[sort.col]
+      return sort.dir === "asc" ? diff : -diff
+    }),
     [rows, sort],
   )
 
@@ -103,9 +116,8 @@ export function StatLeaderboardCard({
           <TableHeader>
             <TableRow>
               <TableHead>Callsign</TableHead>
-              <SortableHead active dir={sort} onSort={toggleSort}>
-                {colLabel}
-              </SortableHead>
+              <SortableHead col="value1" sort={sort} onSort={handleSort}>{col1Label}</SortableHead>
+              <SortableHead col="value2" sort={sort} onSort={handleSort}>{col2Label}</SortableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -119,14 +131,17 @@ export function StatLeaderboardCard({
                     </Link>
                   </TableCell>
                   <TableCell className="tabular-nums text-right">
-                    {applyFormat(r.value, format)}
+                    {applyFormat(r.value1, format1)}
+                  </TableCell>
+                  <TableCell className="tabular-nums text-right">
+                    {applyFormat(r.value2, format2)}
                   </TableCell>
                 </TableRow>
               )
             })}
             {pageRows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                   No data for this competition.
                 </TableCell>
               </TableRow>

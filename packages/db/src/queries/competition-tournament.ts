@@ -2200,6 +2200,219 @@ export async function getCompetitionTotalTime(
     .slice(0, 100);
 }
 
+// ---------------------------------------------------------------------------
+// Nuke Nonsense leaderboards
+// ---------------------------------------------------------------------------
+
+export type CompetitionNukeNonsenseItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  nukesDetonated: number;
+  nukesCanceled: number;
+  teamNukesCanceled: number;
+  avgNukeActivationTime: number | null;
+  livesRemovedByNuke: number;
+};
+
+export async function getCompetitionNukeNonsense(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionNukeNonsenseItem[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      nukesDetonated: sql<number>`coalesce(sum(${sm5Scorecard.nukesDetonated}), 0)::int`,
+      nukesCanceled: sql<number>`sum(${sm5Scorecard.nukesCanceled})::int`,
+      teamNukesCanceled: sql<number>`sum(${sm5Scorecard.teamNukesCanceled})::int`,
+      avgNukeActivationTime: sql<number | null>`avg(${sm5Scorecard.averageNukeActivationTime}) filter (where ${sm5Scorecard.averageNukeActivationTime} is not null)`,
+      livesRemovedByNuke: sql<number>`coalesce(sum(${sm5Scorecard.livesRemovedByNuke}), 0)::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  return rows.map((r) => ({
+    playerId: r.playerId,
+    iplId: r.iplId,
+    callsign: r.callsign,
+    nukesDetonated: Number(r.nukesDetonated),
+    nukesCanceled: Number(r.nukesCanceled),
+    teamNukesCanceled: Number(r.teamNukesCanceled),
+    avgNukeActivationTime: r.avgNukeActivationTime !== null ? Number(r.avgNukeActivationTime) : null,
+    livesRemovedByNuke: Number(r.livesRemovedByNuke),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Missile Malarkey leaderboards
+// ---------------------------------------------------------------------------
+
+export type CompetitionMissileMalarkeyItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalMissiles: number;
+  avgMissiles: number;
+  timesHitByMissile: number;
+  teamMissiles: number;
+};
+
+export async function getCompetitionMissileMalarkey(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionMissileMalarkeyItem[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalMissiles: sql<number>`sum(${sm5Scorecard.missilesHitOpponent} + ${sm5Scorecard.missilesHitTeam})::int`,
+      avgMissiles: sql<number>`avg(${sm5Scorecard.missilesHitOpponent} + ${sm5Scorecard.missilesHitTeam})`,
+      timesHitByMissile: sql<number>`sum(${sm5Scorecard.timesHitByMissile})::int`,
+      teamMissiles: sql<number>`sum(${sm5Scorecard.missilesHitTeam})::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  return rows.map((r) => ({
+    playerId: r.playerId,
+    iplId: r.iplId,
+    callsign: r.callsign,
+    totalMissiles: Number(r.totalMissiles),
+    avgMissiles: Number(r.avgMissiles),
+    timesHitByMissile: Number(r.timesHitByMissile),
+    teamMissiles: Number(r.teamMissiles),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Medic Tomfoolery leaderboards
+// ---------------------------------------------------------------------------
+
+export type CompetitionMedicTomfooleryItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalMedicHits: number;
+  ownMedicHits: number;
+  medicOnMedicHits: number;
+  medicKills: number;
+};
+
+export async function getCompetitionMedicTomfoolery(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionMedicTomfooleryItem[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::int`,
+      ownMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitTeamMedic} + ${sm5Scorecard.missilesHitTeamMedic} * 2)::int`,
+      medicOnMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} = 5)::int`,
+      medicKills: sql<number>`sum(${sm5Scorecard.eliminatedOpponentMedic})::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  return rows.map((r) => ({
+    playerId: r.playerId,
+    iplId: r.iplId,
+    callsign: r.callsign,
+    totalMedicHits: Number(r.totalMedicHits),
+    ownMedicHits: Number(r.ownMedicHits),
+    medicOnMedicHits: r.medicOnMedicHits !== null ? Number(r.medicOnMedicHits) : 0,
+    medicKills: Number(r.medicKills),
+  }));
+}
+
 export async function getCompetitionMedicHitsLeaderboard(
   competitionId: string,
   options: CompetitionTopPlayersOptions = {},
