@@ -3,8 +3,11 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
 
 FROM base AS builder
-COPY . .
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/db/package.json ./packages/db/
 RUN pnpm install --frozen-lockfile
+COPY . .
 RUN pnpm turbo build --filter=web
 
 FROM node:24-alpine AS runner

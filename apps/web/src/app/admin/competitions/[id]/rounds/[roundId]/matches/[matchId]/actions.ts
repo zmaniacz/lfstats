@@ -4,6 +4,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import {
   assignGameToMatch,
   removeGameFromMatch,
@@ -25,22 +26,13 @@ export async function assignGameAction(
   matchId: string,
   formData: FormData,
 ): Promise<void> {
-  const tAuth = Date.now()
   await requireAdmin()
-  process.stderr.write(`[assignGameAction] auth: ${Date.now() - tAuth}ms\n`)
-
   const gameNumber = parseInt(formData.get("gameNumber") as string, 10)
   const gameId = formData.get("gameId") as string
   const team1GameTeamId = formData.get("team1GameTeamId") as string
   const team2GameTeamId = formData.get("team2GameTeamId") as string
-
-  const t0 = Date.now()
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
-  process.stderr.write(`[assignGameAction] db write: ${Date.now() - t0}ms\n`)
-
-  const t1 = Date.now()
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
-  process.stderr.write(`[assignGameAction] revalidatePath: ${Date.now() - t1}ms\n`)
+  after(() => revalidatePath(`/admin/competitions/${competitionId}/rounds`))
 }
 
 export async function removeGameAction(
@@ -50,7 +42,7 @@ export async function removeGameAction(
 ): Promise<void> {
   await requireAdmin()
   await removeGameFromMatch(matchGameId)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  after(() => revalidatePath(`/admin/competitions/${competitionId}/rounds`))
 }
 
 export async function createForfeitAction(
@@ -79,6 +71,8 @@ export async function createForfeitAction(
     forfeitingTeam,
   })
 
-  revalidatePath(`/admin/competitions/${competitionId}/rounds/${match.roundId}/matches/${matchId}`)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  after(() => {
+    revalidatePath(`/admin/competitions/${competitionId}/rounds/${match.roundId}/matches/${matchId}`)
+    revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  })
 }
