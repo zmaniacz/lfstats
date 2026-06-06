@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatHitDiff } from "@/lib/format"
+import { POSITIONS } from "@/lib/positions"
 import type { PlayerHitData } from "@lfstats/db"
 
 type Props = {
@@ -63,7 +64,10 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
             <TableBody>
               {opponents.map((row) => (
                 <TableRow key={row.callsign}>
-                  <TableCell>{row.callsign}</TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground mr-1">{POSITIONS[row.position]?.abbr ?? "?"}</span>
+                    {row.callsign}
+                  </TableCell>
                   <TableCell className="text-center tabular-nums">{row.hitsDealt}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.hitsReceived}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.missilesDealt}</TableCell>
@@ -81,8 +85,11 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
                     </TableCell>
                   </TableRow>
                   {teammates.map((row) => (
-                    <TableRow key={row.callsign} >
-                      <TableCell>{row.callsign}</TableCell>
+                    <TableRow key={row.callsign}>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground mr-1">{POSITIONS[row.position]?.abbr ?? "?"}</span>
+                        {row.callsign}
+                      </TableCell>
                       <TableCell className="text-center tabular-nums">{row.hitsDealt}</TableCell>
                       <TableCell className="text-center tabular-nums">{row.hitsReceived}</TableCell>
                       <TableCell className="text-center tabular-nums">{row.missilesDealt}</TableCell>

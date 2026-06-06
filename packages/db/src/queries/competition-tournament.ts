@@ -2201,6 +2201,91 @@ export async function getCompetitionTotalTime(
 }
 
 // ---------------------------------------------------------------------------
+// Miscellaneous Mischief leaderboards
+// ---------------------------------------------------------------------------
+
+export type CompetitionMiscMischiefItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalShotsFired: number;
+  totalAssists: number;
+  totalPenalties: number;
+  totalEliminations: number;
+  totalResets: number;
+  totalTeamResets: number;
+  unusedSp: number | null;
+  totalResupplyDowntimeMs: number;
+  totalDoubleResuppliesGiven: number | null;
+};
+
+export async function getCompetitionMiscMischief(
+  competitionId: string,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionMiscMischiefItem[]> {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  const roundTypes: string[] = [];
+  if (showPool) roundTypes.push("pool");
+  if (showFinals) roundTypes.push("finals");
+  if (roundTypes.length === 0) return [];
+
+  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+
+  const conditions = [
+    sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      WHERE cm.competition_id = ${competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+    )`,
+    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  ];
+
+  if (!showMercs) {
+    conditions.push(eq(sm5Scorecard.isMercenary, false));
+  }
+
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalShotsFired: sql<number>`sum(${sm5Scorecard.shotsFired})::int`,
+      totalAssists: sql<number>`sum(${sm5Scorecard.assists})::int`,
+      totalPenalties: sql<number>`sum(${sm5Scorecard.penalties})::int`,
+      totalEliminations: sql<number>`sum(${sm5Scorecard.eliminatedOpponent})::int`,
+      totalResets: sql<number>`sum(${sm5Scorecard.resetOpponent} + ${sm5Scorecard.missileResetOpponent})::int`,
+      totalTeamResets: sql<number>`sum(${sm5Scorecard.resetTeam} + ${sm5Scorecard.missileResetTeam})::int`,
+      unusedSp: sql<number | null>`sum(${sm5Scorecard.spEarned} - ${sm5Scorecard.spSpent}) filter (where ${sm5Scorecard.spEarned} is not null and ${sm5Scorecard.spSpent} is not null)`,
+      totalResupplyDowntimeMs: sql<number>`sum(${sm5Scorecard.resupplyDowntime})::bigint`,
+      totalDoubleResuppliesGiven: sql<number | null>`sum(${sm5Scorecard.doubleResuppliesGiven}) filter (where ${sm5Scorecard.doubleResuppliesGiven} is not null)`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  return rows.map((r) => ({
+    playerId: r.playerId,
+    iplId: r.iplId,
+    callsign: r.callsign,
+    totalShotsFired: Number(r.totalShotsFired),
+    totalAssists: Number(r.totalAssists),
+    totalPenalties: Number(r.totalPenalties),
+    totalEliminations: Number(r.totalEliminations),
+    totalResets: Number(r.totalResets),
+    totalTeamResets: Number(r.totalTeamResets),
+    unusedSp: r.unusedSp !== null ? Number(r.unusedSp) : null,
+    totalResupplyDowntimeMs: Number(r.totalResupplyDowntimeMs),
+    totalDoubleResuppliesGiven: r.totalDoubleResuppliesGiven !== null ? Number(r.totalDoubleResuppliesGiven) : null,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Nuke Nonsense leaderboards
 // ---------------------------------------------------------------------------
 

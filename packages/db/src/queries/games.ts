@@ -140,6 +140,8 @@ export type MvpComponentRow = {
 
 export type PlayerHitData = {
   callsign: string;
+  position: number;
+  score: number;
   isTeammate: boolean;
   hitsDealt: number;
   missilesDealt: number;
@@ -434,9 +436,9 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
     mvpByScorecard.set(row.scorecardId, list);
   }
 
-  const scorecardMeta = new Map<string, { callsign: string; teamId: string }>();
+  const scorecardMeta = new Map<string, { callsign: string; position: number; score: number; teamId: string }>();
   for (const sc of scorecardRows) {
-    scorecardMeta.set(sc.id, { callsign: sc.callsign, teamId: sc.teamId });
+    scorecardMeta.set(sc.id, { callsign: sc.callsign, position: sc.position, score: sc.score, teamId: sc.teamId });
   }
 
   type RawHit = { shotsHit: number; missileHits: number };
@@ -553,14 +555,16 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
           const r = received.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
           interactions.push({
             callsign: meta.callsign,
+            position: meta.position,
             isTeammate: meta.teamId === teamIdRef,
             hitsDealt: d.shotsHit,
             missilesDealt: d.missileHits,
             hitsReceived: r.shotsHit,
             missilesReceived: r.missileHits,
+            score: meta.score,
           });
         }
-        return interactions;
+        return interactions.sort((a, b) => b.score - a.score);
       })(),
     }));
   }
@@ -793,10 +797,10 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     mvpByScorecard.set(row.scorecardId, list);
   }
 
-  // Build a lookup of scorecardId → {callsign, teamId} for interaction labeling
-  const scorecardMeta = new Map<string, { callsign: string; teamId: string }>();
+  // Build a lookup of scorecardId → {callsign, position, score, teamId} for interaction labeling
+  const scorecardMeta = new Map<string, { callsign: string; position: number; score: number; teamId: string }>();
   for (const sc of scorecardRows) {
-    scorecardMeta.set(sc.id, { callsign: sc.callsign, teamId: sc.teamId });
+    scorecardMeta.set(sc.id, { callsign: sc.callsign, position: sc.position, score: sc.score, teamId: sc.teamId });
   }
 
   // Build bidirectional interaction data keyed by player scorecardId
@@ -923,14 +927,16 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
             const r = received.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
             interactions.push({
               callsign: meta.callsign,
+              position: meta.position,
               isTeammate: meta.teamId === sc.teamId,
               hitsDealt: d.shotsHit,
               missilesDealt: d.missileHits,
               hitsReceived: r.shotsHit,
               missilesReceived: r.missileHits,
+              score: meta.score,
             });
           }
-          return interactions;
+          return interactions.sort((a, b) => b.score - a.score);
         })(),
       })),
     }));

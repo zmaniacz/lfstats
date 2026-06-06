@@ -7,6 +7,7 @@ import { StatLeaderboardCard } from "@/components/competitions/StatLeaderboardCa
 import {
   getCompetitionGamesPlayed,
   getCompetitionMedicTomfoolery,
+  getCompetitionMiscMischief,
   getCompetitionMissileMalarkey,
   getCompetitionNukeNonsense,
   getCompetitionPositionScorecards,
@@ -69,6 +70,7 @@ export default async function LeaderBoardsPage({
     medicTomfoolery,
     missileMalarkey,
     nukeNonsense,
+    miscMischief,
   ] = await Promise.all([
     getCompetitionPositionScorecards(activeId, 1, options),
     getCompetitionPositionScorecards(activeId, 2, options),
@@ -81,6 +83,7 @@ export default async function LeaderBoardsPage({
     getCompetitionMedicTomfoolery(activeId, options),
     getCompetitionMissileMalarkey(activeId, options),
     getCompetitionNukeNonsense(activeId, options),
+    getCompetitionMiscMischief(activeId, options),
   ]);
 
   return (
@@ -208,7 +211,7 @@ export default async function LeaderBoardsPage({
             format2="decimal"
           />
           <StatLeaderboardCard
-            title="Total Times Missiled (couldn't dodge a wrench)"
+            title="Total Times Missiled"
             colLabel="Times Missiled"
             rows={[...missileMalarkey]
               .filter((r) => r.timesHitByMissile > 0)
@@ -264,7 +267,7 @@ export default async function LeaderBoardsPage({
             format="integer"
           />
           <StatLeaderboardCard
-            title="Nuke Timing"
+            title="Nuke Timing (i say we take off blah blah blah)"
             colLabel="Avg Activation"
             rows={[...nukeNonsense]
               .filter((r) => r.avgNukeActivationTime !== null)
@@ -278,13 +281,109 @@ export default async function LeaderBoardsPage({
             format="ms"
           />
           <StatLeaderboardCard
-            title="Nuke Violence (shoulda jumped in the fridge)"
+            title="Nuke Violence"
             colLabel="Lives Nuked"
             rows={[...nukeNonsense]
               .filter((r) => r.livesRemovedByNuke > 0)
               .sort((a, b) => b.livesRemovedByNuke - a.livesRemovedByNuke)
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.livesRemovedByNuke }))}
+            format="integer"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Miscellaneous Mischief</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatLeaderboardCard
+            title="Melted Gun"
+            colLabel="Shots Fired"
+            rows={[...miscMischief]
+              .filter((r) => r.totalShotsFired > 0)
+              .sort((a, b) => b.totalShotsFired - a.totalShotsFired)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalShotsFired }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="A Little Help From Your Friends"
+            colLabel="Assists"
+            rows={[...miscMischief]
+              .filter((r) => r.totalAssists > 0)
+              .sort((a, b) => b.totalAssists - a.totalAssists)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalAssists }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="Problem Child"
+            colLabel="Penalties"
+            rows={[...miscMischief]
+              .filter((r) => r.totalPenalties > 0)
+              .sort((a, b) => b.totalPenalties - a.totalPenalties)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalPenalties }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="Killer"
+            colLabel="Eliminations"
+            rows={[...miscMischief]
+              .filter((r) => r.totalEliminations > 0)
+              .sort((a, b) => b.totalEliminations - a.totalEliminations)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalEliminations }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="Easy Targets"
+            colLabel="Resets"
+            rows={[...miscMischief]
+              .filter((r) => r.totalResets > 0)
+              .sort((a, b) => b.totalResets - a.totalResets)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalResets }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="For the Greater Good (Maybe)"
+            colLabel="Team Resets"
+            rows={[...miscMischief]
+              .filter((r) => r.totalTeamResets > 0)
+              .sort((a, b) => b.totalTeamResets - a.totalTeamResets)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalTeamResets }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="Lazy"
+            colLabel="Unused SP"
+            rows={[...miscMischief]
+              .filter((r) => r.unusedSp !== null && r.unusedSp > 0)
+              .sort((a, b) => (b.unusedSp ?? 0) - (a.unusedSp ?? 0))
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.unusedSp! }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="I Said Lives, Not Shots"
+            colLabel="Resupply Downtime"
+            rows={[...miscMischief]
+              .filter((r) => r.totalResupplyDowntimeMs > 0)
+              .sort((a, b) => b.totalResupplyDowntimeMs - a.totalResupplyDowntimeMs)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalResupplyDowntimeMs }))}
+            format="duration"
+          />
+          <StatLeaderboardCard
+            title="N*SYNC"
+            colLabel="Double Resupplies"
+            rows={[...miscMischief]
+              .filter((r) => r.totalDoubleResuppliesGiven !== null && r.totalDoubleResuppliesGiven > 0)
+              .sort((a, b) => (b.totalDoubleResuppliesGiven ?? 0) - (a.totalDoubleResuppliesGiven ?? 0))
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalDoubleResuppliesGiven! }))}
             format="integer"
           />
         </div>
