@@ -71,6 +71,30 @@ export function GameCompetitionManager({
   const [team1GameTeamId, setTeam1GameTeamId] = useState("")
   const [team2GameTeamId, setTeam2GameTeamId] = useState("")
 
+  // Some heavier mutations (e.g. assigning a game to a match also rewrites
+  // mercenary flags across multiple scorecards via correlated-subquery UPDATEs)
+  // take long enough that the resulting `router.refresh()` transition gets
+  // scheduled but never gets a chance to commit — it only flushes once some
+  // unrelated navigation activity (a tab switch, a sidebar Link prefetch on
+  // hover) nudges React's scheduler. Firing a second refresh shortly after
+  // reliably provides that nudge ourselves; both refreshes are cheap no-ops
+  // once the server-side cache has already been revalidated.
+  //
+  // TODO: revisit when upgrading React/Next — this looks like a sibling of the
+  // scheduler/transition bugs tracked in vercel/next.js#88767 (and #77504,
+  // #86055, #82289). Once those land a fix, test whether a single
+  // `router.refresh()` is sufficient again and drop the follow-up call.
+  function refreshPage() {
+    startRefreshTransition(() => {
+      router.refresh()
+    })
+    setTimeout(() => {
+      startRefreshTransition(() => {
+        router.refresh()
+      })
+    }, 500)
+  }
+
   const selectedMatch = availableMatches.find((m) => m.id === selectedMatchId)
 
   function handleMatchChange(id: string) {
@@ -88,9 +112,7 @@ export function GameCompetitionManager({
     } finally {
       setIsSubmitting(false)
     }
-    startRefreshTransition(() => {
-      router.refresh()
-    })
+    refreshPage()
   }
 
   async function handleRemoveFromCompetition() {
@@ -100,9 +122,7 @@ export function GameCompetitionManager({
     } finally {
       setIsSubmitting(false)
     }
-    startRefreshTransition(() => {
-      router.refresh()
-    })
+    refreshPage()
   }
 
   async function handleAssignToMatch() {
@@ -119,9 +139,7 @@ export function GameCompetitionManager({
     } finally {
       setIsSubmitting(false)
     }
-    startRefreshTransition(() => {
-      router.refresh()
-    })
+    refreshPage()
   }
 
   async function handleRemoveFromMatch() {
@@ -132,9 +150,7 @@ export function GameCompetitionManager({
     } finally {
       setIsSubmitting(false)
     }
-    startRefreshTransition(() => {
-      router.refresh()
-    })
+    refreshPage()
   }
 
   // ── No competition ──────────────────────────────────────────────────────
