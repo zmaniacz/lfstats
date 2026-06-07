@@ -276,17 +276,18 @@ export function GameCompetitionManager({
                   !team2GameTeamId ||
                   team1GameTeamId === team2GameTeamId
                 }
-                onClick={() =>
+                onClick={() => {
+                  let gameNumber = parseInt(selectedGameNumber, 10);
                   startTransition(() =>
                     assignToMatchAction(
                       gameId,
                       selectedMatchId,
-                      parseInt(selectedGameNumber, 10),
+                      gameNumber,
                       team1GameTeamId,
                       team2GameTeamId,
                     ),
-                  )
-                }
+                  );
+                }}
               >
                 {isPending ? "Assigning…" : "Assign to Match"}
               </Button>
