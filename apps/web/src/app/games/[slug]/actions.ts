@@ -6,21 +6,21 @@
 import { auth } from "@/auth";
 import {
   addFavorite,
-  addPenalty,
-  assignGameToMatch,
   assignTagToGame,
   deleteGame,
-  deletePenalty,
   getGameCenterId,
   getGameSlugById,
   removeFavorite,
-  removeGameFromCompetition,
-  removeGameFromMatch,
   removeTagFromGame,
-  setGameCompetition,
   setGameExcluded,
-  setScorecardMercenary,
+  removeGameFromCompetition,
+  setGameCompetition,
+  assignGameToMatch,
+  removeGameFromMatch,
+  addPenalty,
   updatePenalty,
+  deletePenalty,
+  setScorecardMercenary,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -90,17 +90,15 @@ export async function addGameToCompetitionAction(
   gameId: string,
   competitionId: string,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await setGameCompetition(gameId, competitionId);
-  await revalidateGame(gameId);
+  await requireCenterAdmin(gameId)
+  await setGameCompetition(gameId, competitionId)
+  await revalidateGame(gameId)
 }
 
-export async function removeGameFromCompetitionAction(
-  gameId: string,
-): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await removeGameFromCompetition(gameId);
-  await revalidateGame(gameId);
+export async function removeGameFromCompetitionAction(gameId: string): Promise<void> {
+  await requireCenterAdmin(gameId)
+  await removeGameFromCompetition(gameId)
+  await revalidateGame(gameId)
 }
 
 export async function assignGameToMatchAction(
@@ -110,24 +108,18 @@ export async function assignGameToMatchAction(
   team1GameTeamId: string,
   team2GameTeamId: string,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await assignGameToMatch(
-    matchId,
-    gameId,
-    gameNumber,
-    team1GameTeamId,
-    team2GameTeamId,
-  );
-  await revalidateGame(gameId);
+  await requireCenterAdmin(gameId)
+  await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
+  await revalidateGame(gameId)
 }
 
 export async function removeGameFromMatchAction(
   gameId: string,
   matchGameId: string,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await removeGameFromMatch(matchGameId);
-  await revalidateGame(gameId);
+  await requireCenterAdmin(gameId)
+  await removeGameFromMatch(matchGameId)
+  await revalidateGame(gameId)
 }
 
 export async function addPenaltyAction(
@@ -135,7 +127,7 @@ export async function addPenaltyAction(
   scorecardId: string,
   formData: FormData,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
+  await requireCenterAdmin(gameId)
   await addPenalty({
     scorecardId,
     gameId,
@@ -144,8 +136,8 @@ export async function addPenaltyAction(
     scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
     mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
     inGame: false,
-  });
-  await revalidateGame(gameId);
+  })
+  await revalidateGame(gameId)
 }
 
 export async function updatePenaltyAction(
@@ -153,14 +145,14 @@ export async function updatePenaltyAction(
   penaltyId: string,
   formData: FormData,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
+  await requireCenterAdmin(gameId)
   await updatePenalty(penaltyId, {
     type: formData.get("type") as string,
     description: formData.get("description") as string,
     scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
     mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
-  });
-  await revalidateGame(gameId);
+  })
+  await revalidateGame(gameId)
 }
 
 export async function rescindPenaltyAction(
@@ -168,18 +160,18 @@ export async function rescindPenaltyAction(
   penaltyId: string,
   rescinded: boolean,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await updatePenalty(penaltyId, { rescinded });
-  await revalidateGame(gameId);
+  await requireCenterAdmin(gameId)
+  await updatePenalty(penaltyId, { rescinded })
+  await revalidateGame(gameId)
 }
 
 export async function deletePenaltyAction(
   gameId: string,
   penaltyId: string,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await deletePenalty(penaltyId);
-  await revalidateGame(gameId);
+  await requireCenterAdmin(gameId)
+  await deletePenalty(penaltyId)
+  await revalidateGame(gameId)
 }
 
 export async function setScorecardMercenaryAction(
@@ -187,9 +179,9 @@ export async function setScorecardMercenaryAction(
   scorecardId: string,
   isMercenary: boolean,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await setScorecardMercenary(scorecardId, isMercenary);
-  await revalidateGame(gameId);
+  await requireCenterAdmin(gameId)
+  await setScorecardMercenary(scorecardId, isMercenary)
+  await revalidateGame(gameId)
 }
 
 export async function addFavoriteAction(gameId: string, note?: string) {

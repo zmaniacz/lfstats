@@ -1,54 +1,48 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client";
+"use client"
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { TEAM_COLORS } from "@/lib/team-colors";
-import type {
-  AvailableMatch,
-  CompetitionListItem,
-  GameMatchAssignment,
-} from "@lfstats/db";
-import { useState, useTransition } from "react";
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { TEAM_COLORS } from "@/lib/team-colors"
+import type { CompetitionListItem, AvailableMatch, GameMatchAssignment } from "@lfstats/db"
 
 type GameTeam = {
-  id: string;
-  name: string;
-  colourEnum: number;
-};
+  id: string
+  name: string
+  colourEnum: number
+}
 
 type Props = {
-  gameId: string;
-  gameTeams: GameTeam[];
-  competitionId: string | null;
-  competitionName: string | null;
-  matchAssignment: GameMatchAssignment | null;
-  availableCompetitions: CompetitionListItem[];
-  availableMatches: AvailableMatch[];
-  addToCompetitionAction: (
-    gameId: string,
-    competitionId: string,
-  ) => Promise<void>;
-  removeFromCompetitionAction: (gameId: string) => Promise<void>;
+  gameId: string
+  gameTeams: GameTeam[]
+  competitionId: string | null
+  competitionName: string | null
+  matchAssignment: GameMatchAssignment | null
+  availableCompetitions: CompetitionListItem[]
+  availableMatches: AvailableMatch[]
+  addToCompetitionAction: (gameId: string, competitionId: string) => Promise<void>
+  removeFromCompetitionAction: (gameId: string) => Promise<void>
   assignToMatchAction: (
     gameId: string,
     matchId: string,
     gameNumber: number,
     team1GameTeamId: string,
     team2GameTeamId: string,
-  ) => Promise<void>;
-  removeFromMatchAction: (gameId: string, matchGameId: string) => Promise<void>;
-};
+  ) => Promise<void>
+  removeFromMatchAction: (gameId: string, matchGameId: string) => Promise<void>
+}
 
 export function GameCompetitionManager({
   gameId,
@@ -63,47 +57,99 @@ export function GameCompetitionManager({
   assignToMatchAction,
   removeFromMatchAction,
 }: Props) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
+  const router = useRouter()
 
   // Add-to-competition form state
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState("");
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState("")
 
   // Assign-to-match form state
-  const [selectedMatchId, setSelectedMatchId] = useState("");
-  const [selectedGameNumber, setSelectedGameNumber] = useState("");
-  const [team1GameTeamId, setTeam1GameTeamId] = useState("");
-  const [team2GameTeamId, setTeam2GameTeamId] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState("")
+  const [selectedGameNumber, setSelectedGameNumber] = useState("")
+  const [team1GameTeamId, setTeam1GameTeamId] = useState("")
+  const [team2GameTeamId, setTeam2GameTeamId] = useState("")
 
-  const selectedMatch = availableMatches.find((m) => m.id === selectedMatchId);
+  const selectedMatch = availableMatches.find((m) => m.id === selectedMatchId)
 
   function handleMatchChange(id: string) {
-    setSelectedMatchId(id);
-    setSelectedGameNumber("");
-    setTeam1GameTeamId("");
-    setTeam2GameTeamId("");
+    setSelectedMatchId(id)
+    setSelectedGameNumber("")
+    setTeam1GameTeamId("")
+    setTeam2GameTeamId("")
+  }
+
+  async function handleAddToCompetition() {
+    if (!selectedCompetitionId) return
+    setIsPending(true)
+    try {
+      await addToCompetitionAction(gameId, selectedCompetitionId)
+    } finally {
+      setIsPending(false)
+    }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
+  }
+
+  async function handleRemoveFromCompetition() {
+    setIsPending(true)
+    try {
+      await removeFromCompetitionAction(gameId)
+    } finally {
+      setIsPending(false)
+    }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
+  }
+
+  async function handleAssignToMatch() {
+    if (!selectedMatchId || !selectedGameNumber || !team1GameTeamId || !team2GameTeamId) return
+    setIsPending(true)
+    try {
+      await assignToMatchAction(
+        gameId,
+        selectedMatchId,
+        parseInt(selectedGameNumber, 10),
+        team1GameTeamId,
+        team2GameTeamId,
+      )
+    } finally {
+      setIsPending(false)
+    }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
+  }
+
+  async function handleRemoveFromMatch() {
+    if (!matchAssignment) return
+    setIsPending(true)
+    try {
+      await removeFromMatchAction(gameId, matchAssignment.matchGameId)
+    } finally {
+      setIsPending(false)
+    }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   // ── No competition ──────────────────────────────────────────────────────
   if (!competitionId) {
     return (
       <div className="flex items-center gap-3 flex-wrap">
-        <Select
-          value={selectedCompetitionId}
-          onValueChange={setSelectedCompetitionId}
-        >
+        <Select value={selectedCompetitionId} onValueChange={setSelectedCompetitionId}>
           <SelectTrigger className="w-56">
             <SelectValue placeholder="Assign to competition…" />
           </SelectTrigger>
           <SelectContent>
             {availableCompetitions.length === 0 ? (
-              <SelectItem value="__none" disabled>
-                No competitions available
-              </SelectItem>
+              <SelectItem value="__none" disabled>No competitions available</SelectItem>
             ) : (
               availableCompetitions.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))
             )}
           </SelectContent>
@@ -111,16 +157,12 @@ export function GameCompetitionManager({
         <Button
           size="sm"
           disabled={!selectedCompetitionId || isPending}
-          onClick={() =>
-            startTransition(() =>
-              addToCompetitionAction(gameId, selectedCompetitionId),
-            )
-          }
+          onClick={handleAddToCompetition}
         >
           {isPending ? "Assigning…" : "Assign to Competition"}
         </Button>
       </div>
-    );
+    )
   }
 
   // ── In competition ──────────────────────────────────────────────────────
@@ -135,9 +177,7 @@ export function GameCompetitionManager({
           size="sm"
           className="text-destructive hover:text-destructive"
           disabled={isPending}
-          onClick={() =>
-            startTransition(() => removeFromCompetitionAction(gameId))
-          }
+          onClick={handleRemoveFromCompetition}
         >
           Remove from Competition
         </Button>
@@ -147,8 +187,8 @@ export function GameCompetitionManager({
         // ── Assigned to a match ─────────────────────────────────────────
         <div className="flex items-center gap-3 text-sm flex-wrap">
           <span className="text-muted-foreground">
-            {matchAssignment.roundName} · Match {matchAssignment.matchNumber} ·
-            Game {matchAssignment.gameNumber}
+            {matchAssignment.roundName} · Match {matchAssignment.matchNumber} · Game{" "}
+            {matchAssignment.gameNumber}
           </span>
           <span className="font-medium">
             {matchAssignment.team1Name} vs {matchAssignment.team2Name}
@@ -158,11 +198,7 @@ export function GameCompetitionManager({
             size="sm"
             className="text-destructive hover:text-destructive"
             disabled={isPending}
-            onClick={() =>
-              startTransition(() =>
-                removeFromMatchAction(gameId, matchAssignment.matchGameId),
-              )
-            }
+            onClick={handleRemoveFromMatch}
           >
             Remove from Match
           </Button>
@@ -186,8 +222,7 @@ export function GameCompetitionManager({
                 <SelectContent>
                   {availableMatches.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.roundName} · Match {m.matchNumber}: {m.team1Name} vs{" "}
-                      {m.team2Name}
+                      {m.roundName} · Match {m.matchNumber}: {m.team1Name} vs {m.team2Name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -197,18 +232,13 @@ export function GameCompetitionManager({
             {selectedMatch && (
               <div className="space-y-1">
                 <Label className="text-xs">Game #</Label>
-                <Select
-                  value={selectedGameNumber}
-                  onValueChange={setSelectedGameNumber}
-                >
+                <Select value={selectedGameNumber} onValueChange={setSelectedGameNumber}>
                   <SelectTrigger className="w-24">
                     <SelectValue placeholder="Game…" />
                   </SelectTrigger>
                   <SelectContent>
                     {selectedMatch.availableGameNumbers.map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        Game {n}
-                      </SelectItem>
+                      <SelectItem key={n} value={String(n)}>Game {n}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -219,23 +249,14 @@ export function GameCompetitionManager({
           {selectedMatch && selectedGameNumber && (
             <div className="flex items-end gap-3 flex-wrap">
               <div className="space-y-1">
-                <Label className="text-xs">
-                  {selectedMatch.team1Name} plays as
-                </Label>
-                <Select
-                  value={team1GameTeamId}
-                  onValueChange={setTeam1GameTeamId}
-                >
+                <Label className="text-xs">{selectedMatch.team1Name} plays as</Label>
+                <Select value={team1GameTeamId} onValueChange={setTeam1GameTeamId}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Select color…" />
                   </SelectTrigger>
                   <SelectContent>
                     {gameTeams.map((t) => (
-                      <SelectItem
-                        key={t.id}
-                        value={t.id}
-                        disabled={t.id === team2GameTeamId}
-                      >
+                      <SelectItem key={t.id} value={t.id} disabled={t.id === team2GameTeamId}>
                         {TEAM_COLORS[t.colourEnum]?.label ?? t.name} ({t.name})
                       </SelectItem>
                     ))}
@@ -244,23 +265,14 @@ export function GameCompetitionManager({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">
-                  {selectedMatch.team2Name} plays as
-                </Label>
-                <Select
-                  value={team2GameTeamId}
-                  onValueChange={setTeam2GameTeamId}
-                >
+                <Label className="text-xs">{selectedMatch.team2Name} plays as</Label>
+                <Select value={team2GameTeamId} onValueChange={setTeam2GameTeamId}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Select color…" />
                   </SelectTrigger>
                   <SelectContent>
                     {gameTeams.map((t) => (
-                      <SelectItem
-                        key={t.id}
-                        value={t.id}
-                        disabled={t.id === team1GameTeamId}
-                      >
+                      <SelectItem key={t.id} value={t.id} disabled={t.id === team1GameTeamId}>
                         {TEAM_COLORS[t.colourEnum]?.label ?? t.name} ({t.name})
                       </SelectItem>
                     ))}
@@ -270,24 +282,8 @@ export function GameCompetitionManager({
 
               <Button
                 size="sm"
-                disabled={
-                  isPending ||
-                  !team1GameTeamId ||
-                  !team2GameTeamId ||
-                  team1GameTeamId === team2GameTeamId
-                }
-                onClick={() => {
-                  let gameNumber = parseInt(selectedGameNumber, 10);
-                  startTransition(() =>
-                    assignToMatchAction(
-                      gameId,
-                      selectedMatchId,
-                      gameNumber,
-                      team1GameTeamId,
-                      team2GameTeamId,
-                    ),
-                  );
-                }}
+                disabled={isPending || !team1GameTeamId || !team2GameTeamId || team1GameTeamId === team2GameTeamId}
+                onClick={handleAssignToMatch}
               >
                 {isPending ? "Assigning…" : "Assign to Match"}
               </Button>
@@ -296,5 +292,5 @@ export function GameCompetitionManager({
         </div>
       )}
     </div>
-  );
+  )
 }
