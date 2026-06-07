@@ -8,17 +8,21 @@ import { COMPETITION_COOKIE } from "@/app/competitions/standings/CompetitionSele
  * Resolves which competition a competitions/* page should display:
  * explicit query param > last competition remembered via cookie > first available.
  */
-export async function resolveActiveCompetitionId(
-  competitions: { id: string }[],
-  competitionIdParam: string | undefined,
-): Promise<string> {
-  if (competitionIdParam) return competitionIdParam
-
-  const cookieStore = await cookies()
-  const rememberedId = cookieStore.get(COMPETITION_COOKIE)?.value
-  if (rememberedId && competitions.some((c) => c.id === rememberedId)) {
-    return rememberedId
+export async function resolveActiveCompetition<T extends { slug: string }>(
+  competitions: T[],
+  competitionSlugParam: string | undefined,
+): Promise<T> {
+  if (competitionSlugParam) {
+    const found = competitions.find((c) => c.slug === competitionSlugParam)
+    if (found) return found
   }
 
-  return competitions[0].id
+  const cookieStore = await cookies()
+  const rememberedSlug = cookieStore.get(COMPETITION_COOKIE)?.value
+  if (rememberedSlug) {
+    const found = competitions.find((c) => c.slug === rememberedSlug)
+    if (found) return found
+  }
+
+  return competitions[0]
 }

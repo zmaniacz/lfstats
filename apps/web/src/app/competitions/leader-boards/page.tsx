@@ -15,10 +15,9 @@ import {
   getCompetitionTotalTime,
   getCompetitiveCompetitions,
 } from "@lfstats/db";
-import { notFound } from "next/navigation";
 import { CompetitionSelector } from "../standings/CompetitionSelector";
 import { LeaderBoardsFilters } from "./LeaderBoardsFilters";
-import { resolveActiveCompetitionId } from "@/lib/active-competition";
+import { resolveActiveCompetition } from "@/lib/active-competition";
 
 export default async function LeaderBoardsPage({
   searchParams,
@@ -31,7 +30,7 @@ export default async function LeaderBoardsPage({
   }>;
 }) {
   const {
-    competition: competitionId,
+    competition: competitionSlug,
     pool,
     finals,
     mercs,
@@ -54,9 +53,8 @@ export default async function LeaderBoardsPage({
     );
   }
 
-  const activeId = await resolveActiveCompetitionId(competitions, competitionId);
-  const activeComp = competitions.find((c) => c.id === activeId);
-  if (!activeComp) notFound();
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug);
+  const activeId = activeComp.id;
 
   const options = { showPool, showFinals, showMercs };
   const [
@@ -93,7 +91,7 @@ export default async function LeaderBoardsPage({
         <h2 className="text-xl font-semibold">Leader (Loser) Boards</h2>
         <CompetitionSelector
           competitions={competitions}
-          activeId={activeId}
+          activeSlug={activeComp.slug}
           activeParamBase="/competitions/leader-boards"
         />
       </div>
@@ -102,7 +100,7 @@ export default async function LeaderBoardsPage({
         showPool={showPool}
         showFinals={showFinals}
         showMercs={showMercs}
-        competitionId={activeId}
+        competitionSlug={activeComp.slug}
       />
 
       <div className="space-y-4">

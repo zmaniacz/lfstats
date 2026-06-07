@@ -47,7 +47,7 @@ export async function createCompetitionAction(formData: FormData) {
   const endDate = (formData.get("endDate") as string) || null
   const description = (formData.get("description") as string) || null
 
-  const id = await createCompetition({
+  const { slug } = await createCompetition({
     name,
     type,
     startDate,
@@ -56,7 +56,7 @@ export async function createCompetitionAction(formData: FormData) {
     hostCenterId,
   })
 
-  redirect(`/admin/competitions/${id}`)
+  redirect(`/admin/competitions/${slug}`)
 }
 
 export async function updateCompetitionAction(id: string, formData: FormData) {
@@ -72,7 +72,8 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
   const hostCenterId = (formData.get("hostCenterId") as string) || null
 
   await updateCompetition(id, { name, type, startDate, endDate, description, hostCenterId })
-  redirect(`/admin/competitions/${id}`)
+  const updated = await getCompetitionById(id)
+  redirect(`/admin/competitions/${updated!.slug}`)
 }
 
 export async function deleteCompetitionAction(id: string) {
@@ -91,7 +92,7 @@ export async function removeGameFromCompetitionAction(
   if (!competition) throw new Error("Not found")
   await requireCompetitionAccess(competition.hostCenterId ?? null)
   await removeGameFromCompetition(gameId)
-  revalidatePath(`/admin/competitions/${competitionId}`)
+  revalidatePath(`/admin/competitions/${competition.slug}`)
 }
 
 export async function unassignGameFromMatchAction(
@@ -102,7 +103,7 @@ export async function unassignGameFromMatchAction(
   if (!competition) throw new Error("Not found")
   await requireCompetitionAccess(competition.hostCenterId ?? null)
   await removeGameFromMatch(matchGameId)
-  revalidatePath(`/admin/competitions/${competitionId}`)
+  revalidatePath(`/admin/competitions/${competition.slug}`)
 }
 
 export async function bulkAssignGamesAction(

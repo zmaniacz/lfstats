@@ -5,7 +5,7 @@
 
 import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
-import { updatePenalty, deletePenalty } from "@lfstats/db"
+import { updatePenalty, deletePenalty, getCompetitionById } from "@lfstats/db"
 
 async function requireAdmin() {
   const session = await auth()
@@ -17,6 +17,11 @@ async function requireAdmin() {
       r.role === "centerAdmin",
   )
   if (!allowed) throw new Error("Forbidden")
+}
+
+async function revalidatePenaltiesPage(competitionId: string): Promise<void> {
+  const comp = await getCompetitionById(competitionId)
+  if (comp) revalidatePath(`/competitions/penalties?competition=${comp.slug}`)
 }
 
 export async function updateCompetitionPenaltyAction(
@@ -31,7 +36,7 @@ export async function updateCompetitionPenaltyAction(
     scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
     mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
   })
-  revalidatePath(`/competitions/penalties?competition=${competitionId}`)
+  await revalidatePenaltiesPage(competitionId)
 }
 
 export async function rescindCompetitionPenaltyAction(
@@ -41,7 +46,7 @@ export async function rescindCompetitionPenaltyAction(
 ): Promise<void> {
   await requireAdmin()
   await updatePenalty(penaltyId, { rescinded })
-  revalidatePath(`/competitions/penalties?competition=${competitionId}`)
+  await revalidatePenaltiesPage(competitionId)
 }
 
 export async function deleteCompetitionPenaltyAction(
@@ -50,5 +55,5 @@ export async function deleteCompetitionPenaltyAction(
 ): Promise<void> {
   await requireAdmin()
   await deletePenalty(penaltyId)
-  revalidatePath(`/competitions/penalties?competition=${competitionId}`)
+  await revalidatePenaltiesPage(competitionId)
 }

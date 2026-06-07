@@ -16,8 +16,9 @@ import {
   center,
   competition,
 } from "../schema";
-import { eq, and, asc, desc, ilike, inArray, not, or, sql } from "drizzle-orm";
+import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
+import { slugify, resolveUniqueSlug } from "../lib/slug";
 
 // ---------------------------------------------------------------------------
 // Competition lookup
@@ -41,6 +42,7 @@ export type CompetitionTeamListItem = {
   id: string;
   competitionId: string;
   name: string;
+  slug: string;
   shortName: string | null;
   hasLogo: boolean;
   playerCount: number;
@@ -130,6 +132,7 @@ export async function getCompetitionTeams(
       id: competitionTeam.id,
       competitionId: competitionTeam.competitionId,
       name: competitionTeam.name,
+      slug: competitionTeam.slug,
       shortName: competitionTeam.shortName,
       hasLogo: competitionTeam.hasLogo,
       playerCount: sql<number>`count(${competitionTeamPlayer.id})::int`,
@@ -148,7 +151,7 @@ export async function getCompetitionTeams(
 
 export async function getCompetitionTeamById(
   id: string,
-): Promise<{ id: string; competitionId: string; name: string; shortName: string | null; hasLogo: boolean } | null> {
+): Promise<{ id: string; competitionId: string; name: string; slug: string; shortName: string | null; hasLogo: boolean } | null> {
   const [row] = await db
     .select()
     .from(competitionTeam)
@@ -156,13 +159,44 @@ export async function getCompetitionTeamById(
   return row ?? null;
 }
 
+export async function getCompetitionTeamBySlug(
+  competitionId: string,
+  slug: string,
+): Promise<{ id: string; competitionId: string; name: string; slug: string; shortName: string | null; hasLogo: boolean } | null> {
+  const [row] = await db
+    .select()
+    .from(competitionTeam)
+    .where(and(eq(competitionTeam.competitionId, competitionId), eq(competitionTeam.slug, slug)));
+  return row ?? null;
+}
+
+async function resolveCompetitionTeamSlug(
+  competitionId: string,
+  baseName: string,
+  excludeId?: string,
+): Promise<string> {
+  const base = slugify(baseName);
+  return resolveUniqueSlug(base, async (candidate) => {
+    const conditions = excludeId
+      ? and(
+          eq(competitionTeam.competitionId, competitionId),
+          eq(competitionTeam.slug, candidate),
+          ne(competitionTeam.id, excludeId),
+        )
+      : and(eq(competitionTeam.competitionId, competitionId), eq(competitionTeam.slug, candidate));
+    const [existing] = await db.select({ id: competitionTeam.id }).from(competitionTeam).where(conditions);
+    return !!existing;
+  });
+}
+
 export async function updateCompetitionTeam(
   id: string,
-  data: { name: string; shortName: string | null },
+  data: { competitionId: string; name: string; shortName: string | null },
 ): Promise<void> {
+  const slug = await resolveCompetitionTeamSlug(data.competitionId, data.shortName ?? data.name, id);
   await db
     .update(competitionTeam)
-    .set({ name: data.name, shortName: data.shortName })
+    .set({ name: data.name, shortName: data.shortName, slug })
     .where(eq(competitionTeam.id, id));
 }
 
@@ -381,9 +415,10 @@ export async function createCompetitionTeam(data: {
   name: string;
   shortName?: string | null;
 }): Promise<string> {
+  const slug = await resolveCompetitionTeamSlug(data.competitionId, data.shortName ?? data.name);
   const [row] = await db
     .insert(competitionTeam)
-    .values(data)
+    .values({ ...data, slug })
     .returning({ id: competitionTeam.id });
   return row.id;
 }
@@ -1027,6 +1062,7 @@ export async function getCompetitionGameNavigation(
 export type CompetitiveCompetitionSummary = {
   id: string;
   name: string;
+  slug: string;
   startDate: string;
   endDate: string | null;
 };
@@ -1036,6 +1072,7 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
     .select({
       id: competition.id,
       name: competition.name,
+      slug: competition.slug,
       startDate: competition.startDate,
       endDate: competition.endDate,
     })
@@ -1051,6 +1088,7 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
 export type CompetitionStandingsRow = {
   teamId: string;
   teamName: string;
+  teamSlug: string;
   teamShortName: string | null;
   teamHasLogo: boolean;
   matchPoints: number;
@@ -1200,7 +1238,7 @@ export async function getCompetitionStandings(
 
   // Fetch team names for all teams in competition (including 0-game teams)
   const allTeams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
+    .select({ id: competitionTeam.id, name: competitionTeam.name, slug: competitionTeam.slug, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
     .from(competitionTeam)
     .where(eq(competitionTeam.competitionId, competitionId))
     .orderBy(asc(competitionTeam.name));
@@ -1211,7 +1249,7 @@ export async function getCompetitionStandings(
       gameWins: 0, gameLosses: 0, gameDraws: 0,
       teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
     };
-    return { teamId: team.id, teamName: team.name, teamShortName: team.shortName, teamHasLogo: team.hasLogo, ...s };
+    return { teamId: team.id, teamName: team.name, teamSlug: team.slug, teamShortName: team.shortName, teamHasLogo: team.hasLogo, ...s };
   }).sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
 }
 
@@ -1227,10 +1265,12 @@ export type CompetitionMatchResult = {
   roundNumber: number;
   team1Id: string;
   team1Name: string;
+  team1Slug: string | null;
   team1ShortName: string | null;
   team1HasLogo: boolean;
   team2Id: string;
   team2Name: string;
+  team2Slug: string | null;
   team2ShortName: string | null;
   team2HasLogo: boolean;
   games: {
@@ -1300,7 +1340,7 @@ export async function getCompetitionMatchResults(
   // Fetch team names and short names
   const teamIds = [...new Set(gameRows.flatMap((r) => [r.team1Id, r.team2Id]))];
   const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
+    .select({ id: competitionTeam.id, name: competitionTeam.name, slug: competitionTeam.slug, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
     .from(competitionTeam)
     .where(inArray(competitionTeam.id, teamIds));
   const teamMap = new Map(teams.map((t) => [t.id, t]));
@@ -1322,10 +1362,12 @@ export async function getCompetitionMatchResults(
         roundNumber: row.roundNumber,
         team1Id: row.team1Id,
         team1Name: t1?.name ?? "Unknown",
+        team1Slug: t1?.slug ?? null,
         team1ShortName: t1?.shortName ?? null,
         team1HasLogo: t1?.hasLogo ?? false,
         team2Id: row.team2Id,
         team2Name: t2?.name ?? "Unknown",
+        team2Slug: t2?.slug ?? null,
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
         games: [],

@@ -4,7 +4,8 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
-  getCompetitionTeamById,
+  getCompetitionBySlug,
+  getCompetitionTeamBySlug,
   getCompetitionTeamRoster,
   getTeamGameParticipants,
   getCompetitionTeamPositionStats,
@@ -34,11 +35,14 @@ const POSITION_IDS = [1, 2, 3, 4, 5]
 export default async function CompetitionTeamPage({
   params,
 }: {
-  params: Promise<{ teamId: string }>
+  params: Promise<{ competitionSlug: string; teamSlug: string }>
 }) {
-  const { teamId } = await params
+  const { competitionSlug, teamSlug } = await params
 
-  const team = await getCompetitionTeamById(teamId)
+  const competition = await getCompetitionBySlug(competitionSlug)
+  if (!competition) notFound()
+
+  const team = await getCompetitionTeamBySlug(competition.id, teamSlug)
   if (!team) notFound()
 
   const session = await auth()
@@ -48,10 +52,10 @@ export default async function CompetitionTeamPage({
   )
 
   const [roster, unassigned, positionStats, resultsByColor, matchResults] = await Promise.all([
-    getCompetitionTeamRoster(teamId),
-    getTeamGameParticipants(teamId),
-    getCompetitionTeamPositionStats(teamId),
-    getCompetitionTeamResultsByColor(teamId),
+    getCompetitionTeamRoster(team.id),
+    getTeamGameParticipants(team.id),
+    getCompetitionTeamPositionStats(team.id),
+    getCompetitionTeamResultsByColor(team.id),
     getCompetitionMatchResults(team.competitionId),
   ])
 
@@ -80,7 +84,7 @@ export default async function CompetitionTeamPage({
     })),
   ]
 
-  const teamMatches = matchResults.filter((m) => m.team1Id === teamId || m.team2Id === teamId)
+  const teamMatches = matchResults.filter((m) => m.team1Id === team.id || m.team2Id === team.id)
   const rounds = new Map<string, { roundName: string; roundNumber: number; matches: CompetitionMatchResult[] }>()
   for (const match of teamMatches) {
     if (!rounds.has(match.roundId)) {
@@ -108,7 +112,7 @@ export default async function CompetitionTeamPage({
         </div>
         {isAdmin && (
           <Link
-            href={`/admin/competitions/${team.competitionId}/teams/${team.id}`}
+            href={`/admin/competitions/${competition.slug}/teams/${team.slug}`}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
             <Settings className="h-4 w-4" />
@@ -210,7 +214,7 @@ export default async function CompetitionTeamPage({
           <h3 className="text-lg font-semibold">{round.roundName}</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {round.matches.map((match) => (
-              <MatchCard key={match.matchId} match={match} />
+              <MatchCard key={match.matchId} match={match} competitionSlug={competition.slug} />
             ))}
           </div>
         </div>

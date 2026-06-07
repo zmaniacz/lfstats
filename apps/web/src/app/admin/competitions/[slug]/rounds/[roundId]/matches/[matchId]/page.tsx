@@ -4,6 +4,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
+  getCompetitionBySlug,
   getCompetitionMatchById,
   getMatchGameAssignments,
   getUnassignedCompetitionGames,
@@ -21,13 +22,16 @@ import { ForfeitButtons } from "./ForfeitButtons"
 export default async function MatchDetailPage({
   params,
 }: {
-  params: Promise<{ id: string; roundId: string; matchId: string }>
+  params: Promise<{ slug: string; roundId: string; matchId: string }>
 }) {
-  const { id, roundId, matchId } = await params
+  const { slug, roundId, matchId } = await params
+  const comp = await getCompetitionBySlug(slug)
+  if (!comp) notFound()
+
   const [match, assignments, unassignedGames] = await Promise.all([
     getCompetitionMatchById(matchId),
     getMatchGameAssignments(matchId),
-    getUnassignedCompetitionGames(id),
+    getUnassignedCompetitionGames(comp.id),
   ])
 
   if (!match) notFound()
@@ -35,15 +39,15 @@ export default async function MatchDetailPage({
   const assignedNumbers = new Set(assignments.map((a) => a.gameNumber))
   const availableGameNumbers = [1, 2].filter((n) => !assignedNumbers.has(n))
 
-  const boundAssign = assignGameAction.bind(null, id, matchId)
-  const boundRemove = removeGameAction.bind(null, id, matchId)
-  const boundForfeit = createForfeitAction.bind(null, id, matchId)
+  const boundAssign = assignGameAction.bind(null, comp.id, matchId)
+  const boundRemove = removeGameAction.bind(null, comp.id, matchId)
+  const boundForfeit = createForfeitAction.bind(null, comp.id, matchId)
 
   return (
     <div className="space-y-6">
       <div>
         <Link
-          href={`/admin/competitions/${id}/rounds`}
+          href={`/admin/competitions/${comp.slug}/rounds`}
           className="text-sm text-muted-foreground hover:underline"
         >
           ← Rounds & Matches
@@ -106,7 +110,7 @@ export default async function MatchDetailPage({
             {unassignedGames.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No unassigned competition games available.{" "}
-                <Link href={`/admin/competitions/${id}`} className="underline">
+                <Link href={`/admin/competitions/${comp.slug}`} className="underline">
                   Assign more games to this competition
                 </Link>{" "}
                 first.

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
   getCompetitiveCompetitions,
@@ -24,14 +23,14 @@ import { CompetitionSelector } from "./CompetitionSelector"
 import { RoundFilter } from "./RoundFilter"
 import { TeamLogo } from "@/components/teams/TeamLogo"
 import { MatchCard } from "@/components/competitions/MatchCard"
-import { resolveActiveCompetitionId } from "@/lib/active-competition"
+import { resolveActiveCompetition } from "@/lib/active-competition"
 
 export default async function StandingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ competition?: string; round?: string }>
 }) {
-  const { competition: competitionId, round: roundIdParam } = await searchParams
+  const { competition: competitionSlug, round: roundIdParam } = await searchParams
 
   const competitions = await getCompetitiveCompetitions()
 
@@ -44,9 +43,8 @@ export default async function StandingsPage({
     )
   }
 
-  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
-  const activeComp = competitions.find((c) => c.id === activeId)
-  if (!activeComp) notFound()
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug)
+  const activeId = activeComp.id
 
   const allRounds = await getCompetitionRounds(activeId)
   const poolRounds = allRounds
@@ -79,12 +77,12 @@ export default async function StandingsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-xl font-semibold">Standings</h2>
-        <CompetitionSelector competitions={competitions} activeId={activeId} />
+        <CompetitionSelector competitions={competitions} activeSlug={activeComp.slug} />
       </div>
 
       {poolRounds.length > 1 && (
         <RoundFilter
-          competitionId={activeId}
+          competitionSlug={activeComp.slug}
           rounds={poolRounds.map((r) => ({ id: r.id, name: r.name }))}
           activeRoundId={activeRoundId}
         />
@@ -115,7 +113,7 @@ export default async function StandingsPage({
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <TeamLogo teamId={team.id} hasLogo={team.hasLogo} name={team.name} size={24} />
-                          <Link href={`/competitions/teams/${team.id}`} className="hover:underline">
+                          <Link href={`/competitions/${activeComp.slug}/teams/${team.slug}`} className="hover:underline">
                             {team.name}
                             {team.shortName && (
                               <span className="text-muted-foreground font-normal ml-1">({team.shortName})</span>
@@ -157,7 +155,7 @@ export default async function StandingsPage({
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <TeamLogo teamId={row.teamId} hasLogo={row.teamHasLogo} name={row.teamName} size={24} />
-                          <Link href={`/competitions/teams/${row.teamId}`} className="hover:underline">
+                          <Link href={`/competitions/${activeComp.slug}/teams/${row.teamSlug}`} className="hover:underline">
                             {row.teamName}
                             {row.teamShortName && (
                               <span className="text-muted-foreground font-normal ml-1">({row.teamShortName})</span>
@@ -194,7 +192,7 @@ export default async function StandingsPage({
           <h3 className="text-lg font-semibold">{round.roundName}</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {round.matches.map((match) => (
-              <MatchCard key={match.matchId} match={match} />
+              <MatchCard key={match.matchId} match={match} competitionSlug={activeComp.slug} />
             ))}
           </div>
         </div>

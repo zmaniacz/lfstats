@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
 import { getCompetitiveCompetitions, getCompetitionAllStarRankings } from "@lfstats/db"
 import { CompetitionSelector } from "../standings/CompetitionSelector"
 import { AllStarPositionTable } from "@/components/competitions/AllStarPositionTable"
 import { AllStarFilters } from "./AllStarFilters"
 import { POSITIONS } from "@/lib/positions"
-import { resolveActiveCompetitionId } from "@/lib/active-competition"
+import { resolveActiveCompetition } from "@/lib/active-competition"
 
 export default async function AllStarPage({
   searchParams,
 }: {
   searchParams: Promise<{ competition?: string; pool?: string; finals?: string; mercs?: string }>
 }) {
-  const { competition: competitionId, pool, finals, mercs } = await searchParams
+  const { competition: competitionSlug, pool, finals, mercs } = await searchParams
 
   const showPool = pool !== "0"
   const showFinals = finals === "1"
@@ -31,9 +30,8 @@ export default async function AllStarPage({
     )
   }
 
-  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
-  const activeComp = competitions.find((c) => c.id === activeId)
-  if (!activeComp) notFound()
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug)
+  const activeId = activeComp.id
 
   const options = { showPool, showFinals, showMercs }
   const rankings = await getCompetitionAllStarRankings(activeId, options)
@@ -44,7 +42,7 @@ export default async function AllStarPage({
         <h2 className="text-xl font-semibold">All-Star Rankings</h2>
         <CompetitionSelector
           competitions={competitions}
-          activeId={activeId}
+          activeSlug={activeComp.slug}
           activeParamBase="/competitions/all-star"
         />
       </div>
@@ -53,7 +51,7 @@ export default async function AllStarPage({
         showPool={showPool}
         showFinals={showFinals}
         showMercs={showMercs}
-        competitionId={activeId}
+        competitionSlug={activeComp.slug}
       />
 
       {([1, 2, 3, 4, 5] as const).map((pos) => (

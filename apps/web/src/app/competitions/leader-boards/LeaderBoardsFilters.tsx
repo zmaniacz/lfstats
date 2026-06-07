@@ -10,18 +10,18 @@ export function LeaderBoardsFilters({
   showPool,
   showFinals,
   showMercs,
-  competitionId,
+  competitionSlug,
 }: {
   showPool: boolean
   showFinals: boolean
   showMercs: boolean
-  competitionId: string
+  competitionSlug: string
 }) {
   const router = useRouter()
 
   function update(patch: Partial<{ showPool: boolean; showFinals: boolean; showMercs: boolean }>) {
     const params = new URLSearchParams()
-    params.set("competition", competitionId)
+    params.set("competition", competitionSlug)
     const next = { showPool, showFinals, showMercs, ...patch }
     if (!next.showPool) params.set("pool", "0")
     if (next.showFinals) params.set("finals", "1")

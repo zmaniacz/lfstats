@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
 import { getCompetitiveCompetitions, getCompetitionTopPlayers, getCompetitionCommanderPlayers, getCompetitionHeavyPlayers, getCompetitionScoutPlayers, getCompetitionAmmoPlayers, getCompetitionMedicPlayers, getCompetitionMedicHitsLeaderboard } from "@lfstats/db"
 import { CompetitionSelector } from "../standings/CompetitionSelector"
 import { TopPlayersAveragesTable } from "@/components/competitions/TopPlayersAveragesTable"
@@ -12,7 +11,7 @@ import { AmmoPlayersTable } from "@/components/competitions/AmmoPlayersTable"
 import { MedicPlayersTable } from "@/components/competitions/MedicPlayersTable"
 import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable"
 import { TopPlayersFilters } from "./TopPlayersFilters"
-import { resolveActiveCompetitionId } from "@/lib/active-competition"
+import { resolveActiveCompetition } from "@/lib/active-competition"
 
 
 export default async function TopPlayersPage({
@@ -20,7 +19,7 @@ export default async function TopPlayersPage({
 }: {
   searchParams: Promise<{ competition?: string; pool?: string; finals?: string; mercs?: string }>
 }) {
-  const { competition: competitionId, pool, finals, mercs } = await searchParams
+  const { competition: competitionSlug, pool, finals, mercs } = await searchParams
 
   const showPool = pool !== "0"
   const showFinals = finals === "1"
@@ -37,9 +36,8 @@ export default async function TopPlayersPage({
     )
   }
 
-  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
-  const activeComp = competitions.find((c) => c.id === activeId)
-  if (!activeComp) notFound()
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug)
+  const activeId = activeComp.id
 
   const options = { showPool, showFinals, showMercs }
   const [players, commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers, medicHits] = await Promise.all([
@@ -58,7 +56,7 @@ export default async function TopPlayersPage({
         <h2 className="text-xl font-semibold">Top Players</h2>
         <CompetitionSelector
           competitions={competitions}
-          activeId={activeId}
+          activeSlug={activeComp.slug}
           activeParamBase="/competitions/top-players"
         />
       </div>
@@ -67,7 +65,7 @@ export default async function TopPlayersPage({
         showPool={showPool}
         showFinals={showFinals}
         showMercs={showMercs}
-        competitionId={activeId}
+        competitionSlug={activeComp.slug}
       />
 
       <TopPlayersAveragesTable players={players} />

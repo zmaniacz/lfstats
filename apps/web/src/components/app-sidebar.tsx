@@ -37,12 +37,12 @@ function CompetitionNavItems({
   competitionCookie: string | null;
 }) {
   const searchParams = useSearchParams();
-  const competitionId = searchParams.get("competition") ?? competitionCookie;
+  const competitionSlug = searchParams.get("competition") ?? competitionCookie;
 
-  const items = competitionId
+  const items = competitionSlug
     ? competitionNavItems.map((item) => ({
         ...item,
-        url: `${item.url}?competition=${competitionId}`,
+        url: `${item.url}?competition=${competitionSlug}`,
       }))
     : competitionNavItems;
 

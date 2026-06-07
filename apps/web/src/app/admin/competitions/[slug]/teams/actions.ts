@@ -10,6 +10,8 @@ import {
   addPlayerToCompetitionTeam,
   removePlayerFromCompetitionTeam,
   searchPlayersForRoster,
+  getCompetitionById,
+  getCompetitionTeamById,
   type PlayerSearchResult,
 } from "@lfstats/db"
 import { auth } from "@/auth"
@@ -29,7 +31,8 @@ export async function createCompetitionTeamAction(
   const name = formData.get("name") as string
   const shortName = (formData.get("shortName") as string) || null
   await createCompetitionTeam({ competitionId, name, shortName })
-  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  const comp = await getCompetitionById(competitionId)
+  if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`)
 }
 
 export async function deleteCompetitionTeamAction(
@@ -38,7 +41,8 @@ export async function deleteCompetitionTeamAction(
 ): Promise<void> {
   await requireAdmin()
   await deleteCompetitionTeam(teamId)
-  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  const comp = await getCompetitionById(competitionId)
+  if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`)
 }
 
 export async function addPlayerToTeamAction(
@@ -48,7 +52,8 @@ export async function addPlayerToTeamAction(
 ): Promise<void> {
   await requireAdmin()
   await addPlayerToCompetitionTeam(teamId, playerId)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  const [comp, team] = await Promise.all([getCompetitionById(competitionId), getCompetitionTeamById(teamId)])
+  if (comp && team) revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`)
 }
 
 export async function removePlayerFromTeamAction(
@@ -58,7 +63,8 @@ export async function removePlayerFromTeamAction(
 ): Promise<void> {
   await requireAdmin()
   await removePlayerFromCompetitionTeam(entryId)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  const [comp, team] = await Promise.all([getCompetitionById(competitionId), getCompetitionTeamById(teamId)])
+  if (comp && team) revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`)
 }
 
 export async function searchPlayersAction(

@@ -12,27 +12,27 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export const COMPETITION_COOKIE = "lastCompetitionId"
+export const COMPETITION_COOKIE = "lastCompetitionSlug"
 
 export function CompetitionSelector({
   competitions,
-  activeId,
+  activeSlug,
   activeParamBase = "/competitions/standings",
 }: {
-  competitions: { id: string; name: string }[]
-  activeId: string
+  competitions: { slug: string; name: string }[]
+  activeSlug: string
   activeParamBase?: string
 }) {
   const router = useRouter()
 
-  function handleChange(id: string) {
-    document.cookie = `${COMPETITION_COOKIE}=${id}; path=/; max-age=31536000; samesite=lax`
-    router.push(`${activeParamBase}?competition=${id}`)
+  function handleChange(slug: string) {
+    document.cookie = `${COMPETITION_COOKIE}=${slug}; path=/; max-age=31536000; samesite=lax`
+    router.push(`${activeParamBase}?competition=${slug}`)
   }
 
   return (
     <Select
-      value={activeId}
+      value={activeSlug}
       onValueChange={handleChange}
     >
       <SelectTrigger className="w-64">
@@ -40,7 +40,7 @@ export function CompetitionSelector({
       </SelectTrigger>
       <SelectContent>
         {competitions.map((c) => (
-          <SelectItem key={c.id} value={c.id}>
+          <SelectItem key={c.slug} value={c.slug}>
             {c.name}
           </SelectItem>
         ))}

@@ -11,6 +11,8 @@ import {
   updateCompetitionTeam,
   setPlayerMercenary,
   setCompetitionTeamLogo,
+  getCompetitionById,
+  getCompetitionTeamById,
   type PlayerSearchResult,
 } from "@lfstats/db"
 import { auth } from "@/auth"
@@ -42,6 +44,13 @@ function getImagesBucket(): string {
   return bucket
 }
 
+async function revalidateTeamPaths(competitionId: string, teamId: string): Promise<void> {
+  const [comp, team] = await Promise.all([getCompetitionById(competitionId), getCompetitionTeamById(teamId)])
+  if (!comp || !team) return
+  revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`)
+  revalidatePath(`/admin/competitions/${comp.slug}/teams`)
+}
+
 export async function updateTeamAction(
   competitionId: string,
   teamId: string,
@@ -51,9 +60,8 @@ export async function updateTeamAction(
   const name = (formData.get("name") as string).trim()
   const shortName = (formData.get("shortName") as string).trim() || null
   if (!name) throw new Error("Team name is required")
-  await updateCompetitionTeam(teamId, { name, shortName })
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
-  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  await updateCompetitionTeam(teamId, { competitionId, name, shortName })
+  await revalidateTeamPaths(competitionId, teamId)
 }
 
 export async function addPlayerAction(
@@ -63,7 +71,7 @@ export async function addPlayerAction(
 ): Promise<void> {
   await requireAdmin()
   await addPlayerToCompetitionTeam(teamId, playerId)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  await revalidateTeamPaths(competitionId, teamId)
 }
 
 export async function removePlayerAction(
@@ -73,7 +81,7 @@ export async function removePlayerAction(
 ): Promise<void> {
   await requireAdmin()
   await removePlayerFromCompetitionTeam(entryId)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  await revalidateTeamPaths(competitionId, teamId)
 }
 
 export async function setMercenaryAction(
@@ -84,7 +92,7 @@ export async function setMercenaryAction(
 ): Promise<void> {
   await requireAdmin()
   await setPlayerMercenary(teamId, playerId, isMercenary)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  await revalidateTeamPaths(competitionId, teamId)
 }
 
 export async function addParticipantToRosterAction(
@@ -94,7 +102,7 @@ export async function addParticipantToRosterAction(
 ): Promise<void> {
   await requireAdmin()
   await addPlayerToCompetitionTeam(teamId, playerId)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  await revalidateTeamPaths(competitionId, teamId)
 }
 
 export async function searchPlayersAction(
@@ -130,8 +138,7 @@ export async function confirmTeamLogoUploadAction(
 ): Promise<void> {
   await requireAdmin()
   await setCompetitionTeamLogo(teamId, true)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
-  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  await revalidateTeamPaths(competitionId, teamId)
   revalidatePath(`/competitions/standings`)
 }
 
@@ -143,7 +150,6 @@ export async function removeTeamLogoAction(
   const s3 = getS3Client()
   await s3.send(new DeleteObjectCommand({ Bucket: getImagesBucket(), Key: teamId }))
   await setCompetitionTeamLogo(teamId, false)
-  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
-  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  await revalidateTeamPaths(competitionId, teamId)
   revalidatePath(`/competitions/standings`)
 }

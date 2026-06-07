@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
 import { auth } from "@/auth"
 import {
   getCompetitiveCompetitions,
@@ -15,14 +14,14 @@ import {
   rescindCompetitionPenaltyAction,
   deleteCompetitionPenaltyAction,
 } from "./actions"
-import { resolveActiveCompetitionId } from "@/lib/active-competition"
+import { resolveActiveCompetition } from "@/lib/active-competition"
 
 export default async function CompetitionPenaltiesPage({
   searchParams,
 }: {
   searchParams: Promise<{ competition?: string }>
 }) {
-  const { competition: competitionId } = await searchParams
+  const { competition: competitionSlug } = await searchParams
 
   const [competitions, session] = await Promise.all([
     getCompetitiveCompetitions(),
@@ -38,9 +37,8 @@ export default async function CompetitionPenaltiesPage({
     )
   }
 
-  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
-  const activeComp = competitions.find((c) => c.id === activeId)
-  if (!activeComp) notFound()
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug)
+  const activeId = activeComp.id
 
   const roles = session?.user?.roles ?? []
   const canEdit = roles.some(
@@ -62,7 +60,7 @@ export default async function CompetitionPenaltiesPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-xl font-semibold">Penalties</h2>
-        <CompetitionSelector competitions={competitions} activeId={activeId} activeParamBase="/competitions/penalties" />
+        <CompetitionSelector competitions={competitions} activeSlug={activeComp.slug} activeParamBase="/competitions/penalties" />
       </div>
 
       <Card>

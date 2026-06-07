@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { getTeamColor } from "@/lib/team-colors"
 import { TeamLogo } from "@/components/teams/TeamLogo"
 
-export function MatchCard({ match }: { match: CompetitionMatchResult }) {
+export function MatchCard({ match, competitionSlug }: { match: CompetitionMatchResult; competitionSlug: string }) {
   const game1 = match.games.find((g) => g.gameNumber === 1)
   const game2 = match.games.find((g) => g.gameNumber === 2)
   const incomplete = match.matchWinner === "incomplete"
@@ -49,7 +49,7 @@ export function MatchCard({ match }: { match: CompetitionMatchResult }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
             <Link
-              href={`/competitions/teams/${match.team1Id}`}
+              href={`/competitions/${competitionSlug}/teams/${match.team1Slug}`}
               className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team1" ? "font-semibold" : "text-muted-foreground"}`}
             >
               {t1Label}
@@ -73,7 +73,7 @@ export function MatchCard({ match }: { match: CompetitionMatchResult }) {
 
           <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
             <Link
-              href={`/competitions/teams/${match.team2Id}`}
+              href={`/competitions/${competitionSlug}/teams/${match.team2Slug}`}
               className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team2" ? "font-semibold" : "text-muted-foreground"}`}
             >
               {t2Label}

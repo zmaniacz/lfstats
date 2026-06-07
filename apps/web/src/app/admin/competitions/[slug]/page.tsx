@@ -4,7 +4,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
-  getCompetitionById,
+  getCompetitionBySlug,
   getCenterList,
   getCompetitionTeams,
   getCompetitionRounds,
@@ -38,23 +38,23 @@ import {
 export default async function CompetitionDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { id } = await params
-  const [comp, unassignedGames, assignedGames, centers, teams, rounds] = await Promise.all([
-    getCompetitionById(id),
-    getCompetitionUnassignedGamesForAdmin(id),
-    getCompetitionAssignedGamesForAdmin(id),
-    getCenterList(),
-    getCompetitionTeams(id),
-    getCompetitionRounds(id),
-  ])
-
+  const { slug } = await params
+  const comp = await getCompetitionBySlug(slug)
   if (!comp) notFound()
 
-  const boundUpdate = updateCompetitionAction.bind(null, id)
-  const boundRemoveGame = removeGameFromCompetitionAction.bind(null, id)
-  const boundUnassignGame = unassignGameFromMatchAction.bind(null, id)
+  const [unassignedGames, assignedGames, centers, teams, rounds] = await Promise.all([
+    getCompetitionUnassignedGamesForAdmin(comp.id),
+    getCompetitionAssignedGamesForAdmin(comp.id),
+    getCenterList(),
+    getCompetitionTeams(comp.id),
+    getCompetitionRounds(comp.id),
+  ])
+
+  const boundUpdate = updateCompetitionAction.bind(null, comp.id)
+  const boundRemoveGame = removeGameFromCompetitionAction.bind(null, comp.id)
+  const boundUnassignGame = unassignGameFromMatchAction.bind(null, comp.id)
 
   return (
     <div className="space-y-8">
@@ -113,7 +113,7 @@ export default async function CompetitionDetailPage({
             <CardContent className="flex items-center justify-between">
               <p className="text-2xl font-bold tabular-nums">{teams.length}</p>
               <Button asChild variant="outline" size="sm">
-                <Link href={`/admin/competitions/${id}/teams`}>Manage Teams</Link>
+                <Link href={`/admin/competitions/${comp.slug}/teams`}>Manage Teams</Link>
               </Button>
             </CardContent>
           </Card>
@@ -125,7 +125,7 @@ export default async function CompetitionDetailPage({
             <CardContent className="flex items-center justify-between">
               <p className="text-2xl font-bold tabular-nums">{rounds.length}</p>
               <Button asChild variant="outline" size="sm">
-                <Link href={`/admin/competitions/${id}/rounds`}>Manage Rounds</Link>
+                <Link href={`/admin/competitions/${comp.slug}/rounds`}>Manage Rounds</Link>
               </Button>
             </CardContent>
           </Card>

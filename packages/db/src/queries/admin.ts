@@ -12,6 +12,7 @@ import {
 import {
   eq,
   and,
+  ne,
   gte,
   lte,
   desc,
@@ -19,6 +20,7 @@ import {
   sql,
   inArray,
 } from "drizzle-orm";
+import { slugify, resolveUniqueSlug } from "../lib/slug";
 
 
 // ---------------------------------------------------------------------------
@@ -28,6 +30,7 @@ import {
 export type CompetitionListItem = {
   id: string;
   name: string;
+  slug: string;
   type: "competitive" | "social";
   startDate: string;
   endDate: string | null;
@@ -39,6 +42,7 @@ export type CompetitionListItem = {
 export type CompetitionDetail = {
   id: string;
   name: string;
+  slug: string;
   type: "competitive" | "social";
   startDate: string;
   endDate: string | null;
@@ -56,6 +60,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
     .select({
       id: competition.id,
       name: competition.name,
+      slug: competition.slug,
       type: competition.type,
       startDate: competition.startDate,
       endDate: competition.endDate,
@@ -72,6 +77,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
+    slug: r.slug,
     type: r.type,
     startDate: r.startDate,
     endDate: r.endDate,
@@ -86,6 +92,7 @@ export async function getCompetitionById(id: string): Promise<CompetitionDetail 
     .select({
       id: competition.id,
       name: competition.name,
+      slug: competition.slug,
       type: competition.type,
       startDate: competition.startDate,
       endDate: competition.endDate,
@@ -99,18 +106,56 @@ export async function getCompetitionById(id: string): Promise<CompetitionDetail 
   return row ?? null;
 }
 
+export async function getCompetitionBySlug(slug: string): Promise<CompetitionDetail | null> {
+  const [row] = await db
+    .select({
+      id: competition.id,
+      name: competition.name,
+      slug: competition.slug,
+      type: competition.type,
+      startDate: competition.startDate,
+      endDate: competition.endDate,
+      description: competition.description,
+      hostCenterId: competition.hostCenterId,
+      createdAt: competition.createdAt,
+    })
+    .from(competition)
+    .where(eq(competition.slug, slug));
+
+  return row ?? null;
+}
+
+async function resolveCompetitionSlug(name: string, excludeId?: string): Promise<string> {
+  const base = slugify(name);
+  return resolveUniqueSlug(base, async (candidate) => {
+    const conditions = excludeId
+      ? and(eq(competition.slug, candidate), ne(competition.id, excludeId))
+      : eq(competition.slug, candidate);
+    const [existing] = await db.select({ id: competition.id }).from(competition).where(conditions);
+    return !!existing;
+  });
+}
+
 export async function createCompetition(
-  data: typeof competition.$inferInsert,
-): Promise<string> {
-  const [row] = await db.insert(competition).values(data).returning({ id: competition.id });
-  return row.id;
+  data: Omit<typeof competition.$inferInsert, "slug">,
+): Promise<{ id: string; slug: string }> {
+  const slug = await resolveCompetitionSlug(data.name);
+  const [row] = await db
+    .insert(competition)
+    .values({ ...data, slug })
+    .returning({ id: competition.id, slug: competition.slug });
+  return row;
 }
 
 export async function updateCompetition(
   id: string,
-  data: Partial<typeof competition.$inferInsert>,
+  data: Partial<Omit<typeof competition.$inferInsert, "slug">>,
 ): Promise<void> {
-  await db.update(competition).set(data).where(eq(competition.id, id));
+  const slug = data.name !== undefined ? await resolveCompetitionSlug(data.name, id) : undefined;
+  await db
+    .update(competition)
+    .set({ ...data, ...(slug !== undefined ? { slug } : {}) })
+    .where(eq(competition.id, id));
 }
 
 export async function deleteCompetition(id: string): Promise<void> {

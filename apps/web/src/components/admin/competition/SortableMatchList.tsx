@@ -30,7 +30,7 @@ import Link from "next/link"
 import type { CompetitionMatchListItem } from "@lfstats/db"
 
 type Props = {
-  competitionId: string
+  competitionSlug: string
   roundId: string
   matches: CompetitionMatchListItem[]
   deleteAction: (matchId: string) => Promise<void>
@@ -39,12 +39,12 @@ type Props = {
 
 function SortableMatch({
   match,
-  competitionId,
+  competitionSlug,
   roundId,
   deleteAction,
 }: {
   match: CompetitionMatchListItem
-  competitionId: string
+  competitionSlug: string
   roundId: string
   deleteAction: (id: string) => Promise<void>
 }) {
@@ -89,7 +89,7 @@ function SortableMatch({
       </div>
       <div className="flex items-center gap-1">
         <Button asChild variant="outline" size="sm">
-          <Link href={`/admin/competitions/${competitionId}/rounds/${roundId}/matches/${match.id}`}>
+          <Link href={`/admin/competitions/${competitionSlug}/rounds/${roundId}/matches/${match.id}`}>
             Assign Games
           </Link>
         </Button>
@@ -105,7 +105,7 @@ function SortableMatch({
 }
 
 export function SortableMatchList({
-  competitionId,
+  competitionSlug,
   roundId,
   matches: initialMatches,
   deleteAction,
@@ -167,7 +167,7 @@ export function SortableMatchList({
             <SortableMatch
               key={match.id}
               match={match}
-              competitionId={competitionId}
+              competitionSlug={competitionSlug}
               roundId={roundId}
               deleteAction={deleteAction}
             />

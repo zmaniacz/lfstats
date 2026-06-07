@@ -11,6 +11,7 @@ import {
   deleteCompetitionMatch,
   getCompetitionMatchesByRound,
   getCompetitionTeams,
+  getCompetitionById,
   reorderCompetitionMatches,
 } from "@lfstats/db"
 import { auth } from "@/auth"
@@ -22,6 +23,11 @@ async function requireAdmin() {
     throw new Error("Forbidden")
 }
 
+async function revalidateRoundsPage(competitionId: string): Promise<void> {
+  const comp = await getCompetitionById(competitionId)
+  if (comp) revalidatePath(`/admin/competitions/${comp.slug}/rounds`)
+}
+
 export async function createRoundAction(
   competitionId: string,
   formData: FormData,
@@ -31,7 +37,7 @@ export async function createRoundAction(
   const roundNumber = parseInt(formData.get("roundNumber") as string, 10)
   const type = formData.get("type") as "pool" | "finals"
   await createCompetitionRound({ competitionId, name, roundNumber, type })
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  await revalidateRoundsPage(competitionId)
 }
 
 export async function deleteRoundAction(
@@ -40,7 +46,7 @@ export async function deleteRoundAction(
 ): Promise<void> {
   await requireAdmin()
   await deleteCompetitionRound(roundId)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  await revalidateRoundsPage(competitionId)
 }
 
 export async function createMatchAction(
@@ -58,7 +64,7 @@ export async function createMatchAction(
       ? Math.max(...existing.map((m) => m.matchNumber)) + 1
       : 1
   await createCompetitionMatch({ competitionId, roundId, matchNumber, team1Id, team2Id })
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  await revalidateRoundsPage(competitionId)
 }
 
 export async function deleteMatchAction(
@@ -67,7 +73,7 @@ export async function deleteMatchAction(
 ): Promise<void> {
   await requireAdmin()
   await deleteCompetitionMatch(matchId)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  await revalidateRoundsPage(competitionId)
 }
 
 export async function generatePoolMatchesAction(
@@ -94,7 +100,7 @@ export async function generatePoolMatchesAction(
       })
     }
   }
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  await revalidateRoundsPage(competitionId)
 }
 
 export async function reorderMatchesAction(
@@ -103,5 +109,5 @@ export async function reorderMatchesAction(
 ): Promise<void> {
   await requireAdmin()
   await reorderCompetitionMatches(reorders)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  await revalidateRoundsPage(competitionId)
 }

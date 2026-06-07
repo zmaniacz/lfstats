@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
 import {
   getCompetitiveCompetitions,
   getCompetitionGamesPage,
@@ -13,14 +12,14 @@ import { CompetitionGamesTable } from "@/components/games/CompetitionGamesTable"
 import { CompetitionSelector } from "@/app/competitions/standings/CompetitionSelector"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { resolveActiveCompetitionId } from "@/lib/active-competition"
+import { resolveActiveCompetition } from "@/lib/active-competition"
 
 export default async function CompetitionGamesPage({
   searchParams,
 }: {
   searchParams: Promise<{ competition?: string; page?: string }>
 }) {
-  const { competition: competitionId, page: pageParam } = await searchParams
+  const { competition: competitionSlug, page: pageParam } = await searchParams
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1)
 
   const competitions = await getCompetitiveCompetitions()
@@ -34,9 +33,8 @@ export default async function CompetitionGamesPage({
     )
   }
 
-  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
-  const activeComp = competitions.find((c) => c.id === activeId)
-  if (!activeComp) notFound()
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug)
+  const activeId = activeComp.id
 
   const [games, total, excludedGames] = await Promise.all([
     getCompetitionGamesPage(activeId, page),
@@ -47,7 +45,7 @@ export default async function CompetitionGamesPage({
 
   function pageUrl(p: number) {
     const params = new URLSearchParams()
-    params.set("competition", activeId)
+    params.set("competition", activeComp.slug)
     if (p > 1) params.set("page", String(p))
     return `/competitions/games?${params.toString()}`
   }
@@ -58,7 +56,7 @@ export default async function CompetitionGamesPage({
         <h2 className="text-xl font-semibold">Games</h2>
         <CompetitionSelector
           competitions={competitions}
-          activeId={activeId}
+          activeSlug={activeComp.slug}
           activeParamBase="/competitions/games"
         />
       </div>

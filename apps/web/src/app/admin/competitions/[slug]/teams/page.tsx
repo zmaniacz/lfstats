@@ -3,7 +3,7 @@
 
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getCompetitionById, getCompetitionTeams } from "@lfstats/db"
+import { getCompetitionBySlug, getCompetitionTeams } from "@lfstats/db"
 import { CompetitionTeamForm } from "@/components/admin/competition/CompetitionTeamForm"
 import { TeamLogo } from "@/components/teams/TeamLogo"
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
@@ -22,24 +22,22 @@ import { createCompetitionTeamAction, deleteCompetitionTeamAction } from "./acti
 export default async function CompetitionTeamsPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { id } = await params
-  const [comp, teams] = await Promise.all([
-    getCompetitionById(id),
-    getCompetitionTeams(id),
-  ])
-
+  const { slug } = await params
+  const comp = await getCompetitionBySlug(slug)
   if (!comp) notFound()
 
-  const boundCreate = createCompetitionTeamAction.bind(null, id)
-  const boundDelete = deleteCompetitionTeamAction.bind(null, id)
+  const teams = await getCompetitionTeams(comp.id)
+
+  const boundCreate = createCompetitionTeamAction.bind(null, comp.id)
+  const boundDelete = deleteCompetitionTeamAction.bind(null, comp.id)
 
   return (
     <div className="space-y-6">
       <div>
         <Link
-          href={`/admin/competitions/${id}`}
+          href={`/admin/competitions/${comp.slug}`}
           className="text-sm text-muted-foreground hover:underline"
         >
           ← {comp.name}
@@ -78,7 +76,7 @@ export default async function CompetitionTeamsPage({
                   <TableRow key={team.id}>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/admin/competitions/${id}/teams/${team.id}`}
+                        href={`/admin/competitions/${comp.slug}/teams/${team.slug}`}
                         className="hover:underline flex items-center gap-2"
                       >
                         <TeamLogo teamId={team.id} hasLogo={team.hasLogo} name={team.name} size={24} />
@@ -91,7 +89,7 @@ export default async function CompetitionTeamsPage({
                     <TableCell className="tabular-nums">{team.playerCount}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="outline" size="sm" className="mr-2">
-                        <Link href={`/admin/competitions/${id}/teams/${team.id}`}>
+                        <Link href={`/admin/competitions/${comp.slug}/teams/${team.slug}`}>
                           Manage Roster
                         </Link>
                       </Button>

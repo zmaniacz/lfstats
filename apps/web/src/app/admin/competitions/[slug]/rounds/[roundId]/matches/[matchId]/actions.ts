@@ -10,6 +10,7 @@ import {
   getCompetitionMatchById,
   createForfeitGame,
   getCompetitionHostCenterId,
+  getCompetitionById,
 } from "@lfstats/db"
 import { auth } from "@/auth"
 
@@ -18,6 +19,11 @@ async function requireAdmin() {
   const roles = session?.user?.roles ?? []
   if (!roles.some((r) => r.role === "superAdmin" || r.role === "admin"))
     throw new Error("Forbidden")
+}
+
+async function competitionSlug(competitionId: string): Promise<string | null> {
+  const comp = await getCompetitionById(competitionId)
+  return comp?.slug ?? null
 }
 
 export async function assignGameAction(
@@ -31,7 +37,8 @@ export async function assignGameAction(
   const team1GameTeamId = formData.get("team1GameTeamId") as string
   const team2GameTeamId = formData.get("team2GameTeamId") as string
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  const slug = await competitionSlug(competitionId)
+  if (slug) revalidatePath(`/admin/competitions/${slug}/rounds`)
 }
 
 export async function removeGameAction(
@@ -41,7 +48,8 @@ export async function removeGameAction(
 ): Promise<void> {
   await requireAdmin()
   await removeGameFromMatch(matchGameId)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  const slug = await competitionSlug(competitionId)
+  if (slug) revalidatePath(`/admin/competitions/${slug}/rounds`)
 }
 
 export async function createForfeitAction(
@@ -70,6 +78,9 @@ export async function createForfeitAction(
     forfeitingTeam,
   })
 
-  revalidatePath(`/admin/competitions/${competitionId}/rounds/${match.roundId}/matches/${matchId}`)
-  revalidatePath(`/admin/competitions/${competitionId}/rounds`)
+  const slug = await competitionSlug(competitionId)
+  if (slug) {
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`)
+    revalidatePath(`/admin/competitions/${slug}/rounds`)
+  }
 }

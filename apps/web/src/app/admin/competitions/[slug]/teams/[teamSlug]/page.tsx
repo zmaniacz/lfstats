@@ -4,8 +4,8 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
-  getCompetitionById,
-  getCompetitionTeamById,
+  getCompetitionBySlug,
+  getCompetitionTeamBySlug,
   getCompetitionTeamRoster,
   getTeamGameParticipants,
 } from "@lfstats/db"
@@ -30,21 +30,25 @@ import { TeamLogoUpload } from "./TeamLogoUpload"
 export default async function TeamRosterPage({
   params,
 }: {
-  params: Promise<{ id: string; teamId: string }>
+  params: Promise<{ slug: string; teamSlug: string }>
 }) {
-  const { id, teamId } = await params
-  const [comp, team, roster, unassigned] = await Promise.all([
-    getCompetitionById(id),
-    getCompetitionTeamById(teamId),
-    getCompetitionTeamRoster(teamId),
-    getTeamGameParticipants(teamId),
-  ])
+  const { slug, teamSlug } = await params
+  const comp = await getCompetitionBySlug(slug)
+  if (!comp) notFound()
 
-  if (!comp || !team) notFound()
+  const team = await getCompetitionTeamBySlug(comp.id, teamSlug)
+  if (!team) notFound()
+
+  const [roster, unassigned] = await Promise.all([
+    getCompetitionTeamRoster(team.id),
+    getTeamGameParticipants(team.id),
+  ])
 
   const regularRoster = roster.filter((e) => !e.isMercenary)
   const mercs = roster.filter((e) => e.isMercenary)
 
+  const id = comp.id
+  const teamId = team.id
   const boundUpdate = updateTeamAction.bind(null, id, teamId)
   const boundAdd = addPlayerAction.bind(null, id, teamId)
   const boundRemove = removePlayerAction.bind(null, id, teamId)
@@ -55,7 +59,7 @@ export default async function TeamRosterPage({
     <div className="space-y-6">
       <div>
         <Link
-          href={`/admin/competitions/${id}/teams`}
+          href={`/admin/competitions/${comp.slug}/teams`}
           className="text-sm text-muted-foreground hover:underline"
         >
           ← Teams

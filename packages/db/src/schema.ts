@@ -136,6 +136,7 @@ export const sm5MvpModel = pgTable("sm5_mvp_model", {
 export const competition = pgTable("competition", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
   type: competitionTypeEnum("type").notNull(),
   hostCenterId: uuid("host_center_id").references(() => center.id),
   startDate: date("start_date").notNull(),
@@ -152,11 +153,12 @@ export const competitionTeam = pgTable(
       .notNull()
       .references(() => competition.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    slug: text("slug").notNull(),
     shortName: text("short_name"),
     hasLogo: boolean("has_logo").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.competitionId, t.name)],
+  (t) => [unique().on(t.competitionId, t.name), unique().on(t.competitionId, t.slug)],
 );
 
 export const competitionTeamPlayer = pgTable(

@@ -4,7 +4,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
-  getCompetitionById,
+  getCompetitionBySlug,
   getCompetitionTeams,
   getCompetitionRounds,
   getCompetitionMatchesByRound,
@@ -28,21 +28,22 @@ import {
 export default async function RoundsPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { id } = await params
-  const [comp, teams, rounds] = await Promise.all([
-    getCompetitionById(id),
-    getCompetitionTeams(id),
-    getCompetitionRounds(id),
-  ])
-
+  const { slug } = await params
+  const comp = await getCompetitionBySlug(slug)
   if (!comp) notFound()
+
+  const [teams, rounds] = await Promise.all([
+    getCompetitionTeams(comp.id),
+    getCompetitionRounds(comp.id),
+  ])
 
   const matchesByRound = await Promise.all(
     rounds.map((r) => getCompetitionMatchesByRound(r.id)),
   )
 
+  const id = comp.id
   const boundCreateRound = createRoundAction.bind(null, id)
   const boundDeleteRound = deleteRoundAction.bind(null, id)
   const boundDeleteMatch = deleteMatchAction.bind(null, id)
@@ -55,7 +56,7 @@ export default async function RoundsPage({
     <div className="space-y-6">
       <div>
         <Link
-          href={`/admin/competitions/${id}`}
+          href={`/admin/competitions/${comp.slug}`}
           className="text-sm text-muted-foreground hover:underline"
         >
           ← {comp.name}
@@ -122,7 +123,7 @@ export default async function RoundsPage({
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Add at least 2 teams before creating matches.{" "}
-                    <Link href={`/admin/competitions/${id}/teams`} className="underline">
+                    <Link href={`/admin/competitions/${comp.slug}/teams`} className="underline">
                       Manage teams
                     </Link>
                   </p>
@@ -132,7 +133,7 @@ export default async function RoundsPage({
                   <p className="text-sm text-muted-foreground">No matches yet.</p>
                 ) : (
                   <SortableMatchList
-                    competitionId={id}
+                    competitionSlug={comp.slug}
                     roundId={round.id}
                     matches={matches}
                     deleteAction={boundDeleteMatch}

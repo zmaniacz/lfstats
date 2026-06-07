@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 export function RoundFilter({
-  competitionId,
+  competitionSlug,
   rounds,
   activeRoundId,
 }: {
-  competitionId: string
+  competitionSlug: string
   rounds: { id: string; name: string }[]
   activeRoundId: string | null
 }) {
@@ -20,7 +20,7 @@ export function RoundFilter({
 
   function handleChange(next: string) {
     if (!next) return
-    const params = new URLSearchParams({ competition: competitionId })
+    const params = new URLSearchParams({ competition: competitionSlug })
     if (next !== "all") params.set("round", next)
     router.push(`/competitions/standings?${params.toString()}`)
   }

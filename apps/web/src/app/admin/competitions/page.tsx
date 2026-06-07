@@ -45,7 +45,7 @@ export default async function CompetitionsPage() {
               <TableRow key={c.id}>
                 <TableCell>
                   <Link
-                    href={`/admin/competitions/${c.id}`}
+                    href={`/admin/competitions/${c.slug}`}
                     className="hover:underline font-medium"
                   >
                     {c.name}
