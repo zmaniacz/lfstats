@@ -8,6 +8,7 @@ import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
 import { GameTabs } from "@/components/games/GameTabs";
 import { GameTagManager } from "@/components/games/GameTagManager";
+import { MarkReplayButton } from "@/components/games/MarkReplayButton";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ import {
   removeGameFromMatchAction,
   removeTagAction,
   rescindPenaltyAction,
+  markGameAsReplayAction,
   toggleExcludeAction,
   updatePenaltyAction,
   setScorecardMercenaryAction,
@@ -175,6 +177,9 @@ export default async function GameDetailPage({
         {game.outcome === "aborted" && (
           <Badge variant="destructive">Aborted</Badge>
         )}
+        {game.outcome === "replay" && (
+          <Badge variant="destructive">Replay</Badge>
+        )}
         {game.exclude && (
           <Badge variant="destructive">Excluded from Stats</Badge>
         )}
@@ -186,6 +191,11 @@ export default async function GameDetailPage({
                 gameId={game.id}
                 excluded={game.exclude}
                 action={toggleExcludeAction}
+              />
+              <MarkReplayButton
+                gameId={game.id}
+                isReplay={game.outcome === "replay"}
+                action={markGameAsReplayAction}
               />
             </>
           )}

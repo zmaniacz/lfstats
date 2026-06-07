@@ -13,6 +13,7 @@ import {
   removeFavorite,
   removeTagFromGame,
   setGameExcluded,
+  markGameAsReplay,
   removeGameFromCompetition,
   setGameCompetition,
   assignGameToMatch,
@@ -57,6 +58,12 @@ export async function deleteGameAction(gameId: string) {
 export async function toggleExcludeAction(gameId: string, exclude: boolean) {
   await requireCenterAdmin(gameId);
   await setGameExcluded(gameId, exclude);
+  await revalidateGame(gameId);
+}
+
+export async function markGameAsReplayAction(gameId: string) {
+  await requireCenterAdmin(gameId);
+  await markGameAsReplay(gameId);
   await revalidateGame(gameId);
 }
 

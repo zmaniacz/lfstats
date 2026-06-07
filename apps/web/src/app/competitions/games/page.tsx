@@ -6,6 +6,7 @@ import {
   getCompetitiveCompetitions,
   getCompetitionGamesPage,
   getCompetitionGamesCount,
+  getExcludedCompetitionGames,
   COMPETITION_GAMES_PER_PAGE,
 } from "@lfstats/db"
 import { CompetitionGamesTable } from "@/components/games/CompetitionGamesTable"
@@ -37,9 +38,10 @@ export default async function CompetitionGamesPage({
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 
-  const [games, total] = await Promise.all([
+  const [games, total, excludedGames] = await Promise.all([
     getCompetitionGamesPage(activeId, page),
     getCompetitionGamesCount(activeId),
+    getExcludedCompetitionGames(activeId),
   ])
   const totalPages = Math.ceil(total / COMPETITION_GAMES_PER_PAGE)
 
@@ -88,6 +90,13 @@ export default async function CompetitionGamesPage({
             </div>
           </div>
         </>
+      )}
+
+      {excludedGames.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Excluded Games</h3>
+          <CompetitionGamesTable games={excludedGames} />
+        </div>
       )}
     </div>
   )

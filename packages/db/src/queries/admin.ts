@@ -287,6 +287,13 @@ export async function setGameExcluded(id: string, exclude: boolean): Promise<voi
   await db.update(game).set({ exclude }).where(eq(game.id, id));
 }
 
+export async function markGameAsReplay(id: string): Promise<void> {
+  await db
+    .update(game)
+    .set({ outcome: "replay", exclude: true })
+    .where(eq(game.id, id));
+}
+
 export async function removeGameFromCompetition(gameId: string): Promise<void> {
   await db.update(game).set({ competitionId: null }).where(eq(game.id, gameId));
 }

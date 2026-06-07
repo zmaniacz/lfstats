@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatDateTime, formatScore } from "@/lib/format"
+import { formatDateTime, formatGameName, formatScore } from "@/lib/format"
 import { getTeamColor } from "@/lib/team-colors"
 import type { CompetitionGameListItem } from "@lfstats/db"
 import Link from "next/link"
@@ -24,6 +24,7 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
           <TableHeader>
             <TableRow>
               <TableHead>Game</TableHead>
+              <TableHead>Teams</TableHead>
               <TableHead>Center</TableHead>
               <TableHead>Started</TableHead>
               <TableHead>Outcome</TableHead>
@@ -35,25 +36,41 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
               const sortedTeams = [...game.teams].sort((a, b) =>
                 a.result === "win" ? -1 : b.result === "win" ? 1 : 0,
               )
-              const t1Color = getTeamColor(game.team1ColourEnum)
-              const t2Color = getTeamColor(game.team2ColourEnum)
+              const namedTeams = [
+                {
+                  label: game.team1Label,
+                  colourEnum: game.team1ColourEnum,
+                  result: game.team1Result,
+                },
+                {
+                  label: game.team2Label,
+                  colourEnum: game.team2ColourEnum,
+                  result: game.team2Result,
+                },
+              ].sort((a, b) => (a.result === "win" ? -1 : b.result === "win" ? 1 : 0))
               return (
                 <TableRow key={game.id}>
                   <TableCell>
-                    <Link href={`/games/${game.slug}`} className="hover:underline font-medium flex items-center gap-1">
-                      <span className="text-muted-foreground">{game.prefix}</span>
-                      <span
-                        className={`${t1Color?.text ?? "text-muted-foreground"} ${game.team1Result === "win" ? "font-bold" : "font-normal"}`}
-                      >
-                        {game.team1Label}
-                      </span>
-                      <span className="text-muted-foreground">v</span>
-                      <span
-                        className={`${t2Color?.text ?? "text-muted-foreground"} ${game.team2Result === "win" ? "font-bold" : "font-normal"}`}
-                      >
-                        {game.team2Label}
-                      </span>
+                    <Link href={`/games/${game.slug}`} className="hover:underline font-medium">
+                      {game.prefix ?? formatGameName(game.description, game.startTime)}
                     </Link>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1">
+                      {namedTeams.map((team, i) => {
+                        const color = getTeamColor(team.colourEnum)
+                        return (
+                          <Fragment key={i}>
+                            {i > 0 && <span className="text-muted-foreground">v</span>}
+                            <span
+                              className={`${color?.text ?? "text-muted-foreground"} ${team.result === "win" ? "font-bold" : "font-normal"}`}
+                            >
+                              {team.label}
+                            </span>
+                          </Fragment>
+                        )
+                      })}
+                    </span>
                   </TableCell>
                   <TableCell>{game.centerName}</TableCell>
                   <TableCell className="tabular-nums">

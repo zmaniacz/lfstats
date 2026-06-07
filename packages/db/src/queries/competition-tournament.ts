@@ -873,7 +873,7 @@ export type CompetitionUnassignedGame = {
   startTime: Date;
   description: string | null;
   centerName: string;
-  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
 };
 
 export type CompetitionAssignedGame = {
@@ -888,7 +888,7 @@ export type CompetitionAssignedGame = {
   team2Name: string;
   team2ColourEnum: number;
   startTime: Date;
-  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
   centerName: string;
 };
 
@@ -2889,9 +2889,10 @@ export type CompetitionGameListItem = {
   slug: string;
   centerSlug: string;
   startTime: Date;
-  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit";
+  outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
   centerName: string;
-  prefix: string; // e.g. "R1 M1 G1"
+  description: string | null;
+  prefix: string | null; // e.g. "R1 M1 G1"; null when the game has no match assignment
   team1Label: string;
   team1ColourEnum: number;
   team1Result: "win" | "loss" | "draw" | null;
@@ -2911,17 +2912,16 @@ export async function getCompetitionGamesCount(competitionId: string): Promise<n
     .select({ count: sql<number>`count(*)::int` })
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
-    .where(eq(competitionMatch.competitionId, competitionId));
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .where(and(eq(competitionMatch.competitionId, competitionId), eq(game.exclude, false)));
   return row?.count ?? 0;
 }
 
-export async function getCompetitionGamesPage(
+async function queryCompetitionGames(
   competitionId: string,
-  page: number,
+  options: { excluded: boolean; limit?: number; offset?: number },
 ): Promise<CompetitionGameListItem[]> {
-  const offset = (page - 1) * COMPETITION_GAMES_PER_PAGE;
-
-  const rows = await db
+  let query = db
     .select({
       id: game.id,
       slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
@@ -2929,6 +2929,7 @@ export async function getCompetitionGamesPage(
       startTime: game.startTime,
       outcome: game.outcome,
       centerName: center.name,
+      description: game.description,
       roundNumber: competitionRound.roundNumber,
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
@@ -2946,14 +2947,23 @@ export async function getCompetitionGamesPage(
     .innerJoin(center, eq(center.id, game.centerId))
     .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
-    .where(eq(competitionMatch.competitionId, competitionId))
+    .where(
+      and(
+        eq(competitionMatch.competitionId, competitionId),
+        eq(game.exclude, options.excluded),
+      ),
+    )
     .orderBy(
       asc(competitionRound.roundNumber),
       asc(competitionMatch.matchNumber),
       asc(competitionMatchGame.gameNumber),
     )
-    .limit(COMPETITION_GAMES_PER_PAGE)
-    .offset(offset);
+    .$dynamic();
+
+  if (options.limit !== undefined) query = query.limit(options.limit);
+  if (options.offset !== undefined) query = query.offset(options.offset);
+
+  const rows = await query;
 
   if (rows.length === 0) return [];
 
@@ -2994,6 +3004,7 @@ export async function getCompetitionGamesPage(
       startTime: row.startTime,
       outcome: row.outcome,
       centerName: row.centerName,
+      description: row.description,
       prefix: `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber}`,
       team1Label: t1?.shortName ?? t1?.name ?? "?",
       team1ColourEnum: row.team1ColourEnum,
@@ -3001,6 +3012,90 @@ export async function getCompetitionGamesPage(
       team2Label: t2?.shortName ?? t2?.name ?? "?",
       team2ColourEnum: row.team2ColourEnum,
       team2Result: row.team2Result,
+      teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
+        colourEnum: t.colourEnum,
+        score: t.score,
+        eliminationBonus: t.eliminationBonus,
+        result: t.result,
+      })),
+    };
+  });
+}
+
+export async function getCompetitionGamesPage(
+  competitionId: string,
+  page: number,
+): Promise<CompetitionGameListItem[]> {
+  const offset = (page - 1) * COMPETITION_GAMES_PER_PAGE;
+  return queryCompetitionGames(competitionId, {
+    excluded: false,
+    limit: COMPETITION_GAMES_PER_PAGE,
+    offset,
+  });
+}
+
+// Excluded games are not assigned to a competition match (they were aborted,
+// replays, etc.), so they're attached to the competition via `game.competitionId`
+// directly rather than through `competition_match_game`. Team names come from the
+// in-game teams (sm5_game_team) since there's no competition team mapping.
+export async function getExcludedCompetitionGames(
+  competitionId: string,
+): Promise<CompetitionGameListItem[]> {
+  const rows = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      centerName: center.name,
+      description: game.description,
+    })
+    .from(game)
+    .innerJoin(center, eq(center.id, game.centerId))
+    .where(and(eq(game.competitionId, competitionId), eq(game.exclude, true)))
+    .orderBy(desc(game.startTime));
+
+  if (rows.length === 0) return [];
+
+  const gameIds = rows.map((r) => r.id);
+  const teamRows = await db
+    .select({
+      gameId: sm5GameTeam.gameId,
+      name: sm5GameTeam.name,
+      colourEnum: sm5GameTeam.colourEnum,
+      score: sm5GameTeam.score,
+      eliminationBonus: sm5GameTeam.eliminationBonus,
+      result: sm5GameTeam.result,
+    })
+    .from(sm5GameTeam)
+    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
+    .orderBy(sm5GameTeam.tdfTeamIndex);
+
+  const teamsByGame = new Map<string, typeof teamRows>();
+  for (const t of teamRows) {
+    const list = teamsByGame.get(t.gameId) ?? [];
+    list.push(t);
+    teamsByGame.set(t.gameId, list);
+  }
+
+  return rows.map((row) => {
+    const [t1, t2] = teamsByGame.get(row.id) ?? [];
+    return {
+      id: row.id,
+      slug: row.slug,
+      centerSlug: row.centerSlug,
+      startTime: row.startTime,
+      outcome: row.outcome,
+      centerName: row.centerName,
+      description: row.description,
+      prefix: null,
+      team1Label: t1?.name ?? "?",
+      team1ColourEnum: t1?.colourEnum ?? 0,
+      team1Result: t1?.result ?? null,
+      team2Label: t2?.name ?? "?",
+      team2ColourEnum: t2?.colourEnum ?? 0,
+      team2Result: t2?.result ?? null,
       teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
         colourEnum: t.colourEnum,
         score: t.score,
