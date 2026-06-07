@@ -34,14 +34,15 @@ export function TagForm({
   createAction,
   updateAction,
 }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       if (tag) {
         await updateAction(tag.id, centerId, formData)
@@ -50,7 +51,7 @@ export function TagForm({
       }
       onOpenChange(false)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

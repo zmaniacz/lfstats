@@ -28,17 +28,18 @@ type Props = {
 
 export function CompetitionPenaltyList({ competitionId, penalties, canEdit, actions }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.updateAction(competitionId, penaltyId, formData)
       setEditingId(null)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -46,11 +47,11 @@ export function CompetitionPenaltyList({ competitionId, penalties, canEdit, acti
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.rescindAction(competitionId, penaltyId, rescinded)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -58,11 +59,11 @@ export function CompetitionPenaltyList({ competitionId, penalties, canEdit, acti
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.deleteAction(competitionId, penaltyId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

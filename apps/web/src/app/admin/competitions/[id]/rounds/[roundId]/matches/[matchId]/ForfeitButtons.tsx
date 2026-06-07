@@ -15,16 +15,17 @@ type Props = {
 }
 
 export function ForfeitButtons({ team1Name, team2Name, gameNumber, action }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleForfeit(team: "team1" | "team2") {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await action(team, gameNumber)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

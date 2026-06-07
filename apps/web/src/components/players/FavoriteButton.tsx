@@ -15,12 +15,13 @@ type Props = {
 }
 
 export function FavoriteButton({ playerId, isFavorited, addAction, removeAction }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleClick() {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       if (isFavorited) {
         await removeAction(playerId)
@@ -28,7 +29,7 @@ export function FavoriteButton({ playerId, isFavorited, addAction, removeAction 
         await addAction(playerId)
       }
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

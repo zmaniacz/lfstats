@@ -30,9 +30,10 @@ export function GameTagManager({
   assignAction,
   removeAction,
 }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   const assignedIds = new Set(tags.map((t) => t.id))
   const unassigned = availableTags.filter((t) => !assignedIds.has(t.id) && !t.archived)
@@ -43,11 +44,11 @@ export function GameTagManager({
         <button
           key={tag.id}
           onClick={async () => {
-            setIsPending(true)
+            setIsSubmitting(true)
             try {
               await removeAction(gameId, tag.id)
             } finally {
-              setIsPending(false)
+              setIsSubmitting(false)
             }
             startRefreshTransition(() => {
               router.refresh()
@@ -74,11 +75,11 @@ export function GameTagManager({
               <DropdownMenuItem
                 key={tag.id}
                 onClick={async () => {
-                  setIsPending(true)
+                  setIsSubmitting(true)
                   try {
                     await assignAction(gameId, tag.id)
                   } finally {
-                    setIsPending(false)
+                    setIsSubmitting(false)
                   }
                   startRefreshTransition(() => {
                     router.refresh()

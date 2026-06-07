@@ -25,18 +25,19 @@ type Props = {
 }
 
 export function ExcludeToggleButton({ gameId, excluded, action }: Props) {
-  const [isPending, setIsPending] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [open, setOpen] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleConfirm() {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await action(gameId, !excluded)
       setOpen(false)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

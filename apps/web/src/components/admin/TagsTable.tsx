@@ -57,9 +57,10 @@ export function TagsTable({
   deleteAction,
   mergeAction,
 }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
   const [showArchived, setShowArchived] = useState(false)
   const [tagFormOpen, setTagFormOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<GameTagListItem | undefined>()
@@ -149,7 +150,7 @@ export function TagsTable({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={async () => {
-                          setIsPending(true)
+                          setIsSubmitting(true)
                           try {
                             if (tag.archived) {
                               await unarchiveAction(tag.id, centerId)
@@ -157,7 +158,7 @@ export function TagsTable({
                               await archiveAction(tag.id, centerId)
                             }
                           } finally {
-                            setIsPending(false)
+                            setIsSubmitting(false)
                           }
                           startRefreshTransition(() => {
                             router.refresh()
@@ -223,12 +224,12 @@ export function TagsTable({
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
-                  setIsPending(true)
+                  setIsSubmitting(true)
                   try {
                     await deleteAction(deleteTarget.id, centerId)
                     setDeleteTarget(undefined)
                   } finally {
-                    setIsPending(false)
+                    setIsSubmitting(false)
                   }
                   startRefreshTransition(() => {
                     router.refresh()

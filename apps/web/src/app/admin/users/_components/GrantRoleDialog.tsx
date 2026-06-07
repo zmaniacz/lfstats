@@ -60,9 +60,10 @@ export function GrantRoleDialog({
   const [userId, setUserId] = useState(preselectedUser?.id ?? "")
   const [role, setRole] = useState<GrantableRole | "">("")
   const [centerId, setCenterId] = useState("")
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   // Reset form when the dialog opens with a (possibly different) preselected user
   useEffect(() => {
@@ -93,12 +94,12 @@ export function GrantRoleDialog({
   async function handleSubmit() {
     if (!userId || !role) return
     const resolvedCenterId = needsCenter ? centerId || null : null
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await grantRoleAction(userId, role as GrantableRole, resolvedCenterId)
       onOpenChange(false)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

@@ -35,17 +35,18 @@ export function PenaltyManager({
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleAdd(formData: FormData) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.addAction(gameId, scorecardId, formData)
       setShowAdd(false)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -53,12 +54,12 @@ export function PenaltyManager({
   }
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.updateAction(gameId, penaltyId, formData)
       setEditingId(null)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -66,11 +67,11 @@ export function PenaltyManager({
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.rescindAction(gameId, penaltyId, rescinded)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -78,11 +79,11 @@ export function PenaltyManager({
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.deleteAction(gameId, penaltyId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

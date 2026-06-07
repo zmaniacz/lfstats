@@ -112,9 +112,10 @@ export function SortableMatchList({
   reorderAction,
 }: Props) {
   const [matches, setMatches] = useState(initialMatches)
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
   const dndId = useId()
 
   useEffect(() => {
@@ -140,11 +141,11 @@ export function SortableMatchList({
     const withNewNumbers = reordered.map((m, i) => ({ ...m, matchNumber: i + 1 }))
     setMatches(withNewNumbers)
 
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await reorderAction(withNewNumbers.map(({ id, matchNumber }) => ({ id, matchNumber })))
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

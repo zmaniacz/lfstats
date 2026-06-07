@@ -12,16 +12,17 @@ import {
 } from "./actions"
 
 export function ArchiveButton({ id }: { id: string }) {
-  const [pending, setPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const pending = isSubmitting || isRefreshing
 
   async function handleClick() {
-    setPending(true)
+    setIsSubmitting(true)
     try {
       await archiveChomperJobAction(id)
     } finally {
-      setPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -41,16 +42,17 @@ export function ArchiveButton({ id }: { id: string }) {
 }
 
 export function ArchiveAllButton() {
-  const [pending, setPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const pending = isSubmitting || isRefreshing
 
   async function handleClick() {
-    setPending(true)
+    setIsSubmitting(true)
     try {
       await archiveAllChomperJobsAction()
     } finally {
-      setPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

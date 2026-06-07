@@ -23,22 +23,23 @@ type Props = {
 
 export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
   const [type, setType] = useState<"pool" | "finals">("pool")
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set("type", type)
     const form = e.currentTarget
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await action(formData)
       form.reset()
       setType("pool")
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

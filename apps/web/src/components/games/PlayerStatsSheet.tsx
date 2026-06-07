@@ -66,9 +66,10 @@ function StatSection({
 }
 
 export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties, canEdit, penaltyActions, mercenaryAction }: Props) {
-  const [isMercPending, setIsMercPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isMercSubmitting, setIsMercSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isMercPending = isMercSubmitting || isRefreshing
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -97,11 +98,11 @@ export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties
                       className="h-7 px-2 text-xs ml-auto"
                       disabled={isMercPending}
                       onClick={async () => {
-                        setIsMercPending(true)
+                        setIsMercSubmitting(true)
                         try {
                           await mercenaryAction(player.id, !player.isMercenary)
                         } finally {
-                          setIsMercPending(false)
+                          setIsMercSubmitting(false)
                         }
                         startRefreshTransition(() => {
                           router.refresh()

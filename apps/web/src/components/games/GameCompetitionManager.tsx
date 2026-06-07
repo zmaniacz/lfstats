@@ -57,9 +57,10 @@ export function GameCompetitionManager({
   assignToMatchAction,
   removeFromMatchAction,
 }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   // Add-to-competition form state
   const [selectedCompetitionId, setSelectedCompetitionId] = useState("")
@@ -81,11 +82,11 @@ export function GameCompetitionManager({
 
   async function handleAddToCompetition() {
     if (!selectedCompetitionId) return
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await addToCompetitionAction(gameId, selectedCompetitionId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -93,11 +94,11 @@ export function GameCompetitionManager({
   }
 
   async function handleRemoveFromCompetition() {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await removeFromCompetitionAction(gameId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -106,7 +107,7 @@ export function GameCompetitionManager({
 
   async function handleAssignToMatch() {
     if (!selectedMatchId || !selectedGameNumber || !team1GameTeamId || !team2GameTeamId) return
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await assignToMatchAction(
         gameId,
@@ -116,7 +117,7 @@ export function GameCompetitionManager({
         team2GameTeamId,
       )
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -125,11 +126,11 @@ export function GameCompetitionManager({
 
   async function handleRemoveFromMatch() {
     if (!matchAssignment) return
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await removeFromMatchAction(gameId, matchAssignment.matchGameId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

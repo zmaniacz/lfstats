@@ -15,16 +15,17 @@ type Props = {
 }
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleAddToRoster() {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await addAction(playerId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -32,11 +33,11 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
   }
 
   async function handleMercAction() {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await mercAction(playerId, !isMercenary)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

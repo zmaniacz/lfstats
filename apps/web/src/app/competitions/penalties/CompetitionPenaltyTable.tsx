@@ -56,9 +56,10 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   const [sortKey, setSortKey] = useState<SortKey>("game")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -95,12 +96,12 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   }, [filtered, sortKey, sortDir])
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.updateAction(competitionId, penaltyId, formData)
       setEditingId(null)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -108,11 +109,11 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.rescindAction(competitionId, penaltyId, rescinded)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
@@ -120,11 +121,11 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await actions.deleteAction(competitionId, penaltyId)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

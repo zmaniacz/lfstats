@@ -25,22 +25,23 @@ type Props = {
 export function CompetitionMatchForm({ roundId, teams, action }: Props) {
   const [team1Id, setTeam1Id] = useState("")
   const [team2Id, setTeam2Id] = useState("")
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set("team1Id", team1Id)
     formData.set("team2Id", team2Id)
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await action(roundId, formData)
       setTeam1Id("")
       setTeam2Id("")
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

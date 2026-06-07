@@ -21,9 +21,10 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   const [searched, setSearched] = useState(false)
   const [isPendingSearch, setIsPendingSearch] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
-  const [isPendingAdd, setIsPendingAdd] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPendingAdd = isSubmittingAdd || isRefreshing
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -40,12 +41,12 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
 
   async function handleAdd(playerId: string) {
     setAddingId(playerId)
-    setIsPendingAdd(true)
+    setIsSubmittingAdd(true)
     try {
       await addAction(playerId)
       setAddingId(null)
     } finally {
-      setIsPendingAdd(false)
+      setIsSubmittingAdd(false)
     }
     startRefreshTransition(() => {
       router.refresh()

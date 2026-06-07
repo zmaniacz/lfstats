@@ -26,17 +26,18 @@ type Props = {
 
 export function RevokeRoleButton({ roleId, label }: Props) {
   const [open, setOpen] = useState(false)
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
 
   async function handleConfirm() {
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await revokeRoleAction(roleId)
       setOpen(false)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()

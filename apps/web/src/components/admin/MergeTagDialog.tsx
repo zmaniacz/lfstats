@@ -41,21 +41,22 @@ export function MergeTagDialog({
   onOpenChange,
   action,
 }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const router = useRouter()
+  const isPending = isSubmitting || isRefreshing
   const [targetId, setTargetId] = useState("")
 
   const targets = availableTags.filter((t) => t.id !== sourceTag.id)
 
   async function handleConfirm() {
     if (!targetId) return
-    setIsPending(true)
+    setIsSubmitting(true)
     try {
       await action(sourceTag.id, targetId, centerId)
       onOpenChange(false)
     } finally {
-      setIsPending(false)
+      setIsSubmitting(false)
     }
     startRefreshTransition(() => {
       router.refresh()
