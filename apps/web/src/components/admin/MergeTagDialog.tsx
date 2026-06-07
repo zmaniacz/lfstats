@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -42,6 +42,7 @@ export function MergeTagDialog({
   action,
 }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
   const [targetId, setTargetId] = useState("")
 
@@ -53,10 +54,12 @@ export function MergeTagDialog({
     try {
       await action(sourceTag.id, targetId, centerId)
       onOpenChange(false)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (

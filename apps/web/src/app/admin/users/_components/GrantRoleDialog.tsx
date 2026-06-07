@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,6 +61,7 @@ export function GrantRoleDialog({
   const [role, setRole] = useState<GrantableRole | "">("")
   const [centerId, setCenterId] = useState("")
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   // Reset form when the dialog opens with a (possibly different) preselected user
@@ -96,10 +97,12 @@ export function GrantRoleDialog({
     try {
       await grantRoleAction(userId, role as GrantableRole, resolvedCenterId)
       onOpenChange(false)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   const canSubmit =

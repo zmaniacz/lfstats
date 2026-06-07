@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   const [isPendingSearch, setIsPendingSearch] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [isPendingAdd, setIsPendingAdd] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleSearch(e: React.FormEvent) {
@@ -43,10 +44,12 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
     try {
       await addAction(playerId)
       setAddingId(null)
-      router.refresh()
     } finally {
       setIsPendingAdd(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (

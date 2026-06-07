@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type { CompetitionPenaltyRecord } from "@lfstats/db"
@@ -57,6 +57,7 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   function toggleSort(key: SortKey) {
@@ -98,30 +99,36 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
     try {
       await actions.updateAction(competitionId, penaltyId, formData)
       setEditingId(null)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
     setIsPending(true)
     try {
       await actions.rescindAction(competitionId, penaltyId, rescinded)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleDelete(penaltyId: string) {
     setIsPending(true)
     try {
       await actions.deleteAction(competitionId, penaltyId)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   function SortIcon({ col }: { col: SortKey }) {

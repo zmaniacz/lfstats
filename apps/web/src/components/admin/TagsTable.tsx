@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -58,6 +58,7 @@ export function TagsTable({
   mergeAction,
 }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
   const [showArchived, setShowArchived] = useState(false)
   const [tagFormOpen, setTagFormOpen] = useState(false)
@@ -155,10 +156,12 @@ export function TagsTable({
                             } else {
                               await archiveAction(tag.id, centerId)
                             }
-                            router.refresh()
                           } finally {
                             setIsPending(false)
                           }
+                          startRefreshTransition(() => {
+                            router.refresh()
+                          })
                         }}
                         disabled={isPending}
                       >
@@ -224,10 +227,12 @@ export function TagsTable({
                   try {
                     await deleteAction(deleteTarget.id, centerId)
                     setDeleteTarget(undefined)
-                    router.refresh()
                   } finally {
                     setIsPending(false)
                   }
+                  startRefreshTransition(() => {
+                    router.refresh()
+                  })
                 }}
                 disabled={isPending}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

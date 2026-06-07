@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
@@ -16,16 +16,19 @@ type Props = {
 
 export function ForfeitButtons({ team1Name, team2Name, gameNumber, action }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleForfeit(team: "team1" | "team2") {
     setIsPending(true)
     try {
       await action(team, gameNumber)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (

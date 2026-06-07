@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
@@ -16,26 +16,31 @@ type Props = {
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleAddToRoster() {
     setIsPending(true)
     try {
       await addAction(playerId)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleMercAction() {
     setIsPending(true)
     try {
       await mercAction(playerId, !isMercenary)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (

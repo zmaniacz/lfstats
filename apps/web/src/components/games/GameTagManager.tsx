@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,7 @@ export function GameTagManager({
   removeAction,
 }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   const assignedIds = new Set(tags.map((t) => t.id))
@@ -45,10 +46,12 @@ export function GameTagManager({
             setIsPending(true)
             try {
               await removeAction(gameId, tag.id)
-              router.refresh()
             } finally {
               setIsPending(false)
             }
+            startRefreshTransition(() => {
+              router.refresh()
+            })
           }}
           disabled={isPending}
           title="Click to remove tag"
@@ -74,10 +77,12 @@ export function GameTagManager({
                   setIsPending(true)
                   try {
                     await assignAction(gameId, tag.id)
-                    router.refresh()
                   } finally {
                     setIsPending(false)
                   }
+                  startRefreshTransition(() => {
+                    router.refresh()
+                  })
                 }}
               >
                 <span

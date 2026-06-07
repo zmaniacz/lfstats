@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,6 +37,7 @@ export function DeleteEntityButton({
 }: Props) {
   const [open, setOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleConfirm() {
@@ -44,10 +45,12 @@ export function DeleteEntityButton({
     try {
       await action(id)
       setOpen(false)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (

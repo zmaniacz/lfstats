@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,7 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
   const [team1Id, setTeam1Id] = useState("")
   const [team2Id, setTeam2Id] = useState("")
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -38,10 +39,12 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
       await action(roundId, formData)
       setTeam1Id("")
       setTeam2Id("")
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (

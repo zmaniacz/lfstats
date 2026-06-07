@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -58,6 +58,7 @@ export function GameCompetitionManager({
   removeFromMatchAction,
 }: Props) {
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   // Add-to-competition form state
@@ -83,20 +84,24 @@ export function GameCompetitionManager({
     setIsPending(true)
     try {
       await addToCompetitionAction(gameId, selectedCompetitionId)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleRemoveFromCompetition() {
     setIsPending(true)
     try {
       await removeFromCompetitionAction(gameId)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleAssignToMatch() {
@@ -110,10 +115,12 @@ export function GameCompetitionManager({
         team1GameTeamId,
         team2GameTeamId,
       )
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleRemoveFromMatch() {
@@ -121,10 +128,12 @@ export function GameCompetitionManager({
     setIsPending(true)
     try {
       await removeFromMatchAction(gameId, matchAssignment.matchGameId)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   // ── No competition ──────────────────────────────────────────────────────

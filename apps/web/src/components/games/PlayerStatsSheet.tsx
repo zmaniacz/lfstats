@@ -16,7 +16,7 @@ import { formatPct, formatMs } from "@/lib/format"
 import { getPosition } from "@/lib/positions"
 import { PenaltyManager } from "@/components/games/PenaltyManager"
 import { WarningIcon } from "@phosphor-icons/react"
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 type PenaltyActions = React.ComponentProps<typeof PenaltyManager>["actions"]
@@ -67,6 +67,7 @@ function StatSection({
 
 export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties, canEdit, penaltyActions, mercenaryAction }: Props) {
   const [isMercPending, setIsMercPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   return (
@@ -99,10 +100,12 @@ export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties
                         setIsMercPending(true)
                         try {
                           await mercenaryAction(player.id, !player.isMercenary)
-                          router.refresh()
                         } finally {
                           setIsMercPending(false)
                         }
+                        startRefreshTransition(() => {
+                          router.refresh()
+                        })
                       }}
                     >
                       {player.isMercenary ? "Unmark Merc" : "Mark as Merc"}

@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import type { PenaltyRecord } from "@lfstats/db"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +36,7 @@ export function PenaltyManager({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [isPending, setIsPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleAdd(formData: FormData) {
@@ -43,10 +44,12 @@ export function PenaltyManager({
     try {
       await actions.addAction(gameId, scorecardId, formData)
       setShowAdd(false)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
@@ -54,30 +57,36 @@ export function PenaltyManager({
     try {
       await actions.updateAction(gameId, penaltyId, formData)
       setEditingId(null)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
     setIsPending(true)
     try {
       await actions.rescindAction(gameId, penaltyId, rescinded)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   async function handleDelete(penaltyId: string) {
     setIsPending(true)
     try {
       await actions.deleteAction(gameId, penaltyId)
-      router.refresh()
     } finally {
       setIsPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   if (penalties.length === 0 && !canEdit) return null

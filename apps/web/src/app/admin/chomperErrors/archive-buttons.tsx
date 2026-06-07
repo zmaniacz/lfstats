@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,16 +13,19 @@ import {
 
 export function ArchiveButton({ id }: { id: string }) {
   const [pending, setPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleClick() {
     setPending(true)
     try {
       await archiveChomperJobAction(id)
-      router.refresh()
     } finally {
       setPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (
@@ -39,16 +42,19 @@ export function ArchiveButton({ id }: { id: string }) {
 
 export function ArchiveAllButton() {
   const [pending, setPending] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const router = useRouter()
 
   async function handleClick() {
     setPending(true)
     try {
       await archiveAllChomperJobsAction()
-      router.refresh()
     } finally {
       setPending(false)
     }
+    startRefreshTransition(() => {
+      router.refresh()
+    })
   }
 
   return (
