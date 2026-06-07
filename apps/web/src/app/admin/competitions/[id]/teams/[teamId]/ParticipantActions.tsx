@@ -1,47 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
+import { useTransition } from "react";
 
 type Props = {
-  playerId: string
-  isMercenary: boolean
-  addAction: (playerId: string) => Promise<void>
-  mercAction: (playerId: string, isMercenary: boolean) => Promise<void>
-}
+  playerId: string;
+  isMercenary: boolean;
+  addAction: (playerId: string) => Promise<void>;
+  mercAction: (playerId: string, isMercenary: boolean) => Promise<void>;
+};
 
-export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [, startRefreshTransition] = useTransition()
-  const router = useRouter()
-
-  async function handleAddToRoster() {
-    setIsPending(true)
-    try {
-      await addAction(playerId)
-    } finally {
-      setIsPending(false)
-    }
-    startRefreshTransition(() => {
-      router.refresh()
-    })
-  }
-
-  async function handleMercAction() {
-    setIsPending(true)
-    try {
-      await mercAction(playerId, !isMercenary)
-    } finally {
-      setIsPending(false)
-    }
-    startRefreshTransition(() => {
-      router.refresh()
-    })
-  }
+export function ParticipantActions({
+  playerId,
+  isMercenary,
+  addAction,
+  mercAction,
+}: Props) {
+  const [isPending, startTransition] = useTransition();
 
   return (
     <div className="flex gap-1 justify-end">
@@ -51,7 +29,7 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
           size="sm"
           className="h-7 px-2 text-xs"
           disabled={isPending}
-          onClick={handleAddToRoster}
+          onClick={() => startTransition(() => addAction(playerId))}
         >
           Add to Roster
         </Button>
@@ -61,10 +39,12 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
         size="sm"
         className="h-7 px-2 text-xs"
         disabled={isPending}
-        onClick={handleMercAction}
+        onClick={() =>
+          startTransition(() => mercAction(playerId, !isMercenary))
+        }
       >
         {isMercenary ? "Unmark Merc" : "Mark as Merc"}
       </Button>
     </div>
-  )
+  );
 }

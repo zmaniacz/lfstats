@@ -9,13 +9,7 @@ import { fileURLToPath } from "node:url";
 const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../");
 
 const config = (phase: string): NextConfig => {
-  const base: NextConfig = {
-    experimental: {
-      staleTimes: {
-        dynamic: 0,
-      },
-    },
-  };
+  const base: NextConfig = {};
 
   if (phase === PHASE_PRODUCTION_BUILD) {
     return {
