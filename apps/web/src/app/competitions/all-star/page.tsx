@@ -7,6 +7,7 @@ import { CompetitionSelector } from "../standings/CompetitionSelector"
 import { AllStarPositionTable } from "@/components/competitions/AllStarPositionTable"
 import { AllStarFilters } from "./AllStarFilters"
 import { POSITIONS } from "@/lib/positions"
+import { resolveActiveCompetitionId } from "@/lib/active-competition"
 
 export default async function AllStarPage({
   searchParams,
@@ -30,7 +31,7 @@ export default async function AllStarPage({
     )
   }
 
-  const activeId = competitionId ?? competitions[0].id
+  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 

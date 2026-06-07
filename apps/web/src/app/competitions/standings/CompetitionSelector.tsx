@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+export const COMPETITION_COOKIE = "lastCompetitionId"
+
 export function CompetitionSelector({
   competitions,
   activeId,
@@ -23,10 +25,15 @@ export function CompetitionSelector({
 }) {
   const router = useRouter()
 
+  function handleChange(id: string) {
+    document.cookie = `${COMPETITION_COOKIE}=${id}; path=/; max-age=31536000; samesite=lax`
+    router.push(`${activeParamBase}?competition=${id}`)
+  }
+
   return (
     <Select
       value={activeId}
-      onValueChange={(id) => router.push(`${activeParamBase}?competition=${id}`)}
+      onValueChange={handleChange}
     >
       <SelectTrigger className="w-64">
         <SelectValue />

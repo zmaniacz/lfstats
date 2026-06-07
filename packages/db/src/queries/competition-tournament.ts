@@ -967,6 +967,7 @@ export type CompetitionStandingsRow = {
 
 export async function getCompetitionStandings(
   competitionId: string,
+  roundId?: string,
 ): Promise<CompetitionStandingsRow[]> {
   // Pull every assigned match-game with both teams' scores and results.
   // We need:
@@ -974,6 +975,8 @@ export async function getCompetitionStandings(
   //   - game-level W/L/D (sm5_game_team.result per game)
   //   - full-team eliminations (opposing sm5_game_team.eliminated = true)
   //   - score totals for ratio
+  //
+  // Standings are computed only from 'pool' rounds; optionally narrowed to a single round.
 
   const gameRows = await db
     .select({
@@ -992,6 +995,7 @@ export async function getCompetitionStandings(
     })
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
     .innerJoin(
       sql`sm5_game_team t1`,
       sql`t1.id = ${competitionMatchGame.team1GameTeamId}`,
@@ -1000,7 +1004,13 @@ export async function getCompetitionStandings(
       sql`sm5_game_team t2`,
       sql`t2.id = ${competitionMatchGame.team2GameTeamId}`,
     )
-    .where(eq(competitionMatch.competitionId, competitionId));
+    .where(
+      and(
+        eq(competitionMatch.competitionId, competitionId),
+        eq(competitionRound.type, "pool"),
+        roundId ? eq(competitionMatch.roundId, roundId) : undefined,
+      ),
+    );
 
   if (gameRows.length === 0) return [];
 
@@ -1142,6 +1152,7 @@ export type CompetitionMatchResult = {
 
 export async function getCompetitionMatchResults(
   competitionId: string,
+  roundId?: string,
 ): Promise<CompetitionMatchResult[]> {
   const gameRows = await db
     .select({
@@ -1169,7 +1180,13 @@ export async function getCompetitionMatchResults(
     .innerJoin(center, eq(center.id, game.centerId))
     .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
-    .where(eq(competitionMatch.competitionId, competitionId))
+    .where(
+      and(
+        eq(competitionMatch.competitionId, competitionId),
+        eq(competitionRound.type, "pool"),
+        roundId ? eq(competitionMatch.roundId, roundId) : undefined,
+      ),
+    )
     .orderBy(
       asc(competitionRound.roundNumber),
       asc(competitionMatch.matchNumber),

@@ -12,6 +12,7 @@ import { AmmoPlayersTable } from "@/components/competitions/AmmoPlayersTable"
 import { MedicPlayersTable } from "@/components/competitions/MedicPlayersTable"
 import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable"
 import { TopPlayersFilters } from "./TopPlayersFilters"
+import { resolveActiveCompetitionId } from "@/lib/active-competition"
 
 
 export default async function TopPlayersPage({
@@ -36,7 +37,7 @@ export default async function TopPlayersPage({
     )
   }
 
-  const activeId = competitionId ?? competitions[0].id
+  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 

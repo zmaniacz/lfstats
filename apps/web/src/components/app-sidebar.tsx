@@ -29,7 +29,29 @@ import {
 } from "@phosphor-icons/react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import * as React from "react";
+import { COMPETITION_COOKIE } from "@/app/competitions/standings/CompetitionSelector";
+
+function readCompetitionCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${COMPETITION_COOKIE}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function CompetitionNavItems() {
+  const searchParams = useSearchParams();
+  const competitionId = searchParams.get("competition") ?? readCompetitionCookie();
+
+  const items = competitionId
+    ? competitionNavItems.map((item) => ({
+        ...item,
+        url: `${item.url}?competition=${competitionId}`,
+      }))
+    : competitionNavItems;
+
+  return <NavMain label="Competitions" items={items} />;
+}
 
 const socialNavItems = [
   {
@@ -89,6 +111,7 @@ const competitionNavItems = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
+
   const roles = session?.user?.roles ?? [];
   const isLoggedIn = session?.user != null;
   const isAdmin = roles.some(
@@ -143,7 +166,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain label="Social" items={socialItems} />
-        <NavMain label="Competitions" items={competitionNavItems} />
+        <React.Suspense fallback={<NavMain label="Competitions" items={competitionNavItems} />}>
+          <CompetitionNavItems />
+        </React.Suspense>
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

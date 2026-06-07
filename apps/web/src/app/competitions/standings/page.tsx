@@ -7,6 +7,7 @@ import {
   getCompetitiveCompetitions,
   getCompetitionStandings,
   getCompetitionMatchResults,
+  getCompetitionRounds,
   type CompetitionMatchResult,
 } from "@lfstats/db"
 import {
@@ -20,14 +21,16 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CompetitionSelector } from "./CompetitionSelector"
+import { RoundFilter } from "./RoundFilter"
 import { getTeamColor } from "@/lib/team-colors"
+import { resolveActiveCompetitionId } from "@/lib/active-competition"
 
 export default async function StandingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ competition?: string }>
+  searchParams: Promise<{ competition?: string; round?: string }>
 }) {
-  const { competition: competitionId } = await searchParams
+  const { competition: competitionId, round: roundIdParam } = await searchParams
 
   const competitions = await getCompetitiveCompetitions()
 
@@ -40,13 +43,20 @@ export default async function StandingsPage({
     )
   }
 
-  const activeId = competitionId ?? competitions[0].id
+  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 
+  const allRounds = await getCompetitionRounds(activeId)
+  const poolRounds = allRounds
+    .filter((r) => r.type === "pool")
+    .sort((a, b) => a.roundNumber - b.roundNumber)
+
+  const activeRoundId = poolRounds.some((r) => r.id === roundIdParam) ? roundIdParam! : null
+
   const [standings, matchResults] = await Promise.all([
-    getCompetitionStandings(activeId),
-    getCompetitionMatchResults(activeId),
+    getCompetitionStandings(activeId, activeRoundId ?? undefined),
+    getCompetitionMatchResults(activeId, activeRoundId ?? undefined),
   ])
 
   // Group matches by round
@@ -69,6 +79,14 @@ export default async function StandingsPage({
         <h2 className="text-xl font-semibold">Standings</h2>
         <CompetitionSelector competitions={competitions} activeId={activeId} />
       </div>
+
+      {poolRounds.length > 1 && (
+        <RoundFilter
+          competitionId={activeId}
+          rounds={poolRounds.map((r) => ({ id: r.id, name: r.name }))}
+          activeRoundId={activeRoundId}
+        />
+      )}
 
       <Card>
         <CardHeader>

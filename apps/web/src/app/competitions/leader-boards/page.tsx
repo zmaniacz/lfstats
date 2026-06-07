@@ -18,6 +18,7 @@ import {
 import { notFound } from "next/navigation";
 import { CompetitionSelector } from "../standings/CompetitionSelector";
 import { LeaderBoardsFilters } from "./LeaderBoardsFilters";
+import { resolveActiveCompetitionId } from "@/lib/active-competition";
 
 export default async function LeaderBoardsPage({
   searchParams,
@@ -53,7 +54,7 @@ export default async function LeaderBoardsPage({
     );
   }
 
-  const activeId = competitionId ?? competitions[0].id;
+  const activeId = await resolveActiveCompetitionId(competitions, competitionId);
   const activeComp = competitions.find((c) => c.id === activeId);
   if (!activeComp) notFound();
 

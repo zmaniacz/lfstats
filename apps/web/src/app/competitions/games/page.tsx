@@ -12,6 +12,7 @@ import { CompetitionGamesTable } from "@/components/games/CompetitionGamesTable"
 import { CompetitionSelector } from "@/app/competitions/standings/CompetitionSelector"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { resolveActiveCompetitionId } from "@/lib/active-competition"
 
 export default async function CompetitionGamesPage({
   searchParams,
@@ -32,7 +33,7 @@ export default async function CompetitionGamesPage({
     )
   }
 
-  const activeId = competitionId ?? competitions[0].id
+  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 

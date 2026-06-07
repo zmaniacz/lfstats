@@ -15,6 +15,7 @@ import {
   rescindCompetitionPenaltyAction,
   deleteCompetitionPenaltyAction,
 } from "./actions"
+import { resolveActiveCompetitionId } from "@/lib/active-competition"
 
 export default async function CompetitionPenaltiesPage({
   searchParams,
@@ -37,7 +38,7 @@ export default async function CompetitionPenaltiesPage({
     )
   }
 
-  const activeId = competitionId ?? competitions[0].id
+  const activeId = await resolveActiveCompetitionId(competitions, competitionId)
   const activeComp = competitions.find((c) => c.id === activeId)
   if (!activeComp) notFound()
 
