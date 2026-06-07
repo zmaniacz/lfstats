@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { CompetitionSelector } from "./CompetitionSelector"
 import { RoundFilter } from "./RoundFilter"
 import { getTeamColor } from "@/lib/team-colors"
+import { TeamLogo } from "@/components/teams/TeamLogo"
 import { resolveActiveCompetitionId } from "@/lib/active-competition"
 
 export default async function StandingsPage({
@@ -122,10 +123,15 @@ export default async function StandingsPage({
                         {i + 1}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {row.teamName}
-                        {row.teamShortName && (
-                          <span className="text-muted-foreground font-normal ml-1">({row.teamShortName})</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <TeamLogo teamId={row.teamId} hasLogo={row.teamHasLogo} name={row.teamName} size={24} />
+                          <span>
+                            {row.teamName}
+                            {row.teamShortName && (
+                              <span className="text-muted-foreground font-normal ml-1">({row.teamShortName})</span>
+                            )}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">
                         {row.matchPoints}

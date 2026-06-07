@@ -42,6 +42,7 @@ export type CompetitionTeamListItem = {
   competitionId: string;
   name: string;
   shortName: string | null;
+  hasLogo: boolean;
   playerCount: number;
 };
 
@@ -130,6 +131,7 @@ export async function getCompetitionTeams(
       competitionId: competitionTeam.competitionId,
       name: competitionTeam.name,
       shortName: competitionTeam.shortName,
+      hasLogo: competitionTeam.hasLogo,
       playerCount: sql<number>`count(${competitionTeamPlayer.id})::int`,
     })
     .from(competitionTeam)
@@ -146,7 +148,7 @@ export async function getCompetitionTeams(
 
 export async function getCompetitionTeamById(
   id: string,
-): Promise<{ id: string; competitionId: string; name: string; shortName: string | null } | null> {
+): Promise<{ id: string; competitionId: string; name: string; shortName: string | null; hasLogo: boolean } | null> {
   const [row] = await db
     .select()
     .from(competitionTeam)
@@ -161,6 +163,13 @@ export async function updateCompetitionTeam(
   await db
     .update(competitionTeam)
     .set({ name: data.name, shortName: data.shortName })
+    .where(eq(competitionTeam.id, id));
+}
+
+export async function setCompetitionTeamLogo(id: string, hasLogo: boolean): Promise<void> {
+  await db
+    .update(competitionTeam)
+    .set({ hasLogo })
     .where(eq(competitionTeam.id, id));
 }
 
@@ -953,6 +962,7 @@ export type CompetitionStandingsRow = {
   teamId: string;
   teamName: string;
   teamShortName: string | null;
+  teamHasLogo: boolean;
   matchPoints: number;
   matchWins: number;
   matchLosses: number;
@@ -1100,7 +1110,7 @@ export async function getCompetitionStandings(
 
   // Fetch team names for all teams in competition (including 0-game teams)
   const allTeams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName })
+    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
     .from(competitionTeam)
     .where(eq(competitionTeam.competitionId, competitionId))
     .orderBy(asc(competitionTeam.name));
@@ -1111,7 +1121,7 @@ export async function getCompetitionStandings(
       gameWins: 0, gameLosses: 0, gameDraws: 0,
       teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
     };
-    return { teamId: team.id, teamName: team.name, teamShortName: team.shortName, ...s };
+    return { teamId: team.id, teamName: team.name, teamShortName: team.shortName, teamHasLogo: team.hasLogo, ...s };
   }).sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
 }
 

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getCompetitionById, getCompetitionTeams } from "@lfstats/db"
 import { CompetitionTeamForm } from "@/components/admin/competition/CompetitionTeamForm"
+import { TeamLogo } from "@/components/teams/TeamLogo"
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
 import {
   Table,
@@ -78,8 +79,9 @@ export default async function CompetitionTeamsPage({
                     <TableCell className="font-medium">
                       <Link
                         href={`/admin/competitions/${id}/teams/${team.id}`}
-                        className="hover:underline"
+                        className="hover:underline flex items-center gap-2"
                       >
+                        <TeamLogo teamId={team.id} hasLogo={team.hasLogo} name={team.name} size={24} />
                         {team.name}
                       </Link>
                     </TableCell>

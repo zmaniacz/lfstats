@@ -152,6 +152,7 @@ export const competitionTeam = pgTable(
       .references(() => competition.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     shortName: text("short_name"),
+    hasLogo: boolean("has_logo").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.competitionId, t.name)],

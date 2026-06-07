@@ -15,6 +15,14 @@ const config = (phase: string): NextConfig => {
         dynamic: 0,
       },
     },
+    images: {
+      remotePatterns: [
+        {
+          protocol: "https",
+          hostname: "lfstats-modern-images.s3.*.amazonaws.com",
+        },
+      ],
+    },
   };
 
   if (phase === PHASE_PRODUCTION_BUILD) {

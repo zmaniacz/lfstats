@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { addPlayerAction, removePlayerAction, searchPlayersAction, updateTeamAction, setMercenaryAction, addParticipantToRosterAction } from "./actions"
 import { ParticipantActions } from "./ParticipantActions"
+import { TeamLogoUpload } from "./TeamLogoUpload"
 
 export default async function TeamRosterPage({
   params,
@@ -81,6 +82,20 @@ export default async function TeamRosterPage({
             </div>
             <Button type="submit" size="sm">Save</Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Logo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamLogoUpload
+            competitionId={id}
+            teamId={teamId}
+            teamName={team.name}
+            hasLogo={team.hasLogo}
+          />
         </CardContent>
       </Card>
 

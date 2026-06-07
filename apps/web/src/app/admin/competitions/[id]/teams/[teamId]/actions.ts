@@ -10,15 +10,36 @@ import {
   searchPlayersForRoster,
   updateCompetitionTeam,
   setPlayerMercenary,
+  setCompetitionTeamLogo,
   type PlayerSearchResult,
 } from "@lfstats/db"
 import { auth } from "@/auth"
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+
+const ALLOWED_LOGO_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const
 
 async function requireAdmin() {
   const session = await auth()
   const roles = session?.user?.roles ?? []
   if (!roles.some((r) => r.role === "superAdmin" || r.role === "admin"))
     throw new Error("Forbidden")
+}
+
+function getS3Client() {
+  return new S3Client({
+    region: process.env.AWS_REGION!,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  })
+}
+
+function getImagesBucket(): string {
+  const bucket = process.env.IMAGES_BUCKET
+  if (!bucket) throw new Error("IMAGES_BUCKET is not configured")
+  return bucket
 }
 
 export async function updateTeamAction(
@@ -81,4 +102,48 @@ export async function searchPlayersAction(
 ): Promise<PlayerSearchResult[]> {
   if (!query.trim()) return []
   return searchPlayersForRoster(query.trim())
+}
+
+export async function getTeamLogoUploadUrlAction(
+  competitionId: string,
+  teamId: string,
+  contentType: string,
+): Promise<string> {
+  await requireAdmin()
+
+  if (!ALLOWED_LOGO_CONTENT_TYPES.includes(contentType as typeof ALLOWED_LOGO_CONTENT_TYPES[number])) {
+    throw new Error(`Unsupported image type: ${contentType}`)
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: getImagesBucket(),
+    Key: teamId,
+    ContentType: contentType,
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return getSignedUrl(getS3Client() as any, command, { expiresIn: 300 })
+}
+
+export async function confirmTeamLogoUploadAction(
+  competitionId: string,
+  teamId: string,
+): Promise<void> {
+  await requireAdmin()
+  await setCompetitionTeamLogo(teamId, true)
+  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  revalidatePath(`/competitions/standings`)
+}
+
+export async function removeTeamLogoAction(
+  competitionId: string,
+  teamId: string,
+): Promise<void> {
+  await requireAdmin()
+  const s3 = getS3Client()
+  await s3.send(new DeleteObjectCommand({ Bucket: getImagesBucket(), Key: teamId }))
+  await setCompetitionTeamLogo(teamId, false)
+  revalidatePath(`/admin/competitions/${competitionId}/teams/${teamId}`)
+  revalidatePath(`/admin/competitions/${competitionId}/teams`)
+  revalidatePath(`/competitions/standings`)
 }
