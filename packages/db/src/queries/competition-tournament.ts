@@ -1482,8 +1482,10 @@ export async function getCompetitionTopPlayers(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
@@ -1603,8 +1605,10 @@ export async function getCompetitionCommanderPlayers(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, 1),
@@ -1698,8 +1702,10 @@ export async function getCompetitionTopPlayersByPosition(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, position),
@@ -1785,8 +1791,10 @@ export async function getCompetitionHeavyPlayers(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, 2),
@@ -1877,8 +1885,10 @@ export async function getCompetitionScoutPlayers(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, 3),
@@ -1974,8 +1984,10 @@ export async function getCompetitionAmmoPlayers(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, 4),
@@ -2070,8 +2082,10 @@ export async function getCompetitionMedicPlayers(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, 5),
@@ -2163,8 +2177,10 @@ export async function getCompetitionPositionScorecards(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5Scorecard.position, position),
@@ -2248,8 +2264,10 @@ async function getCompetitionAllPositionRows(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
@@ -2360,8 +2378,10 @@ export async function getCompetitionMiscMischief(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
@@ -2441,8 +2461,10 @@ export async function getCompetitionNukeNonsense(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
@@ -2513,8 +2535,10 @@ export async function getCompetitionMissileMalarkey(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
@@ -2583,8 +2607,10 @@ export async function getCompetitionMedicTomfoolery(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
@@ -2639,8 +2665,10 @@ export async function getCompetitionMedicHitsLeaderboard(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
     eq(sm5GameTeam.isNeutral, false),
@@ -2814,8 +2842,10 @@ export async function getCompetitionAllStarRankings(
       FROM competition_match_game cmg
       JOIN competition_match cm ON cm.id = cmg.match_id
       JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
       WHERE cm.competition_id = ${competitionId}
         AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
     )`,
     sql`${sm5Scorecard.playerId} IS NOT NULL`,
   ];
