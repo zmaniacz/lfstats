@@ -916,6 +916,7 @@ export async function getCompetitionUnassignedGamesForAdmin(
       and(
         eq(game.competitionId, competitionId),
         not(inArray(game.id, assignedIds)),
+        eq(game.exclude, false),
       ),
     )
     .orderBy(asc(game.startTime));
