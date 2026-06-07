@@ -254,6 +254,95 @@ export async function getTeamGameParticipants(
   return rows;
 }
 
+export type CompetitionTeamPositionStat = {
+  playerId: string;
+  position: number;
+  gamesPlayed: number;
+  avgMvp: number;
+  avgScore: number;
+};
+
+export async function getCompetitionTeamPositionStats(
+  teamId: string,
+): Promise<CompetitionTeamPositionStat[]> {
+  const rows = await db
+    .select({
+      playerId: sm5Scorecard.playerId,
+      position: sm5Scorecard.position,
+      gamesPlayed: sql<number>`count(*)::int`,
+      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})::float`,
+      avgScore: sql<number>`avg(${sm5Scorecard.score})::float`,
+    })
+    .from(sm5Scorecard)
+    .where(
+      and(
+        sql`${sm5Scorecard.playerId} IS NOT NULL`,
+        sql`${sm5Scorecard.teamId} IN (
+          SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
+                      ELSE cmg.team2_game_team_id END
+          FROM competition_match cm
+          JOIN competition_match_game cmg ON cmg.match_id = cm.id
+          WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
+        )`,
+      ),
+    )
+    .groupBy(sm5Scorecard.playerId, sm5Scorecard.position)
+    .orderBy(asc(sm5Scorecard.playerId), asc(sm5Scorecard.position));
+
+  return rows.map((r) => ({
+    playerId: r.playerId!,
+    position: r.position,
+    gamesPlayed: r.gamesPlayed,
+    avgMvp: r.avgMvp,
+    avgScore: r.avgScore,
+  }));
+}
+
+export type CompetitionTeamResultItem = {
+  colourEnum: number;
+  result: "win" | "loss";
+  outcome: "score" | "elimination";
+  count: number;
+};
+
+export async function getCompetitionTeamResultsByColor(
+  teamId: string,
+): Promise<CompetitionTeamResultItem[]> {
+  const rows = await db
+    .select({
+      colourEnum: sm5GameTeam.colourEnum,
+      result: sm5GameTeam.result,
+      outcome: game.outcome,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(sm5GameTeam)
+    .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
+    .where(
+      sql`${sm5GameTeam.id} IN (
+        SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
+                    ELSE cmg.team2_game_team_id END
+        FROM competition_match cm
+        JOIN competition_match_game cmg ON cmg.match_id = cm.id
+        WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
+      )`,
+    )
+    .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
+    .orderBy(desc(sm5GameTeam.result), asc(sm5GameTeam.colourEnum), desc(game.outcome));
+
+  return rows
+    .filter(
+      (r) =>
+        (r.result === "win" || r.result === "loss") &&
+        (r.outcome === "score" || r.outcome === "elimination"),
+    )
+    .map((r) => ({
+      colourEnum: r.colourEnum,
+      result: r.result as "win" | "loss",
+      outcome: r.outcome as "score" | "elimination",
+      count: r.count,
+    }));
+}
+
 export async function setPlayerMercenary(
   competitionTeamId: string,
   playerId: string,
