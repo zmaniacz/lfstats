@@ -8,6 +8,7 @@ import {
   getCompetitionStandings,
   getCompetitionMatchResults,
   getCompetitionRounds,
+  getCompetitionTeams,
   type CompetitionMatchResult,
 } from "@lfstats/db"
 import {
@@ -55,9 +56,10 @@ export default async function StandingsPage({
 
   const activeRoundId = poolRounds.some((r) => r.id === roundIdParam) ? roundIdParam! : null
 
-  const [standings, matchResults] = await Promise.all([
+  const [standings, matchResults, teams] = await Promise.all([
     getCompetitionStandings(activeId, activeRoundId ?? undefined),
     getCompetitionMatchResults(activeId, activeRoundId ?? undefined),
+    getCompetitionTeams(activeId),
   ])
 
   // Group matches by round
@@ -95,7 +97,38 @@ export default async function StandingsPage({
         </CardHeader>
         <CardContent>
           {standings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No match data yet.</p>
+            teams.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No teams have been added yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 text-right">#</TableHead>
+                    <TableHead>Team</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teams.map((team, i) => (
+                    <TableRow key={team.id}>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <TeamLogo teamId={team.id} hasLogo={team.hasLogo} name={team.name} size={24} />
+                          <span>
+                            {team.name}
+                            {team.shortName && (
+                              <span className="text-muted-foreground font-normal ml-1">({team.shortName})</span>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )
           ) : (
             <Table>
               <TableHeader>
@@ -175,12 +208,18 @@ function MatchCard({ match }: { match: CompetitionMatchResult }) {
   const game1 = match.games.find((g) => g.gameNumber === 1)
   const game2 = match.games.find((g) => g.gameNumber === 2)
   const incomplete = match.matchWinner === "incomplete"
+  const upcoming = match.games.length === 0
 
   const t1Label = match.team1ShortName ?? match.team1Name
   const t2Label = match.team2ShortName ?? match.team2Name
   const winnerLabel =
     match.matchWinner === "team1" ? t1Label :
     match.matchWinner === "team2" ? t2Label : null
+
+  const t1Total = (game1?.team1Score ?? 0) + (game2?.team1Score ?? 0)
+  const t2Total = (game1?.team2Score ?? 0) + (game2?.team2Score ?? 0)
+  const hasScore = Boolean(game1 || game2)
+  const diff = hasScore ? t1Total - t2Total : null
 
   return (
     <Card>
@@ -189,56 +228,48 @@ function MatchCard({ match }: { match: CompetitionMatchResult }) {
           <span className="text-sm font-medium text-muted-foreground">
             Match {match.matchNumber}
           </span>
+          <span className="tabular-nums font-bold text-lg">
+            {hasScore ? `${match.team1TotalPoints} - ${match.team2TotalPoints}` : "vs"}
+          </span>
           {!incomplete && (
             <Badge variant={match.matchWinner === "draw" ? "secondary" : "default"} className="text-xs">
               {match.matchWinner === "draw" ? "Draw" : `${winnerLabel} wins`}
             </Badge>
           )}
           {incomplete && (
-            <Badge variant="outline" className="text-xs">In progress</Badge>
+            <Badge variant="outline" className="text-xs">{upcoming ? "Upcoming" : "In progress"}</Badge>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-[1fr_auto_auto_auto_1fr] items-center gap-x-2 text-sm">
-          {/* Header row */}
-          <span />
-          <span className="text-xs text-muted-foreground text-center">G1</span>
-          <span className="text-xs text-muted-foreground text-center">G2</span>
-          <span className="text-xs text-muted-foreground text-center">+/-</span>
-          <span />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
+            <span className={`text-sm text-center truncate w-full ${match.matchWinner === "team1" ? "font-semibold" : "text-muted-foreground"}`}>
+              {t1Label}
+            </span>
+            <TeamLogo teamId={match.team1Id} hasLogo={match.team1HasLogo} name={match.team1Name} size={48} />
+          </div>
 
-          {/* Compute diff once */}
-          {(() => {
-            const t1Total = (game1?.team1Score ?? 0) + (game2?.team1Score ?? 0)
-            const t2Total = (game1?.team2Score ?? 0) + (game2?.team2Score ?? 0)
-            const diff = (game1 || game2) ? t1Total - t2Total : null
-            return (
-              <>
-                {/* Team 1 row */}
-                <span className={match.matchWinner === "team1" ? "font-semibold truncate" : "truncate text-muted-foreground"}>
-                  {t1Label}
-                </span>
-                <GameScore score={game1?.team1Score ?? null} result={game1?.team1Result ?? null} colourEnum={game1?.team1ColourEnum} slug={game1?.gameSlug} />
-                <GameScore score={game2?.team1Score ?? null} result={game2?.team1Result ?? null} colourEnum={game2?.team1ColourEnum} slug={game2?.gameSlug} />
-                <ScoreDiff diff={diff} />
-                <span className="tabular-nums text-right font-semibold">
-                  {match.team1TotalPoints > 0 ? `+${match.team1TotalPoints}` : ""}
-                </span>
+          <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-3 gap-y-1.5 text-sm">
+            <GameScore score={game1?.team1Score ?? null} result={game1?.team1Result ?? null} colourEnum={game1?.team1ColourEnum} slug={game1?.gameSlug} />
+            <span className="text-xs text-muted-foreground text-center">G1</span>
+            <GameScore score={game1?.team2Score ?? null} result={game1?.team2Result ?? null} colourEnum={game1?.team2ColourEnum} slug={game1?.gameSlug} />
 
-                {/* Team 2 row */}
-                <span className={match.matchWinner === "team2" ? "font-semibold truncate" : "truncate text-muted-foreground"}>
-                  {t2Label}
-                </span>
-                <GameScore score={game1?.team2Score ?? null} result={game1?.team2Result ?? null} colourEnum={game1?.team2ColourEnum} slug={game1?.gameSlug} />
-                <GameScore score={game2?.team2Score ?? null} result={game2?.team2Result ?? null} colourEnum={game2?.team2ColourEnum} slug={game2?.gameSlug} />
-                <ScoreDiff diff={diff !== null ? -diff : null} />
-                <span className="tabular-nums text-right font-semibold">
-                  {match.team2TotalPoints > 0 ? `+${match.team2TotalPoints}` : ""}
-                </span>
-              </>
-            )
-          })()}
+            <GameScore score={game2?.team1Score ?? null} result={game2?.team1Result ?? null} colourEnum={game2?.team1ColourEnum} slug={game2?.gameSlug} />
+            <span className="text-xs text-muted-foreground text-center">G2</span>
+            <GameScore score={game2?.team2Score ?? null} result={game2?.team2Result ?? null} colourEnum={game2?.team2ColourEnum} slug={game2?.gameSlug} />
+
+            <ScoreDiff diff={diff} />
+            <span />
+            <ScoreDiff diff={diff !== null ? -diff : null} />
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
+            <span className={`text-sm text-center truncate w-full ${match.matchWinner === "team2" ? "font-semibold" : "text-muted-foreground"}`}>
+              {t2Label}
+            </span>
+            <TeamLogo teamId={match.team2Id} hasLogo={match.team2HasLogo} name={match.team2Name} size={48} />
+          </div>
         </div>
       </CardContent>
     </Card>

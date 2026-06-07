@@ -1138,9 +1138,11 @@ export type CompetitionMatchResult = {
   team1Id: string;
   team1Name: string;
   team1ShortName: string | null;
+  team1HasLogo: boolean;
   team2Id: string;
   team2Name: string;
   team2ShortName: string | null;
+  team2HasLogo: boolean;
   games: {
     gameNumber: number;
     gameId: string;
@@ -1175,21 +1177,21 @@ export async function getCompetitionMatchResults(
       team2Id: competitionMatch.team2Id,
       gameNumber: competitionMatchGame.gameNumber,
       gameId: game.id,
-      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
-      team1Score: sql<number>`t1.score + t1.elimination_bonus`,
-      team2Score: sql<number>`t2.score + t2.elimination_bonus`,
-      team1Result: sql<string>`t1.result`,
-      team2Result: sql<string>`t2.result`,
-      team1ColourEnum: sql<number>`t1.colour_enum`,
-      team2ColourEnum: sql<number>`t2.colour_enum`,
+      gameSlug: sql<string | null>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      team1Score: sql<number | null>`t1.score + t1.elimination_bonus`,
+      team2Score: sql<number | null>`t2.score + t2.elimination_bonus`,
+      team1Result: sql<string | null>`t1.result`,
+      team2Result: sql<string | null>`t2.result`,
+      team1ColourEnum: sql<number | null>`t1.colour_enum`,
+      team2ColourEnum: sql<number | null>`t2.colour_enum`,
     })
-    .from(competitionMatchGame)
-    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .from(competitionMatch)
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
-    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
-    .innerJoin(center, eq(center.id, game.centerId))
-    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .leftJoin(competitionMatchGame, eq(competitionMatchGame.matchId, competitionMatch.id))
+    .leftJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .leftJoin(center, eq(center.id, game.centerId))
+    .leftJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .leftJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(
       and(
         eq(competitionMatch.competitionId, competitionId),
@@ -1208,7 +1210,7 @@ export async function getCompetitionMatchResults(
   // Fetch team names and short names
   const teamIds = [...new Set(gameRows.flatMap((r) => [r.team1Id, r.team2Id]))];
   const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName })
+    .select({ id: competitionTeam.id, name: competitionTeam.name, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
     .from(competitionTeam)
     .where(inArray(competitionTeam.id, teamIds));
   const teamMap = new Map(teams.map((t) => [t.id, t]));
@@ -1231,22 +1233,25 @@ export async function getCompetitionMatchResults(
         team1Id: row.team1Id,
         team1Name: t1?.name ?? "Unknown",
         team1ShortName: t1?.shortName ?? null,
+        team1HasLogo: t1?.hasLogo ?? false,
         team2Id: row.team2Id,
         team2Name: t2?.name ?? "Unknown",
         team2ShortName: t2?.shortName ?? null,
+        team2HasLogo: t2?.hasLogo ?? false,
         games: [],
       });
     }
+    if (row.gameId === null || row.gameNumber === null) continue;
     matchMap.get(row.matchId)!.games.push({
       gameNumber: row.gameNumber,
       gameId: row.gameId,
-      gameSlug: row.gameSlug,
+      gameSlug: row.gameSlug!,
       team1Score: row.team1Score,
       team2Score: row.team2Score,
       team1Result: row.team1Result,
       team2Result: row.team2Result,
-      team1ColourEnum: row.team1ColourEnum,
-      team2ColourEnum: row.team2ColourEnum,
+      team1ColourEnum: row.team1ColourEnum!,
+      team2ColourEnum: row.team2ColourEnum!,
     });
   }
 
