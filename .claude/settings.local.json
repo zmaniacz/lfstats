@@ -21,7 +21,8 @@
       "PowerShell(head -20)",
       "Bash(xargs grep -l \"penalties\\\\|GamePenalty\")",
       "WebSearch",
-      "Bash(pnpm --filter web typecheck)"
+      "Bash(pnpm --filter web typecheck)",
+      "Bash(pnpm --filter @lfstats/db typecheck)"
     ]
   }
 }
