@@ -31,17 +31,13 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
-import { COMPETITION_COOKIE } from "@/app/competitions/standings/CompetitionSelector";
-
-function readCompetitionCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${COMPETITION_COOKIE}=([^;]+)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function CompetitionNavItems() {
+function CompetitionNavItems({
+  competitionCookie,
+}: {
+  competitionCookie: string | null;
+}) {
   const searchParams = useSearchParams();
-  const competitionId = searchParams.get("competition") ?? readCompetitionCookie();
+  const competitionId = searchParams.get("competition") ?? competitionCookie;
 
   const items = competitionId
     ? competitionNavItems.map((item) => ({
@@ -109,7 +105,10 @@ const competitionNavItems = [
   },
 ];
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  competitionCookie,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { competitionCookie: string | null }) {
   const { data: session } = useSession();
 
   const roles = session?.user?.roles ?? [];
@@ -167,7 +166,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain label="Social" items={socialItems} />
         <React.Suspense fallback={<NavMain label="Competitions" items={competitionNavItems} />}>
-          <CompetitionNavItems />
+          <CompetitionNavItems competitionCookie={competitionCookie} />
         </React.Suspense>
       </SidebarContent>
       <SidebarFooter>

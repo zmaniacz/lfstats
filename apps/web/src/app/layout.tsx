@@ -7,8 +7,10 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { COMPETITION_COOKIE } from "@/app/competitions/standings/CompetitionSelector";
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -23,11 +25,14 @@ export const metadata: Metadata = {
   description: "Space Marines 5 laser tag statistics",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const competitionCookie = cookieStore.get(COMPETITION_COOKIE)?.value ?? null;
+
   return (
     <html lang="en" className={cn("font-mono", jetbrainsMono.variable)}>
       <body>
@@ -35,7 +40,7 @@ export default function RootLayout({
           <TooltipProvider>
             <SidebarProvider>
               <SiteHeader />
-              <AppSidebar />
+              <AppSidebar competitionCookie={competitionCookie} />
               <SidebarInset className="pt-(--header-height) min-w-0">
                 {children}
               </SidebarInset>
