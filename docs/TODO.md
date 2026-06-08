@@ -10,6 +10,12 @@ Tracking list for known bugs and planned features.
   Also need a bulk-run mode so that when bugs are discovered in chomper, all affected
   games can be brought back to a good state in one pass.
 
+- **App-wide filter state management**: Need a consistent strategy for persisting
+  and sharing filter state (e.g. competition, nightly filters) as users navigate
+  between pages. Currently filters reset on navigation, which breaks user
+  expectations. Requirements and overall approach TBD — needs design discussion
+  before implementation.
+
 ## Bugs
 
 - **Medic missile hit count is wrong when target has < 2 lives remaining**: Chomper
