@@ -6,20 +6,14 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@host.docker.internal:5432/lfstats_modern"
+      DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@db:5432/lfstats_modern"
       AUTH_TRUST_HOST: "true"
       AUTH_URL: "https://modern.lfstats.com"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "3000:3000"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - lfstats
 
-  watchtower:
-    image: containrrr/watchtower
-    restart: unless-stopped
-    command: --label-enable --cleanup --interval 120
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./watchtower-config.json:/config.json:ro
+networks:
+  lfstats:
+    external: true
