@@ -14,13 +14,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3",
+    "@aws-sdk/client-secrets-manager": "^3.1063.0",
     "drizzle-orm": "latest",
-    "postgres": "^3"
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "@types/node": "^24",
+    "@types/node": "^25.9.2",
     "drizzle-kit": "latest",
-    "typescript": "^5"
+    "typescript": "^6.0.3"
   }
 }
