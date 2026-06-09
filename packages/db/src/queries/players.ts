@@ -288,15 +288,15 @@ export async function getPlayersMedicHitsLeaderboard(options?: {
     .select({
       iplId: player.iplId,
       callsign: player.currentCallsign,
-      totalMedicHits: sql<number>`(SUM(${sm5Scorecard.shotsHitOpponentMedic}))::int`,
-      avgMedicHits: sql<number>`AVG(${sm5Scorecard.shotsHitOpponentMedic})::float`,
+      totalMedicHits: sql<number>`(SUM(${sm5Scorecard.medicHits}))::int`,
+      avgMedicHits: sql<number>`AVG(${sm5Scorecard.medicHits})::float`,
       gamesPlayed: sql<number>`(COUNT(*))::int`,
       totalMedicHitsNonResup: sql<
         number | null
-      >`(SUM(${sm5Scorecard.shotsHitOpponentMedic}) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::int`,
+      >`(SUM(${sm5Scorecard.medicHits}) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::int`,
       avgMedicHitsNonResup: sql<
         number | null
-      >`(AVG(${sm5Scorecard.shotsHitOpponentMedic}) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::float`,
+      >`(AVG(${sm5Scorecard.medicHits}) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::float`,
       gamesPlayedNonResup: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} IN (1, 2, 3)))::int`,
     })
     .from(sm5Scorecard)
@@ -310,7 +310,7 @@ export async function getPlayersMedicHitsLeaderboard(options?: {
       ),
     )
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(desc(sql`SUM(${sm5Scorecard.shotsHitOpponentMedic})`));
+    .orderBy(desc(sql`SUM(${sm5Scorecard.medicHits})`));
 
   return rows.map((r) => ({
     iplId: r.iplId,

@@ -50,7 +50,7 @@ type SortKey =
   | "score"
   | "mvpPoints"
   | "hitDiff"
-  | "shotsHitOpponentMedic"
+  | "medicHits"
   | "accuracy"
   | "shotsHitTeam";
 
@@ -70,8 +70,8 @@ function getSortValue(row: NightlyScorecardRow, key: SortKey): string | number {
       return row.player.mvpPoints;
     case "hitDiff":
       return row.player.hitDiff;
-    case "shotsHitOpponentMedic":
-      return row.player.shotsHitOpponentMedic;
+    case "medicHits":
+      return row.player.medicHits;
     case "accuracy":
       return row.player.accuracy;
     case "shotsHitTeam":
@@ -253,7 +253,7 @@ export function NightlyStatsTable({ rows }: Props) {
                   />
                   <SortableHead
                     label="Medic Hits"
-                    col="shotsHitOpponentMedic"
+                    col="medicHits"
                     className="w-[8%]"
                     center
                     {...sortHeadProps}
@@ -346,7 +346,7 @@ export function NightlyStatsTable({ rows }: Props) {
                           />
                         </TableCell>
                         <TableCell className="text-center tabular-nums">
-                          {player.shotsHitOpponentMedic}
+                          {player.medicHits}
                           {player.position === 1 && player.nukesHitMedic !== null && (
                             <span className="text-muted-foreground ml-1">
                               ({player.nukesHitMedic})

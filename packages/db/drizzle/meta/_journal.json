@@ -169,6 +169,13 @@
       "when": 1780859173890,
       "tag": "0023_graceful_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781026218156,
+      "tag": "0024_silent_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

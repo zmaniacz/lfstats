@@ -170,6 +170,8 @@ export type GameDetailPlayer = {
   shotsHitTeam: number;
   shotsHitOpponentMedic: number;
   shotsHitTeamMedic: number;
+  medicHits: number;
+  teamMedicHits: number;
   timesHit: number;
   // Missile stats
   missileHits: number;
@@ -341,6 +343,8 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         shotsHitTeam: sm5Scorecard.shotsHitTeam,
         shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
         shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+        medicHits: sm5Scorecard.medicHits,
+        teamMedicHits: sm5Scorecard.teamMedicHits,
         timesHit: sm5Scorecard.timesHit,
         missileHits: sm5Scorecard.missileHits,
         missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
@@ -506,6 +510,8 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       shotsHitTeam: sc.shotsHitTeam,
       shotsHitOpponentMedic: sc.shotsHitOpponentMedic,
       shotsHitTeamMedic: sc.shotsHitTeamMedic,
+      medicHits: sc.medicHits,
+      teamMedicHits: sc.teamMedicHits,
       timesHit: sc.timesHit,
       missileHits: sc.missileHits,
       missilesHitOpponent: sc.missilesHitOpponent,
@@ -690,6 +696,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
           shotsHitTeam: sm5Scorecard.shotsHitTeam,
           shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
           shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+          medicHits: sm5Scorecard.medicHits,
+          teamMedicHits: sm5Scorecard.teamMedicHits,
           timesHit: sm5Scorecard.timesHit,
           // Missile stats
           missileHits: sm5Scorecard.missileHits,
@@ -873,6 +881,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         shotsHitTeam: sc.shotsHitTeam,
         shotsHitOpponentMedic: sc.shotsHitOpponentMedic,
         shotsHitTeamMedic: sc.shotsHitTeamMedic,
+        medicHits: sc.medicHits,
+        teamMedicHits: sc.teamMedicHits,
         timesHit: sc.timesHit,
         missileHits: sc.missileHits,
         missilesHitOpponent: sc.missilesHitOpponent,

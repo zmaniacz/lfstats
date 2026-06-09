@@ -348,6 +348,8 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   missilesHitOpponentMedic: integer("missiles_hit_opponent_medic").notNull(),
   missilesHitTeamMedic: integer("missiles_hit_team_medic").notNull(),
   timesHitByMissile: integer("times_hit_by_missile").notNull(),
+  medicHits: integer("medic_hits").notNull().default(0),
+  teamMedicHits: integer("team_medic_hits").notNull().default(0),
 
   // Nuke Stats — Commander only; null for all other positions
   nukesActivated: integer("nukes_activated"),

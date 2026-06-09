@@ -123,9 +123,8 @@ export function calculateMvp(
 
     // Universal components (all positions)
     comp("accuracy", accuracyPct, accuracyPct * params.universal.accuracy_points_per_percent);
-    // Missile hits on a medic remove 2 lives, so each counts as 2 medic hits.
-    const opponentMedicHits = sm5.medicHits + ps.missilesHitOpponentMedic * 2;
-    const teamMedicHits = sm5.ownMedicHits + ps.missilesHitTeamMedic * 2;
+    const opponentMedicHits = sm5.medicHits;
+    const teamMedicHits = sm5.ownMedicHits;
     comp(
       "shots_hit_opponent_medic",
       opponentMedicHits,

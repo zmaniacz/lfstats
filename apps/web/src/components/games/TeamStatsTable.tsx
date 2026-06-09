@@ -147,7 +147,7 @@ export function TeamStatsTable({
                   {formatPct(player.accuracy)}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {(player.shotsHitOpponentMedic ?? 0) + (player.missilesHitOpponentMedic ?? 0) * 2}
+                  {player.medicHits ?? 0}
                   {(() => {
                     const parts = [];
                     if (player.missilesHitOpponentMedic)

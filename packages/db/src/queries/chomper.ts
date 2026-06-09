@@ -315,6 +315,8 @@ export async function getScorecardsForRecalc(gameId: string) {
       teamNukesCanceled: sm5Scorecard.teamNukesCanceled,
       shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
       shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+      medicHits: sm5Scorecard.medicHits,
+      teamMedicHits: sm5Scorecard.teamMedicHits,
       shotsHitOpponent3hit: sm5Scorecard.shotsHitOpponent3hit,
       shotsHitOpponent: sm5Scorecard.shotsHitOpponent,
       shotsHitTeam: sm5Scorecard.shotsHitTeam,

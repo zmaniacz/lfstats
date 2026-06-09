@@ -168,7 +168,7 @@ function aggregate(rows: NightlyScorecardRow[]): PlayerSummary[] {
       maxMvp: Math.max(...mvps),
       avgAccuracy: accuracies.reduce((a, b) => a + b, 0) / gameCount,
       avgHitDiff: hitDiffs.reduce((a, b) => a + b, 0) / gameCount,
-      totalMedicHits: entries.reduce((sum, r) => sum + r.player.shotsHitOpponentMedic, 0),
+      totalMedicHits: entries.reduce((sum, r) => sum + r.player.medicHits, 0),
       wins: entries.filter((r) => r.teamResult === "win").length,
     };
   });

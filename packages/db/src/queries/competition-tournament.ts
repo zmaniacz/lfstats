@@ -1729,7 +1729,7 @@ export async function getCompetitionCommanderPlayers(
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})`,
       avgMissilesHitOpponent: sql<number>`avg(${sm5Scorecard.missilesHitOpponent})`,
       nukeSuccessRatio: sql<
         number | null
@@ -1828,7 +1828,7 @@ export async function getCompetitionTopPlayersByPosition(
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -1917,7 +1917,7 @@ export async function getCompetitionHeavyPlayers(
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})`,
       avgMissilesHitOpponent: sql<number>`avg(${sm5Scorecard.missilesHitOpponent})`,
     })
     .from(sm5Scorecard)
@@ -2011,7 +2011,7 @@ export async function getCompetitionScoutPlayers(
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})`,
       avgShotsHitOpponent3hit: sql<number>`avg(${sm5Scorecard.shotsHitOpponent3hit})`,
       avgAssists: sql<number>`avg(${sm5Scorecard.assists})`,
       avgRapidFire: sql<number | null>`avg(${sm5Scorecard.rapidFire})`,
@@ -2110,7 +2110,7 @@ export async function getCompetitionAmmoPlayers(
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})`,
       avgAmmoBoost: sql<number | null>`avg(${sm5Scorecard.ammoBoost})`,
       avgResuppliesGiven: sql<number | null>`avg(${sm5Scorecard.resuppliesGiven})`,
       avgDoubleResuppliesGiven: sql<number | null>`avg(${sm5Scorecard.doubleResuppliesGiven})`,
@@ -2209,7 +2209,7 @@ export async function getCompetitionMedicPlayers(
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})`,
       avgLifeBoost: sql<number | null>`avg(${sm5Scorecard.lifeBoost})`,
       avgResuppliesGiven: sql<number | null>`avg(${sm5Scorecard.resuppliesGiven})`,
       avgDoubleResuppliesGiven: sql<number | null>`avg(${sm5Scorecard.doubleResuppliesGiven})`,
@@ -2733,9 +2733,9 @@ export async function getCompetitionMedicTomfoolery(
       playerId: player.id,
       iplId: player.iplId,
       callsign: player.currentCallsign,
-      totalMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::int`,
-      ownMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitTeamMedic} + ${sm5Scorecard.missilesHitTeamMedic} * 2)::int`,
-      medicOnMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} = 5)::int`,
+      totalMedicHits: sql<number>`sum(${sm5Scorecard.medicHits})::int`,
+      ownMedicHits: sql<number>`sum(${sm5Scorecard.teamMedicHits})::int`,
+      medicOnMedicHits: sql<number>`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 5)::int`,
       medicKills: sql<number>`sum(${sm5Scorecard.eliminatedOpponentMedic})::int`,
     })
     .from(sm5Scorecard)
@@ -2791,15 +2791,15 @@ export async function getCompetitionMedicHitsLeaderboard(
     .select({
       iplId: player.iplId,
       callsign: player.currentCallsign,
-      totalMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::int`,
-      avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::float`,
+      totalMedicHits: sql<number>`sum(${sm5Scorecard.medicHits})::int`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})::float`,
       gamesPlayed: sql<number>`count(*)::int`,
       totalMedicHitsNonResup: sql<
         number | null
-      >`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
+      >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
       avgMedicHitsNonResup: sql<
         number | null
-      >`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::float`,
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} in (1, 2, 3))::float`,
       gamesPlayedNonResup: sql<number>`count(*) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
     })
     .from(sm5Scorecard)
@@ -2807,9 +2807,7 @@ export async function getCompetitionMedicHitsLeaderboard(
     .innerJoin(player, eq(sm5Scorecard.playerId, player.id))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(
-      sql`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) desc`,
-    );
+    .orderBy(sql`sum(${sm5Scorecard.medicHits}) desc`);
 
   return rows.map((r) => ({
     iplId: r.iplId,

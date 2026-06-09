@@ -300,6 +300,8 @@ export async function ingest(
         // Derived
         missilesHitOpponentMedic: ps?.missilesHitOpponentMedic ?? 0,
         missilesHitTeamMedic: ps?.missilesHitTeamMedic ?? 0,
+        medicHits: (ps?.shotsHitOpponentMedic ?? 0) + (ps?.missilesHitOpponentMedicLives ?? 0),
+        teamMedicHits: (ps?.shotsHitTeamMedic ?? 0) + (ps?.missilesHitTeamMedicLives ?? 0),
         timesHitByMissile: sm5?.timesMissiled ?? 0,
 
         // Nuke stats — Commander only
