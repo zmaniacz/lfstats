@@ -1,0 +1,32 @@
+# Node + package manager
+node_modules/
+
+# Turborepo
+.turbo/
+turbo/
+
+# Build output
+dist/
+build/
+out/
+
+# Next.js build output
+apps/web/.next/
+apps/web/out/
+
+# Lambda build output
+apps/chomper/dist/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+
+# TDF files
+*.tdf
+
+# Generated database artifacts (optional)
+packages/db/drizzle/
+packages/db/migrations/

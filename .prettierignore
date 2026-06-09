@@ -1,0 +1,39 @@
+# Node + package manager
+node_modules/
+pnpm-lock.yaml
+
+# Turborepo
+.turbo/
+turbo/
+
+# Build output
+dist/
+build/
+out/
+
+# Next.js build output
+apps/web/.next/
+apps/web/out/
+
+# Lambda build output
+apps/chomper/dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# TDF files
+*.tdf
+
+# OS / editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Generated database artifacts (optional)
+packages/db/drizzle/
+packages/db/migrations/
