@@ -301,7 +301,7 @@ async function recalculateScorecardMvp(scorecardId: string, tx: Tx): Promise<voi
     .where(eq(sm5Scorecard.id, scorecardId));
 }
 
-async function recalculateGameResult(gameId: string, tx: Tx): Promise<void> {
+export async function recalculateGameResult(gameId: string, tx: Tx): Promise<void> {
   // Elimination games: result is determined by elimination, not score
   const [gameRow] = await tx
     .select({ outcome: game.outcome })

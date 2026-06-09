@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { eq, isNull, and, sql, inArray, gte, desc, ne } from "drizzle-orm";
+import { eq, isNull, isNotNull, and, sql, inArray, gte, desc, ne } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -22,6 +22,9 @@ import {
   sm5ScorecardMvp,
   chomperJob,
   sm5MvpModel,
+  competitionMatchGame,
+  gameOutcomeEnum,
+  teamResultEnum,
 } from "../schema";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -371,4 +374,222 @@ export async function recalcMvpForGame(
   if (components.length > 0) {
     await tx.insert(sm5ScorecardMvp).values(components);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Reingest
+// ---------------------------------------------------------------------------
+
+export async function getGameById(gameId: string) {
+  const [row] = await db.select().from(game).where(eq(game.id, gameId)).limit(1);
+  return row ?? null;
+}
+
+export async function getCompetitionMatchGameForReingest(gameId: string) {
+  const [cmg] = await db
+    .select({
+      matchId: competitionMatchGame.matchId,
+      gameNumber: competitionMatchGame.gameNumber,
+      team1GameTeamId: competitionMatchGame.team1GameTeamId,
+      team2GameTeamId: competitionMatchGame.team2GameTeamId,
+    })
+    .from(competitionMatchGame)
+    .where(eq(competitionMatchGame.gameId, gameId))
+    .limit(1);
+
+  if (!cmg) return null;
+
+  const teamRows = await db
+    .select({ id: sm5GameTeam.id, tdfTeamIndex: sm5GameTeam.tdfTeamIndex })
+    .from(sm5GameTeam)
+    .where(inArray(sm5GameTeam.id, [cmg.team1GameTeamId, cmg.team2GameTeamId]));
+
+  const indexById = new Map(teamRows.map((r) => [r.id, r.tdfTeamIndex]));
+  const team1TdfTeamIndex = indexById.get(cmg.team1GameTeamId);
+  const team2TdfTeamIndex = indexById.get(cmg.team2GameTeamId);
+
+  if (team1TdfTeamIndex === undefined || team2TdfTeamIndex === undefined) return null;
+
+  return {
+    matchId: cmg.matchId,
+    gameNumber: cmg.gameNumber,
+    team1TdfTeamIndex,
+    team2TdfTeamIndex,
+  };
+}
+
+export async function getPenaltiesWithIplForReingest(gameId: string) {
+  return db
+    .select({
+      iplId: sm5Scorecard.iplId,
+      time: sm5GamePenalty.time,
+      scoreValue: sm5GamePenalty.scoreValue,
+      description: sm5GamePenalty.description,
+      type: sm5GamePenalty.type,
+      mvpValue: sm5GamePenalty.mvpValue,
+      inGame: sm5GamePenalty.inGame,
+      rescinded: sm5GamePenalty.rescinded,
+      refereeIplId: gameReferee.iplId,
+      refereeHardwareId: gameReferee.hardwareId,
+    })
+    .from(sm5GamePenalty)
+    .innerJoin(sm5Scorecard, eq(sm5GamePenalty.scorecardId, sm5Scorecard.id))
+    .leftJoin(gameReferee, eq(sm5GamePenalty.refereeId, gameReferee.id))
+    .where(eq(sm5GamePenalty.gameId, gameId));
+}
+
+export async function getScorecardsIsMercenaryForReingest(gameId: string) {
+  return db
+    .select({ iplId: sm5Scorecard.iplId, isMercenary: sm5Scorecard.isMercenary })
+    .from(sm5Scorecard)
+    .where(and(eq(sm5Scorecard.gameId, gameId), eq(sm5Scorecard.isMercenary, true)));
+}
+
+export async function deleteGameChildren(tx: Tx, gameId: string) {
+  // Must go first: team1GameTeamId/team2GameTeamId FKs have no cascade (would restrict)
+  await tx.delete(competitionMatchGame).where(eq(competitionMatchGame.gameId, gameId));
+  // Cascades to: sm5Scorecard (→ sm5GamePenalty, sm5GamePlayerInteraction, sm5ScorecardMvp,
+  //   sm5GameTargetDestruction, sm5GamePlayerState, sm5GameEvent actor/target);
+  //   sm5GameTarget (→ sm5GameTargetDestruction, sm5GameEvent actor/target)
+  await tx.delete(sm5GameTeam).where(eq(sm5GameTeam.gameId, gameId));
+  // Catch remaining events (mission start/end with null actor and target)
+  await tx.delete(sm5GameEvent).where(eq(sm5GameEvent.gameId, gameId));
+  // refereeId on sm5GamePenalty is set-null on delete, so safe to remove after penalties gone
+  await tx.delete(gameReferee).where(eq(gameReferee.gameId, gameId));
+}
+
+export async function updateGameRow(
+  tx: Tx,
+  gameId: string,
+  data: {
+    outcome: (typeof gameOutcomeEnum.enumValues)[number];
+    scheduledDuration: number;
+    actualDuration: number;
+    tdfFilename: string;
+  },
+) {
+  await tx
+    .update(game)
+    .set({
+      outcome: data.outcome,
+      scheduledDuration: data.scheduledDuration,
+      actualDuration: data.actualDuration,
+      tdfFilename: data.tdfFilename,
+    })
+    .where(eq(game.id, gameId));
+}
+
+export async function restoreGameMetadata(
+  tx: Tx,
+  gameId: string,
+  meta: { competitionId: string | null; exclude: boolean; description: string | null },
+) {
+  await tx
+    .update(game)
+    .set({
+      competitionId: meta.competitionId,
+      exclude: meta.exclude,
+      description: meta.description,
+    })
+    .where(eq(game.id, gameId));
+}
+
+export async function getNewInGamePenaltiesWithIplTx(tx: Tx, gameId: string) {
+  return tx
+    .select({
+      id: sm5GamePenalty.id,
+      iplId: sm5Scorecard.iplId,
+      time: sm5GamePenalty.time,
+    })
+    .from(sm5GamePenalty)
+    .innerJoin(sm5Scorecard, eq(sm5GamePenalty.scorecardId, sm5Scorecard.id))
+    .where(and(eq(sm5GamePenalty.gameId, gameId), isNotNull(sm5GamePenalty.time)));
+}
+
+export async function applyPenaltyMetadata(
+  tx: Tx,
+  penaltyId: string,
+  data: {
+    rescinded: boolean;
+    type: string;
+    mvpValue: number;
+    description: string;
+    inGame: boolean;
+  },
+) {
+  await tx
+    .update(sm5GamePenalty)
+    .set({
+      rescinded: data.rescinded,
+      type: data.type,
+      mvpValue: data.mvpValue,
+      description: data.description,
+      inGame: data.inGame,
+    })
+    .where(eq(sm5GamePenalty.id, penaltyId));
+}
+
+export async function insertPostGamePenalties(
+  tx: Tx,
+  rows: (typeof sm5GamePenalty.$inferInsert)[],
+) {
+  if (rows.length === 0) return;
+  await tx.insert(sm5GamePenalty).values(rows);
+}
+
+export async function getNewRefereesForReingest(gameId: string) {
+  return db
+    .select({ id: gameReferee.id, iplId: gameReferee.iplId, hardwareId: gameReferee.hardwareId })
+    .from(gameReferee)
+    .where(eq(gameReferee.gameId, gameId));
+}
+
+export async function getNewScorecardsForReingest(gameId: string) {
+  return db
+    .select({ id: sm5Scorecard.id, iplId: sm5Scorecard.iplId })
+    .from(sm5Scorecard)
+    .where(eq(sm5Scorecard.gameId, gameId));
+}
+
+export async function applyScorecardIsMercenary(tx: Tx, scorecardId: string) {
+  await tx.update(sm5Scorecard).set({ isMercenary: true }).where(eq(sm5Scorecard.id, scorecardId));
+}
+
+export async function insertCompetitionMatchGame(
+  tx: Tx,
+  data: typeof competitionMatchGame.$inferInsert,
+) {
+  await tx.insert(competitionMatchGame).values(data);
+}
+
+export async function getNewTeamIdsByIndex(gameId: string) {
+  return db
+    .select({ id: sm5GameTeam.id, tdfTeamIndex: sm5GameTeam.tdfTeamIndex })
+    .from(sm5GameTeam)
+    .where(eq(sm5GameTeam.gameId, gameId));
+}
+
+export async function getGameIdsForReingest() {
+  return db.select({ id: game.id, tdfFilename: game.tdfFilename }).from(game).orderBy(game.id);
+}
+
+export async function updateScorecardScore(tx: Tx, scorecardId: string, score: number) {
+  await tx.update(sm5Scorecard).set({ score }).where(eq(sm5Scorecard.id, scorecardId));
+}
+
+export async function updateTeamScoreAndResult(
+  tx: Tx,
+  teamId: string,
+  score: number,
+  result: (typeof teamResultEnum.enumValues)[number],
+) {
+  await tx.update(sm5GameTeam).set({ score, result }).where(eq(sm5GameTeam.id, teamId));
+}
+
+export async function updateGameOutcome(
+  tx: Tx,
+  gameId: string,
+  outcome: (typeof gameOutcomeEnum.enumValues)[number],
+) {
+  await tx.update(game).set({ outcome }).where(eq(game.id, gameId));
 }
