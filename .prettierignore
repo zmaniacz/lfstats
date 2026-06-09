@@ -1,39 +1,69 @@
-# Node + package manager
+# Dependencies
 node_modules/
-pnpm-lock.yaml
+.pnp
+.pnp.js
 
 # Turborepo
 .turbo/
-turbo/
 
-# Build output
+# Build outputs (root-level)
 dist/
 build/
+.next/
 out/
 
-# Next.js build output
+# Build outputs (app-level)
 apps/web/.next/
 apps/web/out/
-
-# Lambda build output
 apps/chomper/dist/
+
+# Build outputs (package-level)
+packages/db/dist/
 
 # Environment files
 .env
-.env.*
-!.env.example
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+
+# Database
+*.sql.bak
+pgdata/
+
+# TDF game log files — large raw data, not source
+demo_files/
+bulk-ingest-results*.json
+
+# TypeScript
+*.tsbuildinfo
 
 # Logs
 *.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# TDF files
-*.tdf
-
-# OS / editor files
+# OS
 .DS_Store
-.vscode/
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.vscode/launch.json
 .idea/
 
-# Generated database artifacts (optional)
+# Testing
+coverage/
+.nyc_output/
+
+# pnpm store
+.pnpm-store/
+
+# Drizzle ORM generated artifacts
 packages/db/drizzle/
 packages/db/migrations/
