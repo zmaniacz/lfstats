@@ -629,7 +629,10 @@ export async function getNewTeamIdsByIndex(gameId: string) {
 }
 
 export async function getGameIdsForReingest() {
-  return db.select({ id: game.id, tdfFilename: game.tdfFilename }).from(game).orderBy(game.id);
+  return db
+    .select({ id: game.id, tdfFilename: game.tdfFilename })
+    .from(game)
+    .orderBy(game.startTime);
 }
 
 export async function updateScorecardScore(tx: Tx, scorecardId: string, score: number) {
