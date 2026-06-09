@@ -6,12 +6,13 @@ import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
-import { GameTabs } from "@/components/games/GameTabs";
 import { GameTagManager } from "@/components/games/GameTagManager";
 import { MarkReplayButton } from "@/components/games/MarkReplayButton";
+import { ReplayTab } from "@/components/games/ReplayTab";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   formatDateTime,
   formatGameName,
@@ -38,15 +39,15 @@ import {
   assignGameToMatchAction,
   assignTagAction,
   deletePenaltyAction,
+  markGameAsReplayAction,
   removeFavoriteAction,
   removeGameFromCompetitionAction,
   removeGameFromMatchAction,
   removeTagAction,
   rescindPenaltyAction,
-  markGameAsReplayAction,
+  setScorecardMercenaryAction,
   toggleExcludeAction,
   updatePenaltyAction,
-  setScorecardMercenaryAction,
 } from "./actions";
 
 export default async function GameDetailPage({
@@ -136,20 +137,32 @@ export default async function GameDetailPage({
         )}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
-            {matchAssignment ? (() => {
-              const t1 = displayTeams.find((t) => t.id === matchAssignment.team1GameTeamId)
-              const t2 = displayTeams.find((t) => t.id === matchAssignment.team2GameTeamId)
-              const t1Color = t1 ? getTeamColor(t1.colourEnum) : undefined
-              const t2Color = t2 ? getTeamColor(t2.colourEnum) : undefined
-              return (
-                <>
-                  {matchAssignment.roundName} · Match {matchAssignment.matchNumber} · Game {matchAssignment.gameNumber} ·{" "}
-                  <span className={t1Color?.text}>{matchAssignment.team1Name}</span>
-                  {" vs "}
-                  <span className={t2Color?.text}>{matchAssignment.team2Name}</span>
-                </>
-              )
-            })() : formatGameName(game.description, game.startTime)}
+            {matchAssignment
+              ? (() => {
+                  const t1 = displayTeams.find(
+                    (t) => t.id === matchAssignment.team1GameTeamId,
+                  );
+                  const t2 = displayTeams.find(
+                    (t) => t.id === matchAssignment.team2GameTeamId,
+                  );
+                  const t1Color = t1 ? getTeamColor(t1.colourEnum) : undefined;
+                  const t2Color = t2 ? getTeamColor(t2.colourEnum) : undefined;
+                  return (
+                    <>
+                      {matchAssignment.roundName} · Match{" "}
+                      {matchAssignment.matchNumber} · Game{" "}
+                      {matchAssignment.gameNumber} ·{" "}
+                      <span className={t1Color?.text}>
+                        {matchAssignment.team1Name}
+                      </span>
+                      {" vs "}
+                      <span className={t2Color?.text}>
+                        {matchAssignment.team2Name}
+                      </span>
+                    </>
+                  );
+                })()
+              : formatGameName(game.description, game.startTime)}
           </h1>
           {session?.user && (
             <FavoriteButton
@@ -254,11 +267,12 @@ export default async function GameDetailPage({
           />
         )}
       </div>
-
-      <GameTabs
-        gameId={game.id}
-        duration={game.actualDuration}
-        scoreboardContent={
+      <Tabs defaultValue="scoreboard">
+        <TabsList>
+          <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
+          <TabsTrigger value="replay">Replay</TabsTrigger>
+        </TabsList>
+        <TabsContent value="scoreboard" className="mt-6">
           <>
             {displayTeams.map((team) => {
               const color = getTeamColor(team.colourEnum);
@@ -323,8 +337,11 @@ export default async function GameDetailPage({
               );
             })}
           </>
-        }
-      />
+        </TabsContent>
+        <TabsContent value="replay" className="mt-6">
+          <ReplayTab gameId={game.id} duration={game.actualDuration} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
