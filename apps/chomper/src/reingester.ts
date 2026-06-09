@@ -557,21 +557,25 @@ export async function reingest(
     // -----------------------------------------------------------------------
     // 17. Upsert PlayerCallsignHistory
     // -----------------------------------------------------------------------
-    await upsertPlayerCallsignHistoryBulk(
-      tx,
-      playerEntities.flatMap((entity) => {
-        const playerId = playerIdByEntityId.get(entity.id);
-        if (!playerId) return [];
-        return [
-          {
-            playerId,
-            callsign: entity.desc,
-            firstSeenAt: gameStartTime,
-            lastSeenAt: gameStartTime,
-          },
-        ];
-      }),
-    );
+    // Deduplicate by (playerId, callsign) — same player appearing twice produces the same conflict key.
+    const callsignHistoryDeduped = new Map<
+      string,
+      { playerId: string; callsign: string; firstSeenAt: Date; lastSeenAt: Date }
+    >();
+    for (const entity of playerEntities) {
+      const playerId = playerIdByEntityId.get(entity.id);
+      if (!playerId) continue;
+      const key = `${playerId}:${entity.desc}`;
+      if (!callsignHistoryDeduped.has(key)) {
+        callsignHistoryDeduped.set(key, {
+          playerId,
+          callsign: entity.desc,
+          firstSeenAt: gameStartTime,
+          lastSeenAt: gameStartTime,
+        });
+      }
+    }
+    await upsertPlayerCallsignHistoryBulk(tx, [...callsignHistoryDeduped.values()]);
 
     // -----------------------------------------------------------------------
     // 18. Restore game metadata (competition_id, exclude, description)
