@@ -4,12 +4,6 @@ Tracking list for known bugs and planned features.
 
 ## Features
 
-- **Reingest**: Add a "reingest" capability that re-runs the chomper process against
-  a game already in the database and fully recalculates all stats, while retaining
-  all existing metadata (same game ID, tags, competition/match/round attachments).
-  Also need a bulk-run mode so that when bugs are discovered in chomper, all affected
-  games can be brought back to a good state in one pass.
-
 - **Split pool competitive rounds**: Add a new round type — "split pool" — where
   teams within a round are divided into a defined number of smaller pools. Requires:
   - Schema support for pools within a round and team-to-pool assignments
