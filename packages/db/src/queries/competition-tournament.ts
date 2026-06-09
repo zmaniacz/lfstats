@@ -16,7 +16,7 @@ import {
   center,
   competition,
 } from "../schema";
-import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql } from "drizzle-orm";
+import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 
@@ -3258,4 +3258,439 @@ export async function getExcludedCompetitionGames(
       })),
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Competition Player Stats (API)
+// ---------------------------------------------------------------------------
+
+export type CompetitionPlayerStatRow = {
+  ipl_id: string | null;
+  player_name: string;
+  games_played: number;
+  wins: number | null;
+  losses: number | null;
+  avg_score: number | null;
+  avg_mvp: number | null;
+  avg_accuracy: number | null;
+  total_mvp: number | null;
+  overall_hit_diff: number | null;
+  total_medic_hits: number | null;
+  total_missiles: number | null;
+  total_nukes_canceled: number | null;
+  total_nukes_detonated: number | null;
+  total_rapid_fires: number | null;
+  total_ammo_boosts: number | null;
+  total_life_boosts: number | null;
+  commander_total_games_played: number | null;
+  commander_avg_mvp: number | null;
+  commander_avg_score: number | null;
+  commander_avg_accuracy: number | null;
+  commander_avg_hit_diff: number | null;
+  commander_avg_medic_hits: number | null;
+  commander_total_medic_hits: number | null;
+  commander_avg_missiled_opponent: number | null;
+  commander_total_missiled_opponent: number | null;
+  commander_total_nuke_cancels: number | null;
+  heavy_total_games_played: number | null;
+  heavy_avg_mvp: number | null;
+  heavy_avg_score: number | null;
+  heavy_avg_accuracy: number | null;
+  heavy_avg_hit_diff: number | null;
+  heavy_avg_medic_hits: number | null;
+  heavy_total_medic_hits: number | null;
+  heavy_avg_missiled_opponent: number | null;
+  heavy_total_missiled_opponent: number | null;
+  heavy_total_nuke_cancels: number | null;
+  scout_total_games_played: number | null;
+  scout_avg_mvp: number | null;
+  scout_avg_score: number | null;
+  scout_avg_accuracy: number | null;
+  scout_avg_hit_diff: number | null;
+  scout_avg_medic_hits: number | null;
+  scout_total_medic_hits: number | null;
+  scout_total_nuke_cancels: number | null;
+  scout_total_rapid_fires: number | null;
+  scout_total_shot_3hit: number | null;
+  ammo_total_games_played: number | null;
+  ammo_avg_mvp: number | null;
+  ammo_avg_score: number | null;
+  ammo_avg_accuracy: number | null;
+  ammo_avg_hit_diff: number | null;
+  ammo_avg_medic_hits: number | null;
+  ammo_total_medic_hits: number | null;
+  ammo_total_boosts: number | null;
+  medic_total_games_played: number | null;
+  medic_avg_mvp: number | null;
+  medic_avg_score: number | null;
+  medic_avg_accuracy: number | null;
+  medic_avg_hit_diff: number | null;
+  medic_avg_medic_hits: number | null;
+  medic_total_medic_hits: number | null;
+  medic_total_boosts: number | null;
+};
+
+const ZERO_PLAYER_STATS: Omit<CompetitionPlayerStatRow, "ipl_id" | "player_name"> = {
+  games_played: 0,
+  wins: null,
+  losses: null,
+  avg_score: null,
+  avg_mvp: null,
+  avg_accuracy: null,
+  total_mvp: null,
+  overall_hit_diff: null,
+  total_medic_hits: null,
+  total_missiles: null,
+  total_nukes_canceled: null,
+  total_nukes_detonated: null,
+  total_rapid_fires: null,
+  total_ammo_boosts: null,
+  total_life_boosts: null,
+  commander_total_games_played: null,
+  commander_avg_mvp: null,
+  commander_avg_score: null,
+  commander_avg_accuracy: null,
+  commander_avg_hit_diff: null,
+  commander_avg_medic_hits: null,
+  commander_total_medic_hits: null,
+  commander_avg_missiled_opponent: null,
+  commander_total_missiled_opponent: null,
+  commander_total_nuke_cancels: null,
+  heavy_total_games_played: null,
+  heavy_avg_mvp: null,
+  heavy_avg_score: null,
+  heavy_avg_accuracy: null,
+  heavy_avg_hit_diff: null,
+  heavy_avg_medic_hits: null,
+  heavy_total_medic_hits: null,
+  heavy_avg_missiled_opponent: null,
+  heavy_total_missiled_opponent: null,
+  heavy_total_nuke_cancels: null,
+  scout_total_games_played: null,
+  scout_avg_mvp: null,
+  scout_avg_score: null,
+  scout_avg_accuracy: null,
+  scout_avg_hit_diff: null,
+  scout_avg_medic_hits: null,
+  scout_total_medic_hits: null,
+  scout_total_nuke_cancels: null,
+  scout_total_rapid_fires: null,
+  scout_total_shot_3hit: null,
+  ammo_total_games_played: null,
+  ammo_avg_mvp: null,
+  ammo_avg_score: null,
+  ammo_avg_accuracy: null,
+  ammo_avg_hit_diff: null,
+  ammo_avg_medic_hits: null,
+  ammo_total_medic_hits: null,
+  ammo_total_boosts: null,
+  medic_total_games_played: null,
+  medic_avg_mvp: null,
+  medic_avg_score: null,
+  medic_avg_accuracy: null,
+  medic_avg_hit_diff: null,
+  medic_avg_medic_hits: null,
+  medic_total_medic_hits: null,
+  medic_total_boosts: null,
+};
+
+export async function getCompetitionPlayerStats(
+  slug: string,
+): Promise<{
+  [key: string]: CompetitionPlayerStatRow[];
+  alltime: CompetitionPlayerStatRow[];
+} | null> {
+  const [comp] = await db
+    .select({ id: competition.id })
+    .from(competition)
+    .where(eq(competition.slug, slug));
+  if (!comp) return null;
+
+  const rosterRows = await db
+    .selectDistinct({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+    })
+    .from(competitionTeam)
+    .innerJoin(
+      competitionTeamPlayer,
+      eq(competitionTeamPlayer.competitionTeamId, competitionTeam.id),
+    )
+    .innerJoin(player, eq(player.id, competitionTeamPlayer.playerId))
+    .where(eq(competitionTeam.competitionId, comp.id));
+
+  if (rosterRows.length === 0) return { [slug]: [], alltime: [] };
+
+  const playerIds = rosterRows.map((r) => r.playerId);
+
+  function buildAggQuery(extraConds: SQL<unknown>[]) {
+    return db
+      .select({
+        playerId: player.id,
+        iplId: player.iplId,
+        callsign: player.currentCallsign,
+        gamesPlayed: sql<number>`count(*)::int`,
+        wins: sql<number>`count(*) filter (where ${sm5GameTeam.result} = 'win')::int`,
+        losses: sql<number>`count(*) filter (where ${sm5GameTeam.result} = 'loss')::int`,
+        avgScore: sql<number | null>`avg(${sm5Scorecard.score})`,
+        avgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints})`,
+        avgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy})`,
+        totalMvp: sql<number | null>`sum(${sm5Scorecard.mvpPoints})`,
+        overallHitDiff: sql<number | null>`avg(${sm5Scorecard.hitDiff})`,
+        totalMedicHits: sql<number>`sum(${sm5Scorecard.medicHits})::int`,
+        totalMissiles: sql<number>`sum(${sm5Scorecard.missilesHitOpponent})::int`,
+        totalNukesCanceled: sql<number>`sum(${sm5Scorecard.nukesCanceled})::int`,
+        totalNukesDetonated: sql<number>`coalesce(sum(${sm5Scorecard.nukesDetonated}), 0)::int`,
+        totalRapidFires: sql<number>`coalesce(sum(${sm5Scorecard.rapidFire}), 0)::int`,
+        totalAmmoBoosts: sql<number>`coalesce(sum(${sm5Scorecard.ammoBoost}), 0)::int`,
+        totalLifeBoosts: sql<number>`coalesce(sum(${sm5Scorecard.lifeBoost}), 0)::int`,
+        // Commander (position 1)
+        cmdGames: sql<
+          number | null
+        >`nullif(count(*) filter (where ${sm5Scorecard.position} = 1), 0)::int`,
+        cmdAvgMvp: sql<
+          number | null
+        >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdAvgScore: sql<
+          number | null
+        >`avg(${sm5Scorecard.score}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdAvgAccuracy: sql<
+          number | null
+        >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdAvgHitDiff: sql<
+          number | null
+        >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdAvgMedicHits: sql<
+          number | null
+        >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdTotalMedicHits: sql<
+          number | null
+        >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdAvgMissiledOpponent: sql<
+          number | null
+        >`avg(${sm5Scorecard.missilesHitOpponent}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdTotalMissiledOpponent: sql<
+          number | null
+        >`sum(${sm5Scorecard.missilesHitOpponent}) filter (where ${sm5Scorecard.position} = 1)`,
+        cmdTotalNukeCancels: sql<
+          number | null
+        >`sum(${sm5Scorecard.nukesCanceled}) filter (where ${sm5Scorecard.position} = 1)`,
+        // Heavy (position 2)
+        hvyGames: sql<
+          number | null
+        >`nullif(count(*) filter (where ${sm5Scorecard.position} = 2), 0)::int`,
+        hvyAvgMvp: sql<
+          number | null
+        >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyAvgScore: sql<
+          number | null
+        >`avg(${sm5Scorecard.score}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyAvgAccuracy: sql<
+          number | null
+        >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyAvgHitDiff: sql<
+          number | null
+        >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyAvgMedicHits: sql<
+          number | null
+        >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyTotalMedicHits: sql<
+          number | null
+        >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyAvgMissiledOpponent: sql<
+          number | null
+        >`avg(${sm5Scorecard.missilesHitOpponent}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyTotalMissiledOpponent: sql<
+          number | null
+        >`sum(${sm5Scorecard.missilesHitOpponent}) filter (where ${sm5Scorecard.position} = 2)`,
+        hvyTotalNukeCancels: sql<
+          number | null
+        >`sum(${sm5Scorecard.nukesCanceled}) filter (where ${sm5Scorecard.position} = 2)`,
+        // Scout (position 3)
+        sctGames: sql<
+          number | null
+        >`nullif(count(*) filter (where ${sm5Scorecard.position} = 3), 0)::int`,
+        sctAvgMvp: sql<
+          number | null
+        >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctAvgScore: sql<
+          number | null
+        >`avg(${sm5Scorecard.score}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctAvgAccuracy: sql<
+          number | null
+        >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctAvgHitDiff: sql<
+          number | null
+        >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctAvgMedicHits: sql<
+          number | null
+        >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctTotalMedicHits: sql<
+          number | null
+        >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctTotalNukeCancels: sql<
+          number | null
+        >`sum(${sm5Scorecard.nukesCanceled}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctTotalRapidFires: sql<
+          number | null
+        >`sum(${sm5Scorecard.rapidFire}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctTotalShot3hit: sql<
+          number | null
+        >`sum(${sm5Scorecard.shotsHitOpponent3hit}) filter (where ${sm5Scorecard.position} = 3)`,
+        // Ammo Carrier (position 4)
+        ammoGames: sql<
+          number | null
+        >`nullif(count(*) filter (where ${sm5Scorecard.position} = 4), 0)::int`,
+        ammoAvgMvp: sql<
+          number | null
+        >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoAvgScore: sql<
+          number | null
+        >`avg(${sm5Scorecard.score}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoAvgAccuracy: sql<
+          number | null
+        >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoAvgHitDiff: sql<
+          number | null
+        >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoAvgMedicHits: sql<
+          number | null
+        >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoTotalMedicHits: sql<
+          number | null
+        >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoTotalBoosts: sql<
+          number | null
+        >`sum(${sm5Scorecard.ammoBoost}) filter (where ${sm5Scorecard.position} = 4)`,
+        // Medic (position 5)
+        medGames: sql<
+          number | null
+        >`nullif(count(*) filter (where ${sm5Scorecard.position} = 5), 0)::int`,
+        medAvgMvp: sql<
+          number | null
+        >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+        medAvgScore: sql<
+          number | null
+        >`avg(${sm5Scorecard.score}) filter (where ${sm5Scorecard.position} = 5)`,
+        medAvgAccuracy: sql<
+          number | null
+        >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,
+        medAvgHitDiff: sql<
+          number | null
+        >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 5)`,
+        medAvgMedicHits: sql<
+          number | null
+        >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 5)`,
+        medTotalMedicHits: sql<
+          number | null
+        >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 5)`,
+        medTotalBoosts: sql<
+          number | null
+        >`sum(${sm5Scorecard.lifeBoost}) filter (where ${sm5Scorecard.position} = 5)`,
+      })
+      .from(sm5Scorecard)
+      .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+      .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
+      .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+      .where(and(inArray(sm5Scorecard.playerId, playerIds), eq(game.exclude, false), ...extraConds))
+      .groupBy(player.id, player.iplId, player.currentCallsign);
+  }
+
+  const [compRows, alltimeRows] = await Promise.all([
+    buildAggQuery([
+      sql`${sm5GameTeam.gameId} IN (
+        SELECT cmg.game_id
+        FROM competition_match_game cmg
+        JOIN competition_match cm ON cm.id = cmg.match_id
+        WHERE cm.competition_id = ${comp.id}
+      )`,
+      eq(sm5Scorecard.isMercenary, false),
+    ]),
+    buildAggQuery([]),
+  ]);
+
+  function mapRow(
+    r: (typeof compRows)[number] | undefined,
+    iplId: string | null,
+    callsign: string,
+  ): CompetitionPlayerStatRow {
+    if (!r) {
+      return { ipl_id: iplId, player_name: callsign, ...ZERO_PLAYER_STATS };
+    }
+    const n = (v: number | null) => (v !== null ? Number(v) : null);
+    return {
+      ipl_id: r.iplId,
+      player_name: r.callsign,
+      games_played: Number(r.gamesPlayed),
+      wins: Number(r.wins),
+      losses: Number(r.losses),
+      avg_score: n(r.avgScore),
+      avg_mvp: n(r.avgMvp),
+      avg_accuracy: n(r.avgAccuracy),
+      total_mvp: n(r.totalMvp),
+      overall_hit_diff: n(r.overallHitDiff),
+      total_medic_hits: Number(r.totalMedicHits),
+      total_missiles: Number(r.totalMissiles),
+      total_nukes_canceled: Number(r.totalNukesCanceled),
+      total_nukes_detonated: Number(r.totalNukesDetonated),
+      total_rapid_fires: Number(r.totalRapidFires),
+      total_ammo_boosts: Number(r.totalAmmoBoosts),
+      total_life_boosts: Number(r.totalLifeBoosts),
+      commander_total_games_played: n(r.cmdGames),
+      commander_avg_mvp: n(r.cmdAvgMvp),
+      commander_avg_score: n(r.cmdAvgScore),
+      commander_avg_accuracy: n(r.cmdAvgAccuracy),
+      commander_avg_hit_diff: n(r.cmdAvgHitDiff),
+      commander_avg_medic_hits: n(r.cmdAvgMedicHits),
+      commander_total_medic_hits: n(r.cmdTotalMedicHits),
+      commander_avg_missiled_opponent: n(r.cmdAvgMissiledOpponent),
+      commander_total_missiled_opponent: n(r.cmdTotalMissiledOpponent),
+      commander_total_nuke_cancels: n(r.cmdTotalNukeCancels),
+      heavy_total_games_played: n(r.hvyGames),
+      heavy_avg_mvp: n(r.hvyAvgMvp),
+      heavy_avg_score: n(r.hvyAvgScore),
+      heavy_avg_accuracy: n(r.hvyAvgAccuracy),
+      heavy_avg_hit_diff: n(r.hvyAvgHitDiff),
+      heavy_avg_medic_hits: n(r.hvyAvgMedicHits),
+      heavy_total_medic_hits: n(r.hvyTotalMedicHits),
+      heavy_avg_missiled_opponent: n(r.hvyAvgMissiledOpponent),
+      heavy_total_missiled_opponent: n(r.hvyTotalMissiledOpponent),
+      heavy_total_nuke_cancels: n(r.hvyTotalNukeCancels),
+      scout_total_games_played: n(r.sctGames),
+      scout_avg_mvp: n(r.sctAvgMvp),
+      scout_avg_score: n(r.sctAvgScore),
+      scout_avg_accuracy: n(r.sctAvgAccuracy),
+      scout_avg_hit_diff: n(r.sctAvgHitDiff),
+      scout_avg_medic_hits: n(r.sctAvgMedicHits),
+      scout_total_medic_hits: n(r.sctTotalMedicHits),
+      scout_total_nuke_cancels: n(r.sctTotalNukeCancels),
+      scout_total_rapid_fires: n(r.sctTotalRapidFires),
+      scout_total_shot_3hit: n(r.sctTotalShot3hit),
+      ammo_total_games_played: n(r.ammoGames),
+      ammo_avg_mvp: n(r.ammoAvgMvp),
+      ammo_avg_score: n(r.ammoAvgScore),
+      ammo_avg_accuracy: n(r.ammoAvgAccuracy),
+      ammo_avg_hit_diff: n(r.ammoAvgHitDiff),
+      ammo_avg_medic_hits: n(r.ammoAvgMedicHits),
+      ammo_total_medic_hits: n(r.ammoTotalMedicHits),
+      ammo_total_boosts: n(r.ammoTotalBoosts),
+      medic_total_games_played: n(r.medGames),
+      medic_avg_mvp: n(r.medAvgMvp),
+      medic_avg_score: n(r.medAvgScore),
+      medic_avg_accuracy: n(r.medAvgAccuracy),
+      medic_avg_hit_diff: n(r.medAvgHitDiff),
+      medic_avg_medic_hits: n(r.medAvgMedicHits),
+      medic_total_medic_hits: n(r.medTotalMedicHits),
+      medic_total_boosts: n(r.medTotalBoosts),
+    };
+  }
+
+  const compMap = new Map(compRows.map((r) => [r.playerId, r]));
+  const alltimeMap = new Map(alltimeRows.map((r) => [r.playerId, r]));
+
+  return {
+    [slug]: rosterRows.map((p) => mapRow(compMap.get(p.playerId), p.iplId, p.callsign)),
+    alltime: rosterRows.map((p) => mapRow(alltimeMap.get(p.playerId), p.iplId, p.callsign)),
+  };
 }
