@@ -176,6 +176,13 @@
       "when": 1781026218156,
       "tag": "0024_silent_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1781036146482,
+      "tag": "0025_ordinary_roland_deschain",
+      "breakpoints": true
     }
   ]
 }

@@ -292,7 +292,10 @@ export const sm5GameTarget = pgTable(
     }),
     type: text("type").notNull(),
   },
-  (t) => [unique().on(t.gameId, t.targetId)],
+  (t) => [
+    unique().on(t.gameId, t.targetId),
+    index("sm5_game_target_game_team_id_idx").on(t.gameTeamId),
+  ],
 );
 
 export const gameReferee = pgTable("game_referee", {
@@ -312,128 +315,135 @@ export const gameReferee = pgTable("game_referee", {
 // SM5 Player Performance Tables
 // ---------------------------------------------------------------------------
 
-export const sm5Scorecard = pgTable("sm5_scorecard", {
-  id: uuid("id").primaryKey().defaultRandom(),
+export const sm5Scorecard = pgTable(
+  "sm5_scorecard",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
 
-  // Identity & Context
-  gameId: uuid("game_id")
-    .notNull()
-    .references(() => game.id, { onDelete: "cascade" }),
-  playerId: uuid("player_id").references(() => player.id),
-  teamId: uuid("team_id")
-    .notNull()
-    .references(() => sm5GameTeam.id, { onDelete: "cascade" }),
-  battlesuitId: uuid("battlesuit_id").references(() => battlesuit.id),
-  iplId: text("ipl_id"),
-  callsign: text("callsign").notNull(),
-  position: integer("position").notNull(),
-  eliminated: boolean("eliminated").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  isMercenary: boolean("is_mercenary").notNull().default(false),
+    // Identity & Context
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id").references(() => player.id),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => sm5GameTeam.id, { onDelete: "cascade" }),
+    battlesuitId: uuid("battlesuit_id").references(() => battlesuit.id),
+    iplId: text("ipl_id"),
+    callsign: text("callsign").notNull(),
+    position: integer("position").notNull(),
+    eliminated: boolean("eliminated").notNull(),
+    endTime: timestamp("end_time").notNull(),
+    isMercenary: boolean("is_mercenary").notNull().default(false),
 
-  // Shot Stats
-  shotsFired: integer("shots_fired").notNull(),
-  shotsHit: integer("shots_hit").notNull(),
-  shotsHitOpponent: integer("shots_hit_opponent").notNull(),
-  shotsHitTeam: integer("shots_hit_team").notNull(),
-  shotsHitOpponent3hit: integer("shots_hit_opponent_3hit").notNull(),
-  shotsHitOpponentMedic: integer("shots_hit_opponent_medic").notNull(),
-  shotsHitTeamMedic: integer("shots_hit_team_medic").notNull(),
-  timesHit: integer("times_hit").notNull(),
+    // Shot Stats
+    shotsFired: integer("shots_fired").notNull(),
+    shotsHit: integer("shots_hit").notNull(),
+    shotsHitOpponent: integer("shots_hit_opponent").notNull(),
+    shotsHitTeam: integer("shots_hit_team").notNull(),
+    shotsHitOpponent3hit: integer("shots_hit_opponent_3hit").notNull(),
+    shotsHitOpponentMedic: integer("shots_hit_opponent_medic").notNull(),
+    shotsHitTeamMedic: integer("shots_hit_team_medic").notNull(),
+    timesHit: integer("times_hit").notNull(),
 
-  // Missile Stats
-  missileHits: integer("missile_hits").notNull(),
-  missilesHitOpponent: integer("missiles_hit_opponent").notNull(),
-  missilesHitTeam: integer("missiles_hit_team").notNull(),
-  missilesHitOpponentMedic: integer("missiles_hit_opponent_medic").notNull(),
-  missilesHitTeamMedic: integer("missiles_hit_team_medic").notNull(),
-  timesHitByMissile: integer("times_hit_by_missile").notNull(),
-  medicHits: integer("medic_hits").notNull().default(0),
-  teamMedicHits: integer("team_medic_hits").notNull().default(0),
+    // Missile Stats
+    missileHits: integer("missile_hits").notNull(),
+    missilesHitOpponent: integer("missiles_hit_opponent").notNull(),
+    missilesHitTeam: integer("missiles_hit_team").notNull(),
+    missilesHitOpponentMedic: integer("missiles_hit_opponent_medic").notNull(),
+    missilesHitTeamMedic: integer("missiles_hit_team_medic").notNull(),
+    timesHitByMissile: integer("times_hit_by_missile").notNull(),
+    medicHits: integer("medic_hits").notNull().default(0),
+    teamMedicHits: integer("team_medic_hits").notNull().default(0),
 
-  // Nuke Stats — Commander only; null for all other positions
-  nukesActivated: integer("nukes_activated"),
-  nukesDetonated: integer("nukes_detonated"),
-  nukesHitMedic: integer("nukes_hit_medic"),
-  livesRemovedByNuke: integer("lives_removed_by_nuke"),
-  totalNukeActivationTime: integer("total_nuke_activation_time"),
-  averageNukeActivationTime: integer("average_nuke_activation_time"),
+    // Nuke Stats — Commander only; null for all other positions
+    nukesActivated: integer("nukes_activated"),
+    nukesDetonated: integer("nukes_detonated"),
+    nukesHitMedic: integer("nukes_hit_medic"),
+    livesRemovedByNuke: integer("lives_removed_by_nuke"),
+    totalNukeActivationTime: integer("total_nuke_activation_time"),
+    averageNukeActivationTime: integer("average_nuke_activation_time"),
 
-  // Nuke Cancel Stats — all positions
-  nukesCanceled: integer("nukes_canceled").notNull(),
-  teamNukesCanceled: integer("team_nukes_canceled").notNull(),
+    // Nuke Cancel Stats — all positions
+    nukesCanceled: integer("nukes_canceled").notNull(),
+    teamNukesCanceled: integer("team_nukes_canceled").notNull(),
 
-  // Nuke-cancelled-by-nuke stats — Commander only
-  nukesCanceledByNuke: integer("nukes_canceled_by_nuke"),
-  ownNukesCanceledByNuke: integer("own_nukes_canceled_by_nuke"),
+    // Nuke-cancelled-by-nuke stats — Commander only
+    nukesCanceledByNuke: integer("nukes_canceled_by_nuke"),
+    ownNukesCanceledByNuke: integer("own_nukes_canceled_by_nuke"),
 
-  // Special Ability Stats — position-specific, null where not applicable
-  rapidFire: integer("rapid_fire"), // Scout only
-  totalRapidTime: integer("total_rapid_time"), // Scout only
-  averageRapidTime: integer("average_rapid_time"), // Scout only
-  shotsFiredDuringRapid: integer("shots_fired_during_rapid"), // Scout only
-  shotsHitDuringRapid: integer("shots_hit_during_rapid"), // Scout only
-  shotsHitOpponentDuringRapid: integer("shots_hit_opponent_during_rapid"), // Scout only
-  shotsHitTeamDuringRapid: integer("shots_hit_team_during_rapid"), // Scout only
-  accuracyDuringRapid: doublePrecision("accuracy_during_rapid"), // Scout only
-  ammoBoost: integer("ammo_boost"), // Ammo Carrier only
-  lifeBoost: integer("life_boost"), // Medic only
+    // Special Ability Stats — position-specific, null where not applicable
+    rapidFire: integer("rapid_fire"), // Scout only
+    totalRapidTime: integer("total_rapid_time"), // Scout only
+    averageRapidTime: integer("average_rapid_time"), // Scout only
+    shotsFiredDuringRapid: integer("shots_fired_during_rapid"), // Scout only
+    shotsHitDuringRapid: integer("shots_hit_during_rapid"), // Scout only
+    shotsHitOpponentDuringRapid: integer("shots_hit_opponent_during_rapid"), // Scout only
+    shotsHitTeamDuringRapid: integer("shots_hit_team_during_rapid"), // Scout only
+    accuracyDuringRapid: doublePrecision("accuracy_during_rapid"), // Scout only
+    ammoBoost: integer("ammo_boost"), // Ammo Carrier only
+    lifeBoost: integer("life_boost"), // Medic only
 
-  // Support Stats — Ammo Carrier and Medic only; null for all other positions
-  resuppliesGiven: integer("resupplies_given"),
-  doubleResuppliesGiven: integer("double_resupplies_given"),
-  // Received stats apply to all positions
-  resuppliesReceivedAmmo: integer("resupplies_received_ammo").notNull(),
-  resuppliesReceivedLives: integer("resupplies_received_lives").notNull(),
-  emergencyResuppliesReceivedAmmo: integer("emergency_resupplies_received_ammo")
-    .notNull()
-    .default(0),
-  emergencyResuppliesReceivedLives: integer("emergency_resupplies_received_lives")
-    .notNull()
-    .default(0),
-  doubleResuppliesReceived: integer("double_resupplies_received").notNull(),
+    // Support Stats — Ammo Carrier and Medic only; null for all other positions
+    resuppliesGiven: integer("resupplies_given"),
+    doubleResuppliesGiven: integer("double_resupplies_given"),
+    // Received stats apply to all positions
+    resuppliesReceivedAmmo: integer("resupplies_received_ammo").notNull(),
+    resuppliesReceivedLives: integer("resupplies_received_lives").notNull(),
+    emergencyResuppliesReceivedAmmo: integer("emergency_resupplies_received_ammo")
+      .notNull()
+      .default(0),
+    emergencyResuppliesReceivedLives: integer("emergency_resupplies_received_lives")
+      .notNull()
+      .default(0),
+    doubleResuppliesReceived: integer("double_resupplies_received").notNull(),
 
-  // Combat Outcomes
-  deactivatedOpponent: integer("deactivated_opponent").notNull(),
-  deactivatedTeam: integer("deactivated_team").notNull(),
-  eliminatedOpponent: integer("eliminated_opponent").notNull(),
-  eliminatedTeam: integer("eliminated_team").notNull(),
-  eliminatedOpponentMedic: integer("eliminated_opponent_medic").notNull(),
-  eliminatedTeamMedic: integer("eliminated_team_medic").notNull(),
-  assists: integer("assists").notNull(),
-  resetOpponent: integer("reset_opponent").notNull(),
-  resetTeam: integer("reset_team").notNull(),
-  missileResetOpponent: integer("missile_reset_opponent").notNull(),
-  missileResetTeam: integer("missile_reset_team").notNull(),
+    // Combat Outcomes
+    deactivatedOpponent: integer("deactivated_opponent").notNull(),
+    deactivatedTeam: integer("deactivated_team").notNull(),
+    eliminatedOpponent: integer("eliminated_opponent").notNull(),
+    eliminatedTeam: integer("eliminated_team").notNull(),
+    eliminatedOpponentMedic: integer("eliminated_opponent_medic").notNull(),
+    eliminatedTeamMedic: integer("eliminated_team_medic").notNull(),
+    assists: integer("assists").notNull(),
+    resetOpponent: integer("reset_opponent").notNull(),
+    resetTeam: integer("reset_team").notNull(),
+    missileResetOpponent: integer("missile_reset_opponent").notNull(),
+    missileResetTeam: integer("missile_reset_team").notNull(),
 
-  // SP Tracking — null for Heavy Weapons only
-  spEarned: integer("sp_earned"),
-  spSpent: integer("sp_spent"),
+    // SP Tracking — null for Heavy Weapons only
+    spEarned: integer("sp_earned"),
+    spSpent: integer("sp_spent"),
 
-  // Targets
-  targetsDestroyed: integer("targets_destroyed").notNull(),
+    // Targets
+    targetsDestroyed: integer("targets_destroyed").notNull(),
 
-  // Penalties
-  penalties: integer("penalties").notNull(),
+    // Penalties
+    penalties: integer("penalties").notNull(),
 
-  // End State
-  livesLeft: integer("lives_left").notNull(),
-  shotsLeft: integer("shots_left").notNull(),
+    // End State
+    livesLeft: integer("lives_left").notNull(),
+    shotsLeft: integer("shots_left").notNull(),
 
-  // Uptime & Downtime (ms; the three always sum to game time for this player)
-  uptime: integer("uptime").notNull(),
-  resupplyDowntime: integer("resupply_downtime").notNull(),
-  otherDowntime: integer("other_downtime").notNull(),
+    // Uptime & Downtime (ms; the three always sum to game time for this player)
+    uptime: integer("uptime").notNull(),
+    resupplyDowntime: integer("resupply_downtime").notNull(),
+    otherDowntime: integer("other_downtime").notNull(),
 
-  // Derived Performance
-  score: integer("score").notNull(),
-  accuracy: doublePrecision("accuracy").notNull(),
-  hitDiff: doublePrecision("hit_diff").notNull(),
-  mvpPoints: doublePrecision("mvp_points").notNull(),
-  mvpModelId: uuid("mvp_model_id")
-    .notNull()
-    .references(() => sm5MvpModel.id),
-});
+    // Derived Performance
+    score: integer("score").notNull(),
+    accuracy: doublePrecision("accuracy").notNull(),
+    hitDiff: doublePrecision("hit_diff").notNull(),
+    mvpPoints: doublePrecision("mvp_points").notNull(),
+    mvpModelId: uuid("mvp_model_id")
+      .notNull()
+      .references(() => sm5MvpModel.id),
+  },
+  (t) => [
+    index("sm5_scorecard_game_id_idx").on(t.gameId),
+    index("sm5_scorecard_team_id_idx").on(t.teamId),
+  ],
+);
 
 export const sm5GameTargetDestruction = pgTable(
   "sm5_game_target_destruction",
@@ -455,29 +465,35 @@ export const sm5GameTargetDestruction = pgTable(
       columns: [t.scorecardId],
       foreignColumns: [sm5Scorecard.id],
     }).onDelete("cascade"),
+    index("sm5_gtd_game_target_id_idx").on(t.gameTargetId),
+    index("sm5_gtd_scorecard_id_idx").on(t.scorecardId),
   ],
 );
 
-export const sm5GamePenalty = pgTable("sm5_game_penalty", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  gameId: uuid("game_id")
-    .notNull()
-    .references(() => game.id, { onDelete: "cascade" }),
-  // set null so gameReferee cascade-delete doesn't conflict with gameId cascade-delete ordering
-  refereeId: uuid("referee_id").references(() => gameReferee.id, {
-    onDelete: "set null",
-  }),
-  scorecardId: uuid("scorecard_id")
-    .notNull()
-    .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
-  scoreValue: integer("score_value").notNull(),
-  description: text("description").notNull(),
-  time: integer("time"),
-  type: text("type").notNull().default("Common Foul"),
-  mvpValue: doublePrecision("mvp_value").notNull().default(0),
-  inGame: boolean("in_game").notNull().default(true),
-  rescinded: boolean("rescinded").notNull().default(false),
-});
+export const sm5GamePenalty = pgTable(
+  "sm5_game_penalty",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    // set null so gameReferee cascade-delete doesn't conflict with gameId cascade-delete ordering
+    refereeId: uuid("referee_id").references(() => gameReferee.id, {
+      onDelete: "set null",
+    }),
+    scorecardId: uuid("scorecard_id")
+      .notNull()
+      .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
+    scoreValue: integer("score_value").notNull(),
+    description: text("description").notNull(),
+    time: integer("time"),
+    type: text("type").notNull().default("Common Foul"),
+    mvpValue: doublePrecision("mvp_value").notNull().default(0),
+    inGame: boolean("in_game").notNull().default(true),
+    rescinded: boolean("rescinded").notNull().default(false),
+  },
+  (t) => [index("sm5_game_penalty_scorecard_id_idx").on(t.scorecardId)],
+);
 
 export const sm5GamePlayerInteraction = pgTable(
   "sm5_game_player_interaction",
@@ -501,6 +517,8 @@ export const sm5GamePlayerInteraction = pgTable(
       columns: [t.targetScorecardId],
       foreignColumns: [sm5Scorecard.id],
     }).onDelete("cascade"),
+    index("sm5_gpi_scorecard_id_idx").on(t.scorecardId),
+    index("sm5_gpi_target_scorecard_id_idx").on(t.targetScorecardId),
   ],
 );
 
@@ -555,7 +573,13 @@ export const sm5GameEvent = pgTable(
     }),
     description: text("description").notNull(),
   },
-  () => [],
+  (t) => [
+    index("sm5_game_event_game_id_idx").on(t.gameId),
+    index("sm5_game_event_actor_sc_idx").on(t.actorScorecardId),
+    index("sm5_game_event_target_sc_idx").on(t.targetScorecardId),
+    index("sm5_game_event_actor_gt_idx").on(t.actorGameTargetId),
+    index("sm5_game_event_target_gt_idx").on(t.targetGameTargetId),
+  ],
 );
 
 // ---------------------------------------------------------------------------
@@ -607,6 +631,7 @@ export const sm5GamePlayerState = pgTable(
     unique().on(t.eventId, t.scorecardId),
     // Primary read pattern: reconstruct player state at time T
     index("sm5_game_player_state_sc_time_idx").on(t.gameId, t.scorecardId, t.time),
+    index("sm5_game_player_state_scorecard_id_idx").on(t.scorecardId),
   ],
 );
 
