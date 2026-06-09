@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
-import Link from "next/link"
+import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getCompetitionBySlug,
   getCompetitionTeamBySlug,
   getCompetitionTeamRoster,
   getTeamGameParticipants,
-} from "@lfstats/db"
-import { PlayerRosterSearch } from "@/components/admin/competition/PlayerRosterSearch"
-import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+} from "@lfstats/db";
+import { PlayerRosterSearch } from "@/components/admin/competition/PlayerRosterSearch";
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,41 +19,48 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { addPlayerAction, removePlayerAction, searchPlayersAction, updateTeamAction, setMercenaryAction, addParticipantToRosterAction } from "./actions"
-import { ParticipantActions } from "./ParticipantActions"
-import { TeamLogoUpload } from "./TeamLogoUpload"
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  addPlayerAction,
+  removePlayerAction,
+  searchPlayersAction,
+  updateTeamAction,
+  setMercenaryAction,
+  addParticipantToRosterAction,
+} from "./actions";
+import { ParticipantActions } from "./ParticipantActions";
+import { TeamLogoUpload } from "./TeamLogoUpload";
 
 export default async function TeamRosterPage({
   params,
 }: {
-  params: Promise<{ slug: string; teamSlug: string }>
+  params: Promise<{ slug: string; teamSlug: string }>;
 }) {
-  const { slug, teamSlug } = await params
-  const comp = await getCompetitionBySlug(slug)
-  if (!comp) notFound()
+  const { slug, teamSlug } = await params;
+  const comp = await getCompetitionBySlug(slug);
+  if (!comp) notFound();
 
-  const team = await getCompetitionTeamBySlug(comp.id, teamSlug)
-  if (!team) notFound()
+  const team = await getCompetitionTeamBySlug(comp.id, teamSlug);
+  if (!team) notFound();
 
   const [roster, unassigned] = await Promise.all([
     getCompetitionTeamRoster(team.id),
     getTeamGameParticipants(team.id),
-  ])
+  ]);
 
-  const regularRoster = roster.filter((e) => !e.isMercenary)
-  const mercs = roster.filter((e) => e.isMercenary)
+  const regularRoster = roster.filter((e) => !e.isMercenary);
+  const mercs = roster.filter((e) => e.isMercenary);
 
-  const id = comp.id
-  const teamId = team.id
-  const boundUpdate = updateTeamAction.bind(null, id, teamId)
-  const boundAdd = addPlayerAction.bind(null, id, teamId)
-  const boundRemove = removePlayerAction.bind(null, id, teamId)
-  const boundAddParticipant = addParticipantToRosterAction.bind(null, id, teamId)
-  const boundSetMerc = setMercenaryAction.bind(null, id, teamId)
+  const id = comp.id;
+  const teamId = team.id;
+  const boundUpdate = updateTeamAction.bind(null, id, teamId);
+  const boundAdd = addPlayerAction.bind(null, id, teamId);
+  const boundRemove = removePlayerAction.bind(null, id, teamId);
+  const boundAddParticipant = addParticipantToRosterAction.bind(null, id, teamId);
+  const boundSetMerc = setMercenaryAction.bind(null, id, teamId);
 
   return (
     <div className="space-y-6">
@@ -65,9 +72,7 @@ export default async function TeamRosterPage({
           ← Teams
         </Link>
         <h2 className="text-xl font-semibold mt-1">{team.name} — Roster</h2>
-        {team.shortName && (
-          <p className="text-sm text-muted-foreground">{team.shortName}</p>
-        )}
+        {team.shortName && <p className="text-sm text-muted-foreground">{team.shortName}</p>}
       </div>
 
       <Card>
@@ -77,14 +82,32 @@ export default async function TeamRosterPage({
         <CardContent>
           <form action={boundUpdate} className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <Label htmlFor="team-name" className="text-xs">Name</Label>
-              <Input id="team-name" name="name" defaultValue={team.name} className="h-8 text-sm w-64" required />
+              <Label htmlFor="team-name" className="text-xs">
+                Name
+              </Label>
+              <Input
+                id="team-name"
+                name="name"
+                defaultValue={team.name}
+                className="h-8 text-sm w-64"
+                required
+              />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="team-short-name" className="text-xs">Short Name</Label>
-              <Input id="team-short-name" name="shortName" defaultValue={team.shortName ?? ""} placeholder="e.g. ALPH" className="h-8 text-sm w-28" />
+              <Label htmlFor="team-short-name" className="text-xs">
+                Short Name
+              </Label>
+              <Input
+                id="team-short-name"
+                name="shortName"
+                defaultValue={team.shortName ?? ""}
+                placeholder="e.g. ALPH"
+                className="h-8 text-sm w-28"
+              />
             </div>
-            <Button type="submit" size="sm">Save</Button>
+            <Button type="submit" size="sm">
+              Save
+            </Button>
           </form>
         </CardContent>
       </Card>
@@ -147,9 +170,7 @@ export default async function TeamRosterPage({
                     <TableCell className="text-muted-foreground tabular-nums">
                       {entry.iplId}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {entry.gamesPlayed}
-                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
                     <TableCell className="text-right">
                       <DeleteEntityButton
                         id={entry.id}
@@ -197,9 +218,7 @@ export default async function TeamRosterPage({
                     <TableCell className="text-muted-foreground tabular-nums">
                       {entry.iplId}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {entry.gamesPlayed}
-                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
                     <TableCell className="text-right">
                       <DeleteEntityButton
                         id={entry.id}
@@ -238,7 +257,10 @@ export default async function TeamRosterPage({
                 {unassigned.map((p) => (
                   <TableRow key={p.playerId}>
                     <TableCell className="font-medium">
-                      <Link href={`/players/${p.iplId.replace("#", "")}`} className="hover:underline">
+                      <Link
+                        href={`/players/${p.iplId.replace("#", "")}`}
+                        className="hover:underline"
+                      >
                         {p.currentCallsign}
                       </Link>
                     </TableCell>
@@ -260,5 +282,5 @@ export default async function TeamRosterPage({
         </Card>
       )}
     </div>
-  )
+  );
 }

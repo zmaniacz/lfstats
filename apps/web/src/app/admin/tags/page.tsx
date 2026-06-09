@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Link from "next/link"
-import { getCenterList } from "@lfstats/db"
+import Link from "next/link";
+import { getCenterList } from "@lfstats/db";
 import {
   Table,
   TableBody,
@@ -10,17 +10,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 
 export default async function TagsPage() {
-  const centers = await getCenterList()
+  const centers = await getCenterList();
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Tags</h2>
-      <p className="text-sm text-muted-foreground">
-        Select a center to manage its game tags.
-      </p>
+      <p className="text-sm text-muted-foreground">Select a center to manage its game tags.</p>
       <Table>
         <TableHeader>
           <TableRow>
@@ -32,10 +30,7 @@ export default async function TagsPage() {
           {centers.map((c) => (
             <TableRow key={c.id}>
               <TableCell>
-                <Link
-                  href={`/admin/tags/${c.slug}`}
-                  className="hover:underline font-medium"
-                >
+                <Link href={`/admin/tags/${c.slug}`} className="hover:underline font-medium">
                   {c.name}
                 </Link>
               </TableCell>
@@ -45,5 +40,5 @@ export default async function TagsPage() {
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

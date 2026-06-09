@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { auth } from "@/auth"
-import { getFailedChomperJobs } from "@lfstats/db"
-import { redirect } from "next/navigation"
+import { auth } from "@/auth";
+import { getFailedChomperJobs } from "@lfstats/db";
+import { redirect } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -11,20 +11,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { ArchiveAllButton, ArchiveButton } from "./archive-buttons"
+} from "@/components/ui/table";
+import { ArchiveAllButton, ArchiveButton } from "./archive-buttons";
 
 export default async function ChomperErrorsPage() {
-  const session = await auth()
-  if (!session) redirect("/")
+  const session = await auth();
+  if (!session) redirect("/");
 
-  const roles = session.user.roles ?? []
-  const isAdminOrAbove = roles.some(
-    (r) => r.role === "superAdmin" || r.role === "admin",
-  )
-  if (!isAdminOrAbove) redirect("/admin")
+  const roles = session.user.roles ?? [];
+  const isAdminOrAbove = roles.some((r) => r.role === "superAdmin" || r.role === "admin");
+  if (!isAdminOrAbove) redirect("/admin");
 
-  const jobs = await getFailedChomperJobs()
+  const jobs = await getFailedChomperJobs();
 
   return (
     <div className="space-y-4">
@@ -50,9 +48,7 @@ export default async function ChomperErrorsPage() {
             {jobs.map((job) => (
               <TableRow key={job.id}>
                 <TableCell className="font-mono text-sm">{job.s3Key}</TableCell>
-                <TableCell className="whitespace-nowrap text-sm capitalize">
-                  {job.status}
-                </TableCell>
+                <TableCell className="whitespace-nowrap text-sm capitalize">{job.status}</TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {job.startedAt.toLocaleString()}
                 </TableCell>
@@ -73,5 +69,5 @@ export default async function ChomperErrorsPage() {
         </Table>
       )}
     </div>
-  )
+  );
 }

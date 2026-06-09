@@ -209,7 +209,7 @@ export interface PlayerSimState {
   penalties: number;
 
   // Tracking for consistency checks
-  phantomDeactivations: number;       // HP reached 0 on a 0205 (non-deactivating) event
+  phantomDeactivations: number; // HP reached 0 on a 0205 (non-deactivating) event
   entityEndForcedLives: number | null; // lives value when entity-end "04" forced elimination
 
   // GamePlayerState snapshots — one per state-changing event
@@ -245,10 +245,7 @@ export interface SimulatedGame {
   events: SimEvent[]; // all GameEvent rows (real + synthetic state transitions)
   targetDestructions: SimTargetDestruction[];
   penalties: SimPenalty[];
-  interactions: Map<
-    string,
-    { shotsHit: number; shotDeactivations: number; missileHits: number }
-  >; // key: "${actorId}->${targetId}"
+  interactions: Map<string, { shotsHit: number; shotDeactivations: number; missileHits: number }>; // key: "${actorId}->${targetId}"
 }
 
 export interface SimTeam {

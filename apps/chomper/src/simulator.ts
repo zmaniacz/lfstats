@@ -42,10 +42,7 @@ class Simulator {
   private scorePointer = 0; // index into parsed.scores
 
   // Assist windows — only for Commander and Heavy opponents
-  private assistWindows = new Map<
-    string,
-    Array<{ actorId: string; timestamp: number }>
-  >();
+  private assistWindows = new Map<string, Array<{ actorId: string; timestamp: number }>>();
 
   // Interaction tracking
   private interactions = new Map<
@@ -72,10 +69,7 @@ class Simulator {
 
   // Mid-game position-change routing: maps external entity IDs to their
   // time-ordered generations (built from parsed.entityRouting).
-  private generationRouter = new Map<
-    string,
-    Array<{ startTime: number; internalId: string }>
-  >();
+  private generationRouter = new Map<string, Array<{ startTime: number; internalId: string }>>();
 
   // For each non-final generation, the time at which the next generation takes
   // over. Used to exclude superseded entities from getOpposingActivePlayers and
@@ -100,22 +94,13 @@ class Simulator {
   // checkElimination to compute the exact lives boost needed.
   //   deactivationsReceived: 0206 = 1 life, 0306 = 2 lives, nuke = 3 lives
   //   resuppliesGained: 0502 direct lives resupplies to the player
-  private deactivationsReceived = new Map<
-    string,
-    Array<{ time: number; lives: number }>
-  >();
-  private resuppliesGained = new Map<
-    string,
-    Array<{ time: number; lives: number }>
-  >();
+  private deactivationsReceived = new Map<string, Array<{ time: number; lives: number }>>();
+  private resuppliesGained = new Map<string, Array<{ time: number; lives: number }>>();
   // Direct 0512 team-lives-boost gains for a player while they are in state_0
   // (active). These are not tracked in resuppliesGained (which only covers 0502)
   // but are needed by checkElimination's forward balance so it doesn't over-apply
   // pending boosts for state_3 players who will receive a direct 0512 later.
-  private directTeamBoostsReceived = new Map<
-    string,
-    Array<{ time: number; lives: number }>
-  >();
+  private directTeamBoostsReceived = new Map<string, Array<{ time: number; lives: number }>>();
 
   // Entity-end time per player, for boost-cap calculations.
   private entityEndTimeById = new Map<string, number>();
@@ -167,8 +152,7 @@ class Simulator {
     for (const event of this.parsed.events) {
       if (event.actor && this.playerStates.has(event.actor)) {
         const prev = this.lastActorEventTime.get(event.actor) ?? -1;
-        if (event.time > prev)
-          this.lastActorEventTime.set(event.actor, event.time);
+        if (event.time > prev) this.lastActorEventTime.set(event.actor, event.time);
       }
       // Track deactivating hits received per player (0206 = 1 life, 0306 = 2 lives).
       const target = event.target;
@@ -238,9 +222,7 @@ class Simulator {
 
       for (const nukeEvent of nukeDetonations) {
         const nukeT = nukeEvent.time;
-        const nukeActor = nukeEvent.actor
-          ? this.playerStates.get(nukeEvent.actor)
-          : null;
+        const nukeActor = nukeEvent.actor ? this.playerStates.get(nukeEvent.actor) : null;
         if (!nukeActor) continue;
 
         for (const [entityId, ps] of this.playerStates) {
@@ -250,9 +232,7 @@ class Simulator {
           if (!timeline) continue;
 
           // Was this player already in state_3 strictly before the nuke?
-          const lastBefore = [...timeline]
-            .reverse()
-            .find((e) => e.time < nukeT);
+          const lastBefore = [...timeline].reverse().find((e) => e.time < nukeT);
           if (!lastBefore || lastBefore.state !== 3) continue;
 
           // Skip if Pass 1 already caught a state_3 transition at this nuke time.
@@ -279,10 +259,7 @@ class Simulator {
     // over-applying pending boosts for future direct 0512 gains.
     if (this.parsed.playerStateLog.length > 0) {
       // Index section-9 state log by entity for fast state-at-time lookups.
-      const stateHistoryByEntity = new Map<
-        string,
-        Array<{ time: number; state: number }>
-      >();
+      const stateHistoryByEntity = new Map<string, Array<{ time: number; state: number }>>();
       for (const entry of this.parsed.playerStateLog) {
         if (!this.playerStates.has(entry.entity)) continue;
         const arr = stateHistoryByEntity.get(entry.entity) ?? [];
@@ -660,10 +637,7 @@ class Simulator {
         if (!this.playerStates.has(id)) continue;
         const oldState = stateRef.get(id) ?? 0;
         const newState = entry.state as 0 | 2 | 3;
-        if (
-          (oldState === 3 && newState === 2) ||
-          (oldState === 2 && newState === 0)
-        ) {
+        if ((oldState === 3 && newState === 2) || (oldState === 2 && newState === 0)) {
           applyPending(id);
         }
         if (newState === 0) {
@@ -694,10 +668,7 @@ class Simulator {
             const stats = POSITION_STATS[targetPs.position]!;
             shots.set(
               targetId!,
-              Math.min(
-                (shots.get(targetId!) ?? 0) + stats.resupplyShots,
-                stats.maxShots,
-              ),
+              Math.min((shots.get(targetId!) ?? 0) + stats.resupplyShots, stats.maxShots),
             );
           }
           break;
@@ -712,13 +683,9 @@ class Simulator {
               const stats = POSITION_STATS[ps.position]!;
               const current = shots.get(entityId) ?? 0;
               const lastActiveAt = lastTransitionToActiveAtRef.get(entityId) ?? null;
-              const withinRespawnWindow =
-                lastActiveAt !== null && event.time - lastActiveAt <= 250;
+              const withinRespawnWindow = lastActiveAt !== null && event.time - lastActiveAt <= 250;
               if (state === 0 && !withinRespawnWindow) {
-                shots.set(
-                  entityId,
-                  Math.min(current + stats.resupplyShots, stats.maxShots),
-                );
+                shots.set(entityId, Math.min(current + stats.resupplyShots, stats.maxShots));
               } else if (state === 0 || state === 3 || state === 2) {
                 // Record the authoritative shots count for this boost occurrence.
                 const list = this.shotsRefAtBoost.get(entityId) ?? [];
@@ -726,15 +693,9 @@ class Simulator {
                 this.shotsRefAtBoost.set(entityId, list);
                 // Accumulate the pending boost so the next 0510 in the same
                 // state_3/state_2 period uses the post-boost shots as its baseline.
-                const boost = Math.min(
-                  stats.resupplyShots,
-                  stats.maxShots - current,
-                );
+                const boost = Math.min(stats.resupplyShots, stats.maxShots - current);
                 if (boost > 0) {
-                  pendingRef.set(
-                    entityId,
-                    (pendingRef.get(entityId) ?? 0) + boost,
-                  );
+                  pendingRef.set(entityId, (pendingRef.get(entityId) ?? 0) + boost);
                 }
               }
             }
@@ -987,11 +948,7 @@ class Simulator {
       ) {
         const entry = this.parsed.playerStateLog[this.stateLogPointer]!;
         this.stateLogPointer++;
-        this.applyExplicitStateTransition(
-          entry.time,
-          entry.entity,
-          entry.state as 0 | 2 | 3,
-        );
+        this.applyExplicitStateTransition(entry.time, entry.entity, entry.state as 0 | 2 | 3);
       }
     } else {
       // pre-2.005 synthetic transitions
@@ -1070,11 +1027,7 @@ class Simulator {
     }
   }
 
-  private applyExplicitStateTransition(
-    time: number,
-    entityId: string,
-    newState: 0 | 2 | 3,
-  ): void {
+  private applyExplicitStateTransition(time: number, entityId: string, newState: 0 | 2 | 3): void {
     const ps = this.playerStates.get(entityId);
     if (!ps) return;
     if (ps.isEliminated) return;
@@ -1087,8 +1040,7 @@ class Simulator {
     this.advanceScores(time);
 
     // Create synthetic GameEvent for this state transition
-    const eventType =
-      newState === 3 ? "state_3" : newState === 2 ? "state_2" : "state_0";
+    const eventType = newState === 3 ? "state_3" : newState === 2 ? "state_2" : "state_0";
     this.events.push({
       time,
       eventType,
@@ -1096,12 +1048,7 @@ class Simulator {
       actorHardwareId: null,
       targetEntityId: null,
       targetHardwareId: null,
-      description:
-        newState === 3
-          ? "is down"
-          : newState === 2
-            ? "is vulnerable"
-            : "reactivated",
+      description: newState === 3 ? "is down" : newState === 2 ? "is vulnerable" : "reactivated",
       isSynthetic: true,
     });
     const stateEventIndex = this.events.length - 1;
@@ -1238,9 +1185,7 @@ class Simulator {
   private isNeutralTeam(teamIndex: number): boolean {
     const team = this.parsed.teams[teamIndex];
     return (
-      !team ||
-      team.desc.toLowerCase() === "neutral" ||
-      team.desc.toLowerCase() === "neutral team"
+      !team || team.desc.toLowerCase() === "neutral" || team.desc.toLowerCase() === "neutral team"
     );
   }
 
@@ -1267,15 +1212,9 @@ class Simulator {
     this.pendingBoosts.set(entityId, arr);
   }
 
-  private getOpposingActivePlayers(
-    ps: PlayerSimState,
-    time: number,
-  ): PlayerSimState[] {
+  private getOpposingActivePlayers(ps: PlayerSimState, time: number): PlayerSimState[] {
     return [...this.playerStates.values()].filter(
-      (p) =>
-        !p.isEliminated &&
-        this.isOpponent(ps, p) &&
-        this.isEntityActiveAt(p.entityId, time),
+      (p) => !p.isEliminated && this.isOpponent(ps, p) && this.isEntityActiveAt(p.entityId, time),
     );
   }
 
@@ -1316,14 +1255,11 @@ class Simulator {
     //       (e.g. a 0510 ammo boost that fires 20 s after the nuke).
     if (provablyAlive || hasPendingLives) {
       if (boosts?.length) {
-        const entityEndT =
-          this.entityEndTimeById.get(target.entityId) ?? Infinity;
+        const entityEndT = this.entityEndTimeById.get(target.entityId) ?? Infinity;
         const tdfFinalLives = this.tdfFinalLives.get(target.entityId) ?? 0;
-        const deactivations =
-          this.deactivationsReceived.get(target.entityId) ?? [];
+        const deactivations = this.deactivationsReceived.get(target.entityId) ?? [];
         const resupplies = this.resuppliesGained.get(target.entityId) ?? [];
-        const teamBoosts =
-          this.directTeamBoostsReceived.get(target.entityId) ?? [];
+        const teamBoosts = this.directTeamBoostsReceived.get(target.entityId) ?? [];
 
         // Forward-simulate the player's lives from the rescue point to entity-end,
         // merging deactivations (negative), direct resupplies (positive), and
@@ -1351,10 +1287,7 @@ class Simulator {
         }
         // -minBalance = lives needed to keep balance ≥ 0 throughout.
         // tdfFinalLives - balance = extra lives to reach target at game end.
-        let livesNeeded = Math.max(
-          0,
-          Math.max(-minBalance, tdfFinalLives - balance),
-        );
+        let livesNeeded = Math.max(0, Math.max(-minBalance, tdfFinalLives - balance));
         // If the formula says 0 but there are still future events, the player
         // needs at least 1 life to stay alive long enough to receive the next
         // resupply (lives=0 in our simulator triggers immediate elimination,
@@ -1404,10 +1337,7 @@ class Simulator {
             }
           }
           // Keep shots boosts and any unconsumed/partial lives boosts.
-          const remaining = [
-            ...boosts.filter((b) => b.type !== "lives"),
-            ...leftoverLivesBoosts,
-          ];
+          const remaining = [...boosts.filter((b) => b.type !== "lives"), ...leftoverLivesBoosts];
           if (remaining.length > 0) {
             this.pendingBoosts.set(target.entityId, remaining);
           } else {
@@ -1460,19 +1390,11 @@ class Simulator {
   // Assist window
   // ---------------------------------------------------------------------------
 
-  private addToAssistWindow(
-    actorId: string,
-    targetId: string,
-    timestamp: number,
-  ): void {
+  private addToAssistWindow(actorId: string, targetId: string, timestamp: number): void {
     const target = this.playerStates.get(targetId);
     if (!target) return;
     // Only track assists for Commander and Heavy opponents
-    if (
-      target.position !== POSITION.COMMANDER &&
-      target.position !== POSITION.HEAVY
-    )
-      return;
+    if (target.position !== POSITION.COMMANDER && target.position !== POSITION.HEAVY) return;
 
     if (!this.assistWindows.has(targetId)) {
       this.assistWindows.set(targetId, []);
@@ -1510,10 +1432,7 @@ class Simulator {
   // Nuke cancel detection
   // ---------------------------------------------------------------------------
 
-  private handleNukeCancel(
-    actor: PlayerSimState | null,
-    target: PlayerSimState,
-  ): void {
+  private handleNukeCancel(actor: PlayerSimState | null, target: PlayerSimState): void {
     if (!target.isNuking) return;
 
     // Clear the nuke state here so this is the single authoritative place.
@@ -1576,12 +1495,10 @@ class Simulator {
         if (actor) this.handle0204(actor, time, eventIndex, targetId);
         break;
       case "0205":
-        if (actor && target)
-          this.handlePlayerHit(actor, target, time, false, eventIndex);
+        if (actor && target) this.handlePlayerHit(actor, target, time, false, eventIndex);
         break;
       case "0206":
-        if (actor && target)
-          this.handlePlayerHit(actor, target, time, true, eventIndex);
+        if (actor && target) this.handlePlayerHit(actor, target, time, true, eventIndex);
         break;
       case "0301": // Missile Gen Miss — missile consumed, no hit stats
       case "0304": // Missile Miss — missile consumed, no hit stats
@@ -1605,13 +1522,11 @@ class Simulator {
         break;
       case "0500":
         if (actor && target) this.handle0500(actor, target, time, eventIndex);
-        else if (!actor && target)
-          this.handleEmergencyResupply(target, "ammo", time, eventIndex);
+        else if (!actor && target) this.handleEmergencyResupply(target, "ammo", time, eventIndex);
         break;
       case "0502":
         if (actor && target) this.handle0502(actor, target, time, eventIndex);
-        else if (!actor && target)
-          this.handleEmergencyResupply(target, "lives", time, eventIndex);
+        else if (!actor && target) this.handleEmergencyResupply(target, "lives", time, eventIndex);
         break;
       case "0510":
         if (actor) this.handle0510(actor, time, eventIndex);
@@ -1653,14 +1568,12 @@ class Simulator {
         ps.uptime += time - ps.stateEnteredAt;
       } else if (ps.state === 3 && ps.state3EnteredAt !== null) {
         const duration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply")
-          ps.resupplyDowntime += duration;
+        if (ps.deactivationCause === "resupply") ps.resupplyDowntime += duration;
         else ps.otherDowntime += duration;
       } else if (ps.state === 2 && ps.state3EnteredAt !== null) {
         // state3EnteredAt was set when entering state 3; state 3 lasted 4000ms
         const fullDuration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply")
-          ps.resupplyDowntime += fullDuration;
+        if (ps.deactivationCause === "resupply") ps.resupplyDowntime += fullDuration;
         else ps.otherDowntime += fullDuration;
       }
 
@@ -1688,11 +1601,7 @@ class Simulator {
   // 0209 — Warbot Deactivation
   // Fired by a non-player warbot entity; deducts 1 life like 0206 but is NOT
   // counted in the TDF's timesZapped stat and has no actor playerState.
-  private handle0209(
-    target: PlayerSimState,
-    time: number,
-    eventIndex: number,
-  ): void {
+  private handle0209(target: PlayerSimState, time: number, eventIndex: number): void {
     if (target.isEliminated) return;
     this.handleNukeCancel(null, target);
     target.lives--;
@@ -1705,11 +1614,7 @@ class Simulator {
   }
 
   // 0203 — Target Hit (non-final)
-  private handle0203(
-    actor: PlayerSimState,
-    _time: number,
-    eventIndex: number,
-  ): void {
+  private handle0203(actor: PlayerSimState, _time: number, eventIndex: number): void {
     if (actor.position !== POSITION.AMMO) actor.shots--;
     actor.shotsFired++;
     actor.shotsHit++;
@@ -1782,8 +1687,7 @@ class Simulator {
     // 3-hit stat — hits on opponent Commander or Heavy
     if (
       isOpponent &&
-      (target.position === POSITION.COMMANDER ||
-        target.position === POSITION.HEAVY)
+      (target.position === POSITION.COMMANDER || target.position === POSITION.HEAVY)
     ) {
       actor.shotsHitOpponent3hit++;
     }
@@ -1839,11 +1743,7 @@ class Simulator {
       // Award assists (before clearing the window)
       this.awardAssists(target.entityId, actor.entityId);
 
-      this.incrInteraction(
-        actor.entityId,
-        target.entityId,
-        "shotDeactivations",
-      );
+      this.incrInteraction(actor.entityId, target.entityId, "shotDeactivations");
 
       target.deactivationCause = "other";
       // State transition handled by state event (emitted by advanceClock or explicit state log)
@@ -1942,11 +1842,7 @@ class Simulator {
   }
 
   // 0400 — Rapid Fire Activate
-  private handle0400(
-    actor: PlayerSimState,
-    time: number,
-    eventIndex: number,
-  ): void {
+  private handle0400(actor: PlayerSimState, time: number, eventIndex: number): void {
     actor.isRapidFire = true;
     actor.rapidFireStartedAt = time;
     actor.rapidFire++;
@@ -1955,11 +1851,7 @@ class Simulator {
   }
 
   // 0404 — Nuke Activate
-  private handle0404(
-    actor: PlayerSimState,
-    time: number,
-    eventIndex: number,
-  ): void {
+  private handle0404(actor: PlayerSimState, time: number, eventIndex: number): void {
     actor.isNuking = true;
     actor.nukeActivatedAt = time;
     actor.nukesActivated++;
@@ -1968,11 +1860,7 @@ class Simulator {
   }
 
   // 0405 — Nuke Detonate
-  private handle0405(
-    actor: PlayerSimState,
-    time: number,
-    eventIndex: number,
-  ): void {
+  private handle0405(actor: PlayerSimState, time: number, eventIndex: number): void {
     actor.isNuking = false;
     actor.nukesDetonated++;
 
@@ -2104,10 +1992,7 @@ class Simulator {
     const stats = POSITION_STATS[target.position]!;
     if (type === "ammo") {
       target.emergencyResuppliesReceivedAmmo++;
-      target.shots = Math.min(
-        target.shots + stats.resupplyShots,
-        stats.maxShots,
-      );
+      target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
       if (target.isRapidFire && target.rapidFireStartedAt !== null) {
         target.totalRapidTime += time - target.rapidFireStartedAt;
         target.isRapidFire = false;
@@ -2115,10 +2000,7 @@ class Simulator {
       }
     } else {
       target.emergencyResuppliesReceivedLives++;
-      target.lives = Math.min(
-        target.lives + stats.resupplyLives,
-        stats.maxLives,
-      );
+      target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
     }
     this.handleNukeCancel(null, target);
     target.deactivationCause = "resupply";
@@ -2127,11 +2009,7 @@ class Simulator {
   }
 
   // 0510 — Team Ammo Boost
-  private handle0510(
-    actor: PlayerSimState,
-    time: number,
-    eventIndex: number,
-  ): void {
+  private handle0510(actor: PlayerSimState, time: number, eventIndex: number): void {
     actor.ammoBoost++;
     this.spendSp(actor, 15);
 
@@ -2162,10 +2040,7 @@ class Simulator {
           time,
         );
       } else {
-        teammate.shots = Math.min(
-          teammate.shots + stats.resupplyShots,
-          stats.maxShots,
-        );
+        teammate.shots = Math.min(teammate.shots + stats.resupplyShots, stats.maxShots);
         this.recordSnapshot(teammate, eventIndex);
       }
     }
@@ -2196,11 +2071,7 @@ class Simulator {
   }
 
   // 0512 — Team Lives Boost
-  private handle0512(
-    actor: PlayerSimState,
-    time: number,
-    eventIndex: number,
-  ): void {
+  private handle0512(actor: PlayerSimState, time: number, eventIndex: number): void {
     actor.lifeBoost++;
     this.spendSp(actor, 10);
 
@@ -2213,8 +2084,7 @@ class Simulator {
       // approximate — the real state_0 start can be off by ~1 s. Use a wider
       // 2 s uncertainty window so borderline cases are deferred to pending
       // rather than incorrectly applied as a direct boost.
-      const respawnWindowMs =
-        this.parsed.playerStateLog.length > 0 ? 250 : 2000;
+      const respawnWindowMs = this.parsed.playerStateLog.length > 0 ? 250 : 2000;
       const withinRespawnWindow =
         teammate.lastTransitionToActiveAt !== null &&
         time - teammate.lastTransitionToActiveAt <= respawnWindowMs;
@@ -2229,10 +2099,7 @@ class Simulator {
           time,
         );
       } else {
-        teammate.lives = Math.min(
-          teammate.lives + stats.resupplyLives,
-          stats.maxLives,
-        );
+        teammate.lives = Math.min(teammate.lives + stats.resupplyLives, stats.maxLives);
         this.recordSnapshot(teammate, eventIndex);
       }
     }
@@ -2316,11 +2183,7 @@ class Simulator {
   // State transition trigger
   // ---------------------------------------------------------------------------
 
-  private triggerStateTransition(
-    target: PlayerSimState,
-    newState: 0 | 2 | 3,
-    time: number,
-  ): void {
+  private triggerStateTransition(target: PlayerSimState, newState: 0 | 2 | 3, time: number): void {
     // For 2.005+ files, the explicit state log drives all transitions via advanceClock.
     // Action handlers must not trigger transitions — doing so fires at the wrong timestamp
     // when the log's state event is delayed relative to the action event.
@@ -2347,11 +2210,8 @@ class Simulator {
     // Determine which teams are eliminated
     const teamEliminated = new Map<number, boolean>();
     for (const [teamIndex] of teamScores) {
-      const players = [...this.playerStates.values()].filter(
-        (p) => p.teamIndex === teamIndex,
-      );
-      const allEliminated =
-        players.length > 0 && players.every((p) => p.isEliminated);
+      const players = [...this.playerStates.values()].filter((p) => p.teamIndex === teamIndex);
+      const allEliminated = players.length > 0 && players.every((p) => p.isEliminated);
       teamEliminated.set(teamIndex, allEliminated);
     }
 
@@ -2376,9 +2236,7 @@ class Simulator {
     const isAborted =
       this.missionEndTime === 0 &&
       this.parsed.entityEnds.length > 0 &&
-      this.parsed.entityEnds.every(
-        (e) => e.exitType === "01" || e.exitType === "17",
-      );
+      this.parsed.entityEnds.every((e) => e.exitType === "01" || e.exitType === "17");
 
     const anyEliminated = [...teamEliminated.entries()].some(
       ([ti, e]) => e && !this.isNeutralTeam(ti),
@@ -2396,9 +2254,7 @@ class Simulator {
     }
 
     // Find winning team(s)
-    const competingTeamIndices = [...teamScores.keys()].filter(
-      (ti) => !this.isNeutralTeam(ti),
-    );
+    const competingTeamIndices = [...teamScores.keys()].filter((ti) => !this.isNeutralTeam(ti));
 
     let maxScore = -Infinity;
     for (const ti of competingTeamIndices) {
@@ -2431,8 +2287,7 @@ class Simulator {
       }
 
       // Elimination bonus: 10000 if this team won by elimination
-      const eliminationBonus =
-        outcome === "elimination" && result === "win" ? 10000 : 0;
+      const eliminationBonus = outcome === "elimination" && result === "win" ? 10000 : 0;
 
       return {
         tdfTeamIndex: team.index,
@@ -2480,9 +2335,7 @@ export function runConsistencyCheck(
   // Detect games with multi-battlesuit players (hardware restarts mid-game).
   // In these games nuke-on-medic interaction counts can be inaccurate because
   // the hardware tracks hits on the restarted vest separately from our sim.
-  const hasMultiBattlesuit = [...playerStats.keys()].some((id) =>
-    /_gen\d+$/.test(id),
-  );
+  const hasMultiBattlesuit = [...playerStats.keys()].some((id) => /_gen\d+$/.test(id));
   if (hasMultiBattlesuit) {
     warnings.push(
       "Game contains player(s) with mid-game hardware restarts (multiple battlesuits) — nuke interaction stats may be inaccurate",
@@ -2508,10 +2361,12 @@ export function runConsistencyCheck(
     if (isGhostShot) ghostShots.push({ entityId, count: dFired });
 
     const checks: Array<[string, number, number]> = [
-      ...(!isGhostShot ? ([
-        ["shotsHit", ps.shotsHit, stats.shotsHit],
-        ["shotsFired", ps.shotsFired, stats.shotsFired],
-      ] as Array<[string, number, number]>) : []),
+      ...(!isGhostShot
+        ? ([
+            ["shotsHit", ps.shotsHit, stats.shotsHit],
+            ["shotsFired", ps.shotsFired, stats.shotsFired],
+          ] as Array<[string, number, number]>)
+        : []),
       ["timesHit", ps.timesHit, stats.timesZapped],
       ["timesHitByMissile", ps.timesHitByMissile, stats.timesMissiled],
       ["missileHits", ps.missileHits, stats.missileHits],
@@ -2548,9 +2403,7 @@ export function runConsistencyCheck(
 
     for (const [field, computed, expected] of checks) {
       if (computed !== expected) {
-        discrepancies.push(
-          `${entityId} ${field}: computed=${computed} expected=${expected}`,
-        );
+        discrepancies.push(`${entityId} ${field}: computed=${computed} expected=${expected}`);
       }
     }
 

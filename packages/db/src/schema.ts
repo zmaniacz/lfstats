@@ -33,21 +33,11 @@ export const gameOutcomeEnum = pgEnum("game_outcome", [
 
 export const teamResultEnum = pgEnum("team_result", ["win", "loss", "draw"]);
 
-export const destructionMethodEnum = pgEnum("destruction_method", [
-  "shot",
-  "missile",
-  "awarded",
-]);
+export const destructionMethodEnum = pgEnum("destruction_method", ["shot", "missile", "awarded"]);
 
-export const competitionTypeEnum = pgEnum("competition_type", [
-  "competitive",
-  "social",
-]);
+export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "social"]);
 
-export const competitionRoundTypeEnum = pgEnum("competition_round_type", [
-  "pool",
-  "finals",
-]);
+export const competitionRoundTypeEnum = pgEnum("competition_round_type", ["pool", "finals"]);
 
 // ---------------------------------------------------------------------------
 // Reference & Identity Tables
@@ -280,10 +270,7 @@ export const competitionMatchGame = pgTable(
       .notNull()
       .references(() => sm5GameTeam.id),
   },
-  (t) => [
-    unique().on(t.matchId, t.gameNumber),
-    unique().on(t.gameId),
-  ],
+  (t) => [unique().on(t.matchId, t.gameNumber), unique().on(t.gameId)],
 );
 
 // ---------------------------------------------------------------------------
@@ -396,8 +383,12 @@ export const sm5Scorecard = pgTable("sm5_scorecard", {
   // Received stats apply to all positions
   resuppliesReceivedAmmo: integer("resupplies_received_ammo").notNull(),
   resuppliesReceivedLives: integer("resupplies_received_lives").notNull(),
-  emergencyResuppliesReceivedAmmo: integer("emergency_resupplies_received_ammo").notNull().default(0),
-  emergencyResuppliesReceivedLives: integer("emergency_resupplies_received_lives").notNull().default(0),
+  emergencyResuppliesReceivedAmmo: integer("emergency_resupplies_received_ammo")
+    .notNull()
+    .default(0),
+  emergencyResuppliesReceivedLives: integer("emergency_resupplies_received_lives")
+    .notNull()
+    .default(0),
   doubleResuppliesReceived: integer("double_resupplies_received").notNull(),
 
   // Combat Outcomes
@@ -502,11 +493,7 @@ export const sm5GamePlayerInteraction = pgTable(
     missileHits: integer("missile_hits").notNull(),
   },
   (t) => [
-    unique("sm5_game_player_interaction_unique").on(
-      t.gameId,
-      t.scorecardId,
-      t.targetScorecardId,
-    ),
+    unique("sm5_game_player_interaction_unique").on(t.gameId, t.scorecardId, t.targetScorecardId),
     foreignKey({
       name: "sm5_gpi_tgt_scorecard_id_fk",
       columns: [t.targetScorecardId],
@@ -551,23 +538,19 @@ export const sm5GameEvent = pgTable(
     eventType: text("event_type").notNull(),
     // Null for events with no actor (0100/0101).
     // actorScorecardId (player) and actorGameTargetId (non-player) are mutually exclusive.
-    actorScorecardId: uuid("actor_scorecard_id").references(
-      () => sm5Scorecard.id,
-      { onDelete: "cascade" },
-    ),
-    actorGameTargetId: uuid("actor_game_target_id").references(
-      () => sm5GameTarget.id,
-      { onDelete: "cascade" },
-    ),
+    actorScorecardId: uuid("actor_scorecard_id").references(() => sm5Scorecard.id, {
+      onDelete: "cascade",
+    }),
+    actorGameTargetId: uuid("actor_game_target_id").references(() => sm5GameTarget.id, {
+      onDelete: "cascade",
+    }),
     // target_scorecard_id and target_game_target_id are mutually exclusive
-    targetScorecardId: uuid("target_scorecard_id").references(
-      () => sm5Scorecard.id,
-      { onDelete: "cascade" },
-    ),
-    targetGameTargetId: uuid("target_game_target_id").references(
-      () => sm5GameTarget.id,
-      { onDelete: "cascade" },
-    ),
+    targetScorecardId: uuid("target_scorecard_id").references(() => sm5Scorecard.id, {
+      onDelete: "cascade",
+    }),
+    targetGameTargetId: uuid("target_game_target_id").references(() => sm5GameTarget.id, {
+      onDelete: "cascade",
+    }),
     description: text("description").notNull(),
   },
   () => [],
@@ -621,11 +604,7 @@ export const sm5GamePlayerState = pgTable(
   (t) => [
     unique().on(t.eventId, t.scorecardId),
     // Primary read pattern: reconstruct player state at time T
-    index("sm5_game_player_state_sc_time_idx").on(
-      t.gameId,
-      t.scorecardId,
-      t.time,
-    ),
+    index("sm5_game_player_state_sc_time_idx").on(t.gameId, t.scorecardId, t.time),
   ],
 );
 
@@ -633,12 +612,7 @@ export const sm5GamePlayerState = pgTable(
 // Auth Tables (NextAuth.js v5 / Auth.js + custom RBAC)
 // ---------------------------------------------------------------------------
 
-export const userRoleEnum = pgEnum("user_role", [
-  "admin",
-  "centerAdmin",
-  "uploader",
-  "superAdmin",
-]);
+export const userRoleEnum = pgEnum("user_role", ["admin", "centerAdmin", "uploader", "superAdmin"]);
 
 export const authUser = pgTable("auth_user", {
   id: text("id")

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useMemo, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import type { CompetitionPenaltyRecord } from "@lfstats/db"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState, useMemo, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { CompetitionPenaltyRecord } from "@lfstats/db";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -18,125 +18,133 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatDateTime, formatScore } from "@/lib/format"
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
+} from "@/components/ui/table";
+import { formatDateTime, formatScore } from "@/lib/format";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 type Actions = {
-  updateAction: (competitionId: string, penaltyId: string, formData: FormData) => Promise<void>
-  rescindAction: (competitionId: string, penaltyId: string, rescinded: boolean) => Promise<void>
-  deleteAction: (competitionId: string, penaltyId: string) => Promise<void>
-}
+  updateAction: (competitionId: string, penaltyId: string, formData: FormData) => Promise<void>;
+  rescindAction: (competitionId: string, penaltyId: string, rescinded: boolean) => Promise<void>;
+  deleteAction: (competitionId: string, penaltyId: string) => Promise<void>;
+};
 
-type SortKey = "game" | "callsign" | "startTime" | "type" | "scoreValue" | "mvpValue"
+type SortKey = "game" | "callsign" | "startTime" | "type" | "scoreValue" | "mvpValue";
 
 type Props = {
-  competitionId: string
-  penalties: CompetitionPenaltyRecord[]
-  canEdit: boolean
-  actions: Actions
-}
+  competitionId: string;
+  penalties: CompetitionPenaltyRecord[];
+  canEdit: boolean;
+  actions: Actions;
+};
 
 function gameLabel(p: CompetitionPenaltyRecord): string {
   if (p.roundNumber == null || p.matchNumber == null || p.gameNumber == null) {
-    return `${p.centerName} · ${formatDateTime(p.gameStartTime)}`
+    return `${p.centerName} · ${formatDateTime(p.gameStartTime)}`;
   }
-  const t1 = p.team1ShortName ?? "T1"
-  const t2 = p.team2ShortName ?? "T2"
-  return `R${p.roundNumber} M${p.matchNumber} G${p.gameNumber} - ${t1} v ${t2}`
+  const t1 = p.team1ShortName ?? "T1";
+  const t2 = p.team2ShortName ?? "T2";
+  return `R${p.roundNumber} M${p.matchNumber} G${p.gameNumber} - ${t1} v ${t2}`;
 }
 
 function gameSortKey(p: CompetitionPenaltyRecord): string {
-  if (p.roundNumber == null) return "z" // unassigned games sort last
-  return `${String(p.roundNumber).padStart(3, "0")}-${String(p.matchNumber).padStart(3, "0")}-${String(p.gameNumber).padStart(3, "0")}`
+  if (p.roundNumber == null) return "z"; // unassigned games sort last
+  return `${String(p.roundNumber).padStart(3, "0")}-${String(p.matchNumber).padStart(3, "0")}-${String(p.gameNumber).padStart(3, "0")}`;
 }
 
 export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, actions }: Props) {
-  const [search, setSearch] = useState("")
-  const [sortKey, setSortKey] = useState<SortKey>("game")
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("game");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
-      setSortKey(key)
-      setSortDir("asc")
+      setSortKey(key);
+      setSortDir("asc");
     }
   }
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase()
+    const q = search.toLowerCase();
     return penalties.filter(
       (p) =>
         !q ||
         gameLabel(p).toLowerCase().includes(q) ||
         p.callsign.toLowerCase().includes(q) ||
         p.type.toLowerCase().includes(q),
-    )
-  }, [penalties, search])
+    );
+  }, [penalties, search]);
 
   const sorted = useMemo(() => {
-    const dir = sortDir === "asc" ? 1 : -1
+    const dir = sortDir === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => {
       switch (sortKey) {
-        case "game":    return gameSortKey(a).localeCompare(gameSortKey(b)) * dir
-        case "callsign": return a.callsign.localeCompare(b.callsign) * dir
-        case "startTime": return (a.gameStartTime.getTime() - b.gameStartTime.getTime()) * dir
-        case "type":    return a.type.localeCompare(b.type) * dir
-        case "scoreValue": return (a.scoreValue - b.scoreValue) * dir
-        case "mvpValue":   return (a.mvpValue - b.mvpValue) * dir
+        case "game":
+          return gameSortKey(a).localeCompare(gameSortKey(b)) * dir;
+        case "callsign":
+          return a.callsign.localeCompare(b.callsign) * dir;
+        case "startTime":
+          return (a.gameStartTime.getTime() - b.gameStartTime.getTime()) * dir;
+        case "type":
+          return a.type.localeCompare(b.type) * dir;
+        case "scoreValue":
+          return (a.scoreValue - b.scoreValue) * dir;
+        case "mvpValue":
+          return (a.mvpValue - b.mvpValue) * dir;
       }
-    })
-  }, [filtered, sortKey, sortDir])
+    });
+  }, [filtered, sortKey, sortDir]);
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.updateAction(competitionId, penaltyId, formData)
-      setEditingId(null)
+      await actions.updateAction(competitionId, penaltyId, formData);
+      setEditingId(null);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.rescindAction(competitionId, penaltyId, rescinded)
+      await actions.rescindAction(competitionId, penaltyId, rescinded);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.deleteAction(competitionId, penaltyId)
+      await actions.deleteAction(competitionId, penaltyId);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ArrowUpDown className="size-3 ml-1 opacity-40" />
-    return sortDir === "asc"
-      ? <ArrowUp className="size-3 ml-1" />
-      : <ArrowDown className="size-3 ml-1" />
+    if (sortKey !== col) return <ArrowUpDown className="size-3 ml-1 opacity-40" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="size-3 ml-1" />
+    ) : (
+      <ArrowDown className="size-3 ml-1" />
+    );
   }
 
   function SortHead({ col, children }: { col: SortKey; children: React.ReactNode }) {
@@ -150,11 +158,13 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
           <SortIcon col={col} />
         </span>
       </TableHead>
-    )
+    );
   }
 
   if (penalties.length === 0) {
-    return <p className="text-sm text-muted-foreground">No penalties recorded for this competition.</p>
+    return (
+      <p className="text-sm text-muted-foreground">No penalties recorded for this competition.</p>
+    );
   }
 
   return (
@@ -182,80 +192,133 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canEdit ? 7 : 6} className="text-center text-muted-foreground text-sm py-8">
+                <TableCell
+                  colSpan={canEdit ? 7 : 6}
+                  className="text-center text-muted-foreground text-sm py-8"
+                >
                   No results for &ldquo;{search}&rdquo;
                 </TableCell>
               </TableRow>
-            ) : sorted.map((p) => (
-              editingId === p.id ? (
-                <TableRow key={p.id}>
-                  <TableCell colSpan={canEdit ? 7 : 6} className="py-2">
-                    <PenaltyEditForm
-                      penalty={p}
-                      onSubmit={(fd) => handleUpdate(p.id, fd)}
-                      onCancel={() => setEditingId(null)}
-                      isPending={isPending}
-                    />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <TableRow key={p.id} className={p.rescinded ? "opacity-50" : ""}>
-                  <TableCell className="font-medium">
-                    <Link href={`/games/${p.gameSlug}`} className="hover:underline">
-                      {gameLabel(p)}
-                    </Link>
-                    {p.rescinded && <Badge variant="outline" className="ml-2 text-xs">Rescinded</Badge>}
-                    {!p.inGame && <Badge variant="secondary" className="ml-2 text-xs">Post-game</Badge>}
-                  </TableCell>
-                  <TableCell>
-                    {p.playerId ? (
-                      <Link
-                        href={`/players/${p.iplId?.replace(/^#/, "")}`}
-                        className="hover:underline"
-                      >
-                        {p.callsign}
-                      </Link>
-                    ) : (
-                      p.callsign
-                    )}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-sm text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(p.gameStartTime)}
-                  </TableCell>
-                  <TableCell>{p.type}</TableCell>
-                  <TableCell className="tabular-nums text-right">
-                    {p.scoreValue !== 0 ? (
-                      <span className={p.scoreValue < 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>
-                        {p.scoreValue > 0 ? "+" : ""}{formatScore(p.scoreValue)}
-                      </span>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-right">
-                    {p.mvpValue !== 0 ? (
-                      <span className={p.mvpValue < 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>
-                        {p.mvpValue > 0 ? "+" : ""}{p.mvpValue.toFixed(3)}
-                      </span>
-                    ) : "—"}
-                  </TableCell>
-                  {canEdit && (
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingId(p.id)} disabled={isPending}>Edit</Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleRescind(p.id, !p.rescinded)} disabled={isPending}>
-                          {p.rescinded ? "Restore" : "Rescind"}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={() => handleDelete(p.id)} disabled={isPending}>Delete</Button>
-                      </div>
+            ) : (
+              sorted.map((p) =>
+                editingId === p.id ? (
+                  <TableRow key={p.id}>
+                    <TableCell colSpan={canEdit ? 7 : 6} className="py-2">
+                      <PenaltyEditForm
+                        penalty={p}
+                        onSubmit={(fd) => handleUpdate(p.id, fd)}
+                        onCancel={() => setEditingId(null)}
+                        isPending={isPending}
+                      />
                     </TableCell>
-                  )}
-                </TableRow>
+                  </TableRow>
+                ) : (
+                  <TableRow key={p.id} className={p.rescinded ? "opacity-50" : ""}>
+                    <TableCell className="font-medium">
+                      <Link href={`/games/${p.gameSlug}`} className="hover:underline">
+                        {gameLabel(p)}
+                      </Link>
+                      {p.rescinded && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          Rescinded
+                        </Badge>
+                      )}
+                      {!p.inGame && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          Post-game
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {p.playerId ? (
+                        <Link
+                          href={`/players/${p.iplId?.replace(/^#/, "")}`}
+                          className="hover:underline"
+                        >
+                          {p.callsign}
+                        </Link>
+                      ) : (
+                        p.callsign
+                      )}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-sm text-muted-foreground whitespace-nowrap">
+                      {formatDateTime(p.gameStartTime)}
+                    </TableCell>
+                    <TableCell>{p.type}</TableCell>
+                    <TableCell className="tabular-nums text-right">
+                      {p.scoreValue !== 0 ? (
+                        <span
+                          className={
+                            p.scoreValue < 0
+                              ? "text-destructive"
+                              : "text-green-600 dark:text-green-400"
+                          }
+                        >
+                          {p.scoreValue > 0 ? "+" : ""}
+                          {formatScore(p.scoreValue)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-right">
+                      {p.mvpValue !== 0 ? (
+                        <span
+                          className={
+                            p.mvpValue < 0
+                              ? "text-destructive"
+                              : "text-green-600 dark:text-green-400"
+                          }
+                        >
+                          {p.mvpValue > 0 ? "+" : ""}
+                          {p.mvpValue.toFixed(3)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    {canEdit && (
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setEditingId(p.id)}
+                            disabled={isPending}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => handleRescind(p.id, !p.rescinded)}
+                            disabled={isPending}
+                          >
+                            {p.rescinded ? "Restore" : "Rescind"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(p.id)}
+                            disabled={isPending}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ),
               )
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
     </div>
-  )
+  );
 }
 
 function PenaltyEditForm({
@@ -264,33 +327,60 @@ function PenaltyEditForm({
   onCancel,
   isPending,
 }: {
-  penalty: CompetitionPenaltyRecord
-  onSubmit: (fd: FormData) => void
-  onCancel: () => void
-  isPending: boolean
+  penalty: CompetitionPenaltyRecord;
+  onSubmit: (fd: FormData) => void;
+  onCancel: () => void;
+  isPending: boolean;
 }) {
   return (
     <form action={onSubmit} className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
         <Label className="text-xs">Type</Label>
-        <Input name="type" defaultValue={penalty.type} className="h-8 text-sm w-36" disabled={isPending} />
+        <Input
+          name="type"
+          defaultValue={penalty.type}
+          className="h-8 text-sm w-36"
+          disabled={isPending}
+        />
       </div>
       <div className="space-y-1">
         <Label className="text-xs">Description</Label>
-        <Input name="description" defaultValue={penalty.description} className="h-8 text-sm w-48" disabled={isPending} />
+        <Input
+          name="description"
+          defaultValue={penalty.description}
+          className="h-8 text-sm w-48"
+          disabled={isPending}
+        />
       </div>
       <div className="space-y-1">
         <Label className="text-xs">Score Value</Label>
-        <Input name="scoreValue" type="number" defaultValue={penalty.scoreValue} className="h-8 text-sm w-28" disabled={isPending} />
+        <Input
+          name="scoreValue"
+          type="number"
+          defaultValue={penalty.scoreValue}
+          className="h-8 text-sm w-28"
+          disabled={isPending}
+        />
       </div>
       <div className="space-y-1">
         <Label className="text-xs">MVP Value</Label>
-        <Input name="mvpValue" type="number" step="0.001" defaultValue={penalty.mvpValue} className="h-8 text-sm w-28" disabled={isPending} />
+        <Input
+          name="mvpValue"
+          type="number"
+          step="0.001"
+          defaultValue={penalty.mvpValue}
+          className="h-8 text-sm w-28"
+          disabled={isPending}
+        />
       </div>
       <div className="flex gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>Cancel</Button>
-        <Button type="submit" size="sm" disabled={isPending}>{isPending ? "Saving…" : "Save"}</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={isPending}>
+          {isPending ? "Saving…" : "Save"}
+        </Button>
       </div>
     </form>
-  )
+  );
 }

@@ -6,7 +6,17 @@ import { game, sm5GameTeam, sm5Scorecard, center, competition, gameTagAssignment
 import { eq, and, isNull, isNotNull, or, inArray, gte, lte, sql, desc } from "drizzle-orm";
 import type { GameListItem } from "./games";
 
-async function attachTeams(rows: { id: string; slug: string; centerSlug: string; startTime: Date; outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay"; centerName: string; description: string | null }[]): Promise<GameListItem[]> {
+async function attachTeams(
+  rows: {
+    id: string;
+    slug: string;
+    centerSlug: string;
+    startTime: Date;
+    outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
+    centerName: string;
+    description: string | null;
+  }[],
+): Promise<GameListItem[]> {
   if (rows.length === 0) return [];
 
   const gameIds = rows.map((r) => r.id);
@@ -53,13 +63,7 @@ export async function getGameDatesForCenter(centerId: string): Promise<string[]>
       gameDate: sql<string>`date(${game.startTime})::text`,
     })
     .from(game)
-    .where(
-      and(
-        eq(game.centerId, centerId),
-        isNull(game.competitionId),
-        eq(game.exclude, false),
-      ),
-    )
+    .where(and(eq(game.centerId, centerId), isNull(game.competitionId), eq(game.exclude, false)))
     .orderBy(desc(sql`date(${game.startTime})::text`));
 
   return rows.map((r) => r.gameDate);
@@ -165,7 +169,9 @@ export type PlayerSocialAverages = {
   avgScore: number;
 };
 
-export async function getPlayerSocialAveragesByCenter(centerId: string): Promise<PlayerSocialAverages[]> {
+export async function getPlayerSocialAveragesByCenter(
+  centerId: string,
+): Promise<PlayerSocialAverages[]> {
   const rows = await db
     .select({
       playerId: sm5Scorecard.playerId,

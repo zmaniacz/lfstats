@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useId, useEffect, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useId, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -13,29 +13,29 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-} from "@dnd-kit/core"
+} from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
   arrayMove,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { DeleteEntityButton } from "./DeleteEntityButton"
-import Link from "next/link"
-import type { CompetitionMatchListItem } from "@lfstats/db"
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DeleteEntityButton } from "./DeleteEntityButton";
+import Link from "next/link";
+import type { CompetitionMatchListItem } from "@lfstats/db";
 
 type Props = {
-  competitionSlug: string
-  roundId: string
-  matches: CompetitionMatchListItem[]
-  deleteAction: (matchId: string) => Promise<void>
-  reorderAction: (reorders: { id: string; matchNumber: number }[]) => Promise<void>
-}
+  competitionSlug: string;
+  roundId: string;
+  matches: CompetitionMatchListItem[];
+  deleteAction: (matchId: string) => Promise<void>;
+  reorderAction: (reorders: { id: string; matchNumber: number }[]) => Promise<void>;
+};
 
 function SortableMatch({
   match,
@@ -43,19 +43,20 @@ function SortableMatch({
   roundId,
   deleteAction,
 }: {
-  match: CompetitionMatchListItem
-  competitionSlug: string
-  roundId: string
-  deleteAction: (id: string) => Promise<void>
+  match: CompetitionMatchListItem;
+  competitionSlug: string;
+  roundId: string;
+  deleteAction: (id: string) => Promise<void>;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: match.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: match.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  }
+  };
 
   return (
     <div
@@ -89,7 +90,9 @@ function SortableMatch({
       </div>
       <div className="flex items-center gap-1">
         <Button asChild variant="outline" size="sm">
-          <Link href={`/admin/competitions/${competitionSlug}/rounds/${roundId}/matches/${match.id}`}>
+          <Link
+            href={`/admin/competitions/${competitionSlug}/rounds/${roundId}/matches/${match.id}`}
+          >
             Assign Games
           </Link>
         </Button>
@@ -101,7 +104,7 @@ function SortableMatch({
         />
       </div>
     </div>
-  )
+  );
 }
 
 export function SortableMatchList({
@@ -111,48 +114,48 @@ export function SortableMatchList({
   deleteAction,
   reorderAction,
 }: Props) {
-  const [matches, setMatches] = useState(initialMatches)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
-  const dndId = useId()
+  const [matches, setMatches] = useState(initialMatches);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
+  const dndId = useId();
 
   useEffect(() => {
-    setMatches(initialMatches)
-  }, [initialMatches])
+    setMatches(initialMatches);
+  }, [initialMatches]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
-  )
+  );
 
   async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    const oldIndex = matches.findIndex((m) => m.id === active.id)
-    const newIndex = matches.findIndex((m) => m.id === over.id)
-    const reordered = arrayMove(matches, oldIndex, newIndex)
+    const oldIndex = matches.findIndex((m) => m.id === active.id);
+    const newIndex = matches.findIndex((m) => m.id === over.id);
+    const reordered = arrayMove(matches, oldIndex, newIndex);
 
     // Reassign matchNumber sequentially based on new order
-    const withNewNumbers = reordered.map((m, i) => ({ ...m, matchNumber: i + 1 }))
-    setMatches(withNewNumbers)
+    const withNewNumbers = reordered.map((m, i) => ({ ...m, matchNumber: i + 1 }));
+    setMatches(withNewNumbers);
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await reorderAction(withNewNumbers.map(({ id, matchNumber }) => ({ id, matchNumber })))
+      await reorderAction(withNewNumbers.map(({ id, matchNumber }) => ({ id, matchNumber })));
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
-  if (matches.length === 0) return null
+  if (matches.length === 0) return null;
 
   return (
     <DndContext
@@ -175,5 +178,5 @@ export function SortableMatchList({
         </div>
       </SortableContext>
     </DndContext>
-  )
+  );
 }

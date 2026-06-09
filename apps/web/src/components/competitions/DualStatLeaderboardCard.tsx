@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,36 +11,41 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { formatScore, formatMsDuration, formatMs } from "@/lib/format"
-import Link from "next/link"
-import { useMemo, useState } from "react"
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
-import type { StatFormat } from "./StatLeaderboardCard"
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { formatScore, formatMsDuration, formatMs } from "@/lib/format";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import type { StatFormat } from "./StatLeaderboardCard";
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 5;
 
-type SortCol = "value1" | "value2"
-type SortDir = "asc" | "desc"
+type SortCol = "value1" | "value2";
+type SortDir = "asc" | "desc";
 
 function applyFormat(v: number, format: StatFormat): string {
   switch (format) {
-    case "integer": return v.toLocaleString("en-US")
-    case "score": return formatScore(v)
-    case "duration": return formatMsDuration(v)
-    case "decimal": return v.toFixed(2)
-    case "ms": return formatMs(v)
+    case "integer":
+      return v.toLocaleString("en-US");
+    case "score":
+      return formatScore(v);
+    case "duration":
+      return formatMsDuration(v);
+    case "decimal":
+      return v.toFixed(2);
+    case "ms":
+      return formatMs(v);
   }
 }
 
 type Row = {
-  playerId: string
-  iplId: string
-  callsign: string
-  value1: number
-  value2: number
-}
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  value1: number;
+  value2: number;
+};
 
 function SortableHead({
   col,
@@ -48,13 +53,13 @@ function SortableHead({
   onSort,
   children,
 }: {
-  col: SortCol
-  sort: { col: SortCol; dir: SortDir }
-  onSort: (col: SortCol) => void
-  children: React.ReactNode
+  col: SortCol;
+  sort: { col: SortCol; dir: SortDir };
+  onSort: (col: SortCol) => void;
+  children: React.ReactNode;
 }) {
-  const active = sort.col === col
-  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  const active = sort.col === col;
+  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead className="text-right">
       <button
@@ -65,7 +70,7 @@ function SortableHead({
         <Icon className={`h-3 w-3 ${active ? "" : "opacity-40"}`} />
       </button>
     </TableHead>
-  )
+  );
 }
 
 export function DualStatLeaderboardCard({
@@ -76,35 +81,34 @@ export function DualStatLeaderboardCard({
   format1,
   format2,
 }: {
-  title: string
-  col1Label: string
-  col2Label: string
-  rows: Row[]
-  format1: StatFormat
-  format2: StatFormat
+  title: string;
+  col1Label: string;
+  col2Label: string;
+  rows: Row[];
+  format1: StatFormat;
+  format2: StatFormat;
 }) {
-  const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: "value1", dir: "desc" })
-  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: "value1", dir: "desc" });
+  const [page, setPage] = useState(1);
 
   function handleSort(col: SortCol) {
     setSort((prev) =>
-      prev.col === col
-        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { col, dir: "desc" }
-    )
-    setPage(1)
+      prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "desc" },
+    );
+    setPage(1);
   }
 
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => {
-      const diff = a[sort.col] - b[sort.col]
-      return sort.dir === "asc" ? diff : -diff
-    }),
+    () =>
+      [...rows].sort((a, b) => {
+        const diff = a[sort.col] - b[sort.col];
+        return sort.dir === "asc" ? diff : -diff;
+      }),
     [rows, sort],
-  )
+  );
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <Card className="min-w-0 w-full overflow-hidden">
@@ -116,13 +120,17 @@ export function DualStatLeaderboardCard({
           <TableHeader>
             <TableRow>
               <TableHead>Callsign</TableHead>
-              <SortableHead col="value1" sort={sort} onSort={handleSort}>{col1Label}</SortableHead>
-              <SortableHead col="value2" sort={sort} onSort={handleSort}>{col2Label}</SortableHead>
+              <SortableHead col="value1" sort={sort} onSort={handleSort}>
+                {col1Label}
+              </SortableHead>
+              <SortableHead col="value2" sort={sort} onSort={handleSort}>
+                {col2Label}
+              </SortableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageRows.map((r) => {
-              const iplIdForUrl = r.iplId.startsWith("#") ? r.iplId.slice(1) : r.iplId
+              const iplIdForUrl = r.iplId.startsWith("#") ? r.iplId.slice(1) : r.iplId;
               return (
                 <TableRow key={r.playerId}>
                   <TableCell className="font-medium">
@@ -137,7 +145,7 @@ export function DualStatLeaderboardCard({
                     {applyFormat(r.value2, format2)}
                   </TableCell>
                 </TableRow>
-              )
+              );
             })}
             {pageRows.length === 0 && (
               <TableRow>
@@ -175,5 +183,5 @@ export function DualStatLeaderboardCard({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

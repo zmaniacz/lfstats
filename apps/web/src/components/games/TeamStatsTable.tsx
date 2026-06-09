@@ -17,18 +17,12 @@ import {
 } from "@/components/ui/table";
 import { formatPct, formatScore } from "@/lib/format";
 import { getPosition } from "@/lib/positions";
-import type {
-  GameDetailPlayer,
-  GameDetailTeam,
-  PenaltyRecord,
-} from "@lfstats/db";
+import type { GameDetailPlayer, GameDetailTeam, PenaltyRecord } from "@lfstats/db";
 import { CardsIcon, WarningIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 
-type PenaltyActions = React.ComponentProps<
-  typeof PlayerStatsSheet
->["penaltyActions"];
+type PenaltyActions = React.ComponentProps<typeof PlayerStatsSheet>["penaltyActions"];
 
 type Props = {
   team: GameDetailTeam;
@@ -48,9 +42,7 @@ export function TeamStatsTable({
   mercenaryAction,
 }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(
-    null,
-  );
+  const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(null);
 
   function openSheet(player: GameDetailPlayer) {
     setSelectedPlayer(player);
@@ -99,9 +91,9 @@ export function TeamStatsTable({
                     player.callsign
                   )}
                   {(() => {
-                    const count = (
-                      penaltiesByScorecard.get(player.id) ?? []
-                    ).filter((p) => !p.rescinded).length;
+                    const count = (penaltiesByScorecard.get(player.id) ?? []).filter(
+                      (p) => !p.rescinded,
+                    ).length;
                     if (count === 0) return null;
                     return (
                       <span className="flex items-center gap-0.5 text-yellow-500 text-xs font-normal shrink-0">
@@ -111,10 +103,7 @@ export function TeamStatsTable({
                     );
                   })()}
                   {player.eliminated && (
-                    <Badge
-                      variant="destructive"
-                      className="text-xs px-1 py-0 ml-auto"
-                    >
+                    <Badge variant="destructive" className="text-xs px-1 py-0 ml-auto">
                       OUT
                     </Badge>
                   )}
@@ -124,9 +113,7 @@ export function TeamStatsTable({
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
                   {(() => {
-                    const penaltySum = (
-                      penaltiesByScorecard.get(player.id) ?? []
-                    )
+                    const penaltySum = (penaltiesByScorecard.get(player.id) ?? [])
                       .filter((p) => !p.rescinded)
                       .reduce((s, p) => s + p.scoreValue, 0);
                     const adjusted = (player.score ?? 0) + penaltySum;
@@ -142,20 +129,14 @@ export function TeamStatsTable({
                     );
                   })()}
                 </TableCell>
-                <TableCell
-                  className="text-center"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                   <MvpBreakdownDialog
                     callsign={player.callsign}
                     totalMvp={player.mvpPoints}
                     components={player.mvpComponents}
                   />
                 </TableCell>
-                <TableCell
-                  className="text-center"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                   <HitDiffDialog
                     callsign={player.callsign}
                     hitDiff={player.hitDiff}
@@ -166,30 +147,22 @@ export function TeamStatsTable({
                   {formatPct(player.accuracy)}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
-                  {(player.shotsHitOpponentMedic ?? 0) +
-                    (player.missilesHitOpponentMedic ?? 0) * 2}
+                  {(player.shotsHitOpponentMedic ?? 0) + (player.missilesHitOpponentMedic ?? 0) * 2}
                   {(() => {
                     const parts = [];
                     if (player.missilesHitOpponentMedic)
                       parts.push(`${player.missilesHitOpponentMedic}m`);
-                    if (player.nukesHitMedic)
-                      parts.push(`${player.nukesHitMedic}n`);
+                    if (player.nukesHitMedic) parts.push(`${player.nukesHitMedic}n`);
                     return parts.length > 0 ? (
-                      <span className="text-muted-foreground ml-1">
-                        ({parts.join(" ")})
-                      </span>
+                      <span className="text-muted-foreground ml-1">({parts.join(" ")})</span>
                     ) : null;
                   })()}
                 </TableCell>
                 <TableCell className="text-center tabular-nums">
                   {player.missilesHitOpponent}
                 </TableCell>
-                <TableCell className="text-center tabular-nums">
-                  {player.livesLeft}
-                </TableCell>
-                <TableCell className="text-center tabular-nums">
-                  {player.shotsLeft}
-                </TableCell>
+                <TableCell className="text-center tabular-nums">{player.livesLeft}</TableCell>
+                <TableCell className="text-center tabular-nums">{player.shotsLeft}</TableCell>
                 <TableCell className="text-center tabular-nums">
                   {player.timesHitByMissile}
                 </TableCell>
@@ -206,11 +179,7 @@ export function TeamStatsTable({
           setSheetOpen(open);
         }}
         gameId={gameId}
-        penalties={
-          selectedPlayer
-            ? (penaltiesByScorecard.get(selectedPlayer.id) ?? [])
-            : []
-        }
+        penalties={selectedPlayer ? (penaltiesByScorecard.get(selectedPlayer.id) ?? []) : []}
         canEdit={canEdit}
         penaltyActions={penaltyActions}
         mercenaryAction={mercenaryAction}

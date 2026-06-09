@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useMemo } from "react"
-import Link from "next/link"
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
-import type { PlayerMedicHitsItem } from "@lfstats/db"
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import type { PlayerMedicHitsItem } from "@lfstats/db";
 import {
   Table,
   TableBody,
@@ -14,13 +14,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatScore, formatHitDiff } from "@/lib/format"
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatScore, formatHitDiff } from "@/lib/format";
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 10;
 
 type SortColumn =
   | "callsign"
@@ -29,26 +29,26 @@ type SortColumn =
   | "gamesPlayed"
   | "totalMedicHitsNonResup"
   | "avgMedicHitsNonResup"
-  | "gamesPlayedNonResup"
+  | "gamesPlayedNonResup";
 
-type SortState = { column: SortColumn; dir: "asc" | "desc" }
+type SortState = { column: SortColumn; dir: "asc" | "desc" };
 
 function getSortValue(item: PlayerMedicHitsItem, col: SortColumn): string | number {
   switch (col) {
     case "callsign":
-      return item.callsign.toLowerCase()
+      return item.callsign.toLowerCase();
     case "totalMedicHits":
-      return item.totalMedicHits
+      return item.totalMedicHits;
     case "avgMedicHits":
-      return item.avgMedicHits
+      return item.avgMedicHits;
     case "gamesPlayed":
-      return item.gamesPlayed
+      return item.gamesPlayed;
     case "totalMedicHitsNonResup":
-      return item.totalMedicHitsNonResup ?? -1
+      return item.totalMedicHitsNonResup ?? -1;
     case "avgMedicHitsNonResup":
-      return item.avgMedicHitsNonResup ?? -1
+      return item.avgMedicHitsNonResup ?? -1;
     case "gamesPlayedNonResup":
-      return item.gamesPlayedNonResup
+      return item.gamesPlayedNonResup;
   }
 }
 
@@ -58,13 +58,13 @@ function SortableHead({
   onSort,
   children,
 }: {
-  column: SortColumn
-  sort: SortState
-  onSort: (col: SortColumn) => void
-  children: React.ReactNode
+  column: SortColumn;
+  sort: SortState;
+  onSort: (col: SortColumn) => void;
+  children: React.ReactNode;
 }) {
-  const isActive = sort.column === column
-  const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  const isActive = sort.column === column;
+  const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 
   return (
     <TableHead>
@@ -76,47 +76,45 @@ function SortableHead({
         <Icon className={`h-3 w-3 ${isActive ? "" : "opacity-40"}`} />
       </button>
     </TableHead>
-  )
+  );
 }
 
 export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHitsItem[] }) {
-  const [sort, setSort] = useState<SortState>({ column: "totalMedicHits", dir: "desc" })
-  const [search, setSearch] = useState("")
-  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<SortState>({ column: "totalMedicHits", dir: "desc" });
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   function handleSort(col: SortColumn) {
     setSort((prev) =>
       prev.column === col
         ? { column: col, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { column: col, dir: "asc" },
-    )
-    setPage(1)
+    );
+    setPage(1);
   }
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return players
-    return players.filter((p) => p.callsign.toLowerCase().includes(q))
-  }, [players, search])
+    const q = search.trim().toLowerCase();
+    if (!q) return players;
+    return players.filter((p) => p.callsign.toLowerCase().includes(q));
+  }, [players, search]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const va = getSortValue(a, sort.column)
-      const vb = getSortValue(b, sort.column)
+      const va = getSortValue(a, sort.column);
+      const vb = getSortValue(b, sort.column);
       const cmp =
-        typeof va === "number"
-          ? va - (vb as number)
-          : (va as string).localeCompare(vb as string)
-      return sort.dir === "asc" ? cmp : -cmp
-    })
-  }, [filtered, sort])
+        typeof va === "number" ? va - (vb as number) : (va as string).localeCompare(vb as string);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function handleSearch(value: string) {
-    setSearch(value)
-    setPage(1)
+    setSearch(value);
+    setPage(1);
   }
 
   return (
@@ -160,32 +158,32 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
           </TableHeader>
           <TableBody>
             {pageRows.map((p) => {
-              const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId
+              const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
               return (
                 <TableRow key={p.iplId}>
                   <TableCell>
-                    <Link
-                      href={`/players/${iplIdForUrl}`}
-                      className="hover:underline font-medium"
-                    >
+                    <Link href={`/players/${iplIdForUrl}`} className="hover:underline font-medium">
                       {p.callsign}
                     </Link>
                   </TableCell>
                   <TableCell className="tabular-nums">{formatScore(p.totalMedicHits)}</TableCell>
                   <TableCell className="tabular-nums">{formatHitDiff(p.avgMedicHits)}</TableCell>
                   <TableCell className="tabular-nums">{formatScore(p.gamesPlayed)}</TableCell>
-                  <TableCell className="tabular-nums">{formatScore(p.totalMedicHitsNonResup)}</TableCell>
-                  <TableCell className="tabular-nums">{formatHitDiff(p.avgMedicHitsNonResup)}</TableCell>
-                  <TableCell className="tabular-nums">{formatScore(p.gamesPlayedNonResup)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatScore(p.totalMedicHitsNonResup)}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatHitDiff(p.avgMedicHitsNonResup)}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatScore(p.gamesPlayedNonResup)}
+                  </TableCell>
                 </TableRow>
-              )
+              );
             })}
             {pageRows.length === 0 && (
               <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center text-muted-foreground py-8"
-                >
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   {search ? "No players match the search." : "No players found."}
                 </TableCell>
               </TableRow>
@@ -221,5 +219,5 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

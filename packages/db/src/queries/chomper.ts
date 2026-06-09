@@ -35,10 +35,7 @@ export async function createChomperJob(data: typeof chomperJob.$inferInsert) {
   return row;
 }
 
-export async function updateChomperJob(
-  id: string,
-  data: Partial<typeof chomperJob.$inferInsert>,
-) {
+export async function updateChomperJob(id: string, data: Partial<typeof chomperJob.$inferInsert>) {
   await db.update(chomperJob).set(data).where(eq(chomperJob.id, id));
 }
 
@@ -55,32 +52,19 @@ export async function getFailedChomperJobs() {
   return db
     .select()
     .from(chomperJob)
-    .where(
-      and(
-        inArray(chomperJob.status, ["failed", "rejected"]),
-        eq(chomperJob.archived, false),
-      ),
-    )
+    .where(and(inArray(chomperJob.status, ["failed", "rejected"]), eq(chomperJob.archived, false)))
     .orderBy(desc(chomperJob.startedAt));
 }
 
 export async function archiveChomperJob(id: string) {
-  await db
-    .update(chomperJob)
-    .set({ archived: true })
-    .where(eq(chomperJob.id, id));
+  await db.update(chomperJob).set({ archived: true }).where(eq(chomperJob.id, id));
 }
 
 export async function archiveAllChomperJobs() {
   await db
     .update(chomperJob)
     .set({ archived: true })
-    .where(
-      and(
-        inArray(chomperJob.status, ["failed", "rejected"]),
-        eq(chomperJob.archived, false),
-      ),
-    );
+    .where(and(inArray(chomperJob.status, ["failed", "rejected"]), eq(chomperJob.archived, false)));
 }
 
 export async function getChomperJobsByS3Keys(s3Keys: string[]) {
@@ -101,12 +85,7 @@ export async function upsertCenter(tx: Tx, data: typeof center.$inferInsert) {
   const [row] = await tx
     .select()
     .from(center)
-    .where(
-      and(
-        eq(center.countryCode, data.countryCode),
-        eq(center.siteCode, data.siteCode),
-      ),
-    );
+    .where(and(eq(center.countryCode, data.countryCode), eq(center.siteCode, data.siteCode)));
   return row;
 }
 
@@ -139,10 +118,7 @@ export async function upsertPlayerCallsignHistory(
     });
 }
 
-export async function upsertBattlesuit(
-  tx: Tx,
-  data: typeof battlesuit.$inferInsert,
-) {
+export async function upsertBattlesuit(tx: Tx, data: typeof battlesuit.$inferInsert) {
   const [row] = await tx
     .insert(battlesuit)
     .values(data)
@@ -173,16 +149,11 @@ export async function upsertTarget(tx: Tx, data: typeof target.$inferInsert) {
 // Idempotency / lookups
 // ---------------------------------------------------------------------------
 
-export async function findCenterByNaturalKey(
-  countryCode: number,
-  siteCode: number,
-) {
+export async function findCenterByNaturalKey(countryCode: number, siteCode: number) {
   const rows = await db
     .select()
     .from(center)
-    .where(
-      and(eq(center.countryCode, countryCode), eq(center.siteCode, siteCode)),
-    );
+    .where(and(eq(center.countryCode, countryCode), eq(center.siteCode, siteCode)));
   return rows[0] ?? null;
 }
 
@@ -203,25 +174,16 @@ export async function insertGame(tx: Tx, data: typeof game.$inferInsert) {
   return row;
 }
 
-export async function insertGameTeams(
-  tx: Tx,
-  rows: (typeof sm5GameTeam.$inferInsert)[],
-) {
+export async function insertGameTeams(tx: Tx, rows: (typeof sm5GameTeam.$inferInsert)[]) {
   return tx.insert(sm5GameTeam).values(rows).returning();
 }
 
-export async function insertGameTargets(
-  tx: Tx,
-  rows: (typeof sm5GameTarget.$inferInsert)[],
-) {
+export async function insertGameTargets(tx: Tx, rows: (typeof sm5GameTarget.$inferInsert)[]) {
   if (rows.length === 0) return [];
   return tx.insert(sm5GameTarget).values(rows).returning();
 }
 
-export async function insertGameReferees(
-  tx: Tx,
-  rows: (typeof gameReferee.$inferInsert)[],
-) {
+export async function insertGameReferees(tx: Tx, rows: (typeof gameReferee.$inferInsert)[]) {
   if (rows.length === 0) return [];
   return tx.insert(gameReferee).values(rows).returning();
 }
@@ -234,10 +196,7 @@ export async function insertGameTargetDestructions(
   await tx.insert(sm5GameTargetDestruction).values(rows);
 }
 
-export async function insertGamePenalties(
-  tx: Tx,
-  rows: (typeof sm5GamePenalty.$inferInsert)[],
-) {
+export async function insertGamePenalties(tx: Tx, rows: (typeof sm5GamePenalty.$inferInsert)[]) {
   if (rows.length === 0) return [];
   await tx.insert(sm5GamePenalty).values(rows);
 }
@@ -246,10 +205,7 @@ export async function insertGamePenalties(
 // Player Performance
 // ---------------------------------------------------------------------------
 
-export async function insertScorecards(
-  tx: Tx,
-  rows: (typeof sm5Scorecard.$inferInsert)[],
-) {
+export async function insertScorecards(tx: Tx, rows: (typeof sm5Scorecard.$inferInsert)[]) {
   return tx.insert(sm5Scorecard).values(rows).returning();
 }
 
@@ -265,10 +221,7 @@ export async function insertGamePlayerInteractions(
 // Replay Data
 // ---------------------------------------------------------------------------
 
-export async function insertGameEvents(
-  tx: Tx,
-  rows: (typeof sm5GameEvent.$inferInsert)[],
-) {
+export async function insertGameEvents(tx: Tx, rows: (typeof sm5GameEvent.$inferInsert)[]) {
   if (rows.length === 0) return [];
   const CHUNK = 1000;
   const results = [];
@@ -299,17 +252,11 @@ export async function insertGamePlayerStates(
 // ---------------------------------------------------------------------------
 
 export async function findActiveMvpModel() {
-  const rows = await db
-    .select()
-    .from(sm5MvpModel)
-    .where(isNull(sm5MvpModel.retiredAt));
+  const rows = await db.select().from(sm5MvpModel).where(isNull(sm5MvpModel.retiredAt));
   return rows[0] ?? null;
 }
 
-export async function insertScorecardMvps(
-  tx: Tx,
-  rows: (typeof sm5ScorecardMvp.$inferInsert)[],
-) {
+export async function insertScorecardMvps(tx: Tx, rows: (typeof sm5ScorecardMvp.$inferInsert)[]) {
   if (rows.length === 0) return;
   await tx.insert(sm5ScorecardMvp).values(rows);
 }
@@ -323,12 +270,7 @@ export async function getAllMvpModels() {
 }
 
 export async function getGameIdsPage(limit: number, offset: number) {
-  return db
-    .select({ id: game.id })
-    .from(game)
-    .orderBy(game.id)
-    .limit(limit)
-    .offset(offset);
+  return db.select({ id: game.id }).from(game).orderBy(game.id).limit(limit).offset(offset);
 }
 
 export async function getGameForRecalc(gameId: string) {
@@ -417,9 +359,7 @@ export async function recalcMvpForGame(
   components: (typeof sm5ScorecardMvp.$inferInsert)[],
 ) {
   if (scorecardIds.length === 0) return;
-  await tx
-    .delete(sm5ScorecardMvp)
-    .where(inArray(sm5ScorecardMvp.scorecardId, scorecardIds));
+  await tx.delete(sm5ScorecardMvp).where(inArray(sm5ScorecardMvp.scorecardId, scorecardIds));
   for (const u of updates) {
     await tx
       .update(sm5Scorecard)

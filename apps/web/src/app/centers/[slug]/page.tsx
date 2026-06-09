@@ -1,36 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
+import { notFound } from "next/navigation";
 import {
   getCenterBySlug,
   getCenterGameCount,
   getCenterWinsByColor,
   getCenterMvpBoxPlot,
   getCenterMvpComponents,
-} from "@lfstats/db"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { WinsByColorChart } from "@/components/centers/WinsByColorChart"
-import { MvpBoxPlotChart } from "@/components/centers/MvpBoxPlotChart"
-import { MvpComponentsChart } from "@/components/centers/MvpComponentsChart"
+} from "@lfstats/db";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WinsByColorChart } from "@/components/centers/WinsByColorChart";
+import { MvpBoxPlotChart } from "@/components/centers/MvpBoxPlotChart";
+import { MvpComponentsChart } from "@/components/centers/MvpComponentsChart";
 
-export default async function CenterDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  const { slug } = await params
+export default async function CenterDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
 
-  const centerDetail = await getCenterBySlug(slug)
-  if (!centerDetail) notFound()
+  const centerDetail = await getCenterBySlug(slug);
+  if (!centerDetail) notFound();
 
-  const [gameCount, winsByColor, mvpBoxPlot, mvpComponents] =
-    await Promise.all([
-      getCenterGameCount(centerDetail.id),
-      getCenterWinsByColor(centerDetail.id),
-      getCenterMvpBoxPlot(centerDetail.id),
-      getCenterMvpComponents(centerDetail.id),
-    ])
+  const [gameCount, winsByColor, mvpBoxPlot, mvpComponents] = await Promise.all([
+    getCenterGameCount(centerDetail.id),
+    getCenterWinsByColor(centerDetail.id),
+    getCenterMvpBoxPlot(centerDetail.id),
+    getCenterMvpComponents(centerDetail.id),
+  ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -76,5 +71,5 @@ export default async function CenterDetailPage({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -43,13 +43,8 @@ function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsItem[] {
 
   return Array.from(map.values())
     .map(({ iplId, callsign, entries }) => {
-      const nonResup = entries.filter((r) =>
-        [1, 2, 3].includes(r.player.position),
-      );
-      const totalMedicHits = entries.reduce(
-        (s, r) => s + r.player.shotsHitOpponentMedic,
-        0,
-      );
+      const nonResup = entries.filter((r) => [1, 2, 3].includes(r.player.position));
+      const totalMedicHits = entries.reduce((s, r) => s + r.player.shotsHitOpponentMedic, 0);
       const gamesPlayed = entries.length;
       const totalMedicHitsNonResup =
         nonResup.length > 0
@@ -63,9 +58,7 @@ function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsItem[] {
         gamesPlayed,
         totalMedicHitsNonResup,
         avgMedicHitsNonResup:
-          nonResup.length > 0
-            ? (totalMedicHitsNonResup as number) / nonResup.length
-            : null,
+          nonResup.length > 0 ? (totalMedicHitsNonResup as number) / nonResup.length : null,
         gamesPlayedNonResup: nonResup.length,
       };
     })

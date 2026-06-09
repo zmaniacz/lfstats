@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { TEAM_COLORS } from "@/lib/team-colors"
-import { formatGameName, formatDateTime } from "@/lib/format"
-import type { UnassignedCompetitionGame } from "@lfstats/db"
+} from "@/components/ui/select";
+import { TEAM_COLORS } from "@/lib/team-colors";
+import { formatGameName, formatDateTime } from "@/lib/format";
+import type { UnassignedCompetitionGame } from "@lfstats/db";
 
 type Props = {
-  team1Name: string
-  team2Name: string
-  availableGameNumbers: number[] // e.g. [1] or [2] or [1,2]
-  unassignedGames: UnassignedCompetitionGame[]
-  action: (formData: FormData) => Promise<void>
-}
+  team1Name: string;
+  team2Name: string;
+  availableGameNumbers: number[]; // e.g. [1] or [2] or [1,2]
+  unassignedGames: UnassignedCompetitionGame[];
+  action: (formData: FormData) => Promise<void>;
+};
 
 export function MatchGameAssignForm({
   team1Name,
@@ -33,45 +33,46 @@ export function MatchGameAssignForm({
   unassignedGames,
   action,
 }: Props) {
-  const [gameNumber, setGameNumber] = useState<string>(String(availableGameNumbers[0] ?? 1))
-  const [gameId, setGameId] = useState("")
-  const [team1GameTeamId, setTeam1GameTeamId] = useState("")
-  const [team2GameTeamId, setTeam2GameTeamId] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [gameNumber, setGameNumber] = useState<string>(String(availableGameNumbers[0] ?? 1));
+  const [gameId, setGameId] = useState("");
+  const [team1GameTeamId, setTeam1GameTeamId] = useState("");
+  const [team2GameTeamId, setTeam2GameTeamId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
-  const selectedGame = unassignedGames.find((g) => g.id === gameId)
+  const selectedGame = unassignedGames.find((g) => g.id === gameId);
 
   function handleGameChange(id: string) {
-    setGameId(id)
-    setTeam1GameTeamId("")
-    setTeam2GameTeamId("")
+    setGameId(id);
+    setTeam1GameTeamId("");
+    setTeam2GameTeamId("");
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData()
-    formData.set("gameNumber", gameNumber)
-    formData.set("gameId", gameId)
-    formData.set("team1GameTeamId", team1GameTeamId)
-    formData.set("team2GameTeamId", team2GameTeamId)
-    setIsSubmitting(true)
+    e.preventDefault();
+    const formData = new FormData();
+    formData.set("gameNumber", gameNumber);
+    formData.set("gameId", gameId);
+    formData.set("team1GameTeamId", team1GameTeamId);
+    formData.set("team2GameTeamId", team2GameTeamId);
+    setIsSubmitting(true);
     try {
-      await action(formData)
-      setGameId("")
-      setTeam1GameTeamId("")
-      setTeam2GameTeamId("")
+      await action(formData);
+      setGameId("");
+      setTeam1GameTeamId("");
+      setTeam2GameTeamId("");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
-  const canSubmit = gameId && team1GameTeamId && team2GameTeamId && team1GameTeamId !== team2GameTeamId
+  const canSubmit =
+    gameId && team1GameTeamId && team2GameTeamId && team1GameTeamId !== team2GameTeamId;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,11 +101,14 @@ export function MatchGameAssignForm({
             </SelectTrigger>
             <SelectContent>
               {unassignedGames.length === 0 ? (
-                <SelectItem value="__none" disabled>No unassigned games</SelectItem>
+                <SelectItem value="__none" disabled>
+                  No unassigned games
+                </SelectItem>
               ) : (
                 unassignedGames.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
-                    {formatGameName(g.description, g.startTime)} — {g.centerName} ({formatDateTime(g.startTime)})
+                    {formatGameName(g.description, g.startTime)} — {g.centerName} (
+                    {formatDateTime(g.startTime)})
                   </SelectItem>
                 ))
               )}
@@ -123,12 +127,12 @@ export function MatchGameAssignForm({
               </SelectTrigger>
               <SelectContent>
                 {selectedGame.teams.map((t) => {
-                  const color = TEAM_COLORS[t.colourEnum]
+                  const color = TEAM_COLORS[t.colourEnum];
                   return (
                     <SelectItem key={t.id} value={t.id} disabled={t.id === team2GameTeamId}>
                       {color?.label ?? t.name} ({t.name})
                     </SelectItem>
-                  )
+                  );
                 })}
               </SelectContent>
             </Select>
@@ -142,12 +146,12 @@ export function MatchGameAssignForm({
               </SelectTrigger>
               <SelectContent>
                 {selectedGame.teams.map((t) => {
-                  const color = TEAM_COLORS[t.colourEnum]
+                  const color = TEAM_COLORS[t.colourEnum];
                   return (
                     <SelectItem key={t.id} value={t.id} disabled={t.id === team1GameTeamId}>
                       {color?.label ?? t.name} ({t.name})
                     </SelectItem>
-                  )
+                  );
                 })}
               </SelectContent>
             </Select>
@@ -159,5 +163,5 @@ export function MatchGameAssignForm({
         {isPending ? "Assigning…" : "Assign Game"}
       </Button>
     </form>
-  )
+  );
 }

@@ -20,12 +20,7 @@ import {
   insertGamePlayerStates,
   insertScorecardMvps,
 } from "@lfstats/db";
-import type {
-  ParsedTdf,
-  ParsedEntity,
-  PlayerSimState,
-  SimulatedGame,
-} from "./types.js";
+import type { ParsedTdf, ParsedEntity, PlayerSimState, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
 import type { MvpRow } from "./mvp.js";
 
@@ -103,15 +98,12 @@ export async function ingest(
     const gameTeamRows = await insertGameTeams(
       tx,
       parsed.teams.map((team) => {
-        const simTeam = simResult.teams.find(
-          (t) => t.tdfTeamIndex === team.index,
-        );
+        const simTeam = simResult.teams.find((t) => t.tdfTeamIndex === team.index);
         return {
           gameId,
           tdfTeamIndex: team.index,
           isNeutral:
-            team.desc.toLowerCase() === "neutral" ||
-            team.desc.toLowerCase() === "neutral team",
+            team.desc.toLowerCase() === "neutral" || team.desc.toLowerCase() === "neutral team",
           name: team.desc,
           colourEnum: team.colourEnum,
           colourRgb: team.colourRgb,
@@ -183,10 +175,7 @@ export async function ingest(
     );
     const gameTargetIdByHardwareId = new Map<string, string>();
     for (let i = 0; i < targetEntityList.length; i++) {
-      gameTargetIdByHardwareId.set(
-        targetEntityList[i]!.id,
-        gameTargetRows[i]!.id,
-      );
+      gameTargetIdByHardwareId.set(targetEntityList[i]!.id, gameTargetRows[i]!.id);
     }
 
     // -----------------------------------------------------------------------
@@ -222,9 +211,7 @@ export async function ingest(
     // Find mission end time for end_time calculation
     const missionEndEvent = parsed.events.find((e) => e.type === "0101");
     const missionEndOffset = missionEndEvent?.time ?? 0;
-    const missionEndTimestamp = new Date(
-      gameStartTime.getTime() + missionEndOffset,
-    );
+    const missionEndTimestamp = new Date(gameStartTime.getTime() + missionEndOffset);
 
     const scorecardInsertRows = playerEntityList.map((entity) => {
       const ps = simResult.playerStats.get(entity.id);
@@ -245,12 +232,8 @@ export async function ingest(
       const score = end?.score ?? 0;
 
       const accuracy =
-        (sm5?.shotsFired ?? 0) > 0
-          ? r3((sm5?.shotsHit ?? 0) / (sm5?.shotsFired ?? 1))
-          : 0;
-      const hitDiff = r3(
-        (sm5?.shotOpponent ?? 0) / Math.max(sm5?.timesZapped ?? 0, 1),
-      );
+        (sm5?.shotsFired ?? 0) > 0 ? r3((sm5?.shotsHit ?? 0) / (sm5?.shotsFired ?? 1)) : 0;
+      const hitDiff = r3((sm5?.shotOpponent ?? 0) / Math.max(sm5?.timesZapped ?? 0, 1));
 
       // Average nuke activation time
       const avgNukeTime =
@@ -260,9 +243,7 @@ export async function ingest(
 
       // Average rapid time
       const avgRapidTime =
-        isScout && ps && ps.rapidFire > 0
-          ? Math.round(ps.totalRapidTime / ps.rapidFire)
-          : null;
+        isScout && ps && ps.rapidFire > 0 ? Math.round(ps.totalRapidTime / ps.rapidFire) : null;
 
       // accuracy during rapid
       const accDuringRapid =
@@ -326,9 +307,7 @@ export async function ingest(
         nukesDetonated: isCommander ? (sm5?.nukesDetonated ?? 0) : null,
         nukesHitMedic: isCommander ? (sm5?.medicNukes ?? 0) : null,
         livesRemovedByNuke: isCommander ? (ps?.livesRemovedByNuke ?? 0) : null,
-        totalNukeActivationTime: isCommander
-          ? (ps?.totalNukeActivationTime ?? 0)
-          : null,
+        totalNukeActivationTime: isCommander ? (ps?.totalNukeActivationTime ?? 0) : null,
         averageNukeActivationTime: isCommander ? avgNukeTime : null,
 
         // Nuke cancel — all positions
@@ -343,25 +322,17 @@ export async function ingest(
         rapidFire: isScout ? (sm5?.scoutRapid ?? 0) : null,
         totalRapidTime: isScout ? (ps?.totalRapidTime ?? 0) : null,
         averageRapidTime: isScout ? avgRapidTime : null,
-        shotsFiredDuringRapid: isScout
-          ? (ps?.shotsFiredDuringRapid ?? 0)
-          : null,
+        shotsFiredDuringRapid: isScout ? (ps?.shotsFiredDuringRapid ?? 0) : null,
         shotsHitDuringRapid: isScout ? (ps?.shotsHitDuringRapid ?? 0) : null,
-        shotsHitOpponentDuringRapid: isScout
-          ? (ps?.shotsHitOpponentDuringRapid ?? 0)
-          : null,
-        shotsHitTeamDuringRapid: isScout
-          ? (ps?.shotsHitTeamDuringRapid ?? 0)
-          : null,
+        shotsHitOpponentDuringRapid: isScout ? (ps?.shotsHitOpponentDuringRapid ?? 0) : null,
+        shotsHitTeamDuringRapid: isScout ? (ps?.shotsHitTeamDuringRapid ?? 0) : null,
         accuracyDuringRapid: accDuringRapid,
         ammoBoost: isAmmo ? (sm5?.ammoBoost ?? 0) : null,
         lifeBoost: isMedic ? (sm5?.lifeBoost ?? 0) : null,
 
         // Support stats
         resuppliesGiven: isSupport ? (ps?.resuppliesGiven ?? 0) : null,
-        doubleResuppliesGiven: isSupport
-          ? (ps?.doubleResuppliesGiven ?? 0)
-          : null,
+        doubleResuppliesGiven: isSupport ? (ps?.doubleResuppliesGiven ?? 0) : null,
         resuppliesReceivedAmmo: ps?.resuppliesReceivedAmmo ?? 0,
         resuppliesReceivedLives: ps?.resuppliesReceivedLives ?? 0,
         emergencyResuppliesReceivedAmmo: ps?.emergencyResuppliesReceivedAmmo ?? 0,
@@ -455,9 +426,7 @@ export async function ingest(
     // -----------------------------------------------------------------------
     const penaltyRows = simResult.penalties.map((p) => ({
       gameId,
-      refereeId: p.refereeEntityId
-        ? (refereeIdByEntityId.get(p.refereeEntityId) ?? null)
-        : null,
+      refereeId: p.refereeEntityId ? (refereeIdByEntityId.get(p.refereeEntityId) ?? null) : null,
       scorecardId: scorecardIdByEntityId.get(p.targetEntityId)!,
       scoreValue: p.scoreValue,
       description: "Common Foul",
@@ -565,11 +534,7 @@ export async function ingest(
 // Helpers
 // ---------------------------------------------------------------------------
 
-export function buildArchiveKey(
-  countryCode: number,
-  siteCode: number,
-  startTime: string,
-): string {
+export function buildArchiveKey(countryCode: number, siteCode: number, startTime: string): string {
   return `${countryCode}-${siteCode}-${startTime}.tdf`;
 }
 

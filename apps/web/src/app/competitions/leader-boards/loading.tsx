@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function LeaderBoardsLoading() {
   return (
@@ -29,5 +29,5 @@ export default function LeaderBoardsLoading() {
         </div>
       </div>
     </div>
-  )
+  );
 }

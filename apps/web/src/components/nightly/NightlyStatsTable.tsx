@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useMemo } from "react"
-import Link from "next/link"
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
-import type { GameDetailPlayer } from "@lfstats/db"
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import type { GameDetailPlayer } from "@lfstats/db";
 import {
   Table,
   TableBody,
@@ -14,34 +14,34 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { formatScore, formatPct, formatHitDiff, formatMVP, formatGameName } from "@/lib/format"
-import { getPosition, POSITIONS } from "@/lib/positions"
-import { getTeamColor } from "@/lib/team-colors"
-import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog"
-import { HitDiffDialog } from "@/components/games/HitDiffDialog"
-import { PlayerStatsSheet } from "@/components/games/PlayerStatsSheet"
+} from "@/components/ui/select";
+import { formatScore, formatPct, formatHitDiff, formatMVP, formatGameName } from "@/lib/format";
+import { getPosition, POSITIONS } from "@/lib/positions";
+import { getTeamColor } from "@/lib/team-colors";
+import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog";
+import { HitDiffDialog } from "@/components/games/HitDiffDialog";
+import { PlayerStatsSheet } from "@/components/games/PlayerStatsSheet";
 
 export type NightlyScorecardRow = {
-  player: GameDetailPlayer
-  teamColorEnum: number
-  teamResult: "win" | "loss" | "draw" | null
-  gameSlug: string
-  gameStartTime: Date
-  gameDescription: string | null
-  winningTeamColorEnum: number | null
-}
+  player: GameDetailPlayer;
+  teamColorEnum: number;
+  teamResult: "win" | "loss" | "draw" | null;
+  gameSlug: string;
+  gameStartTime: Date;
+  gameDescription: string | null;
+  winningTeamColorEnum: number | null;
+};
 
 type SortKey =
   | "callsign"
@@ -52,21 +52,30 @@ type SortKey =
   | "hitDiff"
   | "shotsHitOpponentMedic"
   | "accuracy"
-  | "shotsHitTeam"
+  | "shotsHitTeam";
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 10;
 
 function getSortValue(row: NightlyScorecardRow, key: SortKey): string | number {
   switch (key) {
-    case "callsign":              return row.player.callsign.toLowerCase()
-    case "gameStartTime":         return row.gameStartTime.getTime()
-    case "position":              return row.player.position
-    case "score":                 return row.player.score
-    case "mvpPoints":             return row.player.mvpPoints
-    case "hitDiff":               return row.player.hitDiff
-    case "shotsHitOpponentMedic": return row.player.shotsHitOpponentMedic
-    case "accuracy":              return row.player.accuracy
-    case "shotsHitTeam":          return row.player.shotsHitTeam
+    case "callsign":
+      return row.player.callsign.toLowerCase();
+    case "gameStartTime":
+      return row.gameStartTime.getTime();
+    case "position":
+      return row.player.position;
+    case "score":
+      return row.player.score;
+    case "mvpPoints":
+      return row.player.mvpPoints;
+    case "hitDiff":
+      return row.player.hitDiff;
+    case "shotsHitOpponentMedic":
+      return row.player.shotsHitOpponentMedic;
+    case "accuracy":
+      return row.player.accuracy;
+    case "shotsHitTeam":
+      return row.player.shotsHitTeam;
   }
 }
 
@@ -79,16 +88,16 @@ function SortableHead({
   className,
   center = false,
 }: {
-  label: string
-  col: SortKey
-  sortKey: SortKey
-  sortDir: "asc" | "desc"
-  onSort: (col: SortKey) => void
-  className?: string
-  center?: boolean
+  label: string;
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: "asc" | "desc";
+  onSort: (col: SortKey) => void;
+  className?: string;
+  center?: boolean;
 }) {
-  const isActive = sortKey === col
-  const Icon = isActive ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  const isActive = sortKey === col;
+  const Icon = isActive ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead className={className}>
       <button
@@ -99,74 +108,74 @@ function SortableHead({
         <Icon className={`h-3 w-3 ${isActive ? "" : "opacity-40"}`} />
       </button>
     </TableHead>
-  )
+  );
 }
 
 type Props = {
-  rows: NightlyScorecardRow[]
-}
+  rows: NightlyScorecardRow[];
+};
 
 export function NightlyStatsTable({ rows }: Props) {
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(null);
 
-  const [sortKey, setSortKey] = useState<SortKey>("mvpPoints")
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+  const [sortKey, setSortKey] = useState<SortKey>("mvpPoints");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const [nameFilter, setNameFilter] = useState("")
-  const [positionFilter, setPositionFilter] = useState<string>("all")
+  const [nameFilter, setNameFilter] = useState("");
+  const [positionFilter, setPositionFilter] = useState<string>("all");
 
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(1);
 
   function handleSort(col: SortKey) {
     if (col === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
-      setSortKey(col)
-      setSortDir("desc")
+      setSortKey(col);
+      setSortDir("desc");
     }
-    setPage(1)
+    setPage(1);
   }
 
   function handleNameFilter(value: string) {
-    setNameFilter(value)
-    setPage(1)
+    setNameFilter(value);
+    setPage(1);
   }
 
   function handlePositionFilter(value: string) {
-    setPositionFilter(value)
-    setPage(1)
+    setPositionFilter(value);
+    setPage(1);
   }
 
   function openSheet(player: GameDetailPlayer) {
-    setSelectedPlayer(player)
-    setSheetOpen(true)
+    setSelectedPlayer(player);
+    setSheetOpen(true);
   }
 
   const filtered = useMemo(() => {
-    const lowerName = nameFilter.toLowerCase()
-    const posNum = positionFilter === "all" ? null : Number(positionFilter)
+    const lowerName = nameFilter.toLowerCase();
+    const posNum = positionFilter === "all" ? null : Number(positionFilter);
     return rows.filter((r) => {
-      if (lowerName && !r.player.callsign.toLowerCase().includes(lowerName)) return false
-      if (posNum !== null && r.player.position !== posNum) return false
-      return true
-    })
-  }, [rows, nameFilter, positionFilter])
+      if (lowerName && !r.player.callsign.toLowerCase().includes(lowerName)) return false;
+      if (posNum !== null && r.player.position !== posNum) return false;
+      return true;
+    });
+  }, [rows, nameFilter, positionFilter]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const av = getSortValue(a, sortKey)
-      const bv = getSortValue(b, sortKey)
-      if (av < bv) return sortDir === "asc" ? -1 : 1
-      if (av > bv) return sortDir === "asc" ? 1 : -1
-      return 0
-    })
-  }, [filtered, sortKey, sortDir])
+      const av = getSortValue(a, sortKey);
+      const bv = getSortValue(b, sortKey);
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filtered, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const sortHeadProps = { sortKey, sortDir, onSort: handleSort }
+  const sortHeadProps = { sortKey, sortDir, onSort: handleSort };
 
   return (
     <>
@@ -201,15 +210,68 @@ export function NightlyStatsTable({ rows }: Props) {
             <Table className="table-fixed min-w-200 w-full">
               <TableHeader>
                 <TableRow>
-                  <SortableHead label="Callsign" col="callsign" className="w-[16%]" {...sortHeadProps} />
-                  <SortableHead label="Game" col="gameStartTime" className="w-[12%]" center {...sortHeadProps} />
-                  <SortableHead label="Pos" col="position" className="w-[6%]" center {...sortHeadProps} />
-                  <SortableHead label="Score" col="score" className="w-[8%]" center {...sortHeadProps} />
-                  <SortableHead label="MVP" col="mvpPoints" className="w-[8%]" center {...sortHeadProps} />
-                  <SortableHead label="Hit Diff" col="hitDiff" className="w-[8%]" center {...sortHeadProps} />
-                  <SortableHead label="Medic Hits" col="shotsHitOpponentMedic" className="w-[8%]" center {...sortHeadProps} />
-                  <SortableHead label="Accuracy" col="accuracy" className="w-[8%]" center {...sortHeadProps} />
-                  <SortableHead label="Shot Team" col="shotsHitTeam" className="w-[8%]" center {...sortHeadProps} />
+                  <SortableHead
+                    label="Callsign"
+                    col="callsign"
+                    className="w-[16%]"
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Game"
+                    col="gameStartTime"
+                    className="w-[12%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Pos"
+                    col="position"
+                    className="w-[6%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Score"
+                    col="score"
+                    className="w-[8%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="MVP"
+                    col="mvpPoints"
+                    className="w-[8%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Hit Diff"
+                    col="hitDiff"
+                    className="w-[8%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Medic Hits"
+                    col="shotsHitOpponentMedic"
+                    className="w-[8%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Accuracy"
+                    col="accuracy"
+                    className="w-[8%]"
+                    center
+                    {...sortHeadProps}
+                  />
+                  <SortableHead
+                    label="Shot Team"
+                    col="shotsHitTeam"
+                    className="w-[8%]"
+                    center
+                    {...sortHeadProps}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -221,11 +283,12 @@ export function NightlyStatsTable({ rows }: Props) {
                   </TableRow>
                 ) : (
                   pageRows.map((row) => {
-                    const { player } = row
-                    const winnerColor = row.winningTeamColorEnum !== null
-                      ? getTeamColor(row.winningTeamColorEnum)?.text
-                      : undefined
-                    const posColor = getTeamColor(row.teamColorEnum)?.text
+                    const { player } = row;
+                    const winnerColor =
+                      row.winningTeamColorEnum !== null
+                        ? getTeamColor(row.winningTeamColorEnum)?.text
+                        : undefined;
+                    const posColor = getTeamColor(row.teamColorEnum)?.text;
 
                     return (
                       <TableRow
@@ -260,26 +323,22 @@ export function NightlyStatsTable({ rows }: Props) {
                             {formatGameName(row.gameDescription, row.gameStartTime)}
                           </Link>
                         </TableCell>
-                        <TableCell className={`text-center text-xs ${posColor ?? "text-muted-foreground"}`}>
+                        <TableCell
+                          className={`text-center text-xs ${posColor ?? "text-muted-foreground"}`}
+                        >
                           {getPosition(player.position)?.abbr ?? player.position}
                         </TableCell>
                         <TableCell className="text-center tabular-nums">
                           {formatScore(player.score)}
                         </TableCell>
-                        <TableCell
-                          className="text-center"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                           <MvpBreakdownDialog
                             callsign={player.callsign}
                             totalMvp={player.mvpPoints}
                             components={player.mvpComponents}
                           />
                         </TableCell>
-                        <TableCell
-                          className="text-center"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                           <HitDiffDialog
                             callsign={player.callsign}
                             hitDiff={player.hitDiff}
@@ -301,7 +360,7 @@ export function NightlyStatsTable({ rows }: Props) {
                           {player.shotsHitTeam}
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })
                 )}
               </TableBody>
@@ -352,5 +411,5 @@ export function NightlyStatsTable({ rows }: Props) {
         }}
       />
     </>
-  )
+  );
 }

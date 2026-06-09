@@ -45,30 +45,14 @@ export function formatWinRate(wins: number, total: number): string {
   return `${pct}% (${wins}/${total})`;
 }
 
-export function formatGameName(
-  description: string | null,
-  startTime: Date,
-): string {
+export function formatGameName(description: string | null, startTime: Date): string {
   if (description) return description;
   const h = String(startTime.getUTCHours()).padStart(2, "0");
   const m = String(startTime.getUTCMinutes()).padStart(2, "0");
   return `Game @ ${h}:${m}`;
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function formatDateTime(d: Date | null): string {
   if (d === null) return EM_DASH;

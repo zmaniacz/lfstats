@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function CenterDetailLoading() {
   return (
@@ -42,5 +42,5 @@ export default function CenterDetailLoading() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

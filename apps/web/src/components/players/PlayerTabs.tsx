@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { ReactNode } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function PlayerTabs({
   chartsContent,
   gamesContent,
 }: {
-  chartsContent: ReactNode
-  gamesContent: ReactNode
+  chartsContent: ReactNode;
+  gamesContent: ReactNode;
 }) {
   return (
     <Tabs defaultValue="charts">
@@ -26,5 +26,5 @@ export function PlayerTabs({
         {gamesContent}
       </TabsContent>
     </Tabs>
-  )
+  );
 }

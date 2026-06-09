@@ -1,96 +1,90 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import type { PenaltyRecord } from "@lfstats/db"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import type { PenaltyRecord } from "@lfstats/db";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Actions = {
-  addAction: (gameId: string, scorecardId: string, formData: FormData) => Promise<void>
-  updateAction: (gameId: string, penaltyId: string, formData: FormData) => Promise<void>
-  rescindAction: (gameId: string, penaltyId: string, rescinded: boolean) => Promise<void>
-  deleteAction: (gameId: string, penaltyId: string) => Promise<void>
-}
+  addAction: (gameId: string, scorecardId: string, formData: FormData) => Promise<void>;
+  updateAction: (gameId: string, penaltyId: string, formData: FormData) => Promise<void>;
+  rescindAction: (gameId: string, penaltyId: string, rescinded: boolean) => Promise<void>;
+  deleteAction: (gameId: string, penaltyId: string) => Promise<void>;
+};
 
 type Props = {
-  gameId: string
-  scorecardId: string
-  penalties: PenaltyRecord[]
-  canEdit: boolean
-  actions: Actions
-}
+  gameId: string;
+  scorecardId: string;
+  penalties: PenaltyRecord[];
+  canEdit: boolean;
+  actions: Actions;
+};
 
-export function PenaltyManager({
-  gameId,
-  scorecardId,
-  penalties,
-  canEdit,
-  actions,
-}: Props) {
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, actions }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleAdd(formData: FormData) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.addAction(gameId, scorecardId, formData)
-      setShowAdd(false)
+      await actions.addAction(gameId, scorecardId, formData);
+      setShowAdd(false);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.updateAction(gameId, penaltyId, formData)
-      setEditingId(null)
+      await actions.updateAction(gameId, penaltyId, formData);
+      setEditingId(null);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.rescindAction(gameId, penaltyId, rescinded)
+      await actions.rescindAction(gameId, penaltyId, rescinded);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await actions.deleteAction(gameId, penaltyId)
+      await actions.deleteAction(gameId, penaltyId);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
-  if (penalties.length === 0 && !canEdit) return null
+  if (penalties.length === 0 && !canEdit) return null;
 
   return (
     <div className="space-y-2">
@@ -116,21 +110,39 @@ export function PenaltyManager({
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-medium">{p.type}</span>
                       {p.rescinded && (
-                        <Badge variant="outline" className="text-xs">Rescinded</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Rescinded
+                        </Badge>
                       )}
                       {!p.inGame && (
-                        <Badge variant="secondary" className="text-xs">Post-game</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Post-game
+                        </Badge>
                       )}
                     </div>
                     <div className="flex gap-3 text-xs text-muted-foreground tabular-nums">
                       {p.scoreValue !== 0 && (
-                        <span className={p.scoreValue < 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>
-                          Score: {p.scoreValue > 0 ? "+" : ""}{p.scoreValue.toLocaleString("en-US")}
+                        <span
+                          className={
+                            p.scoreValue < 0
+                              ? "text-destructive"
+                              : "text-green-600 dark:text-green-400"
+                          }
+                        >
+                          Score: {p.scoreValue > 0 ? "+" : ""}
+                          {p.scoreValue.toLocaleString("en-US")}
                         </span>
                       )}
                       {p.mvpValue !== 0 && (
-                        <span className={p.mvpValue < 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>
-                          MVP: {p.mvpValue > 0 ? "+" : ""}{p.mvpValue.toFixed(3)}
+                        <span
+                          className={
+                            p.mvpValue < 0
+                              ? "text-destructive"
+                              : "text-green-600 dark:text-green-400"
+                          }
+                        >
+                          MVP: {p.mvpValue > 0 ? "+" : ""}
+                          {p.mvpValue.toFixed(3)}
                         </span>
                       )}
                     </div>
@@ -173,8 +185,8 @@ export function PenaltyManager({
         </div>
       )}
 
-      {canEdit && (
-        showAdd ? (
+      {canEdit &&
+        (showAdd ? (
           <PenaltyForm
             onSubmit={handleAdd}
             onCancel={() => setShowAdd(false)}
@@ -190,10 +202,9 @@ export function PenaltyManager({
           >
             + Add Penalty
           </Button>
-        )
-      )}
+        ))}
     </div>
-  )
+  );
 }
 
 function PenaltyForm({
@@ -202,16 +213,13 @@ function PenaltyForm({
   onCancel,
   isPending,
 }: {
-  defaultValues?: PenaltyRecord
-  onSubmit: (fd: FormData) => void
-  onCancel: () => void
-  isPending: boolean
+  defaultValues?: PenaltyRecord;
+  onSubmit: (fd: FormData) => void;
+  onCancel: () => void;
+  isPending: boolean;
 }) {
   return (
-    <form
-      action={onSubmit}
-      className="space-y-2 border rounded p-2"
-    >
+    <form action={onSubmit} className="space-y-2 border rounded p-2">
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label className="text-xs">Type</Label>
@@ -266,15 +274,10 @@ function PenaltyForm({
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          size="sm"
-          className="h-6 text-xs"
-          disabled={isPending}
-        >
+        <Button type="submit" size="sm" className="h-6 text-xs" disabled={isPending}>
           {isPending ? "Saving…" : "Save"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

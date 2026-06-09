@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { HeartIcon } from "@phosphor-icons/react"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { HeartIcon } from "@phosphor-icons/react";
 
 type Props = {
-  playerId: string
-  isFavorited: boolean
-  addAction: (playerId: string) => Promise<void>
-  removeAction: (playerId: string) => Promise<void>
-}
+  playerId: string;
+  isFavorited: boolean;
+  addAction: (playerId: string) => Promise<void>;
+  removeAction: (playerId: string) => Promise<void>;
+};
 
 export function FavoriteButton({ playerId, isFavorited, addAction, removeAction }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleClick() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       if (isFavorited) {
-        await removeAction(playerId)
+        await removeAction(playerId);
       } else {
-        await addAction(playerId)
+        await addAction(playerId);
       }
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -47,5 +47,5 @@ export function FavoriteButton({ playerId, isFavorited, addAction, removeAction 
     >
       <HeartIcon size={24} weight={isFavorited ? "fill" : "regular"} />
     </button>
-  )
+  );
 }

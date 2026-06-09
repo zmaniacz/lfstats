@@ -1,42 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import type { GameTagSummary, GameTagListItem } from "@lfstats/db"
+} from "@/components/ui/dropdown-menu";
+import type { GameTagSummary, GameTagListItem } from "@lfstats/db";
 
 type Props = {
-  gameId: string
-  tags: GameTagSummary[]
-  availableTags: GameTagListItem[]
-  assignAction: (gameId: string, tagId: string) => Promise<void>
-  removeAction: (gameId: string, tagId: string) => Promise<void>
-}
+  gameId: string;
+  tags: GameTagSummary[];
+  availableTags: GameTagListItem[];
+  assignAction: (gameId: string, tagId: string) => Promise<void>;
+  removeAction: (gameId: string, tagId: string) => Promise<void>;
+};
 
-export function GameTagManager({
-  gameId,
-  tags,
-  availableTags,
-  assignAction,
-  removeAction,
-}: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+export function GameTagManager({ gameId, tags, availableTags, assignAction, removeAction }: Props) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
-  const assignedIds = new Set(tags.map((t) => t.id))
-  const unassigned = availableTags.filter((t) => !assignedIds.has(t.id) && !t.archived)
+  const assignedIds = new Set(tags.map((t) => t.id));
+  const unassigned = availableTags.filter((t) => !assignedIds.has(t.id) && !t.archived);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -44,15 +38,15 @@ export function GameTagManager({
         <button
           key={tag.id}
           onClick={async () => {
-            setIsSubmitting(true)
+            setIsSubmitting(true);
             try {
-              await removeAction(gameId, tag.id)
+              await removeAction(gameId, tag.id);
             } finally {
-              setIsSubmitting(false)
+              setIsSubmitting(false);
             }
             startRefreshTransition(() => {
-              router.refresh()
-            })
+              router.refresh();
+            });
           }}
           disabled={isPending}
           title="Click to remove tag"
@@ -75,15 +69,15 @@ export function GameTagManager({
               <DropdownMenuItem
                 key={tag.id}
                 onClick={async () => {
-                  setIsSubmitting(true)
+                  setIsSubmitting(true);
                   try {
-                    await assignAction(gameId, tag.id)
+                    await assignAction(gameId, tag.id);
                   } finally {
-                    setIsSubmitting(false)
+                    setIsSubmitting(false);
                   }
                   startRefreshTransition(() => {
-                    router.refresh()
-                  })
+                    router.refresh();
+                  });
                 }}
               >
                 <span
@@ -97,5 +91,5 @@ export function GameTagManager({
         </DropdownMenu>
       )}
     </div>
-  )
+  );
 }

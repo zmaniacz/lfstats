@@ -1,37 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { CenterListItem } from "@lfstats/db"
+} from "@/components/ui/select";
+import type { CenterListItem } from "@lfstats/db";
 
 export function CenterFilter({
   centers,
   selected,
 }: {
-  centers: CenterListItem[]
-  selected?: string
+  centers: CenterListItem[];
+  selected?: string;
 }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   function handleChange(value: string) {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (value === "all") {
-      params.delete("center")
+      params.delete("center");
     } else {
-      params.set("center", value)
+      params.set("center", value);
     }
-    const query = params.toString()
-    router.push(`/players${query ? `?${query}` : ""}`)
+    const query = params.toString();
+    router.push(`/players${query ? `?${query}` : ""}`);
   }
 
   return (
@@ -48,5 +48,5 @@ export function CenterFilter({
         ))}
       </SelectContent>
     </Select>
-  )
+  );
 }

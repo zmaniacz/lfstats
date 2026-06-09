@@ -14,12 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  formatHitDiff,
-  formatMVP,
-  formatPct,
-  formatWinRate,
-} from "@/lib/format";
+import { formatHitDiff, formatMVP, formatPct, formatWinRate } from "@/lib/format";
 import type { CompetitionTopPlayer, PositionStats } from "@lfstats/db";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
@@ -48,10 +43,7 @@ type SortColumn =
   | PositionSortColumn;
 type SortState = { column: SortColumn; dir: "asc" | "desc" };
 
-function getSortValue(
-  item: CompetitionTopPlayer,
-  col: SortColumn,
-): string | number {
+function getSortValue(item: CompetitionTopPlayer, col: SortColumn): string | number {
   switch (col) {
     case "callsign":
       return item.callsign.toLowerCase();
@@ -94,11 +86,7 @@ function SortableHead({
   rowSpan?: number;
 }) {
   const isActive = sort.column === column;
-  const Icon = isActive
-    ? sort.dir === "asc"
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown;
+  const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead rowSpan={rowSpan}>
       <button
@@ -112,11 +100,7 @@ function SortableHead({
   );
 }
 
-export function TopPlayersAveragesTable({
-  players,
-}: {
-  players: CompetitionTopPlayer[];
-}) {
+export function TopPlayersAveragesTable({ players }: { players: CompetitionTopPlayer[] }) {
   const [sort, setSort] = useState<SortState>({
     column: "avgMvp",
     dir: "desc",
@@ -144,9 +128,7 @@ export function TopPlayersAveragesTable({
       const va = getSortValue(a, sort.column);
       const vb = getSortValue(b, sort.column);
       const cmp =
-        typeof va === "number"
-          ? va - (vb as number)
-          : (va as string).localeCompare(vb as string);
+        typeof va === "number" ? va - (vb as number) : (va as string).localeCompare(vb as string);
       return sort.dir === "asc" ? cmp : -cmp;
     });
   }, [filtered, sort]);
@@ -173,58 +155,25 @@ export function TopPlayersAveragesTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  rowSpan={2}
-                  className="align-bottom sticky left-0 bg-background z-10"
-                >
+                <TableHead rowSpan={2} className="align-bottom sticky left-0 bg-background z-10">
                   Callsign
                 </TableHead>
-                <SortableHead
-                  column="avgMvp"
-                  sort={sort}
-                  onSort={handleSort}
-                  rowSpan={2}
-                >
+                <SortableHead column="avgMvp" sort={sort} onSort={handleSort} rowSpan={2}>
                   Avg MVP
                 </SortableHead>
-                <SortableHead
-                  column="mvpPerMinute"
-                  sort={sort}
-                  onSort={handleSort}
-                  rowSpan={2}
-                >
+                <SortableHead column="mvpPerMinute" sort={sort} onSort={handleSort} rowSpan={2}>
                   MVP / min
                 </SortableHead>
-                <SortableHead
-                  column="totalMvp"
-                  sort={sort}
-                  onSort={handleSort}
-                  rowSpan={2}
-                >
+                <SortableHead column="totalMvp" sort={sort} onSort={handleSort} rowSpan={2}>
                   Total MVP
                 </SortableHead>
-                <SortableHead
-                  column="avgAccuracy"
-                  sort={sort}
-                  onSort={handleSort}
-                  rowSpan={2}
-                >
+                <SortableHead column="avgAccuracy" sort={sort} onSort={handleSort} rowSpan={2}>
                   Avg Accuracy
                 </SortableHead>
-                <SortableHead
-                  column="avgHitDiff"
-                  sort={sort}
-                  onSort={handleSort}
-                  rowSpan={2}
-                >
+                <SortableHead column="avgHitDiff" sort={sort} onSort={handleSort} rowSpan={2}>
                   Avg Hit Diff
                 </SortableHead>
-                <SortableHead
-                  column="winRate"
-                  sort={sort}
-                  onSort={handleSort}
-                  rowSpan={2}
-                >
+                <SortableHead column="winRate" sort={sort} onSort={handleSort} rowSpan={2}>
                   Win Rate
                 </SortableHead>
                 {POSITIONS.map((pos) => (
@@ -237,25 +186,13 @@ export function TopPlayersAveragesTable({
                 {/* overall cols handled by rowSpan above + SortableHead rows */}
                 {POSITIONS.map((pos) => (
                   <Fragment key={pos.id}>
-                    <SortableHead
-                      column={`p${pos.id}_avgMvp`}
-                      sort={sort}
-                      onSort={handleSort}
-                    >
+                    <SortableHead column={`p${pos.id}_avgMvp`} sort={sort} onSort={handleSort}>
                       <span className="pl-1 text-xs">Avg MVP</span>
                     </SortableHead>
-                    <SortableHead
-                      column={`p${pos.id}_avgAccuracy`}
-                      sort={sort}
-                      onSort={handleSort}
-                    >
+                    <SortableHead column={`p${pos.id}_avgAccuracy`} sort={sort} onSort={handleSort}>
                       <span className="text-xs">Accuracy</span>
                     </SortableHead>
-                    <SortableHead
-                      column={`p${pos.id}_winRate`}
-                      sort={sort}
-                      onSort={handleSort}
-                    >
+                    <SortableHead column={`p${pos.id}_winRate`} sort={sort} onSort={handleSort}>
                       <span className="text-xs">Win Rate</span>
                     </SortableHead>
                   </Fragment>
@@ -264,9 +201,7 @@ export function TopPlayersAveragesTable({
             </TableHeader>
             <TableBody>
               {pageRows.map((p) => {
-                const iplIdForUrl = p.iplId.startsWith("#")
-                  ? p.iplId.slice(1)
-                  : p.iplId;
+                const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
                 return (
                   <TableRow key={p.playerId}>
                     <TableCell className="sticky left-0 bg-background z-10">
@@ -277,21 +212,11 @@ export function TopPlayersAveragesTable({
                         {p.callsign}
                       </Link>
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatMVP(p.avgMvp)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatMVP(p.mvpPerMinute)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatMVP(p.totalMvp)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatPct(p.avgAccuracy)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatHitDiff(p.avgHitDiff)}
-                    </TableCell>
+                    <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
+                    <TableCell className="tabular-nums">{formatMVP(p.mvpPerMinute)}</TableCell>
+                    <TableCell className="tabular-nums">{formatMVP(p.totalMvp)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
+                    <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
                     <TableCell className="tabular-nums">
                       {formatWinRate(p.wins, p.totalGames)}
                     </TableCell>
@@ -303,9 +228,7 @@ export function TopPlayersAveragesTable({
                             {s.avgMvp !== null ? formatMVP(s.avgMvp) : "—"}
                           </TableCell>
                           <TableCell className="tabular-nums text-center">
-                            {s.avgAccuracy !== null
-                              ? formatPct(s.avgAccuracy)
-                              : "—"}
+                            {s.avgAccuracy !== null ? formatPct(s.avgAccuracy) : "—"}
                           </TableCell>
                           <TableCell className="tabular-nums text-center">
                             {formatWinRate(s.wins, s.totalGames)}
@@ -316,12 +239,8 @@ export function TopPlayersAveragesTable({
                           <TableCell className="text-center text-muted-foreground border-l">
                             —
                           </TableCell>
-                          <TableCell className="text-center text-muted-foreground">
-                            —
-                          </TableCell>
-                          <TableCell className="text-center text-muted-foreground">
-                            —
-                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">—</TableCell>
+                          <TableCell className="text-center text-muted-foreground">—</TableCell>
                         </Fragment>
                       );
                     })}

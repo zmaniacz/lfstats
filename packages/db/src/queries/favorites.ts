@@ -2,17 +2,25 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { db } from "../client";
-import { userFavoriteGame, userFavoritePlayer, game, sm5GameTeam, sm5Scorecard, center, player } from "../schema";
+import {
+  userFavoriteGame,
+  userFavoritePlayer,
+  game,
+  sm5GameTeam,
+  sm5Scorecard,
+  center,
+  player,
+} from "../schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import type { GameListItem } from "./games";
 
 export type FavoritePlayerItem = {
-  id: string
-  iplId: string
-  currentCallsign: string
-  totalGames: number
-  lastGameAt: Date | null
-}
+  id: string;
+  iplId: string;
+  currentCallsign: string;
+  totalGames: number;
+  lastGameAt: Date | null;
+};
 
 export async function getUserFavorites(userId: string): Promise<GameListItem[]> {
   const favoriteRows = await db
@@ -80,15 +88,8 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
     }));
 }
 
-export async function addFavorite(
-  userId: string,
-  gameId: string,
-  note?: string,
-): Promise<void> {
-  await db
-    .insert(userFavoriteGame)
-    .values({ userId, gameId, note })
-    .onConflictDoNothing();
+export async function addFavorite(userId: string, gameId: string, note?: string): Promise<void> {
+  await db.insert(userFavoriteGame).values({ userId, gameId, note }).onConflictDoNothing();
 }
 
 export async function removeFavorite(userId: string, gameId: string): Promise<void> {
@@ -147,10 +148,7 @@ export async function addFavoritePlayer(
   playerId: string,
   note?: string,
 ): Promise<void> {
-  await db
-    .insert(userFavoritePlayer)
-    .values({ userId, playerId, note })
-    .onConflictDoNothing();
+  await db.insert(userFavoritePlayer).values({ userId, playerId, note }).onConflictDoNothing();
 }
 
 export async function removeFavoritePlayer(userId: string, playerId: string): Promise<void> {

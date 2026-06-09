@@ -5,10 +5,6 @@
 
 import { SessionProvider } from "next-auth/react";
 
-export function AppSessionProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AppSessionProvider({ children }: { children: React.ReactNode }) {
   return <SessionProvider>{children}</SessionProvider>;
 }

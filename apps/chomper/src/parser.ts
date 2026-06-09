@@ -67,8 +67,7 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
         meta = parseLine0(fields);
         break;
       case "1":
-        if (meta === null)
-          throw new ParseError("Line type 1 before line type 0");
+        if (meta === null) throw new ParseError("Line type 1 before line type 0");
         parseLine1(fields, schemaColumns.get("1") ?? [], meta);
         break;
       case "2":
@@ -103,9 +102,7 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
 
   if (meta === null) throw new ParseError("Missing line type 0 (info)");
 
-  const playerEntities = entities.filter(
-    (e) => e.type === "player" && e.category > 0,
-  );
+  const playerEntities = entities.filter((e) => e.type === "player" && e.category > 0);
   if (playerEntities.length > 0 && sm5Stats.length === 0) {
     throw new RejectionError("Incomplete TDF - missing scorecard data");
   }
@@ -237,8 +234,7 @@ function buildEntityRouting(
       // as evidence of a genuine restart: a single entity can only have one end.
       const ends = endsByEntity.get(externalId) ?? [];
       const hasRestart =
-        ends.some((e) => e.exitType === "01" || e.exitType === "17") ||
-        ends.length >= group.length;
+        ends.some((e) => e.exitType === "01" || e.exitType === "17") || ends.length >= group.length;
       if (!hasRestart) continue; // no restart → hardware glitch, leave for mergeDuplicateSm5Stats
     }
 
@@ -342,11 +338,7 @@ function parseLine0(fields: string[]): ParsedTdf["meta"] {
   };
 }
 
-function parseLine1(
-  fields: string[],
-  columns: string[],
-  meta: ParsedTdf["meta"],
-): void {
+function parseLine1(fields: string[], columns: string[], meta: ParsedTdf["meta"]): void {
   // Minimal schema (2.000): [1, type, desc, start]
   // columns will be populated from the schema comment line
   const getValue = makeColReader(fields, columns);
@@ -492,10 +484,7 @@ function parseLine9(fields: string[]): ParsedPlayerState {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeColReader(
-  fields: string[],
-  columns: string[],
-): (colName: string) => string | null {
+function makeColReader(fields: string[], columns: string[]): (colName: string) => string | null {
   // fields[0] is the line type, fields[1..] are the values
   // columns[0] is the first column name (after line type)
   return (colName: string) => {

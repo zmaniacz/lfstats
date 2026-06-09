@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -9,17 +9,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatMVP } from "@/lib/format"
-import type { AllStarPlayer } from "@lfstats/db"
-import Link from "next/link"
+} from "@/components/ui/table";
+import { formatMVP } from "@/lib/format";
+import type { AllStarPlayer } from "@lfstats/db";
+import Link from "next/link";
 
 export function AllStarPositionTable({
   title,
   players,
 }: {
-  title: string
-  players: AllStarPlayer[]
+  title: string;
+  players: AllStarPlayer[];
 }) {
   return (
     <Card className="min-w-0 w-full overflow-hidden">
@@ -39,7 +39,7 @@ export function AllStarPositionTable({
             </TableHeader>
             <TableBody>
               {players.map((p, i) => {
-                const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId
+                const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
                 return (
                   <TableRow key={p.playerId}>
                     <TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
@@ -53,7 +53,7 @@ export function AllStarPositionTable({
                     </TableCell>
                     <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
                   </TableRow>
-                )
+                );
               })}
               {players.length === 0 && (
                 <TableRow>
@@ -67,5 +67,5 @@ export function AllStarPositionTable({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

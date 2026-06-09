@@ -13,11 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { SignInIcon, SignOutIcon } from "@phosphor-icons/react";
 
 function getInitials(name: string | null | undefined): string {
@@ -45,23 +41,15 @@ export function NavUser() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar size="sm">
-                {user?.image && (
-                  <AvatarImage src={user.image} alt={user.name ?? "User"} />
-                )}
+                {user?.image && <AvatarImage src={user.image} alt={user.name ?? "User"} />}
                 <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">
-                  {status === "loading"
-                    ? "Loading…"
-                    : user
-                      ? user.name
-                      : "Sign in"}
+                  {status === "loading" ? "Loading…" : user ? user.name : "Sign in"}
                 </span>
                 {user?.email && (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {user.email}
-                  </span>
+                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
                 )}
               </div>
             </SidebarMenuButton>
@@ -77,9 +65,7 @@ export function NavUser() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-semibold">{user.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {user.email}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{user.email}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -89,10 +75,7 @@ export function NavUser() {
                 </DropdownMenuItem>
               </>
             ) : (
-              <DropdownMenuItem
-                onClick={() => signIn("google")}
-                disabled={status === "loading"}
-              >
+              <DropdownMenuItem onClick={() => signIn("google")} disabled={status === "loading"}>
                 <SignInIcon className="size-4" />
                 Sign in with Google
               </DropdownMenuItem>

@@ -18,9 +18,7 @@ import { runConsistencyCheck, simulate } from "./simulator.js";
 const DEADLOCK_CODE = "40P01";
 const MAX_INGEST_RETRIES = 3;
 
-async function ingestWithRetry(
-  ...args: Parameters<typeof ingest>
-): Promise<string> {
+async function ingestWithRetry(...args: Parameters<typeof ingest>): Promise<string> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await ingest(...args);
@@ -55,8 +53,7 @@ if (!pattern) {
 // Extract the leading literal portion before any wildcard to use as the S3 list prefix.
 // The rest of the pattern is applied as a client-side glob filter.
 const wildcardIndex = pattern.search(/[*?]/);
-const s3Prefix =
-  wildcardIndex === -1 ? pattern : pattern.slice(0, wildcardIndex);
+const s3Prefix = wildcardIndex === -1 ? pattern : pattern.slice(0, wildcardIndex);
 const filterRegex = wildcardIndex === -1 ? null : globToRegex(pattern);
 
 const ARCHIVE_BUCKET = process.env.ARCHIVE_BUCKET;
@@ -83,9 +80,7 @@ if (!mvpModel) {
   process.exit(1);
 }
 
-console.log(
-  `Listing TDF files from s3://${ARCHIVE_BUCKET} matching "${pattern}"…`,
-);
+console.log(`Listing TDF files from s3://${ARCHIVE_BUCKET} matching "${pattern}"…`);
 const allKeys = await listTdfs(ARCHIVE_BUCKET, s3Prefix);
 const keys = filterRegex ? allKeys.filter((k) => filterRegex.test(k)) : allKeys;
 
@@ -96,9 +91,7 @@ if (keys.length === 0) {
 
 const CONCURRENCY = 10;
 
-console.log(
-  `Found ${keys.length} files. Starting ingest (concurrency=${CONCURRENCY})…\n`,
-);
+console.log(`Found ${keys.length} files. Starting ingest (concurrency=${CONCURRENCY})…\n`);
 
 type ResultEntry =
   | { key: string; status: "ingested"; gameId: string }
@@ -200,10 +193,7 @@ async function processKey(key: string): Promise<void> {
     parsed.meta.siteCode,
   );
   if (existingCenter) {
-    const existingGame = await findGameByNaturalKey(
-      existingCenter.id,
-      gameStartTime,
-    );
+    const existingGame = await findGameByNaturalKey(existingCenter.id, gameStartTime);
     if (existingGame) {
       log(`SKIP ${key} (duplicate game ${existingGame.id})`);
       results.push({
@@ -231,10 +221,7 @@ async function processKey(key: string): Promise<void> {
 
   // 6. Consistency check
   const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-  const { discrepancies } = runConsistencyCheck(
-    simResult.playerStats,
-    sm5StatsById,
-  );
+  const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
   if (discrepancies.length > 0) {
     const reason = `Consistency check failed:\n${JSON.stringify(discrepancies, null, 2)}`;
     log(`FAIL [consistency] ${key}`);
@@ -246,10 +233,7 @@ async function processKey(key: string): Promise<void> {
 
   // 7. MVP calculation
   const entityEndsById = new Map(
-    parsed.entityEnds.map((e) => [
-      e.id,
-      { score: e.score, exitType: e.exitType },
-    ]),
+    parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
   );
   const mvpRows = calculateMvp(
     simResult,
@@ -262,13 +246,7 @@ async function processKey(key: string): Promise<void> {
   // 8. Ingest to database
   let gameId: string;
   try {
-    gameId = await ingestWithRetry(
-      parsed,
-      simResult,
-      gameStartTime,
-      mvpRows,
-      "sm5",
-    );
+    gameId = await ingestWithRetry(parsed, simResult, gameStartTime, mvpRows, "sm5");
   } catch (err) {
     const reason = `Ingest failed: ${(err as Error).message}`;
     log(`FAIL [ingest] ${key}`);
@@ -286,13 +264,7 @@ async function processKey(key: string): Promise<void> {
     parsed.meta.siteCode,
     parsed.meta.startTime,
   );
-  await archiveTdf(
-    ARCHIVE_BUCKET!,
-    key,
-    MODERN_ARCHIVE_BUCKET!,
-    archiveKey,
-    false,
-  );
+  await archiveTdf(ARCHIVE_BUCKET!, key, MODERN_ARCHIVE_BUCKET!, archiveKey, false);
 }
 
 // Worker pool: each worker pulls from the queue until empty.

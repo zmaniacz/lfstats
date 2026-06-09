@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Link from "next/link"
-import { getCompetitions } from "@lfstats/db"
+import Link from "next/link";
+import { getCompetitions } from "@lfstats/db";
 import {
   Table,
   TableBody,
@@ -10,12 +10,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export default async function CompetitionsPage() {
-  const competitions = await getCompetitions()
+  const competitions = await getCompetitions();
 
   return (
     <div className="space-y-4">
@@ -66,5 +66,5 @@ export default async function CompetitionsPage() {
         </Table>
       )}
     </div>
-  )
+  );
 }

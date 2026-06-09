@@ -27,9 +27,7 @@ export async function getUserRoles(userId: string): Promise<UserRoleRow[]> {
   return db.select().from(userRole).where(eq(userRole.userId, userId));
 }
 
-export async function listAllUsers(): Promise<
-  Pick<UserWithRoles, "id" | "name" | "email">[]
-> {
+export async function listAllUsers(): Promise<Pick<UserWithRoles, "id" | "name" | "email">[]> {
   return db
     .select({ id: authUser.id, name: authUser.name, email: authUser.email })
     .from(authUser)
@@ -57,9 +55,7 @@ export async function listAllUsersWithRoles(): Promise<UserWithRoles[]> {
   return aggregateUserRows(rows);
 }
 
-export async function listUsersWithRolesByCenter(
-  centerId: string,
-): Promise<UserWithRoles[]> {
+export async function listUsersWithRolesByCenter(centerId: string): Promise<UserWithRoles[]> {
   const userIds = await db
     .selectDistinct({ userId: userRole.userId })
     .from(userRole)

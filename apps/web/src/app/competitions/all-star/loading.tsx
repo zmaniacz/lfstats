@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function TableSkeleton() {
   return (
@@ -16,7 +16,7 @@ function TableSkeleton() {
         ))}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export default function AllStarLoading() {
@@ -35,5 +35,5 @@ export default function AllStarLoading() {
         <TableSkeleton key={i} />
       ))}
     </div>
-  )
+  );
 }

@@ -11,10 +11,7 @@ import {
 
 const s3 = new S3Client({ followRegionRedirects: true });
 
-export async function listTdfs(
-  bucket: string,
-  prefix: string,
-): Promise<string[]> {
+export async function listTdfs(bucket: string, prefix: string): Promise<string[]> {
   const keys: string[] = [];
   let continuationToken: string | undefined;
 
@@ -38,9 +35,7 @@ export async function listTdfs(
 }
 
 export async function fetchTdf(bucket: string, key: string): Promise<Buffer> {
-  const response = await s3.send(
-    new GetObjectCommand({ Bucket: bucket, Key: key }),
-  );
+  const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
 
   if (!response.Body) {
     throw new Error(`S3 object ${bucket}/${key} has no body`);

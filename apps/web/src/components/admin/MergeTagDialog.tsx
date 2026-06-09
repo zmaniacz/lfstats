@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -14,24 +14,24 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { GameTagListItem } from "@lfstats/db"
+} from "@/components/ui/select";
+import type { GameTagListItem } from "@lfstats/db";
 
 type Props = {
-  sourceTag: GameTagListItem
-  availableTags: GameTagListItem[]
-  centerId: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  action: (sourceId: string, targetId: string, centerId: string) => Promise<void>
-}
+  sourceTag: GameTagListItem;
+  availableTags: GameTagListItem[];
+  centerId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  action: (sourceId: string, targetId: string, centerId: string) => Promise<void>;
+};
 
 export function MergeTagDialog({
   sourceTag,
@@ -41,26 +41,26 @@ export function MergeTagDialog({
   onOpenChange,
   action,
 }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
-  const [targetId, setTargetId] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
+  const [targetId, setTargetId] = useState("");
 
-  const targets = availableTags.filter((t) => t.id !== sourceTag.id)
+  const targets = availableTags.filter((t) => t.id !== sourceTag.id);
 
   async function handleConfirm() {
-    if (!targetId) return
-    setIsSubmitting(true)
+    if (!targetId) return;
+    setIsSubmitting(true);
     try {
-      await action(sourceTag.id, targetId, centerId)
-      onOpenChange(false)
+      await action(sourceTag.id, targetId, centerId);
+      onOpenChange(false);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -69,8 +69,8 @@ export function MergeTagDialog({
         <DialogHeader>
           <DialogTitle>Merge &ldquo;{sourceTag.name}&rdquo;</DialogTitle>
           <DialogDescription>
-            All game assignments from &ldquo;{sourceTag.name}&rdquo; will be moved to the
-            target tag, then &ldquo;{sourceTag.name}&rdquo; will be permanently deleted.
+            All game assignments from &ldquo;{sourceTag.name}&rdquo; will be moved to the target
+            tag, then &ldquo;{sourceTag.name}&rdquo; will be permanently deleted.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
@@ -92,15 +92,11 @@ export function MergeTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            disabled={!targetId || isPending}
-            onClick={handleConfirm}
-          >
+          <Button variant="destructive" disabled={!targetId || isPending} onClick={handleConfirm}>
             {isPending ? "Merging…" : "Merge & Delete Source"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

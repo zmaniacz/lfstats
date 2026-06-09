@@ -4,11 +4,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
-export default async function UploadLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function UploadLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const roles = session?.user?.roles ?? [];
   const canUpload = roles.some(

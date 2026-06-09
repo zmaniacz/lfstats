@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useRouter } from "next/navigation";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export function RoundFilter({
   competitionSlug,
   rounds,
   activeRoundId,
 }: {
-  competitionSlug: string
-  rounds: { id: string; name: string }[]
-  activeRoundId: string | null
+  competitionSlug: string;
+  rounds: { id: string; name: string }[];
+  activeRoundId: string | null;
 }) {
-  const router = useRouter()
-  const value = activeRoundId ?? "all"
+  const router = useRouter();
+  const value = activeRoundId ?? "all";
 
   function handleChange(next: string) {
-    if (!next) return
-    const params = new URLSearchParams({ competition: competitionSlug })
-    if (next !== "all") params.set("round", next)
-    router.push(`/competitions/standings?${params.toString()}`)
+    if (!next) return;
+    const params = new URLSearchParams({ competition: competitionSlug });
+    if (next !== "all") params.set("round", next);
+    router.push(`/competitions/standings?${params.toString()}`);
   }
 
   return (
@@ -34,5 +34,5 @@ export function RoundFilter({
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
-  )
+  );
 }

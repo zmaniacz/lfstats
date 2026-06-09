@@ -1,42 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Suspense } from "react"
-import {
-  getCenterList,
-  getPlayersLeaderboard,
-  getPlayersMedicHitsLeaderboard,
-} from "@lfstats/db"
-import { CenterFilter } from "@/components/players/CenterFilter"
-import { PlayersLeaderboardTable } from "@/components/players/PlayersLeaderboardTable"
-import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable"
+import { Suspense } from "react";
+import { getCenterList, getPlayersLeaderboard, getPlayersMedicHitsLeaderboard } from "@lfstats/db";
+import { CenterFilter } from "@/components/players/CenterFilter";
+import { PlayersLeaderboardTable } from "@/components/players/PlayersLeaderboardTable";
+import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable";
 
 export default async function PlayersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ center?: string }>
+  searchParams: Promise<{ center?: string }>;
 }) {
-  const { center: centerId } = await searchParams
+  const { center: centerId } = await searchParams;
 
-  const [
-    centers,
-    overall,
-    commanders,
-    heavyWeapons,
-    scouts,
-    ammoCarriers,
-    medics,
-    medicHits,
-  ] = await Promise.all([
-    getCenterList(),
-    getPlayersLeaderboard({ centerId }),
-    getPlayersLeaderboard({ centerId, position: 1 }),
-    getPlayersLeaderboard({ centerId, position: 2 }),
-    getPlayersLeaderboard({ centerId, position: 3 }),
-    getPlayersLeaderboard({ centerId, position: 4 }),
-    getPlayersLeaderboard({ centerId, position: 5 }),
-    getPlayersMedicHitsLeaderboard({ centerId }),
-  ])
+  const [centers, overall, commanders, heavyWeapons, scouts, ammoCarriers, medics, medicHits] =
+    await Promise.all([
+      getCenterList(),
+      getPlayersLeaderboard({ centerId }),
+      getPlayersLeaderboard({ centerId, position: 1 }),
+      getPlayersLeaderboard({ centerId, position: 2 }),
+      getPlayersLeaderboard({ centerId, position: 3 }),
+      getPlayersLeaderboard({ centerId, position: 4 }),
+      getPlayersLeaderboard({ centerId, position: 5 }),
+      getPlayersMedicHitsLeaderboard({ centerId }),
+    ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -55,5 +43,5 @@ export default async function PlayersPage({
       <PlayersLeaderboardTable players={medics} title="Medic" />
       <MedicHitsLeaderboardTable players={medicHits} />
     </div>
-  )
+  );
 }

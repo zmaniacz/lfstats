@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { Toggle } from "@/components/ui/toggle"
+import { useRouter } from "next/navigation";
+import { Toggle } from "@/components/ui/toggle";
 
 export function LeaderBoardsFilters({
   showPool,
@@ -12,21 +12,21 @@ export function LeaderBoardsFilters({
   showMercs,
   competitionSlug,
 }: {
-  showPool: boolean
-  showFinals: boolean
-  showMercs: boolean
-  competitionSlug: string
+  showPool: boolean;
+  showFinals: boolean;
+  showMercs: boolean;
+  competitionSlug: string;
 }) {
-  const router = useRouter()
+  const router = useRouter();
 
   function update(patch: Partial<{ showPool: boolean; showFinals: boolean; showMercs: boolean }>) {
-    const params = new URLSearchParams()
-    params.set("competition", competitionSlug)
-    const next = { showPool, showFinals, showMercs, ...patch }
-    if (!next.showPool) params.set("pool", "0")
-    if (next.showFinals) params.set("finals", "1")
-    if (next.showMercs) params.set("mercs", "1")
-    router.push(`/competitions/leader-boards?${params.toString()}`)
+    const params = new URLSearchParams();
+    params.set("competition", competitionSlug);
+    const next = { showPool, showFinals, showMercs, ...patch };
+    if (!next.showPool) params.set("pool", "0");
+    if (next.showFinals) params.set("finals", "1");
+    if (next.showMercs) params.set("mercs", "1");
+    router.push(`/competitions/leader-boards?${params.toString()}`);
   }
 
   return (
@@ -56,5 +56,5 @@ export function LeaderBoardsFilters({
         Show Mercs
       </Toggle>
     </div>
-  )
+  );
 }

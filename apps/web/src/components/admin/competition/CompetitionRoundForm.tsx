@@ -1,49 +1,49 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 type Props = {
-  nextRoundNumber: number
-  action: (formData: FormData) => Promise<void>
-}
+  nextRoundNumber: number;
+  action: (formData: FormData) => Promise<void>;
+};
 
 export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
-  const [type, setType] = useState<"pool" | "finals">("pool")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [type, setType] = useState<"pool" | "finals">("pool");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    formData.set("type", type)
-    const form = e.currentTarget
-    setIsSubmitting(true)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.set("type", type);
+    const form = e.currentTarget;
+    setIsSubmitting(true);
     try {
-      await action(formData)
-      form.reset()
-      setType("pool")
+      await action(formData);
+      form.reset();
+      setType("pool");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -80,5 +80,5 @@ export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
         {isPending ? "Adding…" : "Add Round"}
       </Button>
     </form>
-  )
+  );
 }

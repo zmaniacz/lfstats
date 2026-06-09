@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -19,25 +14,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatMVP } from "@/lib/format"
-import { getMvpComponentLabel, MVP_COMPONENTS } from "@/lib/mvp-components"
-import type { MvpComponentRow } from "@lfstats/db"
+} from "@/components/ui/table";
+import { formatMVP } from "@/lib/format";
+import { getMvpComponentLabel, MVP_COMPONENTS } from "@/lib/mvp-components";
+import type { MvpComponentRow } from "@lfstats/db";
 
-const DISPLAY_ORDER = Object.keys(MVP_COMPONENTS)
+const DISPLAY_ORDER = Object.keys(MVP_COMPONENTS);
 
 type Props = {
-  callsign: string
-  totalMvp: number
-  components: MvpComponentRow[]
-}
+  callsign: string;
+  totalMvp: number;
+  components: MvpComponentRow[];
+};
 
 export function MvpBreakdownDialog({ callsign, totalMvp, components }: Props) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   const sorted = [...components].sort(
     (a, b) => DISPLAY_ORDER.indexOf(a.component) - DISPLAY_ORDER.indexOf(b.component),
-  )
+  );
 
   return (
     <>
@@ -86,5 +81,5 @@ export function MvpBreakdownDialog({ callsign, totalMvp, components }: Props) {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

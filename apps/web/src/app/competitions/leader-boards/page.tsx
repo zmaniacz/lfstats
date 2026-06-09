@@ -29,12 +29,7 @@ export default async function LeaderBoardsPage({
     mercs?: string;
   }>;
 }) {
-  const {
-    competition: competitionSlug,
-    pool,
-    finals,
-    mercs,
-  } = await searchParams;
+  const { competition: competitionSlug, pool, finals, mercs } = await searchParams;
 
   const showPool = pool !== "0";
   const showFinals = finals === "1";
@@ -46,9 +41,7 @@ export default async function LeaderBoardsPage({
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Leader (Loser) Boards</h2>
-        <p className="text-muted-foreground text-sm">
-          No competitive competitions found.
-        </p>
+        <p className="text-muted-foreground text-sm">No competitive competitions found.</p>
       </div>
     );
   }
@@ -107,15 +100,9 @@ export default async function LeaderBoardsPage({
         <h3 className="text-lg font-semibold">Positions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <PositionLeaderboardCard title="Commander" scorecards={commanders} />
-          <PositionLeaderboardCard
-            title="Heavy Weapons"
-            scorecards={heavyPlayers}
-          />
+          <PositionLeaderboardCard title="Heavy Weapons" scorecards={heavyPlayers} />
           <PositionLeaderboardCard title="Scout" scorecards={scoutPlayers} />
-          <PositionLeaderboardCard
-            title="Ammo Carrier"
-            scorecards={ammoPlayers}
-          />
+          <PositionLeaderboardCard title="Ammo Carrier" scorecards={ammoPlayers} />
           <PositionLeaderboardCard title="Medic" scorecards={medicPlayers} />
         </div>
       </div>
@@ -270,11 +257,7 @@ export default async function LeaderBoardsPage({
             colLabel="Avg Activation"
             rows={[...nukeNonsense]
               .filter((r) => r.avgNukeActivationTime !== null)
-              .sort(
-                (a, b) =>
-                  (b.avgNukeActivationTime ?? 0) -
-                  (a.avgNukeActivationTime ?? 0),
-              )
+              .sort((a, b) => (b.avgNukeActivationTime ?? 0) - (a.avgNukeActivationTime ?? 0))
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.avgNukeActivationTime! }))}
             format="ms"
@@ -379,8 +362,12 @@ export default async function LeaderBoardsPage({
             title="N*SYNC"
             colLabel="Double Resupplies"
             rows={[...miscMischief]
-              .filter((r) => r.totalDoubleResuppliesGiven !== null && r.totalDoubleResuppliesGiven > 0)
-              .sort((a, b) => (b.totalDoubleResuppliesGiven ?? 0) - (a.totalDoubleResuppliesGiven ?? 0))
+              .filter(
+                (r) => r.totalDoubleResuppliesGiven !== null && r.totalDoubleResuppliesGiven > 0,
+              )
+              .sort(
+                (a, b) => (b.totalDoubleResuppliesGiven ?? 0) - (a.totalDoubleResuppliesGiven ?? 0),
+              )
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.totalDoubleResuppliesGiven! }))}
             format="integer"

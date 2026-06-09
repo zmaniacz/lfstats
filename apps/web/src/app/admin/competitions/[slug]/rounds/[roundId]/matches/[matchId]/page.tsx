@@ -1,47 +1,47 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
-import Link from "next/link"
+import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getCompetitionBySlug,
   getCompetitionMatchById,
   getMatchGameAssignments,
   getUnassignedCompetitionGames,
-} from "@lfstats/db"
-import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm"
-import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { TEAM_COLORS } from "@/lib/team-colors"
-import { formatGameName, formatDateTime } from "@/lib/format"
-import { assignGameAction, removeGameAction, createForfeitAction } from "./actions"
-import { ForfeitButtons } from "./ForfeitButtons"
+} from "@lfstats/db";
+import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm";
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { TEAM_COLORS } from "@/lib/team-colors";
+import { formatGameName, formatDateTime } from "@/lib/format";
+import { assignGameAction, removeGameAction, createForfeitAction } from "./actions";
+import { ForfeitButtons } from "./ForfeitButtons";
 
 export default async function MatchDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string; roundId: string; matchId: string }>
+  params: Promise<{ slug: string; roundId: string; matchId: string }>;
 }) {
-  const { slug, roundId, matchId } = await params
-  const comp = await getCompetitionBySlug(slug)
-  if (!comp) notFound()
+  const { slug, roundId, matchId } = await params;
+  const comp = await getCompetitionBySlug(slug);
+  if (!comp) notFound();
 
   const [match, assignments, unassignedGames] = await Promise.all([
     getCompetitionMatchById(matchId),
     getMatchGameAssignments(matchId),
     getUnassignedCompetitionGames(comp.id),
-  ])
+  ]);
 
-  if (!match) notFound()
+  if (!match) notFound();
 
-  const assignedNumbers = new Set(assignments.map((a) => a.gameNumber))
-  const availableGameNumbers = [1, 2].filter((n) => !assignedNumbers.has(n))
+  const assignedNumbers = new Set(assignments.map((a) => a.gameNumber));
+  const availableGameNumbers = [1, 2].filter((n) => !assignedNumbers.has(n));
 
-  const boundAssign = assignGameAction.bind(null, comp.id, matchId)
-  const boundRemove = removeGameAction.bind(null, comp.id, matchId)
-  const boundForfeit = createForfeitAction.bind(null, comp.id, matchId)
+  const boundAssign = assignGameAction.bind(null, comp.id, matchId);
+  const boundRemove = removeGameAction.bind(null, comp.id, matchId);
+  const boundForfeit = createForfeitAction.bind(null, comp.id, matchId);
 
   return (
     <div className="space-y-6">
@@ -67,13 +67,10 @@ export default async function MatchDetailPage({
           ) : (
             <div className="divide-y border rounded-md">
               {assignments.map((a) => {
-                const t1Color = TEAM_COLORS[a.team1ColourEnum]
-                const t2Color = TEAM_COLORS[a.team2ColourEnum]
+                const t1Color = TEAM_COLORS[a.team1ColourEnum];
+                const t2Color = TEAM_COLORS[a.team2ColourEnum];
                 return (
-                  <div
-                    key={a.id}
-                    className="flex items-center justify-between px-3 py-2 text-sm"
-                  >
+                  <div key={a.id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary">Game {a.gameNumber}</Badge>
                       <span className="font-medium">
@@ -94,7 +91,7 @@ export default async function MatchDetailPage({
                       action={boundRemove}
                     />
                   </div>
-                )
+                );
               })}
             </div>
           )}
@@ -125,7 +122,9 @@ export default async function MatchDetailPage({
               />
             )}
             <div className="mt-4 pt-4 border-t">
-              <p className="text-sm text-muted-foreground mb-2">Record a forfeit for game slot {availableGameNumbers[0]}:</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                Record a forfeit for game slot {availableGameNumbers[0]}:
+              </p>
               <ForfeitButtons
                 team1Name={match.team1Name}
                 team2Name={match.team2Name}
@@ -137,5 +136,5 @@ export default async function MatchDetailPage({
         </Card>
       )}
     </div>
-  )
+  );
 }

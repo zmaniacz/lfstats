@@ -107,10 +107,7 @@ while (true) {
     );
 
     const entityEndsById = new Map(
-      scorecards.map((sc) => [
-        sc.id,
-        { score: sc.score, exitType: sc.eliminated ? "04" : "00" },
-      ]),
+      scorecards.map((sc) => [sc.id, { score: sc.score, exitType: sc.eliminated ? "04" : "00" }]),
     );
 
     const mvpRows = calculateMvp(
@@ -123,9 +120,7 @@ while (true) {
 
     // Build penalty_adjustment components from non-rescinded penalties with mvpValue != 0
     const penaltyAggregates = await getPenaltyMvpAggregatesForGame(gameId);
-    const penaltyByScorecard = new Map(
-      penaltyAggregates.map((p) => [p.scorecardId, p]),
-    );
+    const penaltyByScorecard = new Map(penaltyAggregates.map((p) => [p.scorecardId, p]));
 
     const penaltyComponents = penaltyAggregates.map((p) => ({
       scorecardId: p.scorecardId,
@@ -174,7 +169,5 @@ while (true) {
   }
 }
 
-console.log(
-  `Done. Updated ${totalScorecards} scorecards across ${totalGames} games.`,
-);
+console.log(`Done. Updated ${totalScorecards} scorecards across ${totalGames} games.`);
 process.exit(0);

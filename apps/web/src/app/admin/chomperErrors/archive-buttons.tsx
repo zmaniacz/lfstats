@@ -1,71 +1,59 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import {
-  archiveChomperJobAction,
-  archiveAllChomperJobsAction,
-} from "./actions"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { archiveChomperJobAction, archiveAllChomperJobsAction } from "./actions";
 
 export function ArchiveButton({ id }: { id: string }) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const pending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const pending = isSubmitting || isRefreshing;
 
   async function handleClick() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await archiveChomperJobAction(id)
+      await archiveChomperJobAction(id);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={pending}
-      onClick={handleClick}
-    >
+    <Button variant="outline" size="sm" disabled={pending} onClick={handleClick}>
       {pending ? "Archiving…" : "Archive"}
     </Button>
-  )
+  );
 }
 
 export function ArchiveAllButton() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const pending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const pending = isSubmitting || isRefreshing;
 
   async function handleClick() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await archiveAllChomperJobsAction()
+      await archiveAllChomperJobsAction();
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
-    <Button
-      variant="outline"
-      disabled={pending}
-      onClick={handleClick}
-    >
+    <Button variant="outline" disabled={pending} onClick={handleClick}>
       {pending ? "Archiving…" : "Archive All"}
     </Button>
-  )
+  );
 }

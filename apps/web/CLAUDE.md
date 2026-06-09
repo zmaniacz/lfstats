@@ -5,6 +5,7 @@
 **App Router only.** No Pages Router patterns.
 
 Default to server components. Add `"use client"` only when you need:
+
 - useState / useReducer / useEffect
 - Browser APIs (window, localStorage)
 - Event handlers that can't be passed as props
@@ -13,6 +14,7 @@ Data fetching happens in server components or route handlers.
 Never fetch from the database client-side.
 
 **File layout:**
+
 ```
 app/
   (routes)/
@@ -38,24 +40,29 @@ packages/db/
 ## Data Display Rules
 
 ### Null vs zero — this is critical
+
 `null` means the stat does not apply to this position. `0` means it applies but the player recorded zero.
+
 - Null stats render as **`—`** (em dash), never `0` or blank
 - Zero stats render as **`0`**
 - Never use `value ?? 0` or `value || '—'` — check explicitly: `value === null ? '—' : value`
 
 ### Number formatting
+
 Always use helpers from `lib/format.ts`. If a helper doesn't exist for a case, add it there —
 never format inline.
 
-| Data type | Display example | Helper |
-|---|---|---|
-| Score / large integers | `7,420` | `formatScore(n)` |
-| Percentages (stored as 0–1 decimal) | `73.2%` | `formatPct(n)` |
-| Milliseconds duration | `8:42` | `formatMs(ms)` |
-| Hit differential | `1.24` (2 decimal places) | `formatHitDiff(n)` |
+| Data type                           | Display example           | Helper             |
+| ----------------------------------- | ------------------------- | ------------------ |
+| Score / large integers              | `7,420`                   | `formatScore(n)`   |
+| Percentages (stored as 0–1 decimal) | `73.2%`                   | `formatPct(n)`     |
+| Milliseconds duration               | `8:42`                    | `formatMs(ms)`     |
+| Hit differential                    | `1.24` (2 decimal places) | `formatHitDiff(n)` |
 
 ### Position display
+
 Never hardcode position names inline. Use `lib/positions.ts`:
+
 ```typescript
 // lib/positions.ts exports:
 POSITIONS[1] // { label: 'Commander', abbr: 'CMD', category: 1 }
@@ -63,15 +70,18 @@ getPosition(category: number) // → Position
 ```
 
 ### Team colors
+
 `colour_rgb` is null for pre-2.004 games. Always derive display values from `colour_enum`
 via `lib/team-colors.ts`. Never read `colour_rgb` directly in components.
 
 ### Eliminated players
+
 Eliminated players have `eliminated: true` and `lives_left: 0`.
 Show a visual indicator (Badge variant="destructive" or a muted row style) — don't just
 show 0 lives without context. An eliminated team always loses, even if their score is higher.
 
 ### Stat applicability
+
 Before rendering any position-specific stat column (nukes, rapid fire, resupplies, SP, etc.),
 gate on the player's `position` value, not just whether the column is null. Positions are
 fixed per game and determine which stats are meaningful.
@@ -79,9 +89,11 @@ fixed per game and determine which stats are meaningful.
 ## shadcn/ui Usage
 
 Load the shadcn skill before any UI work:
+
 ```
 npx skills add https://github.com/shadcn/ui --skill shadcn
 ```
+
 The skill handles component docs, correct imports, variants, and CLI. App-specific conventions
 on top of that:
 
@@ -122,6 +134,7 @@ loses even if their score is higher. Never determine the winner from score alone
 `GameTeam.result` or `GameTeam.eliminated`.
 
 **iplId** format is `#xxxxxxx`. Strip the `#` for iPlayLaserforce profile URLs:
+
 ```
 https://www.iplaylaserforce.com/mission-stats/?t={iplId_without_hash}
 ```
@@ -139,45 +152,46 @@ uncapped total.
 Client components that call server actions must explicitly call `router.refresh()` after the action completes. `revalidatePath` alone does not reliably clear the Next.js client-side router cache in production — the RSC re-fetch returns 200 but React applies a stale cached payload, leaving the button in a permanent loading state.
 
 **Do NOT tie the button's loading state to the same transition that calls `router.refresh()`.** Two separate bugs bracket this:
+
 - Wrapping `await action(); router.refresh()` together in one `startTransition` can leave `isPending` stuck forever (the transition's pending state doesn't reliably resolve after `router.refresh()`).
 - Calling `router.refresh()` completely outside any transition causes the opposite failure: the RSC refetch completes (200 in the network tab) but React never commits the new payload to the rendered tree — the UI stays stale until you navigate away and back or hard-refresh. `router.refresh()` needs React's transition machinery to actually apply the patch.
 
-The fix is to **decouple them**: track the action's own loading with plain `useState`, and wrap *only* the `router.refresh()` call in its own `startTransition` — but then **OR the two pending flags together** for the button's displayed state. If you don't, the button flashes back to its resting state the instant `await action()` resolves, while the page still shows stale data until the refresh transition commits a moment later — a visible flash/flicker of wrong UI.
+The fix is to **decouple them**: track the action's own loading with plain `useState`, and wrap _only_ the `router.refresh()` call in its own `startTransition` — but then **OR the two pending flags together** for the button's displayed state. If you don't, the button flashes back to its resting state the instant `await action()` resolves, while the page still shows stale data until the refresh transition commits a moment later — a visible flash/flicker of wrong UI.
 
 **Required pattern for any client component that calls a server action:**
 
 ```tsx
-"use client"
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+"use client";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 export function MyActionButton({ action }: { action: () => Promise<void> }) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleClick() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await action()
+      await action();
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
     <Button disabled={isPending} onClick={handleClick}>
       {isPending ? "Saving…" : "Save"}
     </Button>
-  )
+  );
 }
 ```
 
-`router.refresh()` runs **after** the `try/finally` resolves `isSubmitting`, inside its own dedicated transition — this gives Next.js the transition context it needs to commit the refreshed RSC payload without the "stuck forever" bug that comes from wrapping `await action()` itself in a transition. The displayed `isPending = isSubmitting || isRefreshing` keeps the button in its loading state across the *entire* sequence — action call through to the page actually showing fresh data — eliminating the flash where the button looks done but the UI hasn't caught up yet.
+`router.refresh()` runs **after** the `try/finally` resolves `isSubmitting`, inside its own dedicated transition — this gives Next.js the transition context it needs to commit the refreshed RSC payload without the "stuck forever" bug that comes from wrapping `await action()` itself in a transition. The displayed `isPending = isSubmitting || isRefreshing` keeps the button in its loading state across the _entire_ sequence — action call through to the page actually showing fresh data — eliminating the flash where the button looks done but the UI hasn't caught up yet.
 
 Server actions should still call `revalidatePath` — it clears the server-side cache so the fresh fetch returns updated data. The two work together: `revalidatePath` on the server, `router.refresh()` on the client.
 

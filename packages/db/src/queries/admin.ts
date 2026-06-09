@@ -2,26 +2,9 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { db } from "../client";
-import {
-  competition,
-  game,
-  gameTag,
-  gameTagAssignment,
-  center,
-} from "../schema";
-import {
-  eq,
-  and,
-  ne,
-  gte,
-  lte,
-  desc,
-  asc,
-  sql,
-  inArray,
-} from "drizzle-orm";
+import { competition, game, gameTag, gameTagAssignment, center } from "../schema";
+import { eq, and, ne, gte, lte, desc, asc, sql, inArray } from "drizzle-orm";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
-
 
 // ---------------------------------------------------------------------------
 // Competition types
@@ -257,10 +240,7 @@ export async function mergeTag(sourceId: string, targetId: string): Promise<void
         .select({ gameId: gameTagAssignment.gameId })
         .from(gameTagAssignment)
         .where(
-          and(
-            eq(gameTagAssignment.tagId, targetId),
-            inArray(gameTagAssignment.gameId, gameIds),
-          ),
+          and(eq(gameTagAssignment.tagId, targetId), inArray(gameTagAssignment.gameId, gameIds)),
         );
 
       const alreadyAssigned = new Set(existingTargetAssignments.map((a) => a.gameId));
@@ -293,10 +273,7 @@ export async function assignTagToGame(
   tagId: string,
   assignedBy?: string,
 ): Promise<void> {
-  await db
-    .insert(gameTagAssignment)
-    .values({ gameId, tagId, assignedBy })
-    .onConflictDoNothing();
+  await db.insert(gameTagAssignment).values({ gameId, tagId, assignedBy }).onConflictDoNothing();
 }
 
 export async function removeTagFromGame(gameId: string, tagId: string): Promise<void> {
@@ -333,19 +310,13 @@ export async function setGameExcluded(id: string, exclude: boolean): Promise<voi
 }
 
 export async function markGameAsReplay(id: string): Promise<void> {
-  await db
-    .update(game)
-    .set({ outcome: "replay", exclude: true })
-    .where(eq(game.id, id));
+  await db.update(game).set({ outcome: "replay", exclude: true }).where(eq(game.id, id));
 }
 
 export async function removeGameFromCompetition(gameId: string): Promise<void> {
   await db.update(game).set({ competitionId: null }).where(eq(game.id, gameId));
 }
 
-export async function setGameCompetition(
-  gameId: string,
-  competitionId: string,
-): Promise<void> {
+export async function setGameCompetition(gameId: string, competitionId: string): Promise<void> {
   await db.update(game).set({ competitionId }).where(eq(game.id, gameId));
 }

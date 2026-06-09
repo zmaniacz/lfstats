@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -14,14 +14,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,21 +31,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { TagForm } from "./TagForm"
-import { MergeTagDialog } from "./MergeTagDialog"
-import type { GameTagListItem } from "@lfstats/db"
+} from "@/components/ui/alert-dialog";
+import { TagForm } from "./TagForm";
+import { MergeTagDialog } from "./MergeTagDialog";
+import type { GameTagListItem } from "@lfstats/db";
 
 type Props = {
-  centerId: string
-  tags: GameTagListItem[]
-  createAction: (centerId: string, formData: FormData) => Promise<void>
-  updateAction: (id: string, centerId: string, formData: FormData) => Promise<void>
-  archiveAction: (id: string, centerId: string) => Promise<void>
-  unarchiveAction: (id: string, centerId: string) => Promise<void>
-  deleteAction: (id: string, centerId: string) => Promise<void>
-  mergeAction: (sourceId: string, targetId: string, centerId: string) => Promise<void>
-}
+  centerId: string;
+  tags: GameTagListItem[];
+  createAction: (centerId: string, formData: FormData) => Promise<void>;
+  updateAction: (id: string, centerId: string, formData: FormData) => Promise<void>;
+  archiveAction: (id: string, centerId: string) => Promise<void>;
+  unarchiveAction: (id: string, centerId: string) => Promise<void>;
+  deleteAction: (id: string, centerId: string) => Promise<void>;
+  mergeAction: (sourceId: string, targetId: string, centerId: string) => Promise<void>;
+};
 
 export function TagsTable({
   centerId,
@@ -57,35 +57,31 @@ export function TagsTable({
   deleteAction,
   mergeAction,
 }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
-  const [showArchived, setShowArchived] = useState(false)
-  const [tagFormOpen, setTagFormOpen] = useState(false)
-  const [editingTag, setEditingTag] = useState<GameTagListItem | undefined>()
-  const [mergeSource, setMergeSource] = useState<GameTagListItem | undefined>()
-  const [deleteTarget, setDeleteTarget] = useState<GameTagListItem | undefined>()
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
+  const [showArchived, setShowArchived] = useState(false);
+  const [tagFormOpen, setTagFormOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState<GameTagListItem | undefined>();
+  const [mergeSource, setMergeSource] = useState<GameTagListItem | undefined>();
+  const [deleteTarget, setDeleteTarget] = useState<GameTagListItem | undefined>();
 
-  const visible = showArchived ? tags : tags.filter((t) => !t.archived)
+  const visible = showArchived ? tags : tags.filter((t) => !t.archived);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowArchived((v) => !v)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Hide Archived" : "Show Archived"}
           </Button>
         </div>
         <Button
           size="sm"
           onClick={() => {
-            setEditingTag(undefined)
-            setTagFormOpen(true)
+            setEditingTag(undefined);
+            setTagFormOpen(true);
           }}
         >
           New Tag
@@ -127,11 +123,7 @@ export function TagsTable({
                 <TableCell className="text-muted-foreground text-sm">
                   {tag.description ?? "—"}
                 </TableCell>
-                <TableCell>
-                  {tag.archived && (
-                    <Badge variant="secondary">Archived</Badge>
-                  )}
-                </TableCell>
+                <TableCell>{tag.archived && <Badge variant="secondary">Archived</Badge>}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -142,35 +134,33 @@ export function TagsTable({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={() => {
-                          setEditingTag(tag)
-                          setTagFormOpen(true)
+                          setEditingTag(tag);
+                          setTagFormOpen(true);
                         }}
                       >
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={async () => {
-                          setIsSubmitting(true)
+                          setIsSubmitting(true);
                           try {
                             if (tag.archived) {
-                              await unarchiveAction(tag.id, centerId)
+                              await unarchiveAction(tag.id, centerId);
                             } else {
-                              await archiveAction(tag.id, centerId)
+                              await archiveAction(tag.id, centerId);
                             }
                           } finally {
-                            setIsSubmitting(false)
+                            setIsSubmitting(false);
                           }
                           startRefreshTransition(() => {
-                            router.refresh()
-                          })
+                            router.refresh();
+                          });
                         }}
                         disabled={isPending}
                       >
                         {tag.archived ? "Unarchive" : "Archive"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setMergeSource(tag)}
-                      >
+                      <DropdownMenuItem onClick={() => setMergeSource(tag)}>
                         Merge into…
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -204,13 +194,20 @@ export function TagsTable({
           availableTags={tags}
           centerId={centerId}
           open={mergeSource !== undefined}
-          onOpenChange={(open) => { if (!open) setMergeSource(undefined) }}
+          onOpenChange={(open) => {
+            if (!open) setMergeSource(undefined);
+          }}
           action={mergeAction}
         />
       )}
 
       {deleteTarget && (
-        <AlertDialog open onOpenChange={(open) => { if (!open) setDeleteTarget(undefined) }}>
+        <AlertDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(undefined);
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
@@ -224,16 +221,16 @@ export function TagsTable({
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
-                  setIsSubmitting(true)
+                  setIsSubmitting(true);
                   try {
-                    await deleteAction(deleteTarget.id, centerId)
-                    setDeleteTarget(undefined)
+                    await deleteAction(deleteTarget.id, centerId);
+                    setDeleteTarget(undefined);
                   } finally {
-                    setIsSubmitting(false)
+                    setIsSubmitting(false);
                   }
                   startRefreshTransition(() => {
-                    router.refresh()
-                  })
+                    router.refresh();
+                  });
                 }}
                 disabled={isPending}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -245,5 +242,5 @@ export function TagsTable({
         </AlertDialog>
       )}
     </div>
-  )
+  );
 }

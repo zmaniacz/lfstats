@@ -15,26 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  formatHitDiff,
-  formatMVP,
-  formatPct,
-  formatScore,
-  formatWinRate,
-} from "@/lib/format";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatHitDiff, formatMVP, formatPct, formatScore, formatWinRate } from "@/lib/format";
 import type { PlayerSocialAverages } from "@lfstats/db";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -103,11 +87,7 @@ function SortableHead({
   center?: boolean;
 }) {
   const isActive = sortKey === col;
-  const Icon = isActive
-    ? sortDir === "asc"
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown;
+  const Icon = isActive ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead className={className}>
       <button
@@ -131,8 +111,7 @@ function TrendIndicator({
   label: string | undefined;
 }) {
   if (lifetime === undefined) return null;
-  const Icon =
-    current > lifetime ? TrendingUp : current < lifetime ? TrendingDown : null;
+  const Icon = current > lifetime ? TrendingUp : current < lifetime ? TrendingDown : null;
   if (!Icon) return null;
   const color = current > lifetime ? "text-green-600" : "text-red-600";
   return (
@@ -169,35 +148,30 @@ function aggregate(rows: NightlyScorecardRow[]): PlayerSummary[] {
     map.get(key)!.entries.push(row);
   }
 
-  return Array.from(map.values()).map(
-    ({ entries, playerId, iplId, callsign }) => {
-      const gameCount = entries.length;
-      const scores = entries.map((r) => r.player.score);
-      const mvps = entries.map((r) => r.player.mvpPoints);
-      const accuracies = entries.map((r) => r.player.accuracy);
-      const hitDiffs = entries.map((r) => r.player.hitDiff);
+  return Array.from(map.values()).map(({ entries, playerId, iplId, callsign }) => {
+    const gameCount = entries.length;
+    const scores = entries.map((r) => r.player.score);
+    const mvps = entries.map((r) => r.player.mvpPoints);
+    const accuracies = entries.map((r) => r.player.accuracy);
+    const hitDiffs = entries.map((r) => r.player.hitDiff);
 
-      return {
-        playerId,
-        iplId,
-        callsign,
-        gameCount,
-        avgScore: scores.reduce((a, b) => a + b, 0) / gameCount,
-        minScore: Math.min(...scores),
-        maxScore: Math.max(...scores),
-        avgMvp: mvps.reduce((a, b) => a + b, 0) / gameCount,
-        minMvp: Math.min(...mvps),
-        maxMvp: Math.max(...mvps),
-        avgAccuracy: accuracies.reduce((a, b) => a + b, 0) / gameCount,
-        avgHitDiff: hitDiffs.reduce((a, b) => a + b, 0) / gameCount,
-        totalMedicHits: entries.reduce(
-          (sum, r) => sum + r.player.shotsHitOpponentMedic,
-          0,
-        ),
-        wins: entries.filter((r) => r.teamResult === "win").length,
-      };
-    },
-  );
+    return {
+      playerId,
+      iplId,
+      callsign,
+      gameCount,
+      avgScore: scores.reduce((a, b) => a + b, 0) / gameCount,
+      minScore: Math.min(...scores),
+      maxScore: Math.max(...scores),
+      avgMvp: mvps.reduce((a, b) => a + b, 0) / gameCount,
+      minMvp: Math.min(...mvps),
+      maxMvp: Math.max(...mvps),
+      avgAccuracy: accuracies.reduce((a, b) => a + b, 0) / gameCount,
+      avgHitDiff: hitDiffs.reduce((a, b) => a + b, 0) / gameCount,
+      totalMedicHits: entries.reduce((sum, r) => sum + r.player.shotsHitOpponentMedic, 0),
+      wins: entries.filter((r) => r.teamResult === "win").length,
+    };
+  });
 }
 
 type Props = {
@@ -230,9 +204,7 @@ export function NightlySummaryTable({ rows, lifetimeAvgs }: Props) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return q
-      ? summaries.filter((s) => s.callsign.toLowerCase().includes(q))
-      : summaries;
+    return q ? summaries.filter((s) => s.callsign.toLowerCase().includes(q)) : summaries;
   }, [summaries, search]);
 
   const sorted = useMemo(() => {
@@ -320,20 +292,13 @@ export function NightlySummaryTable({ rows, lifetimeAvgs }: Props) {
             <TableBody>
               {pageRows.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-center text-muted-foreground py-8"
-                  >
-                    {search
-                      ? "No players match the search."
-                      : "No players found."}
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    {search ? "No players match the search." : "No players found."}
                   </TableCell>
                 </TableRow>
               ) : (
                 pageRows.map((s) => {
-                  const lt = s.playerId
-                    ? lifetimeAvgs.get(s.playerId)
-                    : undefined;
+                  const lt = s.playerId ? lifetimeAvgs.get(s.playerId) : undefined;
                   return (
                     <TableRow key={s.playerId ?? `guest:${s.callsign}`}>
                       <TableCell className="font-medium">
@@ -380,9 +345,7 @@ export function NightlySummaryTable({ rows, lifetimeAvgs }: Props) {
                       <TableCell className="text-center tabular-nums">
                         {formatHitDiff(s.avgHitDiff)}
                       </TableCell>
-                      <TableCell className="text-center tabular-nums">
-                        {s.totalMedicHits}
-                      </TableCell>
+                      <TableCell className="text-center tabular-nums">{s.totalMedicHits}</TableCell>
                       <TableCell className="text-center tabular-nums">
                         {formatWinRate(s.wins, s.gameCount)}
                       </TableCell>

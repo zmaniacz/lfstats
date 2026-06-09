@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { getCompetitiveCompetitions, getCompetitionAllStarRankings } from "@lfstats/db"
-import { CompetitionSelector } from "../standings/CompetitionSelector"
-import { AllStarPositionTable } from "@/components/competitions/AllStarPositionTable"
-import { AllStarFilters } from "./AllStarFilters"
-import { POSITIONS } from "@/lib/positions"
-import { resolveActiveCompetition } from "@/lib/active-competition"
+import { getCompetitiveCompetitions, getCompetitionAllStarRankings } from "@lfstats/db";
+import { CompetitionSelector } from "../standings/CompetitionSelector";
+import { AllStarPositionTable } from "@/components/competitions/AllStarPositionTable";
+import { AllStarFilters } from "./AllStarFilters";
+import { POSITIONS } from "@/lib/positions";
+import { resolveActiveCompetition } from "@/lib/active-competition";
 
 export default async function AllStarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ competition?: string; pool?: string; finals?: string; mercs?: string }>
+  searchParams: Promise<{ competition?: string; pool?: string; finals?: string; mercs?: string }>;
 }) {
-  const { competition: competitionSlug, pool, finals, mercs } = await searchParams
+  const { competition: competitionSlug, pool, finals, mercs } = await searchParams;
 
-  const showPool = pool !== "0"
-  const showFinals = finals === "1"
-  const showMercs = mercs === "1"
+  const showPool = pool !== "0";
+  const showFinals = finals === "1";
+  const showMercs = mercs === "1";
 
-  const competitions = await getCompetitiveCompetitions()
+  const competitions = await getCompetitiveCompetitions();
 
   if (competitions.length === 0) {
     return (
@@ -27,14 +27,14 @@ export default async function AllStarPage({
         <h2 className="text-xl font-semibold">All-Star Rankings</h2>
         <p className="text-muted-foreground text-sm">No competitive competitions found.</p>
       </div>
-    )
+    );
   }
 
-  const activeComp = await resolveActiveCompetition(competitions, competitionSlug)
-  const activeId = activeComp.id
+  const activeComp = await resolveActiveCompetition(competitions, competitionSlug);
+  const activeId = activeComp.id;
 
-  const options = { showPool, showFinals, showMercs }
-  const rankings = await getCompetitionAllStarRankings(activeId, options)
+  const options = { showPool, showFinals, showMercs };
+  const rankings = await getCompetitionAllStarRankings(activeId, options);
 
   return (
     <div className="space-y-6">
@@ -55,12 +55,8 @@ export default async function AllStarPage({
       />
 
       {([1, 2, 3, 4, 5] as const).map((pos) => (
-        <AllStarPositionTable
-          key={pos}
-          title={POSITIONS[pos].label}
-          players={rankings[pos]}
-        />
+        <AllStarPositionTable key={pos} title={POSITIONS[pos].label} players={rankings[pos]} />
       ))}
     </div>
-  )
+  );
 }

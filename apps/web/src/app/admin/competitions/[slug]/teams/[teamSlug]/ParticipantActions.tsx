@@ -1,47 +1,47 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 type Props = {
-  playerId: string
-  isMercenary: boolean
-  addAction: (playerId: string) => Promise<void>
-  mercAction: (playerId: string, isMercenary: boolean) => Promise<void>
-}
+  playerId: string;
+  isMercenary: boolean;
+  addAction: (playerId: string) => Promise<void>;
+  mercAction: (playerId: string, isMercenary: boolean) => Promise<void>;
+};
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleAddToRoster() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await addAction(playerId)
+      await addAction(playerId);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleMercAction() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await mercAction(playerId, !isMercenary)
+      await mercAction(playerId, !isMercenary);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -67,5 +67,5 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
         {isMercenary ? "Unmark Merc" : "Mark as Merc"}
       </Button>
     </div>
-  )
+  );
 }

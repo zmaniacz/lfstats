@@ -18,10 +18,7 @@ import { getJobStatusesAction } from "../actions";
 
 type JobRow = Awaited<ReturnType<typeof getJobStatusesAction>>[number];
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "secondary",
   processing: "outline",
   completed: "default",
@@ -55,9 +52,7 @@ export function JobStatusTable({ s3Keys }: JobStatusTableProps) {
 
     const id = setInterval(async () => {
       const rows = await poll();
-      const done = s3Keys.every(
-        (key) => rows.find((r) => r.s3Key === key)?.completedAt != null,
-      );
+      const done = s3Keys.every((key) => rows.find((r) => r.s3Key === key)?.completedAt != null);
       if (done) {
         setAllDone(true);
         clearInterval(id);
@@ -68,9 +63,7 @@ export function JobStatusTable({ s3Keys }: JobStatusTableProps) {
   }, [s3Keys]);
 
   const jobsByKey = new Map(jobs.map((j) => [j.s3Key, j]));
-  const completedCount = s3Keys.filter(
-    (key) => jobsByKey.get(key)?.completedAt != null,
-  ).length;
+  const completedCount = s3Keys.filter((key) => jobsByKey.get(key)?.completedAt != null).length;
 
   return (
     <div className="space-y-2">
@@ -101,13 +94,9 @@ export function JobStatusTable({ s3Keys }: JobStatusTableProps) {
             const status = job?.status ?? "pending";
             return (
               <TableRow key={key}>
-                <TableCell className="font-mono text-xs break-all">
-                  {key}
-                </TableCell>
+                <TableCell className="font-mono text-xs break-all">{key}</TableCell>
                 <TableCell>
-                  <Badge variant={STATUS_VARIANT[status] ?? "outline"}>
-                    {status}
-                  </Badge>
+                  <Badge variant={STATUS_VARIANT[status] ?? "outline"}>{status}</Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {job?.skipReason ?? "—"}

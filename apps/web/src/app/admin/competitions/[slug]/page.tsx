@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
-import Link from "next/link"
+import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getCompetitionBySlug,
   getCenterList,
@@ -10,10 +10,10 @@ import {
   getCompetitionRounds,
   getCompetitionUnassignedGamesForAdmin,
   getCompetitionAssignedGamesForAdmin,
-} from "@lfstats/db"
-import { CompetitionForm } from "@/components/admin/CompetitionForm"
-import { BulkAssignForm } from "@/components/admin/BulkAssignForm"
-import { DeleteCompetitionButton } from "@/components/admin/DeleteCompetitionButton"
+} from "@lfstats/db";
+import { CompetitionForm } from "@/components/admin/CompetitionForm";
+import { BulkAssignForm } from "@/components/admin/BulkAssignForm";
+import { DeleteCompetitionButton } from "@/components/admin/DeleteCompetitionButton";
 import {
   Table,
   TableBody,
@@ -21,28 +21,28 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
-import { formatDateTime, formatGameName } from "@/lib/format"
-import { getTeamColor } from "@/lib/team-colors"
+} from "@/components/ui/table";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { formatDateTime, formatGameName } from "@/lib/format";
+import { getTeamColor } from "@/lib/team-colors";
 import {
   updateCompetitionAction,
   deleteCompetitionAction,
   bulkAssignGamesAction,
   removeGameFromCompetitionAction,
   unassignGameFromMatchAction,
-} from "../actions"
+} from "../actions";
 
 export default async function CompetitionDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params
-  const comp = await getCompetitionBySlug(slug)
-  if (!comp) notFound()
+  const { slug } = await params;
+  const comp = await getCompetitionBySlug(slug);
+  if (!comp) notFound();
 
   const [unassignedGames, assignedGames, centers, teams, rounds] = await Promise.all([
     getCompetitionUnassignedGamesForAdmin(comp.id),
@@ -50,11 +50,11 @@ export default async function CompetitionDetailPage({
     getCenterList(),
     getCompetitionTeams(comp.id),
     getCompetitionRounds(comp.id),
-  ])
+  ]);
 
-  const boundUpdate = updateCompetitionAction.bind(null, comp.id)
-  const boundRemoveGame = removeGameFromCompetitionAction.bind(null, comp.id)
-  const boundUnassignGame = unassignGameFromMatchAction.bind(null, comp.id)
+  const boundUpdate = updateCompetitionAction.bind(null, comp.id);
+  const boundRemoveGame = removeGameFromCompetitionAction.bind(null, comp.id);
+  const boundUnassignGame = unassignGameFromMatchAction.bind(null, comp.id);
 
   return (
     <div className="space-y-8">
@@ -80,11 +80,7 @@ export default async function CompetitionDetailPage({
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <CompetitionForm
-            competition={comp}
-            centers={centers}
-            action={boundUpdate}
-          />
+          <CompetitionForm competition={comp} centers={centers} action={boundUpdate} />
         </CardContent>
       </Card>
 
@@ -197,8 +193,8 @@ export default async function CompetitionDetailPage({
               </TableHeader>
               <TableBody>
                 {assignedGames.map((g) => {
-                  const t1Color = getTeamColor(g.team1ColourEnum)
-                  const t2Color = getTeamColor(g.team2ColourEnum)
+                  const t1Color = getTeamColor(g.team1ColourEnum);
+                  const t2Color = getTeamColor(g.team2ColourEnum);
                   return (
                     <TableRow key={g.id}>
                       <TableCell>
@@ -221,7 +217,7 @@ export default async function CompetitionDetailPage({
                         />
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })}
               </TableBody>
             </Table>
@@ -229,5 +225,5 @@ export default async function CompetitionDetailPage({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

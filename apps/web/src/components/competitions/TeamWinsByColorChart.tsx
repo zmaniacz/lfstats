@@ -12,11 +12,7 @@ type Props = {
   data: CompetitionTeamResultItem[];
 };
 
-function toOuterKey(
-  colourEnum: number,
-  result: string,
-  outcome: string,
-): string {
+function toOuterKey(colourEnum: number, result: string, outcome: string): string {
   const label = TEAM_COLORS[colourEnum]?.label ?? `color_${colourEnum}`;
   return `${label.toLowerCase().replace(/\s+/g, "_")}_${result}_${outcome}`;
 }
@@ -45,15 +41,7 @@ function toOuterFill(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function InnerLabel({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  name,
-  value,
-}: any) {
+function InnerLabel({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: any) {
   const RADIAN = Math.PI / 180;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = (cx as number) + radius * Math.cos(-midAngle * RADIAN);
@@ -117,11 +105,7 @@ const renderActiveShape = ({
         outerRadius={(outerRadius ?? 0) + 10}
         fill={fill}
       />
-      <path
-        d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`}
-        stroke={fill}
-        fill="none"
-      />
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
       <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
       <text
         x={ex + (cos >= 0 ? 1 : -1) * 12}
@@ -129,13 +113,7 @@ const renderActiveShape = ({
         textAnchor={textAnchor}
         fill="#333"
       >{`${payload.label}`}</text>
-      <text
-        x={ex + (cos >= 0 ? 1 : -1) * 12}
-        y={ey}
-        dy={18}
-        textAnchor={textAnchor}
-        fill="#999"
-      >
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#999">
         {`${value} (${((percent ?? 1) * 100).toFixed(2)}%)`}
       </text>
     </g>
@@ -144,17 +122,11 @@ const renderActiveShape = ({
 
 export function TeamWinsByColorChart({ data }: Props) {
   if (data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No game data available.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No game data available.</p>;
   }
 
-  const totalWins = data
-    .filter((d) => d.result === "win")
-    .reduce((sum, d) => sum + d.count, 0);
-  const totalLosses = data
-    .filter((d) => d.result === "loss")
-    .reduce((sum, d) => sum + d.count, 0);
+  const totalWins = data.filter((d) => d.result === "win").reduce((sum, d) => sum + d.count, 0);
+  const totalLosses = data.filter((d) => d.result === "loss").reduce((sum, d) => sum + d.count, 0);
 
   const innerData = [
     {
@@ -181,9 +153,7 @@ export function TeamWinsByColorChart({ data }: Props) {
   const chartConfig: ChartConfig = {
     wins: { label: "Wins", color: "var(--chart-5)" },
     losses: { label: "Losses", color: "var(--chart-1)" },
-    ...Object.fromEntries(
-      outerSlices.map((s) => [s.name, { label: s.label, color: s.fill }]),
-    ),
+    ...Object.fromEntries(outerSlices.map((s) => [s.name, { label: s.label, color: s.fill }])),
   };
 
   return (

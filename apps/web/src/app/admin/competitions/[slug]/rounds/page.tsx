@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
-import Link from "next/link"
+import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getCompetitionBySlug,
   getCompetitionTeams,
   getCompetitionRounds,
   getCompetitionMatchesByRound,
-} from "@lfstats/db"
-import { CompetitionRoundForm } from "@/components/admin/competition/CompetitionRoundForm"
-import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm"
-import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton"
-import { SortableMatchList } from "@/components/admin/competition/SortableMatchList"
-import { GeneratePoolMatchesButton } from "@/components/admin/competition/GeneratePoolMatchesButton"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+} from "@lfstats/db";
+import { CompetitionRoundForm } from "@/components/admin/competition/CompetitionRoundForm";
+import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm";
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { SortableMatchList } from "@/components/admin/competition/SortableMatchList";
+import { GeneratePoolMatchesButton } from "@/components/admin/competition/GeneratePoolMatchesButton";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   createRoundAction,
   deleteRoundAction,
@@ -23,34 +23,27 @@ import {
   deleteMatchAction,
   reorderMatchesAction,
   generatePoolMatchesAction,
-} from "./actions"
+} from "./actions";
 
-export default async function RoundsPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  const { slug } = await params
-  const comp = await getCompetitionBySlug(slug)
-  if (!comp) notFound()
+export default async function RoundsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const comp = await getCompetitionBySlug(slug);
+  if (!comp) notFound();
 
   const [teams, rounds] = await Promise.all([
     getCompetitionTeams(comp.id),
     getCompetitionRounds(comp.id),
-  ])
+  ]);
 
-  const matchesByRound = await Promise.all(
-    rounds.map((r) => getCompetitionMatchesByRound(r.id)),
-  )
+  const matchesByRound = await Promise.all(rounds.map((r) => getCompetitionMatchesByRound(r.id)));
 
-  const id = comp.id
-  const boundCreateRound = createRoundAction.bind(null, id)
-  const boundDeleteRound = deleteRoundAction.bind(null, id)
-  const boundDeleteMatch = deleteMatchAction.bind(null, id)
-  const boundReorder = reorderMatchesAction.bind(null, id)
+  const id = comp.id;
+  const boundCreateRound = createRoundAction.bind(null, id);
+  const boundDeleteRound = deleteRoundAction.bind(null, id);
+  const boundDeleteMatch = deleteMatchAction.bind(null, id);
+  const boundReorder = reorderMatchesAction.bind(null, id);
 
-  const nextRoundNumber =
-    rounds.length > 0 ? Math.max(...rounds.map((r) => r.roundNumber)) + 1 : 1
+  const nextRoundNumber = rounds.length > 0 ? Math.max(...rounds.map((r) => r.roundNumber)) + 1 : 1;
 
   return (
     <div className="space-y-6">
@@ -69,10 +62,7 @@ export default async function RoundsPage({
           <CardTitle>Add Round</CardTitle>
         </CardHeader>
         <CardContent>
-          <CompetitionRoundForm
-            nextRoundNumber={nextRoundNumber}
-            action={boundCreateRound}
-          />
+          <CompetitionRoundForm nextRoundNumber={nextRoundNumber} action={boundCreateRound} />
         </CardContent>
       </Card>
 
@@ -80,8 +70,8 @@ export default async function RoundsPage({
         <p className="text-sm text-muted-foreground">No rounds yet.</p>
       ) : (
         rounds.map((round, i) => {
-          const matches = matchesByRound[i]
-          const boundCreateMatch = createMatchAction.bind(null, id, round.id)
+          const matches = matchesByRound[i];
+          const boundCreateMatch = createMatchAction.bind(null, id, round.id);
 
           return (
             <Card key={round.id}>
@@ -142,9 +132,9 @@ export default async function RoundsPage({
                 )}
               </CardContent>
             </Card>
-          )
+          );
         })
       )}
     </div>
-  )
+  );
 }

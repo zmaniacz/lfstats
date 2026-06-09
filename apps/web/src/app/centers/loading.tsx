@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -9,8 +9,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function CentersLoading() {
   return (
@@ -28,8 +28,12 @@ export default function CentersLoading() {
           <TableBody>
             {Array.from({ length: 6 }).map((_, i) => (
               <TableRow key={i}>
-                <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                <TableCell className="text-right"><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-48" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Skeleton className="h-4 w-12 ml-auto" />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -57,9 +61,15 @@ export default function CentersLoading() {
                   <TableBody>
                     {Array.from({ length: 4 }).map((_, j) => (
                       <TableRow key={j}>
-                        <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-36" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-4 w-12 ml-auto" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-4 w-16 ml-auto" />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -90,5 +100,5 @@ export default function CentersLoading() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

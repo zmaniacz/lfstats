@@ -55,8 +55,7 @@ for (const file of files) {
       passed++;
       continue;
     }
-    const reason =
-      err instanceof ParseError ? err.message : String(err);
+    const reason = err instanceof ParseError ? err.message : String(err);
     console.error(`FAIL [parse error] ${file}`);
     failures.push({ file, reason });
     failed++;
@@ -73,7 +72,10 @@ for (const file of files) {
 
   const simResult = simulate(parsed);
   const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-  const { discrepancies, ghostShots, warnings } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+  const { discrepancies, ghostShots, warnings } = runConsistencyCheck(
+    simResult.playerStats,
+    sm5StatsById,
+  );
 
   const debugOut = {
     consistencyCheck: {

@@ -1,38 +1,38 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { getGamesPage, getGamesCount, GAMES_PER_PAGE, getCenterList } from "@lfstats/db"
-import { GamesFilters } from "@/components/games/games-filters"
-import { GamesTable } from "@/components/games/GamesTable"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { getGamesPage, getGamesCount, GAMES_PER_PAGE, getCenterList } from "@lfstats/db";
+import { GamesFilters } from "@/components/games/games-filters";
+import { GamesTable } from "@/components/games/GamesTable";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default async function GamesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; center?: string; date?: string }>
+  searchParams: Promise<{ page?: string; center?: string; date?: string }>;
 }) {
-  const { page: pageParam, center: centerId = "", date: dateSearch = "" } = await searchParams
-  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1)
+  const { page: pageParam, center: centerId = "", date: dateSearch = "" } = await searchParams;
+  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
   const filters = {
     centerId: centerId || undefined,
     dateSearch: dateSearch || undefined,
-  }
+  };
 
   const [games, total, centers] = await Promise.all([
     getGamesPage(page, filters),
     getGamesCount(filters),
     getCenterList(),
-  ])
-  const totalPages = Math.ceil(total / GAMES_PER_PAGE)
+  ]);
+  const totalPages = Math.ceil(total / GAMES_PER_PAGE);
 
   function pageUrl(p: number) {
-    const params = new URLSearchParams()
-    if (p > 1) params.set("page", String(p))
-    if (centerId) params.set("center", centerId)
-    if (dateSearch) params.set("date", dateSearch)
-    const qs = params.toString()
-    return `/games${qs ? `?${qs}` : ""}`
+    const params = new URLSearchParams();
+    if (p > 1) params.set("page", String(p));
+    if (centerId) params.set("center", centerId);
+    if (dateSearch) params.set("date", dateSearch);
+    const qs = params.toString();
+    return `/games${qs ? `?${qs}` : ""}`;
   }
 
   return (
@@ -73,5 +73,5 @@ export default async function GamesPage({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,42 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 interface Props {
-  action: () => Promise<void>
+  action: () => Promise<void>;
 }
 
 export function GeneratePoolMatchesButton({ action }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleClick() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await action()
+      await action();
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      disabled={isPending}
-      onClick={handleClick}
-    >
+    <Button variant="secondary" size="sm" disabled={isPending} onClick={handleClick}>
       {isPending ? "Generating…" : "Generate Matches"}
     </Button>
-  )
+  );
 }

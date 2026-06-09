@@ -1,43 +1,43 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { CenterListItem } from "@lfstats/db"
+} from "@/components/ui/select";
+import type { CenterListItem } from "@lfstats/db";
 
 type Props = {
-  competitionId: string
-  centers: CenterListItem[]
-  action: (competitionId: string, formData: FormData) => Promise<number>
-}
+  competitionId: string;
+  centers: CenterListItem[];
+  action: (competitionId: string, formData: FormData) => Promise<number>;
+};
 
 export function BulkAssignForm({ competitionId, centers, action }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [centerId, setCenterId] = useState("")
-  const [result, setResult] = useState<number | null>(null)
+  const [isPending, setIsPending] = useState(false);
+  const [centerId, setCenterId] = useState("");
+  const [result, setResult] = useState<number | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    formData.set("centerId", centerId)
-    setResult(null)
-    setIsPending(true)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.set("centerId", centerId);
+    setResult(null);
+    setIsPending(true);
     try {
-      const count = await action(competitionId, formData)
-      setResult(count)
+      const count = await action(competitionId, formData);
+      setResult(count);
     } finally {
-      setIsPending(false)
+      setIsPending(false);
     }
   }
 
@@ -79,5 +79,5 @@ export function BulkAssignForm({ competitionId, centers, action }: Props) {
         )}
       </div>
     </form>
-  )
+  );
 }

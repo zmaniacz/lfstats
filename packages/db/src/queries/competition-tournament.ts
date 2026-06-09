@@ -24,9 +24,7 @@ import { slugify, resolveUniqueSlug } from "../lib/slug";
 // Competition lookup
 // ---------------------------------------------------------------------------
 
-export async function getCompetitionHostCenterId(
-  competitionId: string,
-): Promise<string | null> {
+export async function getCompetitionHostCenterId(competitionId: string): Promise<string | null> {
   const [row] = await db
     .select({ hostCenterId: competition.hostCenterId })
     .from(competition)
@@ -149,20 +147,29 @@ export async function getCompetitionTeams(
   return rows;
 }
 
-export async function getCompetitionTeamById(
-  id: string,
-): Promise<{ id: string; competitionId: string; name: string; slug: string; shortName: string | null; hasLogo: boolean } | null> {
-  const [row] = await db
-    .select()
-    .from(competitionTeam)
-    .where(eq(competitionTeam.id, id));
+export async function getCompetitionTeamById(id: string): Promise<{
+  id: string;
+  competitionId: string;
+  name: string;
+  slug: string;
+  shortName: string | null;
+  hasLogo: boolean;
+} | null> {
+  const [row] = await db.select().from(competitionTeam).where(eq(competitionTeam.id, id));
   return row ?? null;
 }
 
 export async function getCompetitionTeamBySlug(
   competitionId: string,
   slug: string,
-): Promise<{ id: string; competitionId: string; name: string; slug: string; shortName: string | null; hasLogo: boolean } | null> {
+): Promise<{
+  id: string;
+  competitionId: string;
+  name: string;
+  slug: string;
+  shortName: string | null;
+  hasLogo: boolean;
+} | null> {
   const [row] = await db
     .select()
     .from(competitionTeam)
@@ -184,7 +191,10 @@ async function resolveCompetitionTeamSlug(
           ne(competitionTeam.id, excludeId),
         )
       : and(eq(competitionTeam.competitionId, competitionId), eq(competitionTeam.slug, candidate));
-    const [existing] = await db.select({ id: competitionTeam.id }).from(competitionTeam).where(conditions);
+    const [existing] = await db
+      .select({ id: competitionTeam.id })
+      .from(competitionTeam)
+      .where(conditions);
     return !!existing;
   });
 }
@@ -193,7 +203,11 @@ export async function updateCompetitionTeam(
   id: string,
   data: { competitionId: string; name: string; shortName: string | null },
 ): Promise<void> {
-  const slug = await resolveCompetitionTeamSlug(data.competitionId, data.shortName ?? data.name, id);
+  const slug = await resolveCompetitionTeamSlug(
+    data.competitionId,
+    data.shortName ?? data.name,
+    id,
+  );
   await db
     .update(competitionTeam)
     .set({ name: data.name, shortName: data.shortName, slug })
@@ -201,10 +215,7 @@ export async function updateCompetitionTeam(
 }
 
 export async function setCompetitionTeamLogo(id: string, hasLogo: boolean): Promise<void> {
-  await db
-    .update(competitionTeam)
-    .set({ hasLogo })
-    .where(eq(competitionTeam.id, id));
+  await db.update(competitionTeam).set({ hasLogo }).where(eq(competitionTeam.id, id));
 }
 
 export async function getCompetitionTeamRoster(
@@ -437,12 +448,8 @@ export async function addPlayerToCompetitionTeam(
     .onConflictDoNothing();
 }
 
-export async function removePlayerFromCompetitionTeam(
-  entryId: string,
-): Promise<void> {
-  await db
-    .delete(competitionTeamPlayer)
-    .where(eq(competitionTeamPlayer.id, entryId));
+export async function removePlayerFromCompetitionTeam(entryId: string): Promise<void> {
+  await db.delete(competitionTeamPlayer).where(eq(competitionTeamPlayer.id, entryId));
 }
 
 // ---------------------------------------------------------------------------
@@ -488,10 +495,7 @@ export async function getCompetitionRounds(
       matchCount: sql<number>`count(${competitionMatch.id})::int`,
     })
     .from(competitionRound)
-    .leftJoin(
-      competitionMatch,
-      eq(competitionMatch.roundId, competitionRound.id),
-    )
+    .leftJoin(competitionMatch, eq(competitionMatch.roundId, competitionRound.id))
     .where(eq(competitionRound.competitionId, competitionId))
     .groupBy(competitionRound.id)
     .orderBy(asc(competitionRound.roundNumber));
@@ -539,10 +543,7 @@ export async function getCompetitionMatchesByRound(
   if (matchRows.length === 0) return [];
 
   const teamIds = [
-    ...new Set([
-      ...matchRows.map((m) => m.team1Id),
-      ...matchRows.map((m) => m.team2Id),
-    ]),
+    ...new Set([...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)]),
   ];
 
   const teams = await db
@@ -581,13 +582,8 @@ export async function getCompetitionMatchesByRound(
   }));
 }
 
-export async function getCompetitionMatchById(
-  id: string,
-): Promise<CompetitionMatchDetail | null> {
-  const [match] = await db
-    .select()
-    .from(competitionMatch)
-    .where(eq(competitionMatch.id, id));
+export async function getCompetitionMatchById(id: string): Promise<CompetitionMatchDetail | null> {
+  const [match] = await db.select().from(competitionMatch).where(eq(competitionMatch.id, id));
 
   if (!match) return null;
 
@@ -623,10 +619,7 @@ export async function reorderCompetitionMatches(
     }
     // Second pass: set the final values
     for (const { id, matchNumber } of reorders) {
-      await tx
-        .update(competitionMatch)
-        .set({ matchNumber })
-        .where(eq(competitionMatch.id, id));
+      await tx.update(competitionMatch).set({ matchNumber }).where(eq(competitionMatch.id, id));
     }
   });
 }
@@ -654,9 +647,7 @@ export async function deleteCompetitionMatch(id: string): Promise<void> {
 // Match game assignments
 // ---------------------------------------------------------------------------
 
-export async function getMatchGameAssignments(
-  matchId: string,
-): Promise<MatchGameAssignment[]> {
+export async function getMatchGameAssignments(matchId: string): Promise<MatchGameAssignment[]> {
   const rows = await db
     .select({
       id: competitionMatchGame.id,
@@ -675,10 +666,7 @@ export async function getMatchGameAssignments(
   if (rows.length === 0) return [];
 
   const teamIds = [
-    ...new Set([
-      ...rows.map((r) => r.team1GameTeamId),
-      ...rows.map((r) => r.team2GameTeamId),
-    ]),
+    ...new Set([...rows.map((r) => r.team1GameTeamId), ...rows.map((r) => r.team2GameTeamId)]),
   ];
 
   const gameTeams = await db
@@ -741,9 +729,7 @@ export async function assignGameToMatch(
 }
 
 export async function removeGameFromMatch(matchGameId: string): Promise<void> {
-  await db
-    .delete(competitionMatchGame)
-    .where(eq(competitionMatchGame.id, matchGameId));
+  await db.delete(competitionMatchGame).where(eq(competitionMatchGame.id, matchGameId));
 }
 
 export async function getUnassignedCompetitionGames(
@@ -752,10 +738,7 @@ export async function getUnassignedCompetitionGames(
   const assignedGameIds = db
     .select({ gameId: competitionMatchGame.gameId })
     .from(competitionMatchGame)
-    .innerJoin(
-      competitionMatch,
-      eq(competitionMatch.id, competitionMatchGame.matchId),
-    )
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .where(eq(competitionMatch.competitionId, competitionId));
 
   const gameRows = await db
@@ -767,12 +750,7 @@ export async function getUnassignedCompetitionGames(
     })
     .from(game)
     .innerJoin(center, eq(center.id, game.centerId))
-    .where(
-      and(
-        eq(game.competitionId, competitionId),
-        not(inArray(game.id, assignedGameIds)),
-      ),
-    )
+    .where(and(eq(game.competitionId, competitionId), not(inArray(game.id, assignedGameIds))))
     .orderBy(asc(game.startTime));
 
   if (gameRows.length === 0) return [];
@@ -786,12 +764,7 @@ export async function getUnassignedCompetitionGames(
       colourEnum: sm5GameTeam.colourEnum,
     })
     .from(sm5GameTeam)
-    .where(
-      and(
-        inArray(sm5GameTeam.gameId, gameIds),
-        eq(sm5GameTeam.isNeutral, false),
-      ),
-    );
+    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)));
 
   const teamsByGame = new Map<string, typeof teamRows>();
   for (const t of teamRows) {
@@ -837,9 +810,7 @@ export type GameMatchAssignment = {
   team2Name: string;
 };
 
-export async function getAvailableMatchesForGame(
-  competitionId: string,
-): Promise<AvailableMatch[]> {
+export async function getAvailableMatchesForGame(competitionId: string): Promise<AvailableMatch[]> {
   const matchRows = await db
     .select({
       id: competitionMatch.id,
@@ -856,10 +827,7 @@ export async function getAvailableMatchesForGame(
   if (matchRows.length === 0) return [];
 
   const teamIds = [
-    ...new Set([
-      ...matchRows.map((m) => m.team1Id),
-      ...matchRows.map((m) => m.team2Id),
-    ]),
+    ...new Set([...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)]),
   ];
   const teams = await db
     .select({ id: competitionTeam.id, name: competitionTeam.name })
@@ -1134,14 +1102,8 @@ export async function getCompetitionStandings(
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
-    .innerJoin(
-      sql`sm5_game_team t1`,
-      sql`t1.id = ${competitionMatchGame.team1GameTeamId}`,
-    )
-    .innerJoin(
-      sql`sm5_game_team t2`,
-      sql`t2.id = ${competitionMatchGame.team2GameTeamId}`,
-    )
+    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(
       and(
         eq(competitionMatch.competitionId, competitionId),
@@ -1153,10 +1115,7 @@ export async function getCompetitionStandings(
   if (gameRows.length === 0) return [];
 
   // Group games by match
-  const matchMap = new Map<
-    string,
-    { team1Id: string; team2Id: string; games: typeof gameRows }
-  >();
+  const matchMap = new Map<string, { team1Id: string; team2Id: string; games: typeof gameRows }>();
   for (const row of gameRows) {
     if (!matchMap.has(row.matchId)) {
       matchMap.set(row.matchId, { team1Id: row.team1Id, team2Id: row.team2Id, games: [] });
@@ -1184,9 +1143,16 @@ export async function getCompetitionStandings(
   function ensureTeam(id: string) {
     if (!stats.has(id)) {
       stats.set(id, {
-        matchPoints: 0, matchWins: 0, matchLosses: 0, matchDraws: 0,
-        gameWins: 0, gameLosses: 0, gameDraws: 0,
-        teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
+        matchPoints: 0,
+        matchWins: 0,
+        matchLosses: 0,
+        matchDraws: 0,
+        gameWins: 0,
+        gameLosses: 0,
+        gameDraws: 0,
+        teamEliminations: 0,
+        scoreFor: 0,
+        scoreAgainst: 0,
       });
     }
     return stats.get(id)!;
@@ -1215,19 +1181,32 @@ export async function getCompetitionStandings(
 
       const r1 = g.team1Result;
       const r2 = g.team2Result;
-      if (r1 === "win") { t1.gameWins += 1; t2.gameLosses += 1; }
-      else if (r2 === "win") { t2.gameWins += 1; t1.gameLosses += 1; }
-      else { t1.gameDraws += 1; t2.gameDraws += 1; }
+      if (r1 === "win") {
+        t1.gameWins += 1;
+        t2.gameLosses += 1;
+      } else if (r2 === "win") {
+        t2.gameWins += 1;
+        t1.gameLosses += 1;
+      } else {
+        t1.gameDraws += 1;
+        t2.gameDraws += 1;
+      }
     }
 
     // Match bonus: compare combined scores
     if (t1TotalScore > t2TotalScore) {
-      t1.matchPoints += 2; t1.matchWins += 1; t2.matchLosses += 1;
+      t1.matchPoints += 2;
+      t1.matchWins += 1;
+      t2.matchLosses += 1;
     } else if (t2TotalScore > t1TotalScore) {
-      t2.matchPoints += 2; t2.matchWins += 1; t1.matchLosses += 1;
+      t2.matchPoints += 2;
+      t2.matchWins += 1;
+      t1.matchLosses += 1;
     } else {
-      t1.matchPoints += 1; t1.matchDraws += 1;
-      t2.matchPoints += 1; t2.matchDraws += 1;
+      t1.matchPoints += 1;
+      t1.matchDraws += 1;
+      t2.matchPoints += 1;
+      t2.matchDraws += 1;
     }
   }
 
@@ -1238,19 +1217,41 @@ export async function getCompetitionStandings(
 
   // Fetch team names for all teams in competition (including 0-game teams)
   const allTeams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name, slug: competitionTeam.slug, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
+    .select({
+      id: competitionTeam.id,
+      name: competitionTeam.name,
+      slug: competitionTeam.slug,
+      shortName: competitionTeam.shortName,
+      hasLogo: competitionTeam.hasLogo,
+    })
     .from(competitionTeam)
     .where(eq(competitionTeam.competitionId, competitionId))
     .orderBy(asc(competitionTeam.name));
 
-  return allTeams.map((team) => {
-    const s = stats.get(team.id) ?? {
-      matchPoints: 0, matchWins: 0, matchLosses: 0, matchDraws: 0,
-      gameWins: 0, gameLosses: 0, gameDraws: 0,
-      teamEliminations: 0, scoreFor: 0, scoreAgainst: 0,
-    };
-    return { teamId: team.id, teamName: team.name, teamSlug: team.slug, teamShortName: team.shortName, teamHasLogo: team.hasLogo, ...s };
-  }).sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
+  return allTeams
+    .map((team) => {
+      const s = stats.get(team.id) ?? {
+        matchPoints: 0,
+        matchWins: 0,
+        matchLosses: 0,
+        matchDraws: 0,
+        gameWins: 0,
+        gameLosses: 0,
+        gameDraws: 0,
+        teamEliminations: 0,
+        scoreFor: 0,
+        scoreAgainst: 0,
+      };
+      return {
+        teamId: team.id,
+        teamName: team.name,
+        teamSlug: team.slug,
+        teamShortName: team.shortName,
+        teamHasLogo: team.hasLogo,
+        ...s,
+      };
+    })
+    .sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
 }
 
 // ---------------------------------------------------------------------------
@@ -1307,7 +1308,9 @@ export async function getCompetitionMatchResults(
       team2Id: competitionMatch.team2Id,
       gameNumber: competitionMatchGame.gameNumber,
       gameId: game.id,
-      gameSlug: sql<string | null>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      gameSlug: sql<
+        string | null
+      >`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       team1Score: sql<number | null>`t1.score + t1.elimination_bonus`,
       team2Score: sql<number | null>`t2.score + t2.elimination_bonus`,
       team1Result: sql<string | null>`t1.result`,
@@ -1340,14 +1343,30 @@ export async function getCompetitionMatchResults(
   // Fetch team names and short names
   const teamIds = [...new Set(gameRows.flatMap((r) => [r.team1Id, r.team2Id]))];
   const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name, slug: competitionTeam.slug, shortName: competitionTeam.shortName, hasLogo: competitionTeam.hasLogo })
+    .select({
+      id: competitionTeam.id,
+      name: competitionTeam.name,
+      slug: competitionTeam.slug,
+      shortName: competitionTeam.shortName,
+      hasLogo: competitionTeam.hasLogo,
+    })
     .from(competitionTeam)
     .where(inArray(competitionTeam.id, teamIds));
   const teamMap = new Map(teams.map((t) => [t.id, t]));
 
   // Group into matches
   const matchOrder: string[] = [];
-  const matchMap = new Map<string, Omit<CompetitionMatchResult, "matchWinner" | "team1MatchPoints" | "team2MatchPoints" | "team1TotalPoints" | "team2TotalPoints"> & { games: CompetitionMatchResult["games"] }>();
+  const matchMap = new Map<
+    string,
+    Omit<
+      CompetitionMatchResult,
+      | "matchWinner"
+      | "team1MatchPoints"
+      | "team2MatchPoints"
+      | "team1TotalPoints"
+      | "team2TotalPoints"
+    > & { games: CompetitionMatchResult["games"] }
+  >();
 
   for (const row of gameRows) {
     if (!matchMap.has(row.matchId)) {
@@ -1390,7 +1409,14 @@ export async function getCompetitionMatchResults(
   return matchOrder.map((id) => {
     const m = matchMap.get(id)!;
     if (m.games.length < 2) {
-      return { ...m, matchWinner: "incomplete" as const, team1MatchPoints: 0, team2MatchPoints: 0, team1TotalPoints: 0, team2TotalPoints: 0 };
+      return {
+        ...m,
+        matchWinner: "incomplete" as const,
+        team1MatchPoints: 0,
+        team2MatchPoints: 0,
+        team1TotalPoints: 0,
+        team2TotalPoints: 0,
+      };
     }
     const t1Total = m.games.reduce((s, g) => s + (g.team1Score ?? 0), 0);
     const t2Total = m.games.reduce((s, g) => s + (g.team2Score ?? 0), 0);
@@ -1414,9 +1440,14 @@ export async function getCompetitionMatchResults(
     let t1GamePoints = 0;
     let t2GamePoints = 0;
     for (const g of m.games) {
-      if (g.team1Result === "win") { t1GamePoints += 2; }
-      else if (g.team2Result === "win") { t2GamePoints += 2; }
-      else { t1GamePoints += 1; t2GamePoints += 1; }
+      if (g.team1Result === "win") {
+        t1GamePoints += 2;
+      } else if (g.team2Result === "win") {
+        t2GamePoints += 2;
+      } else {
+        t1GamePoints += 1;
+        t2GamePoints += 1;
+      }
     }
     return {
       ...m,
@@ -1429,9 +1460,7 @@ export async function getCompetitionMatchResults(
   });
 }
 
-export async function getGameMatchAssignment(
-  gameId: string,
-): Promise<GameMatchAssignment | null> {
+export async function getGameMatchAssignment(gameId: string): Promise<GameMatchAssignment | null> {
   const [row] = await db
     .select({
       matchGameId: competitionMatchGame.id,
@@ -1549,24 +1578,44 @@ export async function getCompetitionTopPlayers(
       wins: sql<number>`count(*) filter (where ${sm5GameTeam.result} = 'win')::int`,
       totalGames: sql<number>`count(*)::int`,
       // Per-position stats (positions 1–5)
-      p1AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
-      p1AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
       p1Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1 and ${sm5GameTeam.result} = 'win')::int`,
       p1Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1)::int`,
-      p2AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
-      p2AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
       p2Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2 and ${sm5GameTeam.result} = 'win')::int`,
       p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
-      p3AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
-      p3AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
       p3Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3 and ${sm5GameTeam.result} = 'win')::int`,
       p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
-      p4AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
-      p4AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
       p4Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4 and ${sm5GameTeam.result} = 'win')::int`,
       p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
-      p5AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
-      p5AvgAccuracy: sql<number | null>`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,
       p5Wins: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5 and ${sm5GameTeam.result} = 'win')::int`,
       p5Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5)::int`,
     })
@@ -1577,7 +1626,12 @@ export async function getCompetitionTopPlayers(
     .groupBy(player.id, player.iplId, player.currentCallsign)
     .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
 
-  function posStats(avgMvp: number | null, avgAccuracy: number | null, wins: number, games: number): PositionStats | undefined {
+  function posStats(
+    avgMvp: number | null,
+    avgAccuracy: number | null,
+    wins: number,
+    games: number,
+  ): PositionStats | undefined {
     if (Number(games) === 0) return undefined;
     return {
       avgMvp: avgMvp !== null ? Number(avgMvp) : null,
@@ -1593,7 +1647,8 @@ export async function getCompetitionTopPlayers(
     callsign: r.callsign,
     avgMvp: Number(r.avgMvp),
     totalMvp: Number(r.totalMvp),
-    mvpPerMinute: r.totalTimeInGameSec > 0 ? Number(r.totalMvp) / (Number(r.totalTimeInGameSec) / 60) : 0,
+    mvpPerMinute:
+      r.totalTimeInGameSec > 0 ? Number(r.totalMvp) / (Number(r.totalTimeInGameSec) / 60) : 0,
     avgAccuracy: Number(r.avgAccuracy),
     avgHitDiff: Number(r.avgHitDiff),
     wins: Number(r.wins),
@@ -1676,7 +1731,9 @@ export async function getCompetitionCommanderPlayers(
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
       avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)`,
       avgMissilesHitOpponent: sql<number>`avg(${sm5Scorecard.missilesHitOpponent})`,
-      nukeSuccessRatio: sql<number | null>`sum(${sm5Scorecard.nukesDetonated})::float / nullif(sum(${sm5Scorecard.nukesActivated}), 0)`,
+      nukeSuccessRatio: sql<
+        number | null
+      >`sum(${sm5Scorecard.nukesDetonated})::float / nullif(sum(${sm5Scorecard.nukesActivated}), 0)`,
       avgNukeLength: sql<number | null>`avg(${sm5Scorecard.averageNukeActivationTime})`,
       avgNukeEfficiency: sql<number | null>`avg(${sm5Scorecard.livesRemovedByNuke})`,
     })
@@ -2081,7 +2138,8 @@ export async function getCompetitionAmmoPlayers(
     avgMedicHits: Number(r.avgMedicHits),
     avgAmmoBoost: r.avgAmmoBoost !== null ? Number(r.avgAmmoBoost) : null,
     avgResuppliesGiven: r.avgResuppliesGiven !== null ? Number(r.avgResuppliesGiven) : null,
-    avgDoubleResuppliesGiven: r.avgDoubleResuppliesGiven !== null ? Number(r.avgDoubleResuppliesGiven) : null,
+    avgDoubleResuppliesGiven:
+      r.avgDoubleResuppliesGiven !== null ? Number(r.avgDoubleResuppliesGiven) : null,
   }));
 }
 
@@ -2180,7 +2238,8 @@ export async function getCompetitionMedicPlayers(
     avgMedicHits: Number(r.avgMedicHits),
     avgLifeBoost: r.avgLifeBoost !== null ? Number(r.avgLifeBoost) : null,
     avgResuppliesGiven: r.avgResuppliesGiven !== null ? Number(r.avgResuppliesGiven) : null,
-    avgDoubleResuppliesGiven: r.avgDoubleResuppliesGiven !== null ? Number(r.avgDoubleResuppliesGiven) : null,
+    avgDoubleResuppliesGiven:
+      r.avgDoubleResuppliesGiven !== null ? Number(r.avgDoubleResuppliesGiven) : null,
     survivalRate: Number(r.totalGames) > 0 ? Number(r.survived) / Number(r.totalGames) : 0,
   }));
 }
@@ -2443,9 +2502,13 @@ export async function getCompetitionMiscMischief(
       totalEliminations: sql<number>`sum(${sm5Scorecard.eliminatedOpponent})::int`,
       totalResets: sql<number>`sum(${sm5Scorecard.resetOpponent} + ${sm5Scorecard.missileResetOpponent})::int`,
       totalTeamResets: sql<number>`sum(${sm5Scorecard.resetTeam} + ${sm5Scorecard.missileResetTeam})::int`,
-      unusedSp: sql<number | null>`sum(${sm5Scorecard.spEarned} - ${sm5Scorecard.spSpent}) filter (where ${sm5Scorecard.spEarned} is not null and ${sm5Scorecard.spSpent} is not null)`,
+      unusedSp: sql<
+        number | null
+      >`sum(${sm5Scorecard.spEarned} - ${sm5Scorecard.spSpent}) filter (where ${sm5Scorecard.spEarned} is not null and ${sm5Scorecard.spSpent} is not null)`,
       totalResupplyDowntimeMs: sql<number>`sum(${sm5Scorecard.resupplyDowntime})::bigint`,
-      totalDoubleResuppliesGiven: sql<number | null>`sum(${sm5Scorecard.doubleResuppliesGiven}) filter (where ${sm5Scorecard.doubleResuppliesGiven} is not null)`,
+      totalDoubleResuppliesGiven: sql<
+        number | null
+      >`sum(${sm5Scorecard.doubleResuppliesGiven}) filter (where ${sm5Scorecard.doubleResuppliesGiven} is not null)`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -2465,7 +2528,8 @@ export async function getCompetitionMiscMischief(
     totalTeamResets: Number(r.totalTeamResets),
     unusedSp: r.unusedSp !== null ? Number(r.unusedSp) : null,
     totalResupplyDowntimeMs: Number(r.totalResupplyDowntimeMs),
-    totalDoubleResuppliesGiven: r.totalDoubleResuppliesGiven !== null ? Number(r.totalDoubleResuppliesGiven) : null,
+    totalDoubleResuppliesGiven:
+      r.totalDoubleResuppliesGiven !== null ? Number(r.totalDoubleResuppliesGiven) : null,
   }));
 }
 
@@ -2523,7 +2587,9 @@ export async function getCompetitionNukeNonsense(
       nukesDetonated: sql<number>`coalesce(sum(${sm5Scorecard.nukesDetonated}), 0)::int`,
       nukesCanceled: sql<number>`sum(${sm5Scorecard.nukesCanceled})::int`,
       teamNukesCanceled: sql<number>`sum(${sm5Scorecard.teamNukesCanceled})::int`,
-      avgNukeActivationTime: sql<number | null>`avg(${sm5Scorecard.averageNukeActivationTime}) filter (where ${sm5Scorecard.averageNukeActivationTime} is not null)`,
+      avgNukeActivationTime: sql<
+        number | null
+      >`avg(${sm5Scorecard.averageNukeActivationTime}) filter (where ${sm5Scorecard.averageNukeActivationTime} is not null)`,
       livesRemovedByNuke: sql<number>`coalesce(sum(${sm5Scorecard.livesRemovedByNuke}), 0)::int`,
     })
     .from(sm5Scorecard)
@@ -2539,7 +2605,8 @@ export async function getCompetitionNukeNonsense(
     nukesDetonated: Number(r.nukesDetonated),
     nukesCanceled: Number(r.nukesCanceled),
     teamNukesCanceled: Number(r.teamNukesCanceled),
-    avgNukeActivationTime: r.avgNukeActivationTime !== null ? Number(r.avgNukeActivationTime) : null,
+    avgNukeActivationTime:
+      r.avgNukeActivationTime !== null ? Number(r.avgNukeActivationTime) : null,
     livesRemovedByNuke: Number(r.livesRemovedByNuke),
   }));
 }
@@ -2727,8 +2794,12 @@ export async function getCompetitionMedicHitsLeaderboard(
       totalMedicHits: sql<number>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::int`,
       avgMedicHits: sql<number>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2)::float`,
       gamesPlayed: sql<number>`count(*)::int`,
-      totalMedicHitsNonResup: sql<number | null>`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
-      avgMedicHitsNonResup: sql<number | null>`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::float`,
+      totalMedicHitsNonResup: sql<
+        number | null
+      >`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
+      avgMedicHitsNonResup: sql<
+        number | null
+      >`avg(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) filter (where ${sm5Scorecard.position} in (1, 2, 3))::float`,
       gamesPlayedNonResup: sql<number>`count(*) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
     })
     .from(sm5Scorecard)
@@ -2736,7 +2807,9 @@ export async function getCompetitionMedicHitsLeaderboard(
     .innerJoin(player, eq(sm5Scorecard.playerId, player.id))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) desc`);
+    .orderBy(
+      sql`sum(${sm5Scorecard.shotsHitOpponentMedic} + ${sm5Scorecard.missilesHitOpponentMedic} * 2) desc`,
+    );
 
   return rows.map((r) => ({
     iplId: r.iplId,
@@ -2744,7 +2817,8 @@ export async function getCompetitionMedicHitsLeaderboard(
     totalMedicHits: Number(r.totalMedicHits),
     avgMedicHits: Number(r.avgMedicHits),
     gamesPlayed: Number(r.gamesPlayed),
-    totalMedicHitsNonResup: r.totalMedicHitsNonResup !== null ? Number(r.totalMedicHitsNonResup) : null,
+    totalMedicHitsNonResup:
+      r.totalMedicHitsNonResup !== null ? Number(r.totalMedicHitsNonResup) : null,
     avgMedicHitsNonResup: r.avgMedicHitsNonResup !== null ? Number(r.avgMedicHitsNonResup) : null,
     gamesPlayedNonResup: Number(r.gamesPlayedNonResup),
   }));
@@ -2829,10 +2903,8 @@ export async function createForfeitGame(data: {
     });
 
     // Map team1/team2 game team IDs preserving match team identity
-    const team1GameTeamId =
-      data.forfeitingTeam === "team1" ? loserTeam.id : winnerTeam.id;
-    const team2GameTeamId =
-      data.forfeitingTeam === "team2" ? loserTeam.id : winnerTeam.id;
+    const team1GameTeamId = data.forfeitingTeam === "team1" ? loserTeam.id : winnerTeam.id;
+    const team2GameTeamId = data.forfeitingTeam === "team2" ? loserTeam.id : winnerTeam.id;
 
     await tx.insert(competitionMatchGame).values({
       matchId: data.matchId,
@@ -2903,15 +2975,25 @@ export async function getCompetitionAllStarRankings(
       callsign: player.currentCallsign,
       totalGames: sql<number>`count(*)::int`,
       p1Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1)::int`,
-      p1AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
       p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
-      p2AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
       p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
-      p3AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
       p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
-      p4AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
       p5Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5)::int`,
-      p5AvgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgMvp: sql<
+        number | null
+      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -3021,10 +3103,7 @@ async function queryCompetitionGames(
     .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(
-      and(
-        eq(competitionMatch.competitionId, competitionId),
-        eq(game.exclude, options.excluded),
-      ),
+      and(eq(competitionMatch.competitionId, competitionId), eq(game.exclude, options.excluded)),
     )
     .orderBy(
       asc(competitionRound.roundNumber),
@@ -3042,7 +3121,11 @@ async function queryCompetitionGames(
 
   const teamIds = [...new Set(rows.flatMap((r) => [r.team1Id, r.team2Id]))];
   const teams = await db
-    .select({ id: competitionTeam.id, shortName: competitionTeam.shortName, name: competitionTeam.name })
+    .select({
+      id: competitionTeam.id,
+      shortName: competitionTeam.shortName,
+      name: competitionTeam.name,
+    })
     .from(competitionTeam)
     .where(inArray(competitionTeam.id, teamIds));
   const teamMap = new Map(teams.map((t) => [t.id, t]));

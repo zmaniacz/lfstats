@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Link from "next/link"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function AdminPage() {
   return (
@@ -15,7 +15,8 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Create and manage competitive events and social competitions. Assign games to competitions.
+                Create and manage competitive events and social competitions. Assign games to
+                competitions.
               </p>
             </CardContent>
           </Card>
@@ -51,12 +52,13 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                View TDF ingestion jobs that failed, including full error and consistency check output.
+                View TDF ingestion jobs that failed, including full error and consistency check
+                output.
               </p>
             </CardContent>
           </Card>
         </Link>
       </div>
     </div>
-  )
+  );
 }

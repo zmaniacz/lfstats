@@ -33,9 +33,7 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
           <TableBody>
             {games.map((game) => {
               const winner = game.teams.find((t) => t.result === "win");
-              const winnerColor = winner
-                ? getTeamColor(winner.colourEnum)
-                : undefined;
+              const winnerColor = winner ? getTeamColor(winner.colourEnum) : undefined;
               const sortedTeams = [...game.teams].sort((a, b) =>
                 a.result === "win" ? -1 : b.result === "win" ? 1 : 0,
               );
@@ -50,25 +48,15 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
                     </Link>
                   </TableCell>
                   <TableCell>{game.centerName}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatDateTime(game.startTime)}
-                  </TableCell>
+                  <TableCell className="tabular-nums">{formatDateTime(game.startTime)}</TableCell>
                   <TableCell className="capitalize">{game.outcome}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5 tabular-nums">
                       {sortedTeams.map((team, i) => (
                         <Fragment key={i}>
-                          {i > 0 && (
-                            <span className="text-muted-foreground">–</span>
-                          )}
-                          <span
-                            className={
-                              getTeamColor(team.colourEnum)?.text ?? ""
-                            }
-                          >
-                            {formatScore(
-                              (team.score ?? 0) + (team.eliminationBonus ?? 0),
-                            )}
+                          {i > 0 && <span className="text-muted-foreground">–</span>}
+                          <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
+                            {formatScore((team.score ?? 0) + (team.eliminationBonus ?? 0))}
                           </span>
                         </Fragment>
                       ))}

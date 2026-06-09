@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -18,22 +13,22 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatHitDiff } from "@/lib/format"
-import { POSITIONS } from "@/lib/positions"
-import type { PlayerHitData } from "@lfstats/db"
+} from "@/components/ui/table";
+import { formatHitDiff } from "@/lib/format";
+import { POSITIONS } from "@/lib/positions";
+import type { PlayerHitData } from "@lfstats/db";
 
 type Props = {
-  callsign: string
-  hitDiff: number
-  interactions: PlayerHitData[]
-}
+  callsign: string;
+  hitDiff: number;
+  interactions: PlayerHitData[];
+};
 
 export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
-  const opponents = interactions.filter((i) => !i.isTeammate)
-  const teammates = interactions.filter((i) => i.isTeammate)
+  const opponents = interactions.filter((i) => !i.isTeammate);
+  const teammates = interactions.filter((i) => i.isTeammate);
 
   return (
     <>
@@ -65,7 +60,9 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
               {opponents.map((row) => (
                 <TableRow key={row.callsign}>
                   <TableCell>
-                    <span className="text-xs text-muted-foreground mr-1">{POSITIONS[row.position]?.abbr ?? "?"}</span>
+                    <span className="text-xs text-muted-foreground mr-1">
+                      {POSITIONS[row.position]?.abbr ?? "?"}
+                    </span>
                     {row.callsign}
                   </TableCell>
                   <TableCell className="text-center tabular-nums">{row.hitsDealt}</TableCell>
@@ -87,13 +84,19 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
                   {teammates.map((row) => (
                     <TableRow key={row.callsign}>
                       <TableCell>
-                        <span className="text-xs text-muted-foreground mr-1">{POSITIONS[row.position]?.abbr ?? "?"}</span>
+                        <span className="text-xs text-muted-foreground mr-1">
+                          {POSITIONS[row.position]?.abbr ?? "?"}
+                        </span>
                         {row.callsign}
                       </TableCell>
                       <TableCell className="text-center tabular-nums">{row.hitsDealt}</TableCell>
                       <TableCell className="text-center tabular-nums">{row.hitsReceived}</TableCell>
-                      <TableCell className="text-center tabular-nums">{row.missilesDealt}</TableCell>
-                      <TableCell className="text-center tabular-nums">{row.missilesReceived}</TableCell>
+                      <TableCell className="text-center tabular-nums">
+                        {row.missilesDealt}
+                      </TableCell>
+                      <TableCell className="text-center tabular-nums">
+                        {row.missilesReceived}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -103,5 +106,5 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

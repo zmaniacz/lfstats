@@ -26,20 +26,12 @@ export const metadata: Metadata = {
   description: "Space Marines 5 laser tag statistics",
 };
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const competitionCookie = cookieStore.get(COMPETITION_COOKIE)?.value ?? null;
 
   return (
-    <html
-      lang="en"
-      className={cn("font-mono", jetbrainsMono.variable)}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={cn("font-mono", jetbrainsMono.variable)} suppressHydrationWarning>
       <body>
         <ThemeProvider
           attribute="class"
@@ -52,9 +44,7 @@ export default async function RootLayout({
               <SidebarProvider>
                 <SiteHeader />
                 <AppSidebar competitionCookie={competitionCookie} />
-                <SidebarInset className="pt-(--header-height) min-w-0">
-                  {children}
-                </SidebarInset>
+                <SidebarInset className="pt-(--header-height) min-w-0">{children}</SidebarInset>
               </SidebarProvider>
             </TooltipProvider>
           </AppSessionProvider>

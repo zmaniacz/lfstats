@@ -21,9 +21,7 @@ async function resolveDatabaseUrl(): Promise<string> {
     await import("@aws-sdk/client-secrets-manager");
 
   const sm = new SecretsManagerClient({});
-  const response = await sm.send(
-    new GetSecretValueCommand({ SecretId: secretArn }),
-  );
+  const response = await sm.send(new GetSecretValueCommand({ SecretId: secretArn }));
 
   const secretString = response.SecretString;
   if (!secretString) {
@@ -41,9 +39,7 @@ async function resolveDatabaseUrl(): Promise<string> {
       engine?: string;
     };
   } catch (err) {
-    throw new Error(
-      `Invalid JSON in secret ${secretArn}: ${(err as Error).message}`,
-    );
+    throw new Error(`Invalid JSON in secret ${secretArn}: ${(err as Error).message}`);
   }
 
   const { username, password, host, port, dbname, engine } = parsed;

@@ -28,13 +28,7 @@ function formatDisplay(s: string): string {
   });
 }
 
-export function DateFilter({
-  selected,
-  gameDates,
-}: {
-  selected: string;
-  gameDates: string[];
-}) {
+export function DateFilter({ selected, gameDates }: { selected: string; gameDates: string[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 

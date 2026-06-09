@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react"
-import { Play, Pause, RotateCcw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Slider } from "@/components/ui/slider"
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { Play, Pause, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   Table,
   TableBody,
@@ -14,143 +14,137 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
-import { formatMs, formatScore, formatPct } from "@/lib/format"
-import { getPosition } from "@/lib/positions"
-import { getTeamColor } from "@/lib/team-colors"
-import type { ReplayData, ReplayPlayer, ReplayPlayerState } from "@lfstats/db"
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatMs, formatScore, formatPct } from "@/lib/format";
+import { getPosition } from "@/lib/positions";
+import { getTeamColor } from "@/lib/team-colors";
+import type { ReplayData, ReplayPlayer, ReplayPlayerState } from "@lfstats/db";
 
-const TICK_MS = 100
-const SPEEDS = [1, 2, 4, 8] as const
-type Speed = (typeof SPEEDS)[number]
+const TICK_MS = 100;
+const SPEEDS = [1, 2, 4, 8] as const;
+type Speed = (typeof SPEEDS)[number];
 
-const HEAVY_WEAPONS_POSITION = 2
+const HEAVY_WEAPONS_POSITION = 2;
 
 function binarySearchLatestState(
   states: ReplayPlayerState[],
   atTime: number,
 ): ReplayPlayerState | null {
-  let lo = 0
-  let hi = states.length - 1
-  let result = -1
+  let lo = 0;
+  let hi = states.length - 1;
+  let result = -1;
   while (lo <= hi) {
-    const mid = (lo + hi) >> 1
+    const mid = (lo + hi) >> 1;
     if (states[mid].time <= atTime) {
-      result = mid
-      lo = mid + 1
+      result = mid;
+      lo = mid + 1;
     } else {
-      hi = mid - 1
+      hi = mid - 1;
     }
   }
-  return result === -1 ? null : states[result]
+  return result === -1 ? null : states[result];
 }
 
 type ComputedPlayer = ReplayPlayer & {
-  rank: number
-  score: number
-  accuracy: number
-  lives: number
-  shots: number
-  missiles: number
-  sp: number | null
-  isEliminated: boolean
-}
+  rank: number;
+  score: number;
+  accuracy: number;
+  lives: number;
+  shots: number;
+  missiles: number;
+  sp: number | null;
+  isEliminated: boolean;
+};
 
 type ComputedTeam = {
-  teamId: string
-  teamName: string
-  teamColour: number
-  totalScore: number
-  players: ComputedPlayer[]
-}
+  teamId: string;
+  teamName: string;
+  teamColour: number;
+  totalScore: number;
+  players: ComputedPlayer[];
+};
 
-export function ReplayTab({
-  gameId,
-  duration,
-}: {
-  gameId: string
-  duration: number
-}) {
-  const [data, setData] = useState<ReplayData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState<Speed>(1)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+export function ReplayTab({ gameId, duration }: { gameId: string; duration: number }) {
+  const [data, setData] = useState<ReplayData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState<Speed>(1);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetch(`/api/games/${gameId}/replay`)
       .then((r) => r.json())
       .then((d: ReplayData) => {
-        setData(d)
-        setLoading(false)
+        setData(d);
+        setLoading(false);
       })
-      .catch(() => setLoading(false))
-  }, [gameId])
+      .catch(() => setLoading(false));
+  }, [gameId]);
 
   // Pre-process: build per-player state arrays (already sorted by time from query)
   const statesByPlayer = useMemo(() => {
-    if (!data) return new Map<string, ReplayPlayerState[]>()
-    const map = new Map<string, ReplayPlayerState[]>()
+    if (!data) return new Map<string, ReplayPlayerState[]>();
+    const map = new Map<string, ReplayPlayerState[]>();
     for (const s of data.playerStates) {
-      const arr = map.get(s.scorecardId) ?? []
-      arr.push(s)
-      map.set(s.scorecardId, arr)
+      const arr = map.get(s.scorecardId) ?? [];
+      arr.push(s);
+      map.set(s.scorecardId, arr);
     }
-    return map
-  }, [data])
+    return map;
+  }, [data]);
 
   // Pre-process: callsign lookup for event stream
   const playerMap = useMemo(() => {
-    if (!data) return new Map<string, string>()
-    const map = new Map<string, string>()
-    for (const p of data.players) map.set(p.scorecardId, p.callsign)
-    return map
-  }, [data])
+    if (!data) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const p of data.players) map.set(p.scorecardId, p.callsign);
+    return map;
+  }, [data]);
 
   // Pre-process: non-player actor name lookup (warbots, resupply beacons)
   const nonPlayerActorMap = useMemo(() => {
-    if (!data) return new Map<string, string>()
-    const map = new Map<string, string>()
-    for (const a of data.nonPlayerActors) map.set(a.gameTargetId, a.name)
-    return map
-  }, [data])
+    if (!data) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const a of data.nonPlayerActors) map.set(a.gameTargetId, a.name);
+    return map;
+  }, [data]);
 
   // Timer management
   useEffect(() => {
     if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-    if (!isPlaying) return
+    if (!isPlaying) return;
 
     intervalRef.current = setInterval(() => {
       setCurrentTime((prev) => {
-        const next = prev + TICK_MS * speed
+        const next = prev + TICK_MS * speed;
         if (next >= duration) {
-          setIsPlaying(false)
-          return duration
+          setIsPlaying(false);
+          return duration;
         }
-        return next
-      })
-    }, TICK_MS)
+        return next;
+      });
+    }, TICK_MS);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [isPlaying, speed, duration])
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isPlaying, speed, duration]);
 
   const handleReset = useCallback(() => {
-    setIsPlaying(false)
-    setCurrentTime(0)
-  }, [])
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }, []);
 
   // Scoreboard computation
   const computedTeams = useMemo((): ComputedTeam[] => {
-    if (!data) return []
+    if (!data) return [];
 
-    const teamMap = new Map<string, ComputedTeam>()
+    const teamMap = new Map<string, ComputedTeam>();
     for (const player of data.players) {
       if (!teamMap.has(player.teamId)) {
         teamMap.set(player.teamId, {
@@ -159,16 +153,16 @@ export function ReplayTab({
           teamColour: player.teamColour,
           totalScore: 0,
           players: [],
-        })
+        });
       }
     }
 
     for (const player of data.players) {
-      const states = statesByPlayer.get(player.scorecardId) ?? []
-      const state = binarySearchLatestState(states, currentTime)
-      const score = state?.score ?? 0
-      const team = teamMap.get(player.teamId)!
-      team.totalScore += score
+      const states = statesByPlayer.get(player.scorecardId) ?? [];
+      const state = binarySearchLatestState(states, currentTime);
+      const score = state?.score ?? 0;
+      const team = teamMap.get(player.teamId)!;
+      team.totalScore += score;
       team.players.push({
         ...player,
         rank: 0,
@@ -179,24 +173,26 @@ export function ReplayTab({
         missiles: state?.missiles ?? 0,
         sp: player.position === HEAVY_WEAPONS_POSITION ? null : (state?.sp ?? 0),
         isEliminated: state?.isEliminated ?? false,
-      })
+      });
     }
 
-    const teams = Array.from(teamMap.values())
+    const teams = Array.from(teamMap.values());
     for (const team of teams) {
-      team.players.sort((a, b) => b.score - a.score)
-      team.players.forEach((p, i) => { p.rank = i + 1 })
+      team.players.sort((a, b) => b.score - a.score);
+      team.players.forEach((p, i) => {
+        p.rank = i + 1;
+      });
     }
-    teams.sort((a, b) => b.totalScore - a.totalScore)
-    return teams
-  }, [data, statesByPlayer, currentTime])
+    teams.sort((a, b) => b.totalScore - a.totalScore);
+    return teams;
+  }, [data, statesByPlayer, currentTime]);
 
   // Event stream computation
   const visibleEvents = useMemo(() => {
-    if (!data) return []
-    const visible = data.events.filter((e) => e.time <= currentTime)
-    return visible.slice(-20).reverse()
-  }, [data, currentTime])
+    if (!data) return [];
+    const visible = data.events.filter((e) => e.time <= currentTime);
+    return visible.slice(-20).reverse();
+  }, [data, currentTime]);
 
   if (loading) {
     return (
@@ -208,15 +204,13 @@ export function ReplayTab({
           <Skeleton className="h-64 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
   if (!data) {
     return (
-      <p className="text-muted-foreground text-sm">
-        Replay data not available for this game.
-      </p>
-    )
+      <p className="text-muted-foreground text-sm">Replay data not available for this game.</p>
+    );
   }
 
   return (
@@ -232,12 +226,7 @@ export function ReplayTab({
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleReset}
-            aria-label="Reset"
-          >
+          <Button variant="outline" size="icon" onClick={handleReset} aria-label="Reset">
             <RotateCcw className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1">
@@ -262,8 +251,8 @@ export function ReplayTab({
           step={TICK_MS}
           value={[currentTime]}
           onValueChange={([v]) => {
-            setIsPlaying(false)
-            setCurrentTime(v)
+            setIsPlaying(false);
+            setCurrentTime(v);
           }}
         />
       </div>
@@ -271,18 +260,14 @@ export function ReplayTab({
       {/* Scoreboards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {computedTeams.map((team) => {
-          const color = getTeamColor(team.teamColour)
+          const color = getTeamColor(team.teamColour);
           return (
             <div key={team.teamId} className="space-y-0">
               <div
                 className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
               >
-                <span className={`font-bold ${color?.text ?? ""}`}>
-                  {team.teamName}
-                </span>
-                <span className="tabular-nums font-semibold">
-                  {formatScore(team.totalScore)}
-                </span>
+                <span className={`font-bold ${color?.text ?? ""}`}>{team.teamName}</span>
+                <span className="tabular-nums font-semibold">{formatScore(team.totalScore)}</span>
               </div>
               <Table>
                 <TableHeader>
@@ -307,9 +292,7 @@ export function ReplayTab({
                       <TableCell className="text-center tabular-nums text-muted-foreground">
                         {player.rank}
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {player.callsign}
-                      </TableCell>
+                      <TableCell className="font-medium">{player.callsign}</TableCell>
                       <TableCell className="text-center text-xs text-muted-foreground">
                         {getPosition(player.position)?.abbr ?? "—"}
                       </TableCell>
@@ -319,15 +302,9 @@ export function ReplayTab({
                       <TableCell className="text-right tabular-nums">
                         {formatPct(player.accuracy)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {player.lives}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {player.shots}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {player.missiles}
-                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{player.lives}</TableCell>
+                      <TableCell className="text-right tabular-nums">{player.shots}</TableCell>
+                      <TableCell className="text-right tabular-nums">{player.missiles}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {player.sp === null ? "—" : player.sp}
                       </TableCell>
@@ -336,7 +313,7 @@ export function ReplayTab({
                 </TableBody>
               </Table>
             </div>
-          )
+          );
         })}
       </div>
 
@@ -354,13 +331,14 @@ export function ReplayTab({
                 ? playerMap.get(event.actorScorecardId)
                 : event.actorGameTargetId
                   ? nonPlayerActorMap.get(event.actorGameTargetId)
-                  : null
-              const target = event.isPlayerTarget && event.targetScorecardId
-                ? playerMap.get(event.targetScorecardId)
-                : event.targetScorecardId === null && !event.isPlayerTarget
-                  ? null
-                  : "a target"
-              const parts = [actor, event.description.trim(), target].filter(Boolean)
+                  : null;
+              const target =
+                event.isPlayerTarget && event.targetScorecardId
+                  ? playerMap.get(event.targetScorecardId)
+                  : event.targetScorecardId === null && !event.isPlayerTarget
+                    ? null
+                    : "a target";
+              const parts = [actor, event.description.trim(), target].filter(Boolean);
               return (
                 <div key={event.id} className="flex items-baseline gap-2 text-sm">
                   <span className="tabular-nums text-xs text-muted-foreground shrink-0 w-12">
@@ -368,11 +346,11 @@ export function ReplayTab({
                   </span>
                   <span>{parts.join(" ")}</span>
                 </div>
-              )
+              );
             })
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }

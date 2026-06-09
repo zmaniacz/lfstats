@@ -14,14 +14,7 @@ import {
 import { getMvpComponentLabel } from "@/lib/mvp-components";
 import { POSITIONS } from "@/lib/positions";
 import type { MvpComponentItem } from "@lfstats/db";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ReferenceLine,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts";
 
 type Props = {
   data: MvpComponentItem[];
@@ -50,11 +43,7 @@ const FALLBACK_COLORS = ["#6366f1", "#ec4899", "#0ea5e9", "#d946ef", "#fb923c"];
 
 export function MvpComponentsChart({ data }: Props) {
   if (data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No MVP component data available.
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground">No MVP component data available.</p>;
   }
 
   const allComponents = [...new Set(data.map((d) => d.component))];
@@ -64,9 +53,7 @@ export function MvpComponentsChart({ data }: Props) {
       component,
       {
         label: getMvpComponentLabel(component),
-        color:
-          COMPONENT_COLORS[component] ??
-          FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+        color: COMPONENT_COLORS[component] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
       },
     ]),
   );

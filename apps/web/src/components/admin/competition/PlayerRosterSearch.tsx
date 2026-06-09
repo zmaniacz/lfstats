@@ -1,56 +1,56 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import type { PlayerSearchResult } from "@lfstats/db"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { PlayerSearchResult } from "@lfstats/db";
 
 type Props = {
-  teamId: string
-  searchAction: (query: string) => Promise<PlayerSearchResult[]>
-  addAction: (playerId: string) => Promise<void>
-}
+  teamId: string;
+  searchAction: (query: string) => Promise<PlayerSearchResult[]>;
+  addAction: (playerId: string) => Promise<void>;
+};
 
 export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
-  const [query, setQuery] = useState("")
-  const [results, setResults] = useState<PlayerSearchResult[]>([])
-  const [searched, setSearched] = useState(false)
-  const [isPendingSearch, setIsPendingSearch] = useState(false)
-  const [addingId, setAddingId] = useState<string | null>(null)
-  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPendingAdd = isSubmittingAdd || isRefreshing
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PlayerSearchResult[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [isPendingSearch, setIsPendingSearch] = useState(false);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPendingAdd = isSubmittingAdd || isRefreshing;
 
   async function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (!query.trim()) return
-    setIsPendingSearch(true)
+    e.preventDefault();
+    if (!query.trim()) return;
+    setIsPendingSearch(true);
     try {
-      const found = await searchAction(query.trim())
-      setResults(found)
-      setSearched(true)
+      const found = await searchAction(query.trim());
+      setResults(found);
+      setSearched(true);
     } finally {
-      setIsPendingSearch(false)
+      setIsPendingSearch(false);
     }
   }
 
   async function handleAdd(playerId: string) {
-    setAddingId(playerId)
-    setIsSubmittingAdd(true)
+    setAddingId(playerId);
+    setIsSubmittingAdd(true);
     try {
-      await addAction(playerId)
-      setAddingId(null)
+      await addAction(playerId);
+      setAddingId(null);
     } finally {
-      setIsSubmittingAdd(false)
+      setIsSubmittingAdd(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -92,5 +92,5 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
         </ul>
       )}
     </div>
-  )
+  );
 }

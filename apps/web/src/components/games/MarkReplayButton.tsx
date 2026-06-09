@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,40 +16,40 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 type Props = {
-  gameId: string
-  isReplay: boolean
-  action: (gameId: string) => Promise<void>
-}
+  gameId: string;
+  isReplay: boolean;
+  action: (gameId: string) => Promise<void>;
+};
 
 export function MarkReplayButton({ gameId, isReplay, action }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   if (isReplay) {
     return (
       <Button variant="default" size="sm" disabled>
         Replay
       </Button>
-    )
+    );
   }
 
   async function handleConfirm() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await action(gameId)
-      setOpen(false)
+      await action(gameId);
+      setOpen(false);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -63,8 +63,8 @@ export function MarkReplayButton({ gameId, isReplay, action }: Props) {
         <AlertDialogHeader>
           <AlertDialogTitle>Mark this game as a replay?</AlertDialogTitle>
           <AlertDialogDescription>
-            This sets the game outcome to "Replay" and excludes it from all
-            aggregates and leaderboards. This cannot be undone from this page.
+            This sets the game outcome to "Replay" and excludes it from all aggregates and
+            leaderboards. This cannot be undone from this page.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -75,5 +75,5 @@ export function MarkReplayButton({ gameId, isReplay, action }: Props) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

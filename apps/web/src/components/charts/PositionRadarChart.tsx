@@ -11,13 +11,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import {
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
-} from "recharts";
+import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
 
 export type PositionRadarPoint = {
   positionLabel: string;
@@ -72,8 +66,7 @@ export function PositionRadarChart({ data }: Props) {
               formatter={(value, name) => (
                 <>
                   <span className="text-muted-foreground">
-                    {chartConfig[name as keyof typeof chartConfig]?.label ??
-                      name}
+                    {chartConfig[name as keyof typeof chartConfig]?.label ?? name}
                   </span>
                   <span className="font-mono font-medium text-foreground tabular-nums">
                     {typeof value === "number" ? value.toFixed(2) : value}

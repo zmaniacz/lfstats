@@ -1,51 +1,51 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { CompetitionTeamListItem } from "@lfstats/db"
+} from "@/components/ui/select";
+import type { CompetitionTeamListItem } from "@lfstats/db";
 
 type Props = {
-  roundId: string
-  teams: CompetitionTeamListItem[]
-  action: (roundId: string, formData: FormData) => Promise<void>
-}
+  roundId: string;
+  teams: CompetitionTeamListItem[];
+  action: (roundId: string, formData: FormData) => Promise<void>;
+};
 
 export function CompetitionMatchForm({ roundId, teams, action }: Props) {
-  const [team1Id, setTeam1Id] = useState("")
-  const [team2Id, setTeam2Id] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [team1Id, setTeam1Id] = useState("");
+  const [team2Id, setTeam2Id] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    formData.set("team1Id", team1Id)
-    formData.set("team2Id", team2Id)
-    setIsSubmitting(true)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.set("team1Id", team1Id);
+    formData.set("team2Id", team2Id);
+    setIsSubmitting(true);
     try {
-      await action(roundId, formData)
-      setTeam1Id("")
-      setTeam2Id("")
+      await action(roundId, formData);
+      setTeam1Id("");
+      setTeam2Id("");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -81,12 +81,9 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
           </SelectContent>
         </Select>
       </div>
-      <Button
-        type="submit"
-        disabled={isPending || !team1Id || !team2Id}
-      >
+      <Button type="submit" disabled={isPending || !team1Id || !team2Id}>
         {isPending ? "Adding…" : "Add Match"}
       </Button>
     </form>
-  )
+  );
 }

@@ -91,11 +91,8 @@ export function calculateMvp(
     const pos = ps.position;
 
     // Find this player's team and whether it won by elimination
-    const simTeam = simResult.teams.find(
-      (t) => t.tdfTeamIndex === ps.teamIndex,
-    );
-    const teamWonByElimination =
-      simResult.outcome === "elimination" && simTeam?.result === "win";
+    const simTeam = simResult.teams.find((t) => t.tdfTeamIndex === ps.teamIndex);
+    const teamWonByElimination = simResult.outcome === "elimination" && simTeam?.result === "win";
 
     // Elimination bonus input: seconds of game time remaining above 3-min threshold
     let eliminationBonusInput = 0;
@@ -112,10 +109,7 @@ export function calculateMvp(
 
     // Accuracy: ceil(accuracy × 100) percentage points
     // Multiply first to avoid floating point error (e.g. 56/100 * 100 = 56.0000...01)
-    const accuracyPct =
-      sm5.shotsFired > 0
-        ? Math.round((sm5.shotsHit * 100) / sm5.shotsFired)
-        : 0;
+    const accuracyPct = sm5.shotsFired > 0 ? Math.round((sm5.shotsHit * 100) / sm5.shotsFired) : 0;
 
     const components: MvpComponent[] = [];
 
@@ -128,11 +122,7 @@ export function calculateMvp(
     };
 
     // Universal components (all positions)
-    comp(
-      "accuracy",
-      accuracyPct,
-      accuracyPct * params.universal.accuracy_points_per_percent,
-    );
+    comp("accuracy", accuracyPct, accuracyPct * params.universal.accuracy_points_per_percent);
     // Missile hits on a medic remove 2 lives, so each counts as 2 medic hits.
     const opponentMedicHits = sm5.medicHits + ps.missilesHitOpponentMedic * 2;
     const teamMedicHits = sm5.ownMedicHits + ps.missilesHitTeamMedic * 2;
@@ -166,11 +156,7 @@ export function calculateMvp(
     // Eliminated — all positions except Medic
     if (pos !== POSITION.MEDIC) {
       const elimInput = eliminated ? 1 : 0;
-      comp(
-        "eliminated",
-        elimInput,
-        elimInput * params.universal.eliminated_points,
-      );
+      comp("eliminated", elimInput, elimInput * params.universal.eliminated_points);
     } else {
       comp("eliminated", 0, 0);
     }
@@ -181,11 +167,7 @@ export function calculateMvp(
         pos === POSITION.COMMANDER
           ? params.commander.missile_opponent_points
           : params.heavy.missile_opponent_points;
-      comp(
-        "missiles_hit_opponent",
-        sm5.missiledOpponent,
-        sm5.missiledOpponent * missilePoints,
-      );
+      comp("missiles_hit_opponent", sm5.missiledOpponent, sm5.missiledOpponent * missilePoints);
     } else {
       comp("missiles_hit_opponent", 0, 0);
     }
@@ -208,37 +190,21 @@ export function calculateMvp(
     }
 
     if (pos === POSITION.SCOUT) {
-      comp(
-        "shots_hit_opponent_3hit",
-        sm5.shot3Hit,
-        sm5.shot3Hit * params.scout.shot_3hit_points,
-      );
+      comp("shots_hit_opponent_3hit", sm5.shot3Hit, sm5.shot3Hit * params.scout.shot_3hit_points);
     } else {
       comp("shots_hit_opponent_3hit", 0, 0);
     }
 
     if (pos === POSITION.AMMO) {
-      comp(
-        "ammo_boost",
-        sm5.ammoBoost,
-        sm5.ammoBoost * params.ammo_carrier.ammo_boost_points,
-      );
+      comp("ammo_boost", sm5.ammoBoost, sm5.ammoBoost * params.ammo_carrier.ammo_boost_points);
     } else {
       comp("ammo_boost", 0, 0);
     }
 
     if (pos === POSITION.MEDIC) {
-      comp(
-        "life_boost",
-        sm5.lifeBoost,
-        sm5.lifeBoost * params.medic.life_boost_points,
-      );
+      comp("life_boost", sm5.lifeBoost, sm5.lifeBoost * params.medic.life_boost_points);
       const survivalInput = eliminated ? 0 : 1;
-      comp(
-        "survival_bonus",
-        survivalInput,
-        survivalInput * params.medic.survival_bonus_points,
-      );
+      comp("survival_bonus", survivalInput, survivalInput * params.medic.survival_bonus_points);
     } else {
       comp("life_boost", 0, 0);
       comp("survival_bonus", 0, 0);
@@ -248,11 +214,7 @@ export function calculateMvp(
     const scoreBonusThreshold = getScoreBonusThreshold(pos, params);
     const scoreBonusMultiplier = getScoreBonusMultiplier(pos, params);
     const scoreBonusInput = r3(Math.max(0, score - scoreBonusThreshold) / 1000);
-    comp(
-      "score_bonus",
-      scoreBonusInput,
-      scoreBonusInput * scoreBonusMultiplier,
-    );
+    comp("score_bonus", scoreBonusInput, scoreBonusInput * scoreBonusMultiplier);
 
     const totalPoints = r3(components.reduce((sum, c) => sum + c.points, 0));
 

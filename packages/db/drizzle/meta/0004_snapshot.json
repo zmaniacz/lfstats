@@ -81,12 +81,8 @@
           "name": "auth_account_user_id_auth_user_id_fk",
           "tableFrom": "auth_account",
           "tableTo": "auth_user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -94,10 +90,7 @@
       "compositePrimaryKeys": {
         "auth_account_provider_provider_account_id_pk": {
           "name": "auth_account_provider_provider_account_id_pk",
-          "columns": [
-            "provider",
-            "provider_account_id"
-          ]
+          "columns": ["provider", "provider_account_id"]
         }
       },
       "uniqueConstraints": {},
@@ -134,12 +127,8 @@
           "name": "auth_session_user_id_auth_user_id_fk",
           "tableFrom": "auth_session",
           "tableTo": "auth_user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -192,9 +181,7 @@
         "auth_user_email_unique": {
           "name": "auth_user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -229,10 +216,7 @@
       "compositePrimaryKeys": {
         "auth_verification_token_identifier_token_pk": {
           "name": "auth_verification_token_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},
@@ -276,12 +260,8 @@
           "name": "battlesuit_center_id_center_id_fk",
           "tableFrom": "battlesuit",
           "tableTo": "center",
-          "columnsFrom": [
-            "center_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["center_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -291,10 +271,7 @@
         "battlesuit_center_id_name_unique": {
           "name": "battlesuit_center_id_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "center_id",
-            "name"
-          ]
+          "columns": ["center_id", "name"]
         }
       },
       "policies": {},
@@ -363,10 +340,7 @@
         "center_country_code_site_code_unique": {
           "name": "center_country_code_site_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "country_code",
-            "site_code"
-          ]
+          "columns": ["country_code", "site_code"]
         }
       },
       "policies": {},
@@ -440,12 +414,8 @@
           "name": "chomper_job_game_id_game_id_fk",
           "tableFrom": "chomper_job",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -523,12 +493,8 @@
           "name": "game_center_id_center_id_fk",
           "tableFrom": "game",
           "tableTo": "center",
-          "columnsFrom": [
-            "center_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["center_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -538,10 +504,7 @@
         "game_center_id_start_time_unique": {
           "name": "game_center_id_start_time_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "center_id",
-            "start_time"
-          ]
+          "columns": ["center_id", "start_time"]
         }
       },
       "policies": {},
@@ -602,12 +565,8 @@
           "name": "game_referee_game_id_game_id_fk",
           "tableFrom": "game_referee",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -615,12 +574,8 @@
           "name": "game_referee_player_id_player_id_fk",
           "tableFrom": "game_referee",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["player_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -628,12 +583,8 @@
           "name": "game_referee_battlesuit_id_battlesuit_id_fk",
           "tableFrom": "game_referee",
           "tableTo": "battlesuit",
-          "columnsFrom": [
-            "battlesuit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["battlesuit_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -687,9 +638,7 @@
         "player_ipl_id_unique": {
           "name": "player_ipl_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "ipl_id"
-          ]
+          "columns": ["ipl_id"]
         }
       },
       "policies": {},
@@ -738,12 +687,8 @@
           "name": "player_callsign_history_player_id_player_id_fk",
           "tableFrom": "player_callsign_history",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["player_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -753,10 +698,7 @@
         "player_callsign_history_player_id_callsign_unique": {
           "name": "player_callsign_history_player_id_callsign_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "player_id",
-            "callsign"
-          ]
+          "columns": ["player_id", "callsign"]
         }
       },
       "policies": {},
@@ -823,12 +765,8 @@
           "name": "sm5_game_event_game_id_game_id_fk",
           "tableFrom": "sm5_game_event",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -836,12 +774,8 @@
           "name": "sm5_game_event_actor_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_event",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "actor_scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["actor_scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -849,12 +783,8 @@
           "name": "sm5_game_event_target_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_event",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "target_scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -862,12 +792,8 @@
           "name": "sm5_game_event_target_game_target_id_sm5_game_target_id_fk",
           "tableFrom": "sm5_game_event",
           "tableTo": "sm5_game_target",
-          "columnsFrom": [
-            "target_game_target_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_game_target_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -932,12 +858,8 @@
           "name": "sm5_game_penalty_game_id_game_id_fk",
           "tableFrom": "sm5_game_penalty",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -945,12 +867,8 @@
           "name": "sm5_game_penalty_referee_id_game_referee_id_fk",
           "tableFrom": "sm5_game_penalty",
           "tableTo": "game_referee",
-          "columnsFrom": [
-            "referee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["referee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -958,12 +876,8 @@
           "name": "sm5_game_penalty_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_penalty",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1028,12 +942,8 @@
           "name": "sm5_game_player_interaction_game_id_game_id_fk",
           "tableFrom": "sm5_game_player_interaction",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1041,12 +951,8 @@
           "name": "sm5_game_player_interaction_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_player_interaction",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1054,12 +960,8 @@
           "name": "sm5_gpi_tgt_scorecard_id_fk",
           "tableFrom": "sm5_game_player_interaction",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "target_scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1069,11 +971,7 @@
         "sm5_game_player_interaction_unique": {
           "name": "sm5_game_player_interaction_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "game_id",
-            "scorecard_id",
-            "target_scorecard_id"
-          ]
+          "columns": ["game_id", "scorecard_id", "target_scorecard_id"]
         }
       },
       "policies": {},
@@ -1216,12 +1114,8 @@
           "name": "sm5_game_player_state_game_id_game_id_fk",
           "tableFrom": "sm5_game_player_state",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1229,12 +1123,8 @@
           "name": "sm5_game_player_state_event_id_sm5_game_event_id_fk",
           "tableFrom": "sm5_game_player_state",
           "tableTo": "sm5_game_event",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1242,12 +1132,8 @@
           "name": "sm5_game_player_state_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_player_state",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1257,10 +1143,7 @@
         "sm5_game_player_state_event_id_scorecard_id_unique": {
           "name": "sm5_game_player_state_event_id_scorecard_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_id",
-            "scorecard_id"
-          ]
+          "columns": ["event_id", "scorecard_id"]
         }
       },
       "policies": {},
@@ -1309,12 +1192,8 @@
           "name": "sm5_game_target_game_id_game_id_fk",
           "tableFrom": "sm5_game_target",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1322,12 +1201,8 @@
           "name": "sm5_game_target_target_id_target_id_fk",
           "tableFrom": "sm5_game_target",
           "tableTo": "target",
-          "columnsFrom": [
-            "target_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1335,12 +1210,8 @@
           "name": "sm5_game_target_game_team_id_sm5_game_team_id_fk",
           "tableFrom": "sm5_game_target",
           "tableTo": "sm5_game_team",
-          "columnsFrom": [
-            "game_team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1350,10 +1221,7 @@
         "sm5_game_target_game_id_target_id_unique": {
           "name": "sm5_game_target_game_id_target_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "game_id",
-            "target_id"
-          ]
+          "columns": ["game_id", "target_id"]
         }
       },
       "policies": {},
@@ -1403,12 +1271,8 @@
           "name": "sm5_gtd_game_target_id_fk",
           "tableFrom": "sm5_game_target_destruction",
           "tableTo": "sm5_game_target",
-          "columnsFrom": [
-            "game_target_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_target_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1416,12 +1280,8 @@
           "name": "sm5_gtd_scorecard_id_fk",
           "tableFrom": "sm5_game_target_destruction",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1511,12 +1371,8 @@
           "name": "sm5_game_team_game_id_game_id_fk",
           "tableFrom": "sm5_game_team",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1526,10 +1382,7 @@
         "sm5_game_team_game_id_tdf_team_index_unique": {
           "name": "sm5_game_team_game_id_tdf_team_index_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "game_id",
-            "tdf_team_index"
-          ]
+          "columns": ["game_id", "tdf_team_index"]
         }
       },
       "policies": {},
@@ -1585,9 +1438,7 @@
         "sm5_mvp_model_version_unique": {
           "name": "sm5_mvp_model_version_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "version"
-          ]
+          "columns": ["version"]
         }
       },
       "policies": {},
@@ -2038,12 +1889,8 @@
           "name": "sm5_scorecard_game_id_game_id_fk",
           "tableFrom": "sm5_scorecard",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2051,12 +1898,8 @@
           "name": "sm5_scorecard_player_id_player_id_fk",
           "tableFrom": "sm5_scorecard",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["player_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2064,12 +1907,8 @@
           "name": "sm5_scorecard_team_id_sm5_game_team_id_fk",
           "tableFrom": "sm5_scorecard",
           "tableTo": "sm5_game_team",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2077,12 +1916,8 @@
           "name": "sm5_scorecard_battlesuit_id_battlesuit_id_fk",
           "tableFrom": "sm5_scorecard",
           "tableTo": "battlesuit",
-          "columnsFrom": [
-            "battlesuit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["battlesuit_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2090,12 +1925,8 @@
           "name": "sm5_scorecard_mvp_model_id_sm5_mvp_model_id_fk",
           "tableFrom": "sm5_scorecard",
           "tableTo": "sm5_mvp_model",
-          "columnsFrom": [
-            "mvp_model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mvp_model_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2154,12 +1985,8 @@
           "name": "sm5_scorecard_mvp_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_scorecard_mvp",
           "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scorecard_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2167,12 +1994,8 @@
           "name": "sm5_scorecard_mvp_mvp_model_id_sm5_mvp_model_id_fk",
           "tableFrom": "sm5_scorecard_mvp",
           "tableTo": "sm5_mvp_model",
-          "columnsFrom": [
-            "mvp_model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mvp_model_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2182,11 +2005,7 @@
         "sm5_scorecard_mvp_scorecard_id_mvp_model_id_component_unique": {
           "name": "sm5_scorecard_mvp_scorecard_id_mvp_model_id_component_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "scorecard_id",
-            "mvp_model_id",
-            "component"
-          ]
+          "columns": ["scorecard_id", "mvp_model_id", "component"]
         }
       },
       "policies": {},
@@ -2229,12 +2048,8 @@
           "name": "target_center_id_center_id_fk",
           "tableFrom": "target",
           "tableTo": "center",
-          "columnsFrom": [
-            "center_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["center_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2244,10 +2059,7 @@
         "target_center_id_hardware_id_unique": {
           "name": "target_center_id_hardware_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "center_id",
-            "hardware_id"
-          ]
+          "columns": ["center_id", "hardware_id"]
         }
       },
       "policies": {},
@@ -2291,12 +2103,8 @@
           "name": "user_roles_user_id_auth_user_id_fk",
           "tableFrom": "user_roles",
           "tableTo": "auth_user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2304,12 +2112,8 @@
           "name": "user_roles_center_id_center_id_fk",
           "tableFrom": "user_roles",
           "tableTo": "center",
-          "columnsFrom": [
-            "center_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["center_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2319,11 +2123,7 @@
         "user_roles_user_id_role_center_id_unique": {
           "name": "user_roles_user_id_role_center_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "role",
-            "center_id"
-          ]
+          "columns": ["user_id", "role", "center_id"]
         }
       },
       "policies": {},
@@ -2335,38 +2135,22 @@
     "public.destruction_method": {
       "name": "destruction_method",
       "schema": "public",
-      "values": [
-        "shot",
-        "missile",
-        "awarded"
-      ]
+      "values": ["shot", "missile", "awarded"]
     },
     "public.game_outcome": {
       "name": "game_outcome",
       "schema": "public",
-      "values": [
-        "score",
-        "elimination",
-        "draw"
-      ]
+      "values": ["score", "elimination", "draw"]
     },
     "public.team_result": {
       "name": "team_result",
       "schema": "public",
-      "values": [
-        "win",
-        "loss",
-        "draw"
-      ]
+      "values": ["win", "loss", "draw"]
     },
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "admin",
-        "centerAdmin",
-        "uploader"
-      ]
+      "values": ["admin", "centerAdmin", "uploader"]
     }
   },
   "schemas": {},

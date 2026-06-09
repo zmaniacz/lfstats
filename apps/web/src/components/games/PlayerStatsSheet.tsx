@@ -1,42 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import type { GameDetailPlayer, PenaltyRecord } from "@lfstats/db"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { formatPct, formatMs } from "@/lib/format"
-import { getPosition } from "@/lib/positions"
-import { PenaltyManager } from "@/components/games/PenaltyManager"
-import { WarningIcon } from "@phosphor-icons/react"
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import type { GameDetailPlayer, PenaltyRecord } from "@lfstats/db";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatPct, formatMs } from "@/lib/format";
+import { getPosition } from "@/lib/positions";
+import { PenaltyManager } from "@/components/games/PenaltyManager";
+import { WarningIcon } from "@phosphor-icons/react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
-type PenaltyActions = React.ComponentProps<typeof PenaltyManager>["actions"]
+type PenaltyActions = React.ComponentProps<typeof PenaltyManager>["actions"];
 
 type Props = {
-  player: GameDetailPlayer | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  gameId: string
-  penalties: PenaltyRecord[]
-  canEdit: boolean
-  penaltyActions: PenaltyActions
-  mercenaryAction?: (scorecardId: string, isMercenary: boolean) => Promise<void>
-}
+  player: GameDetailPlayer | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  gameId: string;
+  penalties: PenaltyRecord[];
+  canEdit: boolean;
+  penaltyActions: PenaltyActions;
+  mercenaryAction?: (scorecardId: string, isMercenary: boolean) => Promise<void>;
+};
 
-const EM_DASH = "—"
+const EM_DASH = "—";
 
 function fmt(n: number | null): string {
-  if (n === null) return EM_DASH
-  return n.toLocaleString("en-US")
+  if (n === null) return EM_DASH;
+  return n.toLocaleString("en-US");
 }
 
 function StatRow({ label, value }: { label: string; value: string }) {
@@ -45,16 +40,10 @@ function StatRow({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular-nums font-medium">{value}</span>
     </div>
-  )
+  );
 }
 
-function StatSection({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
@@ -62,18 +51,31 @@ function StatSection({
       </h3>
       <div className="space-y-0.5">{children}</div>
     </section>
-  )
+  );
 }
 
-export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties, canEdit, penaltyActions, mercenaryAction }: Props) {
-  const [isMercSubmitting, setIsMercSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isMercPending = isMercSubmitting || isRefreshing
+export function PlayerStatsSheet({
+  player,
+  open,
+  onOpenChange,
+  gameId,
+  penalties,
+  canEdit,
+  penaltyActions,
+  mercenaryAction,
+}: Props) {
+  const [isMercSubmitting, setIsMercSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isMercPending = isMercSubmitting || isRefreshing;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-md overflow-y-auto" aria-describedby={undefined}>
+      <SheetContent
+        side="right"
+        className="sm:max-w-md overflow-y-auto"
+        aria-describedby={undefined}
+      >
         {player && (
           <>
             <SheetHeader className="pb-3 border-b mb-4">
@@ -98,15 +100,15 @@ export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties
                       className="h-7 px-2 text-xs ml-auto"
                       disabled={isMercPending}
                       onClick={async () => {
-                        setIsMercSubmitting(true)
+                        setIsMercSubmitting(true);
                         try {
-                          await mercenaryAction(player.id, !player.isMercenary)
+                          await mercenaryAction(player.id, !player.isMercenary);
                         } finally {
-                          setIsMercSubmitting(false)
+                          setIsMercSubmitting(false);
                         }
                         startRefreshTransition(() => {
-                          router.refresh()
-                        })
+                          router.refresh();
+                        });
                       }}
                     >
                       {player.isMercenary ? "Unmark Merc" : "Mark as Merc"}
@@ -230,5 +232,5 @@ export function PlayerStatsSheet({ player, open, onOpenChange, gameId, penalties
         )}
       </SheetContent>
     </Sheet>
-  )
+  );
 }

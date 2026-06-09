@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,24 +15,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 type Props = {
-  competitionId: string
-  competitionName: string
-  action: (id: string) => Promise<void>
-}
+  competitionId: string;
+  competitionName: string;
+  action: (id: string) => Promise<void>;
+};
 
 export function DeleteCompetitionButton({ competitionId, competitionName, action }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [isPending, setIsPending] = useState(false);
+  const [open, setOpen] = useState(false);
 
   async function handleConfirm() {
-    setIsPending(true)
+    setIsPending(true);
     try {
-      await action(competitionId)
+      await action(competitionId);
     } finally {
-      setIsPending(false)
+      setIsPending(false);
     }
   }
 
@@ -47,7 +47,8 @@ export function DeleteCompetitionButton({ competitionId, competitionName, action
         <AlertDialogHeader>
           <AlertDialogTitle>Delete &ldquo;{competitionName}&rdquo;?</AlertDialogTitle>
           <AlertDialogDescription>
-            This removes the competition. Assigned games will have their competition unset (they are not deleted).
+            This removes the competition. Assigned games will have their competition unset (they are
+            not deleted).
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -58,5 +59,5 @@ export function DeleteCompetitionButton({ competitionId, competitionName, action
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

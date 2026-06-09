@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Fragment } from "react"
-import Link from "next/link"
-import { redirect } from "next/navigation"
-import { auth } from "@/auth"
-import { getUserFavorites, getUserFavoritePlayers } from "@lfstats/db"
+import { Fragment } from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { getUserFavorites, getUserFavoritePlayers } from "@lfstats/db";
 import {
   Table,
   TableBody,
@@ -13,18 +13,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatDateTime, formatGameName, formatScore } from "@/lib/format"
-import { getTeamColor } from "@/lib/team-colors"
+} from "@/components/ui/table";
+import { formatDateTime, formatGameName, formatScore } from "@/lib/format";
+import { getTeamColor } from "@/lib/team-colors";
 
 export default async function FavoritesPage() {
-  const session = await auth()
-  if (!session?.user?.id) redirect("/")
+  const session = await auth();
+  if (!session?.user?.id) redirect("/");
 
   const [games, favoritePlayers] = await Promise.all([
     getUserFavorites(session.user.id),
     getUserFavoritePlayers(session.user.id),
-  ])
+  ]);
 
   return (
     <div className="p-6 space-y-4">
@@ -47,11 +47,11 @@ export default async function FavoritesPage() {
           </TableHeader>
           <TableBody>
             {games.map((game) => {
-              const winner = game.teams.find((t) => t.result === "win")
-              const winnerColor = winner ? getTeamColor(winner.colourEnum) : undefined
+              const winner = game.teams.find((t) => t.result === "win");
+              const winnerColor = winner ? getTeamColor(winner.colourEnum) : undefined;
               const sortedTeams = [...game.teams].sort((a, b) =>
                 a.result === "win" ? -1 : b.result === "win" ? 1 : 0,
-              )
+              );
               return (
                 <TableRow key={game.id}>
                   <TableCell>
@@ -63,17 +63,13 @@ export default async function FavoritesPage() {
                     </Link>
                   </TableCell>
                   <TableCell>{game.centerName}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatDateTime(game.startTime)}
-                  </TableCell>
+                  <TableCell className="tabular-nums">{formatDateTime(game.startTime)}</TableCell>
                   <TableCell className="capitalize">{game.outcome}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5 tabular-nums">
                       {sortedTeams.map((team, i) => (
                         <Fragment key={i}>
-                          {i > 0 && (
-                            <span className="text-muted-foreground">–</span>
-                          )}
+                          {i > 0 && <span className="text-muted-foreground">–</span>}
                           <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
                             {formatScore((team.score ?? 0) + (team.eliminationBonus ?? 0))}
                           </span>
@@ -82,7 +78,7 @@ export default async function FavoritesPage() {
                     </span>
                   </TableCell>
                 </TableRow>
-              )
+              );
             })}
           </TableBody>
         </Table>
@@ -108,10 +104,7 @@ export default async function FavoritesPage() {
               {favoritePlayers.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
-                    <Link
-                      href={`/players/${p.iplId}`}
-                      className="hover:underline font-medium"
-                    >
+                    <Link href={`/players/${p.iplId}`} className="hover:underline font-medium">
                       {p.currentCallsign}
                     </Link>
                   </TableCell>
@@ -126,5 +119,5 @@ export default async function FavoritesPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,35 +11,40 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { formatScore, formatMsDuration, formatMs } from "@/lib/format"
-import Link from "next/link"
-import { useMemo, useState } from "react"
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { formatScore, formatMsDuration, formatMs } from "@/lib/format";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
-export type StatFormat = "integer" | "score" | "duration" | "decimal" | "ms"
+export type StatFormat = "integer" | "score" | "duration" | "decimal" | "ms";
 
 function applyFormat(v: number, format: StatFormat): string {
   switch (format) {
-    case "integer": return v.toLocaleString("en-US")
-    case "score": return formatScore(v)
-    case "duration": return formatMsDuration(v)
-    case "decimal": return v.toFixed(2)
-    case "ms": return formatMs(v)
+    case "integer":
+      return v.toLocaleString("en-US");
+    case "score":
+      return formatScore(v);
+    case "duration":
+      return formatMsDuration(v);
+    case "decimal":
+      return v.toFixed(2);
+    case "ms":
+      return formatMs(v);
   }
 }
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 5;
 
-type SortDir = "asc" | "desc"
+type SortDir = "asc" | "desc";
 
 type Row = {
-  playerId: string
-  iplId: string
-  callsign: string
-  value: number
-}
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  value: number;
+};
 
 function SortableHead({
   active,
@@ -47,12 +52,12 @@ function SortableHead({
   onSort,
   children,
 }: {
-  active: boolean
-  dir: SortDir
-  onSort: () => void
-  children: React.ReactNode
+  active: boolean;
+  dir: SortDir;
+  onSort: () => void;
+  children: React.ReactNode;
 }) {
-  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead className="text-right">
       <button
@@ -63,7 +68,7 @@ function SortableHead({
         <Icon className={`h-3 w-3 ${active ? "" : "opacity-40"}`} />
       </button>
     </TableHead>
-  )
+  );
 }
 
 export function StatLeaderboardCard({
@@ -72,26 +77,26 @@ export function StatLeaderboardCard({
   rows,
   format,
 }: {
-  title: string
-  colLabel: string
-  rows: Row[]
-  format: StatFormat
+  title: string;
+  colLabel: string;
+  rows: Row[];
+  format: StatFormat;
 }) {
-  const [sort, setSort] = useState<SortDir>("desc")
-  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
 
   function toggleSort() {
-    setSort((prev) => (prev === "asc" ? "desc" : "asc"))
-    setPage(1)
+    setSort((prev) => (prev === "asc" ? "desc" : "asc"));
+    setPage(1);
   }
 
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => sort === "desc" ? b.value - a.value : a.value - b.value),
+    () => [...rows].sort((a, b) => (sort === "desc" ? b.value - a.value : a.value - b.value)),
     [rows, sort],
-  )
+  );
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <Card className="min-w-0 w-full overflow-hidden">
@@ -110,7 +115,7 @@ export function StatLeaderboardCard({
           </TableHeader>
           <TableBody>
             {pageRows.map((r) => {
-              const iplIdForUrl = r.iplId.startsWith("#") ? r.iplId.slice(1) : r.iplId
+              const iplIdForUrl = r.iplId.startsWith("#") ? r.iplId.slice(1) : r.iplId;
               return (
                 <TableRow key={r.playerId}>
                   <TableCell className="font-medium">
@@ -122,7 +127,7 @@ export function StatLeaderboardCard({
                     {applyFormat(r.value, format)}
                   </TableCell>
                 </TableRow>
-              )
+              );
             })}
             {pageRows.length === 0 && (
               <TableRow>
@@ -160,5 +165,5 @@ export function StatLeaderboardCard({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

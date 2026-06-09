@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import * as React from "react"
-import { UploadZone } from "./UploadZone"
-import { JobStatusTable } from "./JobStatusTable"
+import * as React from "react";
+import { UploadZone } from "./UploadZone";
+import { JobStatusTable } from "./JobStatusTable";
 
 export function UploadPage() {
-  const [uploadedKeys, setUploadedKeys] = React.useState<string[]>([])
+  const [uploadedKeys, setUploadedKeys] = React.useState<string[]>([]);
 
   return (
     <div className="space-y-8">
@@ -21,5 +21,5 @@ export function UploadPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

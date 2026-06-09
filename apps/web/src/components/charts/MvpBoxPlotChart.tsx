@@ -3,11 +3,7 @@
 
 "use client";
 
-import {
-  ChartContainer,
-  ChartTooltip,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { POSITIONS } from "@/lib/positions";
 import type { MvpBoxPlotItem } from "@lfstats/db";
 import { Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
@@ -53,16 +49,7 @@ const WhiskerBar = ({ x, y, width, height }: ShapeProps) => {
 
 const MedianBar = ({ x, y, width, height }: ShapeProps) => {
   if (x == null || y == null || width == null || height == null) return null;
-  return (
-    <line
-      x1={x}
-      y1={y}
-      x2={x + width}
-      y2={y}
-      stroke="var(--primary)"
-      strokeWidth={3}
-    />
-  );
+  return <line x1={x} y1={y} x2={x + width} y2={y} stroke="var(--primary)" strokeWidth={3} />;
 };
 
 const chartConfig = {
@@ -93,9 +80,7 @@ function BoxPlotTooltip({ active, payload }: TooltipProps) {
           <div key={key} className="flex justify-between gap-4">
             <span className="text-muted-foreground">{label}</span>
             <span className="font-mono font-medium tabular-nums">
-              {typeof d[key] === "number"
-                ? (d[key] as number).toFixed(3)
-                : d[key]}
+              {typeof d[key] === "number" ? (d[key] as number).toFixed(3) : d[key]}
             </span>
           </div>
         ))}
@@ -110,9 +95,7 @@ type Props = {
 
 export function MvpBoxPlotChart({ data }: Props) {
   if (data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No MVP data available.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No MVP data available.</p>;
   }
 
   const transformed = data.map((d) => ({
@@ -135,17 +118,9 @@ export function MvpBoxPlotChart({ data }: Props) {
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-75">
-      <ComposedChart
-        data={transformed}
-        margin={{ top: 8, right: 16, left: 16, bottom: 8 }}
-      >
+      <ComposedChart data={transformed} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-        <XAxis
-          dataKey="position"
-          tickLine={false}
-          axisLine={false}
-          tick={{ fontSize: 12 }}
-        />
+        <XAxis dataKey="position" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
         <YAxis
           tickLine={false}
           axisLine={false}

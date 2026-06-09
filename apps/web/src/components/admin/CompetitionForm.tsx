@@ -1,45 +1,43 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { CompetitionDetail } from "@lfstats/db"
-import type { CenterListItem } from "@lfstats/db"
+} from "@/components/ui/select";
+import type { CompetitionDetail } from "@lfstats/db";
+import type { CenterListItem } from "@lfstats/db";
 
 type Props = {
-  competition?: CompetitionDetail
-  centers: CenterListItem[]
-  action: (formData: FormData) => Promise<void>
-}
+  competition?: CompetitionDetail;
+  centers: CenterListItem[];
+  action: (formData: FormData) => Promise<void>;
+};
 
 export function CompetitionForm({ competition, centers, action }: Props) {
-  const [isPending, setIsPending] = useState(false)
-  const [type, setType] = useState<string>(competition?.type ?? "competitive")
-  const [hostCenterId, setHostCenterId] = useState<string>(
-    competition?.hostCenterId ?? "none",
-  )
+  const [isPending, setIsPending] = useState(false);
+  const [type, setType] = useState<string>(competition?.type ?? "competitive");
+  const [hostCenterId, setHostCenterId] = useState<string>(competition?.hostCenterId ?? "none");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    formData.set("type", type)
-    formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId)
-    setIsPending(true)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.set("type", type);
+    formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId);
+    setIsPending(true);
     try {
-      await action(formData)
+      await action(formData);
     } finally {
-      setIsPending(false)
+      setIsPending(false);
     }
   }
 
@@ -82,21 +80,12 @@ export function CompetitionForm({ competition, centers, action }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="endDate">End Date (optional)</Label>
-        <Input
-          id="endDate"
-          name="endDate"
-          type="date"
-          defaultValue={competition?.endDate ?? ""}
-        />
+        <Input id="endDate" name="endDate" type="date" defaultValue={competition?.endDate ?? ""} />
       </div>
 
       <div className="space-y-1.5">
         <Label>Host Center (optional)</Label>
-        <Select
-          value={hostCenterId}
-          onValueChange={setHostCenterId}
-          name="hostCenterId"
-        >
+        <Select value={hostCenterId} onValueChange={setHostCenterId} name="hostCenterId">
           <SelectTrigger>
             <SelectValue placeholder="None" />
           </SelectTrigger>
@@ -125,5 +114,5 @@ export function CompetitionForm({ competition, centers, action }: Props) {
         {isPending ? "Saving…" : competition ? "Save Changes" : "Create Competition"}
       </Button>
     </form>
-  )
+  );
 }

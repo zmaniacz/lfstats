@@ -51,12 +51,17 @@ function buildGameListConditions(filters: GameListFilters): SQL[] {
     conditions.push(eq(game.centerId, filters.centerId));
   }
   if (filters.dateSearch) {
-    conditions.push(sql`to_char(${game.startTime}, 'YYYY-MM-DD') ILIKE ${"%" + filters.dateSearch + "%"}`);
+    conditions.push(
+      sql`to_char(${game.startTime}, 'YYYY-MM-DD') ILIKE ${"%" + filters.dateSearch + "%"}`,
+    );
   }
   return conditions;
 }
 
-export async function getGamesPage(page: number, filters: GameListFilters = {}): Promise<GameListItem[]> {
+export async function getGamesPage(
+  page: number,
+  filters: GameListFilters = {},
+): Promise<GameListItem[]> {
   const offset = (page - 1) * GAMES_PER_PAGE;
   const conditions = buildGameListConditions(filters);
 
@@ -90,12 +95,7 @@ export async function getGamesPage(page: number, filters: GameListFilters = {}):
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
-    .where(
-      and(
-        inArray(sm5GameTeam.gameId, gameIds),
-        eq(sm5GameTeam.isNeutral, false),
-      ),
-    )
+    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
     .orderBy(sm5GameTeam.tdfTeamIndex);
 
   const teamsByGame = new Map<string, typeof teamRows>();
@@ -436,9 +436,17 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
     mvpByScorecard.set(row.scorecardId, list);
   }
 
-  const scorecardMeta = new Map<string, { callsign: string; position: number; score: number; teamId: string }>();
+  const scorecardMeta = new Map<
+    string,
+    { callsign: string; position: number; score: number; teamId: string }
+  >();
   for (const sc of scorecardRows) {
-    scorecardMeta.set(sc.id, { callsign: sc.callsign, position: sc.position, score: sc.score, teamId: sc.teamId });
+    scorecardMeta.set(sc.id, {
+      callsign: sc.callsign,
+      position: sc.position,
+      score: sc.score,
+      teamId: sc.teamId,
+    });
   }
 
   type RawHit = { shotsHit: number; missileHits: number };
@@ -446,9 +454,14 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
   const interactionReceived = new Map<string, Map<string, RawHit>>();
   for (const row of interactionRows) {
     if (!interactionDealt.has(row.scorecardId)) interactionDealt.set(row.scorecardId, new Map());
-    interactionDealt.get(row.scorecardId)!.set(row.targetScorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
-    if (!interactionReceived.has(row.targetScorecardId)) interactionReceived.set(row.targetScorecardId, new Map());
-    interactionReceived.get(row.targetScorecardId)!.set(row.scorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
+    interactionDealt
+      .get(row.scorecardId)!
+      .set(row.targetScorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
+    if (!interactionReceived.has(row.targetScorecardId))
+      interactionReceived.set(row.targetScorecardId, new Map());
+    interactionReceived
+      .get(row.targetScorecardId)!
+      .set(row.scorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
   }
 
   const teamsByGame = new Map<string, typeof teamRows>();
@@ -606,10 +619,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
 }
 
 export async function getGameCenterId(id: string): Promise<string | null> {
-  const [row] = await db
-    .select({ centerId: game.centerId })
-    .from(game)
-    .where(eq(game.id, id));
+  const [row] = await db.select({ centerId: game.centerId }).from(game).where(eq(game.id, id));
   return row?.centerId ?? null;
 }
 
@@ -643,8 +653,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   if (!gameRow) return null;
 
   const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows, penaltyTotals] =
-    await Promise.all(
-    [
+    await Promise.all([
       db
         .select({
           id: sm5GameTeam.id,
@@ -656,9 +665,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
           eliminated: sm5GameTeam.eliminated,
         })
         .from(sm5GameTeam)
-        .where(
-          and(eq(sm5GameTeam.gameId, id), eq(sm5GameTeam.isNeutral, false)),
-        ),
+        .where(and(eq(sm5GameTeam.gameId, id), eq(sm5GameTeam.isNeutral, false))),
 
       db
         .select({
@@ -755,10 +762,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
           points: sm5ScorecardMvp.points,
         })
         .from(sm5ScorecardMvp)
-        .innerJoin(
-          sm5Scorecard,
-          eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id),
-        )
+        .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
         .where(eq(sm5Scorecard.gameId, id)),
 
       db
@@ -782,8 +786,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         .where(eq(gameTagAssignment.gameId, id)),
 
       getTeamPenaltyTotals(id),
-    ],
-  );
+    ]);
 
   const mvpByScorecard = new Map<string, MvpComponentRow[]>();
   for (const row of mvpRows) {
@@ -798,9 +801,17 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   }
 
   // Build a lookup of scorecardId → {callsign, position, score, teamId} for interaction labeling
-  const scorecardMeta = new Map<string, { callsign: string; position: number; score: number; teamId: string }>();
+  const scorecardMeta = new Map<
+    string,
+    { callsign: string; position: number; score: number; teamId: string }
+  >();
   for (const sc of scorecardRows) {
-    scorecardMeta.set(sc.id, { callsign: sc.callsign, position: sc.position, score: sc.score, teamId: sc.teamId });
+    scorecardMeta.set(sc.id, {
+      callsign: sc.callsign,
+      position: sc.position,
+      score: sc.score,
+      teamId: sc.teamId,
+    });
   }
 
   // Build bidirectional interaction data keyed by player scorecardId
@@ -811,8 +822,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   const interactionReceived = new Map<string, Map<string, RawHit>>();
 
   for (const row of interactionRows) {
-    if (!interactionDealt.has(row.scorecardId))
-      interactionDealt.set(row.scorecardId, new Map());
+    if (!interactionDealt.has(row.scorecardId)) interactionDealt.set(row.scorecardId, new Map());
     interactionDealt.get(row.scorecardId)!.set(row.targetScorecardId, {
       shotsHit: row.shotsHit,
       missileHits: row.missileHits,
@@ -914,10 +924,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         otherDowntime: sc.otherDowntime,
         mvpComponents: mvpByScorecard.get(sc.id) ?? [],
         hitInteractions: (() => {
-          const dealt =
-            interactionDealt.get(sc.id) ?? new Map<string, RawHit>();
-          const received =
-            interactionReceived.get(sc.id) ?? new Map<string, RawHit>();
+          const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>();
+          const received = interactionReceived.get(sc.id) ?? new Map<string, RawHit>();
           const otherIds = new Set([...dealt.keys(), ...received.keys()]);
           const interactions: PlayerHitData[] = [];
           for (const otherId of otherIds) {
@@ -1102,9 +1110,7 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       })
       .from(sm5Scorecard)
       .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
-      .where(
-        and(eq(sm5Scorecard.gameId, gameId), eq(sm5GameTeam.isNeutral, false)),
-      ),
+      .where(and(eq(sm5Scorecard.gameId, gameId), eq(sm5GameTeam.isNeutral, false))),
 
     db
       .select({
@@ -1158,8 +1164,5 @@ export async function setScorecardMercenary(
   scorecardId: string,
   isMercenary: boolean,
 ): Promise<void> {
-  await db
-    .update(sm5Scorecard)
-    .set({ isMercenary })
-    .where(eq(sm5Scorecard.id, scorecardId));
+  await db.update(sm5Scorecard).set({ isMercenary }).where(eq(sm5Scorecard.id, scorecardId));
 }

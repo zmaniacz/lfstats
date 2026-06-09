@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { auth } from "@/auth"
-import { redirect } from "next/navigation"
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const session = await auth()
-  const roles = session?.user?.roles ?? []
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  const roles = session?.user?.roles ?? [];
   const isAdmin = roles.some(
-    (r) =>
-      r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
-  )
-  if (!isAdmin) redirect("/")
+    (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
+  );
+  if (!isAdmin) redirect("/");
 
   return (
     <div className="p-6 space-y-6">
@@ -24,5 +19,5 @@ export default async function AdminLayout({
       </div>
       {children}
     </div>
-  )
+  );
 }

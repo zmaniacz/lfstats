@@ -31,11 +31,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
-function CompetitionNavItems({
-  competitionCookie,
-}: {
-  competitionCookie: string | null;
-}) {
+function CompetitionNavItems({ competitionCookie }: { competitionCookie: string | null }) {
   const searchParams = useSearchParams();
   const competitionSlug = searchParams.get("competition") ?? competitionCookie;
 
@@ -114,8 +110,7 @@ export function AppSidebar({
   const roles = session?.user?.roles ?? [];
   const isLoggedIn = session?.user != null;
   const isAdmin = roles.some(
-    (r) =>
-      r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
+    (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
   const canUpload = roles.some(
     (r) =>
@@ -127,15 +122,9 @@ export function AppSidebar({
 
   const socialItems = [
     ...socialNavItems,
-    ...(isLoggedIn
-      ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }]
-      : []),
-    ...(canUpload
-      ? [{ title: "Upload", url: "/upload", icon: <UploadSimpleIcon /> }]
-      : []),
-    ...(isAdmin
-      ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }]
-      : []),
+    ...(isLoggedIn ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }] : []),
+    ...(canUpload ? [{ title: "Upload", url: "/upload", icon: <UploadSimpleIcon /> }] : []),
+    ...(isAdmin ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }] : []),
   ];
 
   return (

@@ -1,74 +1,74 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { TeamLogo } from "@/components/teams/TeamLogo"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { TeamLogo } from "@/components/teams/TeamLogo";
+import { Button } from "@/components/ui/button";
 import {
   getTeamLogoUploadUrlAction,
   confirmTeamLogoUploadAction,
   removeTeamLogoAction,
-} from "./actions"
+} from "./actions";
 
 interface TeamLogoUploadProps {
-  competitionId: string
-  teamId: string
-  teamName: string
-  hasLogo: boolean
+  competitionId: string;
+  teamId: string;
+  teamName: string;
+  hasLogo: boolean;
 }
 
 export function TeamLogoUpload({ competitionId, teamId, teamName, hasLogo }: TeamLogoUploadProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [isRefreshing, startRefreshTransition] = React.useTransition()
-  const [error, setError] = React.useState<string | null>(null)
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isRefreshing, startRefreshTransition] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   function refresh() {
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file) return
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
 
-    setIsSubmitting(true)
-    setError(null)
+    setIsSubmitting(true);
+    setError(null);
     try {
-      const url = await getTeamLogoUploadUrlAction(competitionId, teamId, file.type)
+      const url = await getTeamLogoUploadUrlAction(competitionId, teamId, file.type);
       const res = await fetch(url, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type },
-      })
-      if (!res.ok) throw new Error("Failed to upload logo")
-      await confirmTeamLogoUploadAction(competitionId, teamId)
+      });
+      if (!res.ok) throw new Error("Failed to upload logo");
+      await confirmTeamLogoUploadAction(competitionId, teamId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed")
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-    refresh()
+    refresh();
   }
 
   async function handleRemove() {
-    setIsSubmitting(true)
-    setError(null)
+    setIsSubmitting(true);
+    setError(null);
     try {
-      await removeTeamLogoAction(competitionId, teamId)
+      await removeTeamLogoAction(competitionId, teamId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove logo")
+      setError(err instanceof Error ? err.message : "Failed to remove logo");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-    refresh()
+    refresh();
   }
 
   return (
@@ -108,5 +108,5 @@ export function TeamLogoUpload({ competitionId, teamId, teamName, hasLogo }: Tea
         <p className="text-xs text-muted-foreground">PNG, JPEG, or WebP.</p>
       </div>
     </div>
-  )
+  );
 }

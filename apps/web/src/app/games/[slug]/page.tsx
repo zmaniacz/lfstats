@@ -13,12 +13,7 @@ import { TeamStatsTable } from "@/components/games/TeamStatsTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  formatDateTime,
-  formatGameName,
-  formatMs,
-  formatScore,
-} from "@/lib/format";
+import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import {
   getAvailableMatchesForGame,
@@ -50,16 +45,9 @@ import {
   updatePenaltyAction,
 } from "./actions";
 
-export default async function GameDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function GameDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [game, session] = await Promise.all([
-    getGameDetailBySlug(slug),
-    auth(),
-  ]);
+  const [game, session] = await Promise.all([getGameDetailBySlug(slug), auth()]);
 
   if (!game) notFound();
 
@@ -81,9 +69,7 @@ export default async function GameDetailPage({
     allPenalties,
   ] = await Promise.all([
     canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
-    session?.user?.id
-      ? isFavorite(session.user.id, game.id)
-      : Promise.resolve(false),
+    session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
     canDelete ? getCompetitions() : Promise.resolve([]),
     canDelete && game.competitionId
       ? getAvailableMatchesForGame(game.competitionId)
@@ -111,9 +97,7 @@ export default async function GameDetailPage({
     deleteAction: deletePenaltyAction,
   };
 
-  const mercenaryAction = canDelete
-    ? setScorecardMercenaryAction.bind(null, game.id)
-    : undefined;
+  const mercenaryAction = canDelete ? setScorecardMercenaryAction.bind(null, game.id) : undefined;
 
   const displayTeams = matchAssignment
     ? game.teams.map((t) => ({
@@ -131,34 +115,23 @@ export default async function GameDetailPage({
     <div className="p-6 space-y-8">
       <div className="space-y-2">
         {game.competitionName && (
-          <p className="text-sm font-medium text-muted-foreground">
-            {game.competitionName}
-          </p>
+          <p className="text-sm font-medium text-muted-foreground">{game.competitionName}</p>
         )}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
             {matchAssignment
               ? (() => {
-                  const t1 = displayTeams.find(
-                    (t) => t.id === matchAssignment.team1GameTeamId,
-                  );
-                  const t2 = displayTeams.find(
-                    (t) => t.id === matchAssignment.team2GameTeamId,
-                  );
+                  const t1 = displayTeams.find((t) => t.id === matchAssignment.team1GameTeamId);
+                  const t2 = displayTeams.find((t) => t.id === matchAssignment.team2GameTeamId);
                   const t1Color = t1 ? getTeamColor(t1.colourEnum) : undefined;
                   const t2Color = t2 ? getTeamColor(t2.colourEnum) : undefined;
                   return (
                     <>
-                      {matchAssignment.roundName} · Match{" "}
-                      {matchAssignment.matchNumber} · Game{" "}
+                      {matchAssignment.roundName} · Match {matchAssignment.matchNumber} · Game{" "}
                       {matchAssignment.gameNumber} ·{" "}
-                      <span className={t1Color?.text}>
-                        {matchAssignment.team1Name}
-                      </span>
+                      <span className={t1Color?.text}>{matchAssignment.team1Name}</span>
                       {" vs "}
-                      <span className={t2Color?.text}>
-                        {matchAssignment.team2Name}
-                      </span>
+                      <span className={t2Color?.text}>{matchAssignment.team2Name}</span>
                     </>
                   );
                 })()
@@ -174,8 +147,7 @@ export default async function GameDetailPage({
           )}
         </div>
         <p className="text-muted-foreground text-sm">
-          {game.centerName} · {formatDateTime(game.startTime)} ·{" "}
-          {formatMs(game.actualDuration)}
+          {game.centerName} · {formatDateTime(game.startTime)} · {formatMs(game.actualDuration)}
         </p>
         <p className="text-muted-foreground text-sm">
           <a
@@ -187,15 +159,9 @@ export default async function GameDetailPage({
             {game.tdfFilename}
           </a>
         </p>
-        {game.outcome === "aborted" && (
-          <Badge variant="destructive">Aborted</Badge>
-        )}
-        {game.outcome === "replay" && (
-          <Badge variant="destructive">Replay</Badge>
-        )}
-        {game.exclude && (
-          <Badge variant="destructive">Excluded from Stats</Badge>
-        )}
+        {game.outcome === "aborted" && <Badge variant="destructive">Aborted</Badge>}
+        {game.outcome === "replay" && <Badge variant="destructive">Replay</Badge>}
+        {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         <div className="flex items-center gap-2 flex-wrap">
           {canDelete && (
             <>
@@ -287,28 +253,15 @@ export default async function GameDetailPage({
                     className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
                   >
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`font-bold text-lg ${color?.text ?? ""}`}
-                      >
-                        {team.name}
-                      </span>
-                      {team.result === "win" && (
-                        <Badge variant="default">Win</Badge>
-                      )}
-                      {team.result === "loss" && (
-                        <Badge variant="secondary">Loss</Badge>
-                      )}
+                      <span className={`font-bold text-lg ${color?.text ?? ""}`}>{team.name}</span>
+                      {team.result === "win" && <Badge variant="default">Win</Badge>}
+                      {team.result === "loss" && <Badge variant="secondary">Loss</Badge>}
                       {team.eliminated && (
-                        <Badge
-                          variant="destructive"
-                          className="text-xs px-1 py-0"
-                        >
+                        <Badge variant="destructive" className="text-xs px-1 py-0">
                           ELIMINATED
                         </Badge>
                       )}
-                      {team.result === "draw" && (
-                        <Badge variant="secondary">Draw</Badge>
-                      )}
+                      {team.result === "draw" && <Badge variant="secondary">Draw</Badge>}
                     </div>
                     <span className="tabular-nums font-semibold">
                       {formatScore(totalScore + penaltyScore)}

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Image from "next/image"
-import { getTeamLogoUrl } from "@/lib/team-logos"
-import { cn } from "@/lib/utils"
+import Image from "next/image";
+import { getTeamLogoUrl } from "@/lib/team-logos";
+import { cn } from "@/lib/utils";
 
 function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return "?"
-  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase()
-  return (words[0]![0]! + words[1]![0]!).toUpperCase()
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
 }
 
 export function TeamLogo({
@@ -19,11 +19,11 @@ export function TeamLogo({
   size = 32,
   className,
 }: {
-  teamId: string
-  hasLogo: boolean
-  name: string
-  size?: number
-  className?: string
+  teamId: string;
+  hasLogo: boolean;
+  name: string;
+  size?: number;
+  className?: string;
 }) {
   if (hasLogo) {
     return (
@@ -34,7 +34,7 @@ export function TeamLogo({
         height={size}
         className={cn("shrink-0 rounded-md object-contain", className)}
       />
-    )
+    );
   }
 
   return (
@@ -47,5 +47,5 @@ export function TeamLogo({
     >
       <span style={{ fontSize: size * 0.4 }}>{initials(name)}</span>
     </div>
-  )
+  );
 }

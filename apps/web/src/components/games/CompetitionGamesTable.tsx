@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -9,12 +9,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { formatDateTime, formatGameName, formatScore } from "@/lib/format"
-import { getTeamColor } from "@/lib/team-colors"
-import type { CompetitionGameListItem } from "@lfstats/db"
-import Link from "next/link"
-import { Fragment } from "react"
+} from "@/components/ui/table";
+import { formatDateTime, formatGameName, formatScore } from "@/lib/format";
+import { getTeamColor } from "@/lib/team-colors";
+import type { CompetitionGameListItem } from "@lfstats/db";
+import Link from "next/link";
+import { Fragment } from "react";
 
 export function CompetitionGamesTable({ games }: { games: CompetitionGameListItem[] }) {
   return (
@@ -35,7 +35,7 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
             {games.map((game) => {
               const sortedTeams = [...game.teams].sort((a, b) =>
                 a.result === "win" ? -1 : b.result === "win" ? 1 : 0,
-              )
+              );
               const namedTeams = [
                 {
                   label: game.team1Label,
@@ -47,7 +47,7 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
                   colourEnum: game.team2ColourEnum,
                   result: game.team2Result,
                 },
-              ].sort((a, b) => (a.result === "win" ? -1 : b.result === "win" ? 1 : 0))
+              ].sort((a, b) => (a.result === "win" ? -1 : b.result === "win" ? 1 : 0));
               return (
                 <TableRow key={game.id}>
                   <TableCell>
@@ -58,7 +58,7 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
                   <TableCell>
                     <span className="flex items-center gap-1">
                       {namedTeams.map((team, i) => {
-                        const color = getTeamColor(team.colourEnum)
+                        const color = getTeamColor(team.colourEnum);
                         return (
                           <Fragment key={i}>
                             {i > 0 && <span className="text-muted-foreground">v</span>}
@@ -68,22 +68,18 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
                               {team.label}
                             </span>
                           </Fragment>
-                        )
+                        );
                       })}
                     </span>
                   </TableCell>
                   <TableCell>{game.centerName}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatDateTime(game.startTime)}
-                  </TableCell>
+                  <TableCell className="tabular-nums">{formatDateTime(game.startTime)}</TableCell>
                   <TableCell className="capitalize">{game.outcome}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5 tabular-nums">
                       {sortedTeams.map((team, i) => (
                         <Fragment key={i}>
-                          {i > 0 && (
-                            <span className="text-muted-foreground">–</span>
-                          )}
+                          {i > 0 && <span className="text-muted-foreground">–</span>}
                           <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
                             {formatScore((team.score ?? 0) + (team.eliminationBonus ?? 0))}
                           </span>
@@ -92,11 +88,11 @@ export function CompetitionGamesTable({ games }: { games: CompetitionGameListIte
                     </span>
                   </TableCell>
                 </TableRow>
-              )
+              );
             })}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
-  )
+  );
 }

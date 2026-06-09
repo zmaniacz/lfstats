@@ -68,11 +68,7 @@ const renderActiveShape = ({
         outerRadius={(outerRadius ?? 0) + 10}
         fill={fill}
       />
-      <path
-        d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`}
-        stroke={fill}
-        fill="none"
-      />
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
       <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
       <text
         x={ex + (cos >= 0 ? 1 : -1) * 12}
@@ -80,13 +76,7 @@ const renderActiveShape = ({
         textAnchor={textAnchor}
         fill="#333"
       >{`${payload.label}`}</text>
-      <text
-        x={ex + (cos >= 0 ? 1 : -1) * 12}
-        y={ey}
-        dy={18}
-        textAnchor={textAnchor}
-        fill="#999"
-      >
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#999">
         {`${value} (${((percent ?? 1) * 100).toFixed(2)}%)`}
       </text>
     </g>
@@ -95,9 +85,7 @@ const renderActiveShape = ({
 
 export function WinsByColorChart({ data }: Props) {
   if (data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No win data available.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No win data available.</p>;
   }
 
   const slices = data.map((item) => {
@@ -136,13 +124,9 @@ export function WinsByColorChart({ data }: Props) {
             <ChartTooltipContent
               formatter={(value, _name, item) => (
                 <>
-                  <span className="text-muted-foreground">
-                    {item.payload?.label}
-                  </span>
+                  <span className="text-muted-foreground">{item.payload?.label}</span>
                   <span className="font-mono font-medium text-foreground tabular-nums">
-                    {typeof value === "number"
-                      ? `${value} game${value !== 1 ? "s" : ""}`
-                      : value}
+                    {typeof value === "number" ? `${value} game${value !== 1 ? "s" : ""}` : value}
                   </span>
                 </>
               )}

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,32 +16,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 type Props = {
-  gameId: string
-  excluded: boolean
-  action: (gameId: string, exclude: boolean) => Promise<void>
-}
+  gameId: string;
+  excluded: boolean;
+  action: (gameId: string, exclude: boolean) => Promise<void>;
+};
 
 export function ExcludeToggleButton({ gameId, excluded, action }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleConfirm() {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await action(gameId, !excluded)
-      setOpen(false)
+      await action(gameId, !excluded);
+      setOpen(false);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -70,5 +70,5 @@ export function ExcludeToggleButton({ gameId, excluded, action }: Props) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

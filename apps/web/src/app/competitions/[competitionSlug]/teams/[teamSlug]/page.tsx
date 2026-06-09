@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation"
-import Link from "next/link"
+import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getCompetitionBySlug,
   getCompetitionTeamBySlug,
@@ -12,7 +12,7 @@ import {
   getCompetitionTeamResultsByColor,
   getCompetitionMatchResults,
   type CompetitionMatchResult,
-} from "@lfstats/db"
+} from "@lfstats/db";
 import {
   Table,
   TableBody,
@@ -20,36 +20,36 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { TeamLogo } from "@/components/teams/TeamLogo"
-import { MatchCard } from "@/components/competitions/MatchCard"
-import { TeamWinsByColorChart } from "@/components/competitions/TeamWinsByColorChart"
-import { POSITIONS } from "@/lib/positions"
-import { formatMVP, formatScore } from "@/lib/format"
-import { TriangleAlert, CircleAlert, Settings } from "lucide-react"
-import { auth } from "@/auth"
+} from "@/components/ui/table";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { TeamLogo } from "@/components/teams/TeamLogo";
+import { MatchCard } from "@/components/competitions/MatchCard";
+import { TeamWinsByColorChart } from "@/components/competitions/TeamWinsByColorChart";
+import { POSITIONS } from "@/lib/positions";
+import { formatMVP, formatScore } from "@/lib/format";
+import { TriangleAlert, CircleAlert, Settings } from "lucide-react";
+import { auth } from "@/auth";
 
-const POSITION_IDS = [1, 2, 3, 4, 5]
+const POSITION_IDS = [1, 2, 3, 4, 5];
 
 export default async function CompetitionTeamPage({
   params,
 }: {
-  params: Promise<{ competitionSlug: string; teamSlug: string }>
+  params: Promise<{ competitionSlug: string; teamSlug: string }>;
 }) {
-  const { competitionSlug, teamSlug } = await params
+  const { competitionSlug, teamSlug } = await params;
 
-  const competition = await getCompetitionBySlug(competitionSlug)
-  if (!competition) notFound()
+  const competition = await getCompetitionBySlug(competitionSlug);
+  if (!competition) notFound();
 
-  const team = await getCompetitionTeamBySlug(competition.id, teamSlug)
-  if (!team) notFound()
+  const team = await getCompetitionTeamBySlug(competition.id, teamSlug);
+  if (!team) notFound();
 
-  const session = await auth()
-  const roles = session?.user?.roles ?? []
+  const session = await auth();
+  const roles = session?.user?.roles ?? [];
   const isAdmin = roles.some(
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
-  )
+  );
 
   const [roster, unassigned, positionStats, resultsByColor, matchResults] = await Promise.all([
     getCompetitionTeamRoster(team.id),
@@ -57,12 +57,15 @@ export default async function CompetitionTeamPage({
     getCompetitionTeamPositionStats(team.id),
     getCompetitionTeamResultsByColor(team.id),
     getCompetitionMatchResults(team.competitionId),
-  ])
+  ]);
 
-  const positionMap = new Map<string, Map<number, { gamesPlayed: number; avgMvp: number; avgScore: number }>>()
+  const positionMap = new Map<
+    string,
+    Map<number, { gamesPlayed: number; avgMvp: number; avgScore: number }>
+  >();
   for (const stat of positionStats) {
-    if (!positionMap.has(stat.playerId)) positionMap.set(stat.playerId, new Map())
-    positionMap.get(stat.playerId)!.set(stat.position, stat)
+    if (!positionMap.has(stat.playerId)) positionMap.set(stat.playerId, new Map());
+    positionMap.get(stat.playerId)!.set(stat.position, stat);
   }
 
   const rosterRows = [
@@ -82,21 +85,24 @@ export default async function CompetitionTeamPage({
       isUnassigned: true,
       gamesPlayed: u.gamesPlayed,
     })),
-  ]
+  ];
 
-  const teamMatches = matchResults.filter((m) => m.team1Id === team.id || m.team2Id === team.id)
-  const rounds = new Map<string, { roundName: string; roundNumber: number; matches: CompetitionMatchResult[] }>()
+  const teamMatches = matchResults.filter((m) => m.team1Id === team.id || m.team2Id === team.id);
+  const rounds = new Map<
+    string,
+    { roundName: string; roundNumber: number; matches: CompetitionMatchResult[] }
+  >();
   for (const match of teamMatches) {
     if (!rounds.has(match.roundId)) {
       rounds.set(match.roundId, {
         roundName: match.roundName,
         roundNumber: match.roundNumber,
         matches: [],
-      })
+      });
     }
-    rounds.get(match.roundId)!.matches.push(match)
+    rounds.get(match.roundId)!.matches.push(match);
   }
-  const sortedRounds = [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber)
+  const sortedRounds = [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber);
 
   return (
     <div className="space-y-6">
@@ -128,14 +134,20 @@ export default async function CompetitionTeamPage({
           </CardHeader>
           <CardContent>
             {rosterRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No players have appeared for this team yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No players have appeared for this team yet.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead rowSpan={2} className="align-bottom">Player</TableHead>
-                      <TableHead rowSpan={2} className="text-right align-bottom">Games</TableHead>
+                      <TableHead rowSpan={2} className="align-bottom">
+                        Player
+                      </TableHead>
+                      <TableHead rowSpan={2} className="text-right align-bottom">
+                        Games
+                      </TableHead>
                       {POSITION_IDS.map((p) => (
                         <TableHead key={p} colSpan={3} className="text-center border-l">
                           {POSITIONS[p]?.abbr}
@@ -144,33 +156,60 @@ export default async function CompetitionTeamPage({
                     </TableRow>
                     <TableRow>
                       {POSITION_IDS.flatMap((p) => [
-                        <TableHead key={`${p}-gp`} className="text-right text-xs text-muted-foreground border-l">GP</TableHead>,
-                        <TableHead key={`${p}-mvp`} className="text-right text-xs text-muted-foreground">Avg MVP</TableHead>,
-                        <TableHead key={`${p}-score`} className="text-right text-xs text-muted-foreground">Avg Score</TableHead>,
+                        <TableHead
+                          key={`${p}-gp`}
+                          className="text-right text-xs text-muted-foreground border-l"
+                        >
+                          GP
+                        </TableHead>,
+                        <TableHead
+                          key={`${p}-mvp`}
+                          className="text-right text-xs text-muted-foreground"
+                        >
+                          Avg MVP
+                        </TableHead>,
+                        <TableHead
+                          key={`${p}-score`}
+                          className="text-right text-xs text-muted-foreground"
+                        >
+                          Avg Score
+                        </TableHead>,
                       ])}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rosterRows.map((r) => {
-                      const byPos = positionMap.get(r.playerId)
+                      const byPos = positionMap.get(r.playerId);
                       return (
                         <TableRow key={r.playerId}>
                           <TableCell className="font-medium">
-                            <Link href={`/players/${r.iplId}`} className="hover:underline inline-flex items-center gap-1.5">
+                            <Link
+                              href={`/players/${r.iplId}`}
+                              className="hover:underline inline-flex items-center gap-1.5"
+                            >
                               {r.currentCallsign}
                               {r.isMercenary && (
-                                <TriangleAlert className="h-3.5 w-3.5 text-amber-500" aria-label="Mercenary" />
+                                <TriangleAlert
+                                  className="h-3.5 w-3.5 text-amber-500"
+                                  aria-label="Mercenary"
+                                />
                               )}
                               {r.isUnassigned && (
-                                <CircleAlert className="h-3.5 w-3.5 text-destructive" aria-label="Unassigned" />
+                                <CircleAlert
+                                  className="h-3.5 w-3.5 text-destructive"
+                                  aria-label="Unassigned"
+                                />
                               )}
                             </Link>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{r.gamesPlayed}</TableCell>
                           {POSITION_IDS.flatMap((p) => {
-                            const stat = byPos?.get(p)
+                            const stat = byPos?.get(p);
                             return [
-                              <TableCell key={`${p}-gp`} className="text-right tabular-nums text-muted-foreground border-l">
+                              <TableCell
+                                key={`${p}-gp`}
+                                className="text-right tabular-nums text-muted-foreground border-l"
+                              >
                                 {stat ? stat.gamesPlayed : "—"}
                               </TableCell>,
                               <TableCell key={`${p}-mvp`} className="text-right tabular-nums">
@@ -179,10 +218,10 @@ export default async function CompetitionTeamPage({
                               <TableCell key={`${p}-score`} className="text-right tabular-nums">
                                 {stat ? formatScore(Math.round(stat.avgScore)) : "—"}
                               </TableCell>,
-                            ]
+                            ];
                           })}
                         </TableRow>
-                      )
+                      );
                     })}
                   </TableBody>
                 </Table>
@@ -220,5 +259,5 @@ export default async function CompetitionTeamPage({
         </div>
       ))}
     </div>
-  )
+  );
 }

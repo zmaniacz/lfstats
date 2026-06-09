@@ -55,7 +55,10 @@ console.log(
 );
 
 const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-const { discrepancies, ghostShots, warnings } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+const { discrepancies, ghostShots, warnings } = runConsistencyCheck(
+  simResult.playerStats,
+  sm5StatsById,
+);
 
 const debugOut = {
   consistencyCheck: {
@@ -79,9 +82,6 @@ const debugOut = {
   ),
 };
 
-const debugPath = resolve(
-  dirname(absPath),
-  basename(absPath, ".tdf") + ".debug.json",
-);
+const debugPath = resolve(dirname(absPath), basename(absPath, ".tdf") + ".debug.json");
 writeFileSync(debugPath, JSON.stringify(debugOut, null, 2));
 console.log(`Debug output: ${debugPath}`);

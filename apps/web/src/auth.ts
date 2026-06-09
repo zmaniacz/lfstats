@@ -49,12 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
       return session;
     },
     authorized({ auth: session, request: { nextUrl } }) {
-      const isUploadRoute = UPLOAD_PATHS.some((p) =>
-        nextUrl.pathname.startsWith(p),
-      );
-      const isAdminRoute = ADMIN_PATHS.some((p) =>
-        nextUrl.pathname.startsWith(p),
-      );
+      const isUploadRoute = UPLOAD_PATHS.some((p) => nextUrl.pathname.startsWith(p));
+      const isAdminRoute = ADMIN_PATHS.some((p) => nextUrl.pathname.startsWith(p));
 
       if (!isUploadRoute && !isAdminRoute) return true;
 

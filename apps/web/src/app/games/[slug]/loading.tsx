@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function GameDetailLoading() {
   return (
@@ -30,5 +30,5 @@ export default function GameDetailLoading() {
         </section>
       ))}
     </div>
-  )
+  );
 }

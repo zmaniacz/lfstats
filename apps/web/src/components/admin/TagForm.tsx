@@ -1,61 +1,54 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import type { GameTagListItem } from "@lfstats/db"
+} from "@/components/ui/dialog";
+import type { GameTagListItem } from "@lfstats/db";
 
 type Props = {
-  centerId: string
-  tag?: GameTagListItem
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  createAction: (centerId: string, formData: FormData) => Promise<void>
-  updateAction: (id: string, centerId: string, formData: FormData) => Promise<void>
-}
+  centerId: string;
+  tag?: GameTagListItem;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  createAction: (centerId: string, formData: FormData) => Promise<void>;
+  updateAction: (id: string, centerId: string, formData: FormData) => Promise<void>;
+};
 
-export function TagForm({
-  centerId,
-  tag,
-  open,
-  onOpenChange,
-  createAction,
-  updateAction,
-}: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const router = useRouter()
-  const isPending = isSubmitting || isRefreshing
+export function TagForm({ centerId, tag, open, onOpenChange, createAction, updateAction }: Props) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const router = useRouter();
+  const isPending = isSubmitting || isRefreshing;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    setIsSubmitting(true)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setIsSubmitting(true);
     try {
       if (tag) {
-        await updateAction(tag.id, centerId, formData)
+        await updateAction(tag.id, centerId, formData);
       } else {
-        await createAction(centerId, formData)
+        await createAction(centerId, formData);
       }
-      onOpenChange(false)
+      onOpenChange(false);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
     startRefreshTransition(() => {
-      router.refresh()
-    })
+      router.refresh();
+    });
   }
 
   return (
@@ -91,8 +84,8 @@ export function TagForm({
                 placeholder="#6366f1"
                 className="flex-1"
                 onChange={(e) => {
-                  const colorInput = document.getElementById("tag-color") as HTMLInputElement
-                  if (colorInput) colorInput.value = e.target.value
+                  const colorInput = document.getElementById("tag-color") as HTMLInputElement;
+                  if (colorInput) colorInput.value = e.target.value;
                 }}
               />
             </div>
@@ -117,5 +110,5 @@ export function TagForm({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

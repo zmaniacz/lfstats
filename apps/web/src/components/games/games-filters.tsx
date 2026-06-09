@@ -1,64 +1,62 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-"use client"
+"use client";
 
-import { useCallback } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
-type Center = { id: string; name: string }
+type Center = { id: string; name: string };
 
 export function GamesFilters({
   centers,
   centerId,
   dateSearch,
 }: {
-  centers: Center[]
-  centerId: string
-  dateSearch: string
+  centers: Center[];
+  centerId: string;
+  dateSearch: string;
 }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete("page")
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("page");
       for (const [key, value] of Object.entries(updates)) {
         if (value) {
-          params.set(key, value)
+          params.set(key, value);
         } else {
-          params.delete(key)
+          params.delete(key);
         }
       }
-      router.push(`/games?${params.toString()}`)
+      router.push(`/games?${params.toString()}`);
     },
     [router, searchParams],
-  )
+  );
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = e.currentTarget
-    const date = (form.elements.namedItem("date") as HTMLInputElement).value
-    updateParams({ date })
+    e.preventDefault();
+    const form = e.currentTarget;
+    const date = (form.elements.namedItem("date") as HTMLInputElement).value;
+    updateParams({ date });
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 items-center">
       <Select
         value={centerId || "all"}
-        onValueChange={(val) =>
-          updateParams({ center: val === "all" ? "" : val })
-        }
+        onValueChange={(val) => updateParams({ center: val === "all" ? "" : val })}
       >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="All centers" />
@@ -83,5 +81,5 @@ export function GamesFilters({
         Search
       </Button>
     </form>
-  )
+  );
 }

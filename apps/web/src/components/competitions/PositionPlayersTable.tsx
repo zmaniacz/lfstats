@@ -14,13 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  formatHitDiff,
-  formatMVP,
-  formatPct,
-  formatScore,
-  formatWinRate,
-} from "@/lib/format";
+import { formatHitDiff, formatMVP, formatPct, formatScore, formatWinRate } from "@/lib/format";
 import type { CompetitionPositionPlayer } from "@lfstats/db";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
@@ -41,10 +35,7 @@ type SortColumn =
   | "avgMedicHits";
 type SortState = { column: SortColumn; dir: "asc" | "desc" };
 
-function getSortValue(
-  item: CompetitionPositionPlayer,
-  col: SortColumn,
-): string | number {
+function getSortValue(item: CompetitionPositionPlayer, col: SortColumn): string | number {
   switch (col) {
     case "callsign":
       return item.callsign.toLowerCase();
@@ -81,11 +72,7 @@ function SortableHead({
   children: React.ReactNode;
 }) {
   const isActive = sort.column === column;
-  const Icon = isActive
-    ? sort.dir === "asc"
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown;
+  const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead>
       <button
@@ -133,9 +120,7 @@ export function PositionPlayersTable({
       const va = getSortValue(a, sort.column);
       const vb = getSortValue(b, sort.column);
       const cmp =
-        typeof va === "number"
-          ? va - (vb as number)
-          : (va as string).localeCompare(vb as string);
+        typeof va === "number" ? va - (vb as number) : (va as string).localeCompare(vb as string);
       return sort.dir === "asc" ? cmp : -cmp;
     });
   }, [filtered, sort]);
@@ -162,20 +147,14 @@ export function PositionPlayersTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 bg-background z-10">
-                  Callsign
-                </TableHead>
+                <TableHead className="sticky left-0 bg-background z-10">Callsign</TableHead>
                 <SortableHead column="winRate" sort={sort} onSort={handleSort}>
                   Win Rate
                 </SortableHead>
                 <SortableHead column="avgScore" sort={sort} onSort={handleSort}>
                   Avg Score
                 </SortableHead>
-                <SortableHead
-                  column="totalScore"
-                  sort={sort}
-                  onSort={handleSort}
-                >
+                <SortableHead column="totalScore" sort={sort} onSort={handleSort}>
                   Total Score
                 </SortableHead>
                 <SortableHead column="avgMvp" sort={sort} onSort={handleSort}>
@@ -184,48 +163,27 @@ export function PositionPlayersTable({
                 <SortableHead column="totalMvp" sort={sort} onSort={handleSort}>
                   Total MVP
                 </SortableHead>
-                <SortableHead
-                  column="avgAccuracy"
-                  sort={sort}
-                  onSort={handleSort}
-                >
+                <SortableHead column="avgAccuracy" sort={sort} onSort={handleSort}>
                   Avg Accuracy
                 </SortableHead>
-                <SortableHead
-                  column="avgHitDiff"
-                  sort={sort}
-                  onSort={handleSort}
-                >
+                <SortableHead column="avgHitDiff" sort={sort} onSort={handleSort}>
                   Avg Hit Diff
                 </SortableHead>
-                <SortableHead
-                  column="avgUptime"
-                  sort={sort}
-                  onSort={handleSort}
-                >
+                <SortableHead column="avgUptime" sort={sort} onSort={handleSort}>
                   Avg Uptime
                 </SortableHead>
-                <SortableHead
-                  column="avgMedicHits"
-                  sort={sort}
-                  onSort={handleSort}
-                >
+                <SortableHead column="avgMedicHits" sort={sort} onSort={handleSort}>
                   Avg Medic Hits
                 </SortableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pageRows.map((p) => {
-                const iplIdForUrl = p.iplId.startsWith("#")
-                  ? p.iplId.slice(1)
-                  : p.iplId;
+                const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
                 return (
                   <TableRow key={p.playerId}>
                     <TableCell className="sticky left-0 bg-background z-10 font-medium">
-                      <Link
-                        href={`/players/${iplIdForUrl}`}
-                        className="hover:underline"
-                      >
+                      <Link href={`/players/${iplIdForUrl}`} className="hover:underline">
                         {p.callsign}
                       </Link>
                     </TableCell>
@@ -235,36 +193,19 @@ export function PositionPlayersTable({
                     <TableCell className="tabular-nums">
                       {formatScore(Math.round(p.avgScore))}
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatScore(p.totalScore)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatMVP(p.avgMvp)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatMVP(p.totalMvp)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatPct(p.avgAccuracy)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatHitDiff(p.avgHitDiff)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatPct(p.avgUptime)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {p.avgMedicHits.toFixed(2)}
-                    </TableCell>
+                    <TableCell className="tabular-nums">{formatScore(p.totalScore)}</TableCell>
+                    <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
+                    <TableCell className="tabular-nums">{formatMVP(p.totalMvp)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
+                    <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPct(p.avgUptime)}</TableCell>
+                    <TableCell className="tabular-nums">{p.avgMedicHits.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
               {pageRows.length === 0 && (
                 <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    className="text-center text-muted-foreground py-8"
-                  >
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     {search
                       ? "No players match the search."
                       : "No player data for this competition."}
