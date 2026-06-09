@@ -89,7 +89,8 @@ if (keys.length === 0) {
   process.exit(0);
 }
 
-const CONCURRENCY = 10;
+//leaving at one to preserve codename history
+const CONCURRENCY = 1;
 
 console.log(`Found ${keys.length} files. Starting ingest (concurrency=${CONCURRENCY})…\n`);
 
