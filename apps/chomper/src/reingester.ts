@@ -109,15 +109,21 @@ export async function reingest(
       .filter((e) => e.type === "player" && e.originalId.startsWith("#"))
       .sort((a, b) => a.originalId.localeCompare(b.originalId));
 
-    const playerRows = await upsertPlayersBulk(
-      tx,
-      playerEntities.map((e) => ({
-        iplId: e.originalId,
-        memberId: e.memberId ?? null,
-        currentCallsign: e.desc,
-        firstSeenAt: gameStartTime,
-      })),
+    // Deduplicate by iplId — a player can appear on both teams in edge-case TDFs.
+    // Last entry in sorted order wins; callsign choice is arbitrary when they differ.
+    const dedupedPlayers = new Map(
+      playerEntities.map((e) => [
+        e.originalId,
+        {
+          iplId: e.originalId,
+          memberId: e.memberId ?? null,
+          currentCallsign: e.desc,
+          firstSeenAt: gameStartTime,
+        },
+      ]),
     );
+
+    const playerRows = await upsertPlayersBulk(tx, [...dedupedPlayers.values()]);
     const playerIdByIplId = new Map(playerRows.map((r) => [r.iplId, r.id]));
     for (const entity of playerEntities) {
       const pid = playerIdByIplId.get(entity.originalId);
