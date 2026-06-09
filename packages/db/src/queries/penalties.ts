@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "../client";
 import {
+  center,
+  competitionMatch,
+  competitionMatchGame,
+  competitionRound,
+  game,
   sm5GamePenalty,
+  sm5GameTeam,
   sm5Scorecard,
   sm5ScorecardMvp,
-  sm5GameTeam,
-  game,
-  player,
-  center,
-  competitionMatchGame,
-  competitionMatch,
-  competitionRound,
-  competitionTeam,
 } from "../schema";
-import { eq, and, sql, asc, isNull } from "drizzle-orm";
 
 export type PenaltyRecord = {
   id: string;
@@ -89,8 +87,12 @@ export async function getCompetitionPenalties(
       roundNumber: competitionRound.roundNumber,
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
-      team1ShortName: sql<string | null>`(select short_name from competition_team where id = ${competitionMatch.team1Id})`,
-      team2ShortName: sql<string | null>`(select short_name from competition_team where id = ${competitionMatch.team2Id})`,
+      team1ShortName: sql<
+        string | null
+      >`(select short_name from competition_team where id = ${competitionMatch.team1Id})`,
+      team2ShortName: sql<
+        string | null
+      >`(select short_name from competition_team where id = ${competitionMatch.team2Id})`,
     })
     .from(sm5GamePenalty)
     .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
@@ -108,9 +110,7 @@ export async function getCompetitionPenalties(
     );
 }
 
-export async function getTeamPenaltyTotals(
-  gameId: string,
-): Promise<Map<string, number>> {
+export async function getTeamPenaltyTotals(gameId: string): Promise<Map<string, number>> {
   const rows = await db
     .select({
       teamId: sm5Scorecard.teamId,
@@ -118,12 +118,7 @@ export async function getTeamPenaltyTotals(
     })
     .from(sm5GamePenalty)
     .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
-    .where(
-      and(
-        eq(sm5GamePenalty.gameId, gameId),
-        eq(sm5GamePenalty.rescinded, false),
-      ),
-    )
+    .where(and(eq(sm5GamePenalty.gameId, gameId), eq(sm5GamePenalty.rescinded, false)))
     .groupBy(sm5Scorecard.teamId);
 
   return new Map(rows.map((r) => [r.teamId, r.total]));
@@ -194,25 +189,24 @@ export async function updatePenalty(
       .update(sm5GamePenalty)
       .set({
         ...(data.type !== undefined && { type: data.type }),
-        ...(data.description !== undefined && { description: data.description }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
         ...(data.scoreValue !== undefined && { scoreValue: data.scoreValue }),
         ...(data.mvpValue !== undefined && { mvpValue: data.mvpValue }),
         ...(data.rescinded !== undefined && { rescinded: data.rescinded }),
       })
       .where(eq(sm5GamePenalty.id, id));
 
-    const mvpChanged =
-      data.mvpValue !== undefined && data.mvpValue !== existing.mvpValue;
-    const rescindChanged =
-      data.rescinded !== undefined && data.rescinded !== existing.rescinded;
+    const mvpChanged = data.mvpValue !== undefined && data.mvpValue !== existing.mvpValue;
+    const rescindChanged = data.rescinded !== undefined && data.rescinded !== existing.rescinded;
 
     if (mvpChanged || rescindChanged) {
       await upsertPenaltyMvpComponent(existing.scorecardId, tx);
       await recalculateScorecardMvp(existing.scorecardId, tx);
     }
 
-    const scoreChanged =
-      data.scoreValue !== undefined && data.scoreValue !== existing.scoreValue;
+    const scoreChanged = data.scoreValue !== undefined && data.scoreValue !== existing.scoreValue;
     if (scoreChanged || rescindChanged) {
       await recalculateGameResult(existing.gameId, tx);
     }
@@ -244,10 +238,7 @@ export async function deletePenalty(id: string): Promise<void> {
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function upsertPenaltyMvpComponent(
-  scorecardId: string,
-  tx: Tx,
-): Promise<void> {
+async function upsertPenaltyMvpComponent(scorecardId: string, tx: Tx): Promise<void> {
   // Get the scorecard's mvpModelId
   const [sc] = await tx
     .select({ mvpModelId: sm5Scorecard.mvpModelId })
@@ -262,12 +253,7 @@ async function upsertPenaltyMvpComponent(
       count: sql<number>`count(*)::int`,
     })
     .from(sm5GamePenalty)
-    .where(
-      and(
-        eq(sm5GamePenalty.scorecardId, scorecardId),
-        eq(sm5GamePenalty.rescinded, false),
-      ),
-    );
+    .where(and(eq(sm5GamePenalty.scorecardId, scorecardId), eq(sm5GamePenalty.rescinded, false)));
 
   const total = Number(agg?.total ?? 0);
   const count = Number(agg?.count ?? 0);
@@ -302,10 +288,7 @@ async function upsertPenaltyMvpComponent(
   }
 }
 
-async function recalculateScorecardMvp(
-  scorecardId: string,
-  tx: Tx,
-): Promise<void> {
+async function recalculateScorecardMvp(scorecardId: string, tx: Tx): Promise<void> {
   await tx
     .update(sm5Scorecard)
     .set({
@@ -333,9 +316,7 @@ async function recalculateGameResult(gameId: string, tx: Tx): Promise<void> {
       eliminationBonus: sm5GameTeam.eliminationBonus,
     })
     .from(sm5GameTeam)
-    .where(
-      and(eq(sm5GameTeam.gameId, gameId), eq(sm5GameTeam.isNeutral, false)),
-    );
+    .where(and(eq(sm5GameTeam.gameId, gameId), eq(sm5GameTeam.isNeutral, false)));
 
   if (teams.length < 2) return;
 
@@ -347,20 +328,14 @@ async function recalculateGameResult(gameId: string, tx: Tx): Promise<void> {
     })
     .from(sm5GamePenalty)
     .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
-    .where(
-      and(
-        eq(sm5GamePenalty.gameId, gameId),
-        eq(sm5GamePenalty.rescinded, false),
-      ),
-    )
+    .where(and(eq(sm5GamePenalty.gameId, gameId), eq(sm5GamePenalty.rescinded, false)))
     .groupBy(sm5Scorecard.teamId);
 
   const penaltyMap = new Map(penaltyRows.map((r) => [r.teamId, r.total]));
 
   const scores = teams.map((t) => ({
     id: t.id,
-    effective:
-      (t.score ?? 0) + (t.eliminationBonus ?? 0) + (penaltyMap.get(t.id) ?? 0),
+    effective: (t.score ?? 0) + (t.eliminationBonus ?? 0) + (penaltyMap.get(t.id) ?? 0),
   }));
 
   const maxScore = Math.max(...scores.map((s) => s.effective));
@@ -369,9 +344,6 @@ async function recalculateGameResult(gameId: string, tx: Tx): Promise<void> {
 
   for (const s of scores) {
     const result = isDraw ? "draw" : s.effective === maxScore ? "win" : "loss";
-    await tx
-      .update(sm5GameTeam)
-      .set({ result })
-      .where(eq(sm5GameTeam.id, s.id));
+    await tx.update(sm5GameTeam).set({ result }).where(eq(sm5GameTeam.id, s.id));
   }
 }

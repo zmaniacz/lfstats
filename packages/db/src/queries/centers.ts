@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "../client";
-import {
-  center,
-  game,
-  sm5Scorecard,
-  sm5GameTeam,
-  sm5ScorecardMvp,
-} from "../schema";
-import { eq, and, ne, desc, count, sql, asc } from "drizzle-orm";
+import { center, game, sm5GameTeam, sm5Scorecard, sm5ScorecardMvp } from "../schema";
 
 export type CenterListItem = {
   id: string;
@@ -150,9 +144,7 @@ export type WinsByColorItem = {
   count: number;
 };
 
-export async function getCenterWinsByColor(
-  id: string,
-): Promise<WinsByColorItem[]> {
+export async function getCenterWinsByColor(id: string): Promise<WinsByColorItem[]> {
   const rows = await db
     .select({
       colourEnum: sm5GameTeam.colourEnum,
@@ -162,11 +154,7 @@ export async function getCenterWinsByColor(
     .from(sm5GameTeam)
     .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
     .where(
-      and(
-        eq(sm5GameTeam.result, "win"),
-        eq(sm5GameTeam.isNeutral, false),
-        eq(game.centerId, id),
-      ),
+      and(eq(sm5GameTeam.result, "win"), eq(sm5GameTeam.isNeutral, false), eq(game.centerId, id)),
     )
     .groupBy(sm5GameTeam.colourEnum, game.outcome)
     .orderBy(asc(sm5GameTeam.colourEnum), desc(game.outcome));
@@ -213,9 +201,7 @@ export async function getGlobalMvpBoxPlot(): Promise<MvpBoxPlotItem[]> {
   }));
 }
 
-export async function getCenterMvpBoxPlot(
-  id: string,
-): Promise<MvpBoxPlotItem[]> {
+export async function getCenterMvpBoxPlot(id: string): Promise<MvpBoxPlotItem[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -266,9 +252,7 @@ export async function getGlobalMvpComponents(): Promise<MvpComponentItem[]> {
   }));
 }
 
-export async function getCenterMvpComponents(
-  id: string,
-): Promise<MvpComponentItem[]> {
+export async function getCenterMvpComponents(id: string): Promise<MvpComponentItem[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
