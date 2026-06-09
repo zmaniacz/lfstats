@@ -3,22 +3,22 @@
 
 import {
   findActiveMvpModel,
+  getCompetitionMatchGameForReingest,
   getGameById,
   getGameIdsForReingest,
-  getCompetitionMatchGameForReingest,
   getPenaltiesWithIplForReingest,
   getScorecardsIsMercenaryForReingest,
   initDb,
 } from "@lfstats/db";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildArchiveKey, parseGameStartTime } from "./ingester.js";
+import { parseGameStartTime } from "./ingester.js";
 import { calculateMvp } from "./mvp.js";
 import { ParseError, parseTdf, RejectionError } from "./parser.js";
+import type { PreservedGameMeta } from "./reingester.js";
+import { reingest } from "./reingester.js";
 import { fetchTdf } from "./s3.js";
 import { runConsistencyCheck, simulate } from "./simulator.js";
-import { reingest } from "./reingester.js";
-import type { PreservedGameMeta } from "./reingester.js";
 
 const DEADLOCK_CODE = "40P01";
 const MAX_REINGEST_RETRIES = 3;
@@ -77,7 +77,7 @@ if (gameList.length === 0) {
   process.exit(0);
 }
 
-const CONCURRENCY = 10;
+const CONCURRENCY = 5;
 
 console.log(`Starting reingest (concurrency=${CONCURRENCY})…\n`);
 

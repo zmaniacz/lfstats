@@ -164,7 +164,10 @@ export const competitionTeamPlayer = pgTable(
     isMercenary: boolean("is_mercenary").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.competitionTeamId, t.playerId)],
+  (t) => [
+    unique().on(t.competitionTeamId, t.playerId),
+    index("competition_team_player_player_id_idx").on(t.playerId),
+  ],
 );
 
 export const competitionRound = pgTable(
@@ -202,7 +205,10 @@ export const competitionMatch = pgTable(
     scheduledTime: timestamp("scheduled_time"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.roundId, t.matchNumber)],
+  (t) => [
+    unique().on(t.roundId, t.matchNumber),
+    index("competition_match_competition_id_idx").on(t.competitionId),
+  ],
 );
 
 // ---------------------------------------------------------------------------
@@ -228,7 +234,11 @@ export const game = pgTable(
     description: text("description"),
     exclude: boolean("exclude").notNull().default(false),
   },
-  (t) => [unique().on(t.centerId, t.startTime)],
+  (t) => [
+    unique().on(t.centerId, t.startTime),
+    index("game_start_time_idx").on(t.startTime),
+    index("game_competition_id_idx").on(t.competitionId),
+  ],
 );
 
 export const sm5GameTeam = pgTable(
@@ -298,18 +308,22 @@ export const sm5GameTarget = pgTable(
   ],
 );
 
-export const gameReferee = pgTable("game_referee", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  gameId: uuid("game_id")
-    .notNull()
-    .references(() => game.id, { onDelete: "cascade" }),
-  // Either player_id+ipl_id (iplId login) or hardware_id — not both
-  playerId: uuid("player_id").references(() => player.id),
-  iplId: text("ipl_id"),
-  callsign: text("callsign").notNull(),
-  battlesuitId: uuid("battlesuit_id").references(() => battlesuit.id),
-  hardwareId: text("hardware_id"),
-});
+export const gameReferee = pgTable(
+  "game_referee",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    // Either player_id+ipl_id (iplId login) or hardware_id — not both
+    playerId: uuid("player_id").references(() => player.id),
+    iplId: text("ipl_id"),
+    callsign: text("callsign").notNull(),
+    battlesuitId: uuid("battlesuit_id").references(() => battlesuit.id),
+    hardwareId: text("hardware_id"),
+  },
+  (t) => [index("game_referee_game_id_idx").on(t.gameId)],
+);
 
 // ---------------------------------------------------------------------------
 // SM5 Player Performance Tables
@@ -442,6 +456,8 @@ export const sm5Scorecard = pgTable(
   (t) => [
     index("sm5_scorecard_game_id_idx").on(t.gameId),
     index("sm5_scorecard_team_id_idx").on(t.teamId),
+    index("sm5_scorecard_player_id_idx").on(t.playerId),
+    index("sm5_scorecard_ipl_id_idx").on(t.iplId),
   ],
 );
 
@@ -492,7 +508,11 @@ export const sm5GamePenalty = pgTable(
     inGame: boolean("in_game").notNull().default(true),
     rescinded: boolean("rescinded").notNull().default(false),
   },
-  (t) => [index("sm5_game_penalty_scorecard_id_idx").on(t.scorecardId)],
+  (t) => [
+    index("sm5_game_penalty_scorecard_id_idx").on(t.scorecardId),
+    index("sm5_game_penalty_game_id_idx").on(t.gameId),
+    index("sm5_game_penalty_referee_id_idx").on(t.refereeId),
+  ],
 );
 
 export const sm5GamePlayerInteraction = pgTable(
@@ -586,18 +606,25 @@ export const sm5GameEvent = pgTable(
 // Chomper Job Tracking
 // ---------------------------------------------------------------------------
 
-export const chomperJob = pgTable("chomper_job", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  s3Key: text("s3_key").notNull(),
-  status: text("status").notNull(), // 'processing' | 'completed' | 'failed' | 'rejected' | 'skipped'
-  lambdaRequestId: text("lambda_request_id"),
-  gameId: uuid("game_id").references(() => game.id, { onDelete: "cascade" }),
-  skipReason: text("skip_reason"),
-  errorMessage: text("error_message"),
-  startedAt: timestamp("started_at").notNull().defaultNow(),
-  completedAt: timestamp("completed_at"),
-  archived: boolean("archived").notNull().default(false),
-});
+export const chomperJob = pgTable(
+  "chomper_job",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    s3Key: text("s3_key").notNull(),
+    status: text("status").notNull(), // 'processing' | 'completed' | 'failed' | 'rejected' | 'skipped'
+    lambdaRequestId: text("lambda_request_id"),
+    gameId: uuid("game_id").references(() => game.id, { onDelete: "cascade" }),
+    skipReason: text("skip_reason"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    completedAt: timestamp("completed_at"),
+    archived: boolean("archived").notNull().default(false),
+  },
+  (t) => [
+    index("chomper_job_game_id_idx").on(t.gameId),
+    index("chomper_job_status_idx").on(t.status),
+  ],
+);
 
 export const sm5GamePlayerState = pgTable(
   "sm5_game_player_state",
@@ -668,7 +695,10 @@ export const authAccount = pgTable(
     id_token: text("id_token"),
     session_state: text("session_state"),
   },
-  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
+    index("auth_account_user_id_idx").on(t.userId),
+  ],
 );
 
 export const authSession = pgTable("auth_session", {
@@ -737,7 +767,7 @@ export const gameTagAssignment = pgTable(
     assignedBy: text("assigned_by"),
     assignedAt: timestamp("assigned_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.gameId, t.tagId)],
+  (t) => [unique().on(t.gameId, t.tagId), index("game_tag_assignment_tag_id_idx").on(t.tagId)],
 );
 
 // ---------------------------------------------------------------------------

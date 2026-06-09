@@ -183,6 +183,13 @@
       "when": 1781036146482,
       "tag": "0025_ordinary_roland_deschain",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1781036759957,
+      "tag": "0026_dry_garia",
+      "breakpoints": true
     }
   ]
 }
