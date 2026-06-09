@@ -17,16 +17,16 @@ import {
   insertGamePlayerStates,
   insertScorecardMvps,
   upsertCenter,
-  upsertPlayer,
-  upsertBattlesuit,
-  upsertTarget,
-  upsertPlayerCallsignHistory,
   applyPenaltyMetadata,
   insertPostGamePenalties,
   applyScorecardIsMercenary,
   insertCompetitionMatchGame,
   getNewInGamePenaltiesWithIplTx,
   recalculateGameResult,
+  upsertPlayersBulk,
+  upsertBattlesuitsBulk,
+  upsertTargetsBulk,
+  upsertPlayerCallsignHistoryBulk,
 } from "@lfstats/db";
 import type { ParsedTdf, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
@@ -109,14 +109,19 @@ export async function reingest(
       .filter((e) => e.type === "player" && e.originalId.startsWith("#"))
       .sort((a, b) => a.originalId.localeCompare(b.originalId));
 
-    for (const entity of playerEntities) {
-      const playerRow = await upsertPlayer(tx, {
-        iplId: entity.originalId,
-        memberId: entity.memberId ?? null,
-        currentCallsign: entity.desc,
+    const playerRows = await upsertPlayersBulk(
+      tx,
+      playerEntities.map((e) => ({
+        iplId: e.originalId,
+        memberId: e.memberId ?? null,
+        currentCallsign: e.desc,
         firstSeenAt: gameStartTime,
-      });
-      playerIdByEntityId.set(entity.id, playerRow.id);
+      })),
+    );
+    const playerIdByIplId = new Map(playerRows.map((r) => [r.iplId, r.id]));
+    for (const entity of playerEntities) {
+      const pid = playerIdByIplId.get(entity.originalId);
+      if (pid) playerIdByEntityId.set(entity.id, pid);
     }
 
     // -----------------------------------------------------------------------
@@ -171,13 +176,26 @@ export async function reingest(
       .filter((e) => !!e.battlesuit)
       .sort((a, b) => a.battlesuit!.localeCompare(b.battlesuit!));
 
+    // Deduplicate by name — bulk upsert can't contain two rows with the same conflict key.
+    // Prefer entries that carry a hardwareId so that field is populated.
+    const battlesuitDeduped = new Map<
+      string,
+      { centerId: string; name: string; hardwareId: string | null }
+    >();
     for (const entity of battlesuitEntities) {
-      const row = await upsertBattlesuit(tx, {
-        centerId,
-        name: entity.battlesuit!,
-        hardwareId: entity.type !== "player" ? entity.id : null,
-      });
-      battlesuitIdByName.set(entity.battlesuit!, row.id);
+      const hardwareId = entity.type !== "player" ? entity.id : null;
+      const existing = battlesuitDeduped.get(entity.battlesuit!);
+      if (!existing || (hardwareId !== null && existing.hardwareId === null)) {
+        battlesuitDeduped.set(entity.battlesuit!, {
+          centerId,
+          name: entity.battlesuit!,
+          hardwareId,
+        });
+      }
+    }
+    const battlesuitRows = await upsertBattlesuitsBulk(tx, [...battlesuitDeduped.values()]);
+    for (const row of battlesuitRows) {
+      battlesuitIdByName.set(row.name, row.id);
     }
 
     // -----------------------------------------------------------------------
@@ -195,13 +213,12 @@ export async function reingest(
       )
       .sort((a, b) => a.id.localeCompare(b.id));
 
-    for (const entity of targetEntityList) {
-      const row = await upsertTarget(tx, {
-        centerId,
-        hardwareId: entity.id,
-        name: entity.desc,
-      });
-      targetIdByHardwareId.set(entity.id, row.id);
+    const targetRows = await upsertTargetsBulk(
+      tx,
+      targetEntityList.map((e) => ({ centerId, hardwareId: e.id, name: e.desc })),
+    );
+    for (const row of targetRows) {
+      targetIdByHardwareId.set(row.hardwareId, row.id);
     }
 
     // -----------------------------------------------------------------------
@@ -534,17 +551,21 @@ export async function reingest(
     // -----------------------------------------------------------------------
     // 17. Upsert PlayerCallsignHistory
     // -----------------------------------------------------------------------
-    for (const entity of playerEntities) {
-      const playerId = playerIdByEntityId.get(entity.id);
-      if (!playerId) continue;
-
-      await upsertPlayerCallsignHistory(tx, {
-        playerId,
-        callsign: entity.desc,
-        firstSeenAt: gameStartTime,
-        lastSeenAt: gameStartTime,
-      });
-    }
+    await upsertPlayerCallsignHistoryBulk(
+      tx,
+      playerEntities.flatMap((entity) => {
+        const playerId = playerIdByEntityId.get(entity.id);
+        if (!playerId) return [];
+        return [
+          {
+            playerId,
+            callsign: entity.desc,
+            firstSeenAt: gameStartTime,
+            lastSeenAt: gameStartTime,
+          },
+        ];
+      }),
+    );
 
     // -----------------------------------------------------------------------
     // 18. Restore game metadata (competition_id, exclude, description)

@@ -148,6 +148,65 @@ export async function upsertTarget(tx: Tx, data: typeof target.$inferInsert) {
   return row;
 }
 
+// Bulk variants — one round-trip instead of N sequential calls.
+// Note: bulk upserts can't contain duplicate conflict keys in the same VALUES list;
+// callers must deduplicate before passing data.
+
+export async function upsertPlayersBulk(tx: Tx, data: (typeof player.$inferInsert)[]) {
+  if (data.length === 0) return [];
+  return tx
+    .insert(player)
+    .values(data)
+    .onConflictDoUpdate({
+      target: player.iplId,
+      set: {
+        currentCallsign: sql`excluded.current_callsign`,
+        memberId: sql`CASE WHEN ${player.memberId} IS NULL THEN excluded.member_id ELSE ${player.memberId} END`,
+      },
+    })
+    .returning({ id: player.id, iplId: player.iplId });
+}
+
+export async function upsertBattlesuitsBulk(tx: Tx, data: (typeof battlesuit.$inferInsert)[]) {
+  if (data.length === 0) return [];
+  return tx
+    .insert(battlesuit)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [battlesuit.centerId, battlesuit.name],
+      set: {
+        hardwareId: sql`CASE WHEN excluded.hardware_id IS NOT NULL THEN excluded.hardware_id ELSE ${battlesuit.hardwareId} END`,
+      },
+    })
+    .returning({ id: battlesuit.id, name: battlesuit.name });
+}
+
+export async function upsertTargetsBulk(tx: Tx, data: (typeof target.$inferInsert)[]) {
+  if (data.length === 0) return [];
+  return tx
+    .insert(target)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [target.centerId, target.hardwareId],
+      set: { name: sql`excluded.name` },
+    })
+    .returning({ id: target.id, hardwareId: target.hardwareId });
+}
+
+export async function upsertPlayerCallsignHistoryBulk(
+  tx: Tx,
+  data: (typeof playerCallsignHistory.$inferInsert)[],
+) {
+  if (data.length === 0) return;
+  await tx
+    .insert(playerCallsignHistory)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [playerCallsignHistory.playerId, playerCallsignHistory.callsign],
+      set: { lastSeenAt: sql`excluded.last_seen_at` },
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Idempotency / lookups
 // ---------------------------------------------------------------------------
