@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import {
-  getCompetitionBySlug,
-  getCompetitionTeamBySlug,
-  getCompetitionTeamRoster,
-  getTeamGameParticipants,
-} from "@lfstats/db";
-import { PlayerRosterSearch } from "@/components/admin/competition/PlayerRosterSearch";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { PlayerRosterSearch } from "@/components/admin/competition/PlayerRosterSearch";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -20,16 +15,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
+  getCompetitionBySlug,
+  getCompetitionTeamBySlug,
+  getCompetitionTeamRoster,
+  getTeamGameParticipants,
+} from "@lfstats/db";
+import { ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import {
+  addParticipantToRosterAction,
   addPlayerAction,
   removePlayerAction,
   searchPlayersAction,
-  updateTeamAction,
   setMercenaryAction,
-  addParticipantToRosterAction,
+  updateTeamAction,
 } from "./actions";
 import { ParticipantActions } from "./ParticipantActions";
 import { TeamLogoUpload } from "./TeamLogoUpload";
@@ -168,7 +169,15 @@ export default async function TeamRosterPage({
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      {entry.iplId}
+                      <a
+                        href={`https://www.iplaylaserforce.com/mission-stats/?t=${entry.iplId.slice(1)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                      >
+                        {entry.iplId}
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
                     <TableCell className="text-right">
@@ -216,7 +225,15 @@ export default async function TeamRosterPage({
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      {entry.iplId}
+                      <a
+                        href={`https://www.iplaylaserforce.com/mission-stats/?t=${entry.iplId.slice(1)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                      >
+                        {entry.iplId}
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
                     <TableCell className="text-right">
@@ -264,7 +281,17 @@ export default async function TeamRosterPage({
                         {p.currentCallsign}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">{p.iplId}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      <a
+                        href={`https://www.iplaylaserforce.com/mission-stats/?t=${p.iplId.slice(1)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                      >
+                        {p.iplId}
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{p.gamesPlayed}</TableCell>
                     <TableCell className="text-right">
                       <ParticipantActions
