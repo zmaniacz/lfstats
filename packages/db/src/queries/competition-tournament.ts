@@ -19,6 +19,7 @@ import {
 import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
+import { getTeamLogoUrl } from "../lib/team-logos";
 
 // ---------------------------------------------------------------------------
 // Competition lookup
@@ -3305,6 +3306,7 @@ export type CompetitionPlayerStatRow = {
   ipl_id: string | null;
   player_name: string;
   team_name: string;
+  team_logo_url: string | null;
   games_played: number;
   wins: number | null;
   losses: number | null;
@@ -3368,7 +3370,10 @@ export type CompetitionPlayerStatRow = {
   medic_total_boosts: number | null;
 };
 
-const ZERO_PLAYER_STATS: Omit<CompetitionPlayerStatRow, "ipl_id" | "player_name" | "team_name"> = {
+const ZERO_PLAYER_STATS: Omit<
+  CompetitionPlayerStatRow,
+  "ipl_id" | "player_name" | "team_name" | "team_logo_url"
+> = {
   games_played: 0,
   wins: null,
   losses: null,
@@ -3448,6 +3453,8 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       iplId: player.iplId,
       callsign: player.currentCallsign,
       teamName: competitionTeam.name,
+      teamId: competitionTeam.id,
+      teamHasLogo: competitionTeam.hasLogo,
     })
     .from(competitionTeam)
     .innerJoin(
@@ -3653,15 +3660,23 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
     iplId: string | null,
     callsign: string,
     teamName: string,
+    teamLogoUrl: string | null,
   ): CompetitionPlayerStatRow {
     if (!r) {
-      return { ipl_id: iplId, player_name: callsign, team_name: teamName, ...ZERO_PLAYER_STATS };
+      return {
+        ipl_id: iplId,
+        player_name: callsign,
+        team_name: teamName,
+        team_logo_url: teamLogoUrl,
+        ...ZERO_PLAYER_STATS,
+      };
     }
     const n = (v: number | null) => (v !== null ? Number(v) : null);
     return {
       ipl_id: r.iplId,
       player_name: r.callsign,
       team_name: teamName,
+      team_logo_url: teamLogoUrl,
       games_played: Number(r.gamesPlayed),
       wins: Number(r.wins),
       losses: Number(r.losses),
@@ -3730,9 +3745,23 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
   const alltimeMap = new Map(alltimeRows.map((r) => [r.playerId, r]));
 
   return {
-    [slug]: rosterRows.map((p) => mapRow(compMap.get(p.playerId), p.iplId, p.callsign, p.teamName)),
+    [slug]: rosterRows.map((p) =>
+      mapRow(
+        compMap.get(p.playerId),
+        p.iplId,
+        p.callsign,
+        p.teamName,
+        p.teamHasLogo ? getTeamLogoUrl(p.teamId) : null,
+      ),
+    ),
     alltime: rosterRows.map((p) =>
-      mapRow(alltimeMap.get(p.playerId), p.iplId, p.callsign, p.teamName),
+      mapRow(
+        alltimeMap.get(p.playerId),
+        p.iplId,
+        p.callsign,
+        p.teamName,
+        p.teamHasLogo ? getTeamLogoUrl(p.teamId) : null,
+      ),
     ),
   };
 }

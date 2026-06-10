@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 export { db, getDb, initDb } from "./client";
+export { getTeamLogoUrl } from "./lib/team-logos";
 export * from "./queries/admin";
 export * from "./queries/penalties";
 export * from "./queries/competition-tournament";
