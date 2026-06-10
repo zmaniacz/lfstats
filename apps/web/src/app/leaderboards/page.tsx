@@ -13,43 +13,47 @@ import {
   getCompetitionPositionScorecards,
   getCompetitionTotalScore,
   getCompetitionTotalTime,
-  getCompetitiveCompetitions,
 } from "@lfstats/db";
-import { CompetitionSelector } from "../standings/CompetitionSelector";
-import { LeaderBoardsFilters } from "./LeaderBoardsFilters";
-import { resolveActiveCompetition } from "@/lib/active-competition";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
+import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
 
-export default async function LeaderBoardsPage({
+export default async function LeaderboardsPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    scope?: string;
+    center?: string;
     competition?: string;
     pool?: string;
     finals?: string;
     mercs?: string;
   }>;
 }) {
-  const { competition: competitionSlug, pool, finals, mercs } = await searchParams;
+  const sp = await searchParams;
+  const ctx = await resolveFilterContext(sp);
 
-  const showPool = pool !== "0";
-  const showFinals = finals === "1";
-  const showMercs = mercs === "1";
-
-  const competitions = await getCompetitiveCompetitions();
-
-  if (competitions.length === 0) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Leader (Loser) Boards</h2>
-        <p className="text-muted-foreground text-sm">No competitive competitions found.</p>
-      </div>
-    );
-  }
-
-  const activeComp = await resolveActiveCompetition(competitions, competitionSlug);
-  const activeId = activeComp.id;
-
+  // Same loser-board stats for every scope. pool/finals/mercs only apply when a
+  // specific competition is selected (they depend on the round structure).
+  const showPool = sp.pool !== "0";
+  const showFinals = sp.finals === "1";
+  const showMercs = sp.mercs === "1";
   const options = { showPool, showFinals, showMercs };
+  const scopeFilter = toGameScopeFilter(ctx);
+  const specificCompetition = ctx.scope === "competition" && ctx.competition !== null;
+
+  const filterBar = (
+    <FilterBar
+      basePath="/leaderboards"
+      scope={ctx.scope}
+      activeCenterSlug={ctx.center?.slug ?? null}
+      activeCompetitionSlug={ctx.competition?.slug ?? null}
+      centers={ctx.centers}
+      competitions={ctx.competitions}
+      extras={{ pool: sp.pool, finals: sp.finals, mercs: sp.mercs }}
+    />
+  );
+
   const [
     commanders,
     heavyPlayers,
@@ -64,37 +68,36 @@ export default async function LeaderBoardsPage({
     nukeNonsense,
     miscMischief,
   ] = await Promise.all([
-    getCompetitionPositionScorecards(activeId, 1, options),
-    getCompetitionPositionScorecards(activeId, 2, options),
-    getCompetitionPositionScorecards(activeId, 3, options),
-    getCompetitionPositionScorecards(activeId, 4, options),
-    getCompetitionPositionScorecards(activeId, 5, options),
-    getCompetitionGamesPlayed(activeId, options),
-    getCompetitionTotalScore(activeId, options),
-    getCompetitionTotalTime(activeId, options),
-    getCompetitionMedicTomfoolery(activeId, options),
-    getCompetitionMissileMalarkey(activeId, options),
-    getCompetitionNukeNonsense(activeId, options),
-    getCompetitionMiscMischief(activeId, options),
+    getCompetitionPositionScorecards(scopeFilter, 1, options),
+    getCompetitionPositionScorecards(scopeFilter, 2, options),
+    getCompetitionPositionScorecards(scopeFilter, 3, options),
+    getCompetitionPositionScorecards(scopeFilter, 4, options),
+    getCompetitionPositionScorecards(scopeFilter, 5, options),
+    getCompetitionGamesPlayed(scopeFilter, options),
+    getCompetitionTotalScore(scopeFilter, options),
+    getCompetitionTotalTime(scopeFilter, options),
+    getCompetitionMedicTomfoolery(scopeFilter, options),
+    getCompetitionMissileMalarkey(scopeFilter, options),
+    getCompetitionNukeNonsense(scopeFilter, options),
+    getCompetitionMiscMischief(scopeFilter, options),
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-semibold">Leader (Loser) Boards</h2>
-        <CompetitionSelector
-          competitions={competitions}
-          activeSlug={activeComp.slug}
-          activeParamBase="/competitions/leader-boards"
-        />
+        <h1 className="text-2xl font-bold">Leader (Loser) Boards</h1>
+        {filterBar}
       </div>
 
-      <LeaderBoardsFilters
-        showPool={showPool}
-        showFinals={showFinals}
-        showMercs={showMercs}
-        competitionSlug={activeComp.slug}
-      />
+      {specificCompetition && ctx.competition && (
+        <ScopeExtraToggles
+          basePath="/leaderboards"
+          competitionSlug={ctx.competition.slug}
+          showPool={showPool}
+          showFinals={showFinals}
+          showMercs={showMercs}
+        />
+      )}
 
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Positions</h3>
@@ -188,11 +191,7 @@ export default async function LeaderBoardsPage({
               .filter((r) => r.totalMissiles > 0)
               .sort((a, b) => b.totalMissiles - a.totalMissiles)
               .slice(0, 100)
-              .map((r) => ({
-                ...r,
-                value1: r.totalMissiles,
-                value2: r.avgMissiles,
-              }))}
+              .map((r) => ({ ...r, value1: r.totalMissiles, value2: r.avgMissiles }))}
             format1="integer"
             format2="decimal"
           />

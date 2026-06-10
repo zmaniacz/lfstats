@@ -18,7 +18,7 @@ async function requireAdmin() {
 
 async function revalidatePenaltiesPage(competitionId: string): Promise<void> {
   const comp = await getCompetitionById(competitionId);
-  if (comp) revalidatePath(`/competitions/penalties?competition=${comp.slug}`);
+  if (comp) revalidatePath(`/penalties?scope=competition&competition=${comp.slug}`);
 }
 
 export async function updateCompetitionPenaltyAction(

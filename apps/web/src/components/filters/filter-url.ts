@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
+import {
+  ALL_VALUE,
+  CENTER_COOKIE,
+  COMPETITION_COOKIE,
+  SCOPE_COOKIE,
+  type Scope,
+} from "@/lib/filter-cookies";
+
+export type FilterUrlState = {
+  scope: Scope;
+  /** Center slug or null for "all centers". */
+  center: string | null;
+  /** Competition slug or null for "all competitions". */
+  competition: string | null;
+};
+
+/**
+ * Builds a page URL carrying the filter state. Only emits params relevant to
+ * the active scope (so switching to "all" drops center/competition/extras), and
+ * always drops `page` so pagination resets when filters change.
+ */
+export function buildFilterUrl(
+  basePath: string,
+  state: FilterUrlState,
+  extras?: Record<string, string | null | undefined>,
+): string {
+  const params = new URLSearchParams();
+  params.set("scope", state.scope);
+
+  if (state.scope === "social" && state.center) {
+    params.set("center", state.center);
+  }
+  if (state.scope === "competition") {
+    params.set("competition", state.competition ?? ALL_VALUE);
+  }
+
+  if (extras) {
+    for (const [key, value] of Object.entries(extras)) {
+      if (value) params.set(key, value);
+    }
+  }
+
+  const qs = params.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+
+/** Persists the filter dimensions to cookies (1y) so other pages inherit them. */
+export function writeFilterCookies(state: Partial<FilterUrlState>): void {
+  const maxAge = 31536000; // 1 year
+  const set = (name: string, value: string) => {
+    document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; samesite=lax`;
+  };
+  if (state.scope) set(SCOPE_COOKIE, state.scope);
+  if (state.center !== undefined) set(CENTER_COOKIE, state.center ?? ALL_VALUE);
+  if (state.competition !== undefined) {
+    set(COMPETITION_COOKIE, state.competition ?? ALL_VALUE);
+  }
+}

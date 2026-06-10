@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { COMPETITION_COOKIE } from "@/app/competitions/standings/CompetitionSelector";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppSessionProvider } from "@/components/session-provider";
 import { SiteHeader } from "@/components/site-header";
@@ -11,7 +10,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
-import { cookies } from "next/headers";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -27,9 +25,6 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const competitionCookie = cookieStore.get(COMPETITION_COOKIE)?.value ?? null;
-
   return (
     <html lang="en" className={cn("font-mono", jetbrainsMono.variable)} suppressHydrationWarning>
       <body>
@@ -43,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <TooltipProvider>
               <SidebarProvider>
                 <SiteHeader />
-                <AppSidebar competitionCookie={competitionCookie} />
+                <AppSidebar />
                 <SidebarInset className="pt-(--header-height) min-w-0">{children}</SidebarInset>
               </SidebarProvider>
             </TooltipProvider>

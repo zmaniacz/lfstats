@@ -8,6 +8,8 @@ import {
   getGlobalMvpComponents,
   getGlobalMvpBoxPlot,
 } from "@lfstats/db";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
 import { MvpComponentsChart } from "@/components/centers/MvpComponentsChart";
 import { MvpBoxPlotChart } from "@/components/centers/MvpBoxPlotChart";
 import {
@@ -22,12 +24,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatScore, formatMVP } from "@/lib/format";
 import { POSITIONS } from "@/lib/positions";
 
-export default async function CentersPage() {
+export default async function CentersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string; center?: string; competition?: string }>;
+}) {
+  const sp = await searchParams;
+  const ctx = await resolveFilterContext(sp);
+  const scopeFilter = toGameScopeFilter(ctx);
+
   const [centers, positionStats, mvpComponents, mvpBoxPlot] = await Promise.all([
     getCenterList(),
-    getCenterPositionStats(),
-    getGlobalMvpComponents(),
-    getGlobalMvpBoxPlot(),
+    getCenterPositionStats(scopeFilter),
+    getGlobalMvpComponents(scopeFilter),
+    getGlobalMvpBoxPlot(scopeFilter),
   ]);
 
   const statsByPosition = new Map<number, typeof positionStats>();
@@ -48,7 +58,17 @@ export default async function CentersPage() {
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Centers</h1>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h1 className="text-2xl font-bold">Centers</h1>
+          <FilterBar
+            basePath="/centers"
+            scope={ctx.scope}
+            activeCenterSlug={ctx.center?.slug ?? null}
+            activeCompetitionSlug={ctx.competition?.slug ?? null}
+            centers={ctx.centers}
+            competitions={ctx.competitions}
+          />
+        </div>
 
         <Table>
           <TableHeader>

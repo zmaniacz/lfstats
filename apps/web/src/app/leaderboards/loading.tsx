@@ -4,9 +4,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-export default function LeaderBoardsLoading() {
+export default function LeaderboardsLoading() {
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="h-10 w-64" />

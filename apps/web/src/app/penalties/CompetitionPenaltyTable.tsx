@@ -162,9 +162,7 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   }
 
   if (penalties.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No penalties recorded for this competition.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No penalties recorded.</p>;
   }
 
   return (

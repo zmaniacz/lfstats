@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 
 export function GamesTable({ games }: { games: GameListItem[] }) {
+  const showCompetition = games.some((g) => g.competitionName !== null);
   return (
     <Card>
       <CardContent className="space-y-4">
@@ -25,6 +26,7 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
             <TableRow>
               <TableHead>Game</TableHead>
               <TableHead>Center</TableHead>
+              {showCompetition && <TableHead>Competition</TableHead>}
               <TableHead>Started</TableHead>
               <TableHead>Outcome</TableHead>
               <TableHead>Score</TableHead>
@@ -48,6 +50,11 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
                     </Link>
                   </TableCell>
                   <TableCell>{game.centerName}</TableCell>
+                  {showCompetition && (
+                    <TableCell className="text-muted-foreground">
+                      {game.competitionName ?? "—"}
+                    </TableCell>
+                  )}
                   <TableCell className="tabular-nums">{formatDateTime(game.startTime)}</TableCell>
                   <TableCell className="capitalize">{game.outcome}</TableCell>
                   <TableCell>

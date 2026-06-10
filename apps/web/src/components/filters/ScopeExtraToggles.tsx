@@ -5,28 +5,41 @@
 
 import { useRouter } from "next/navigation";
 import { Toggle } from "@/components/ui/toggle";
+import { buildFilterUrl } from "./filter-url";
 
-export function LeaderBoardsFilters({
+/**
+ * Pool / Finals / Mercs toggles for competition-scope pages. Consolidates the
+ * previously duplicated TopPlayersFilters / LeaderBoardsFilters / AllStarFilters.
+ * Only meaningful when a specific competition is selected.
+ */
+export function ScopeExtraToggles({
+  basePath,
+  competitionSlug,
   showPool,
   showFinals,
   showMercs,
-  competitionSlug,
 }: {
+  basePath: string;
+  competitionSlug: string;
   showPool: boolean;
   showFinals: boolean;
   showMercs: boolean;
-  competitionSlug: string;
 }) {
   const router = useRouter();
 
   function update(patch: Partial<{ showPool: boolean; showFinals: boolean; showMercs: boolean }>) {
-    const params = new URLSearchParams();
-    params.set("competition", competitionSlug);
     const next = { showPool, showFinals, showMercs, ...patch };
-    if (!next.showPool) params.set("pool", "0");
-    if (next.showFinals) params.set("finals", "1");
-    if (next.showMercs) params.set("mercs", "1");
-    router.push(`/competitions/leader-boards?${params.toString()}`);
+    router.push(
+      buildFilterUrl(
+        basePath,
+        { scope: "competition", center: null, competition: competitionSlug },
+        {
+          pool: next.showPool ? null : "0",
+          finals: next.showFinals ? "1" : null,
+          mercs: next.showMercs ? "1" : null,
+        },
+      ),
+    );
   }
 
   return (

@@ -19,12 +19,14 @@ import {
 } from "../schema";
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
 import { getTeamPenaltyTotals } from "./penalties";
+import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export const GAMES_PER_PAGE = 10;
 
 export type GameListFilters = {
   centerId?: string;
   dateSearch?: string;
+  scopeFilter?: GameScopeFilter;
 };
 
 export type GameTeamSummary = {
@@ -42,11 +44,15 @@ export type GameListItem = {
   outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
   centerName: string;
   description: string | null;
+  competitionName: string | null;
   teams: GameTeamSummary[];
 };
 
 function buildGameListConditions(filters: GameListFilters): SQL[] {
   const conditions: SQL[] = [];
+  if (filters.scopeFilter) {
+    conditions.push(...gameScopeConditions(filters.scopeFilter));
+  }
   if (filters.centerId) {
     conditions.push(eq(game.centerId, filters.centerId));
   }
@@ -74,9 +80,11 @@ export async function getGamesPage(
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      competitionName: competition.name,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
+    .leftJoin(competition, eq(game.competitionId, competition.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(game.startTime))
     .limit(GAMES_PER_PAGE)
@@ -113,6 +121,7 @@ export async function getGamesPage(
     outcome: row.outcome,
     centerName: row.centerName,
     description: row.description,
+    competitionName: row.competitionName,
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,

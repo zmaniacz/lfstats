@@ -14,6 +14,7 @@ import {
 import { eq, and, asc, desc, count, sql, inArray } from "drizzle-orm";
 import type { MvpBoxPlotItem } from "./centers";
 import type { GameTeamSummary, MvpComponentRow } from "./games";
+import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type PlayerDetail = {
   id: string;
@@ -75,7 +76,10 @@ export type PlayerResultItem = {
   count: number;
 };
 
-export async function getPlayerResultsByColor(playerId: string): Promise<PlayerResultItem[]> {
+export async function getPlayerResultsByColor(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<PlayerResultItem[]> {
   const rows = await db
     .select({
       colourEnum: sm5GameTeam.colourEnum,
@@ -86,7 +90,13 @@ export async function getPlayerResultsByColor(playerId: string): Promise<PlayerR
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
     .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
-    .where(and(eq(sm5Scorecard.playerId, playerId), eq(sm5GameTeam.isNeutral, false)))
+    .where(
+      and(
+        eq(sm5Scorecard.playerId, playerId),
+        eq(sm5GameTeam.isNeutral, false),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
     .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
     .orderBy(desc(sm5GameTeam.result), asc(sm5GameTeam.colourEnum), desc(game.outcome));
 
@@ -104,14 +114,23 @@ export async function getPlayerResultsByColor(playerId: string): Promise<PlayerR
     }));
 }
 
-export async function getPlayerAvgMvpByPosition(playerId: string): Promise<PositionAvgMvp[]> {
+export async function getPlayerAvgMvpByPosition(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<PositionAvgMvp[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
       avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
     })
     .from(sm5Scorecard)
-    .where(eq(sm5Scorecard.playerId, playerId))
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(
+      and(
+        eq(sm5Scorecard.playerId, playerId),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -121,13 +140,18 @@ export async function getPlayerAvgMvpByPosition(playerId: string): Promise<Posit
   }));
 }
 
-export async function getGlobalAvgMvpByPosition(): Promise<PositionAvgMvp[]> {
+export async function getGlobalAvgMvpByPosition(
+  scopeFilter?: GameScopeFilter,
+): Promise<PositionAvgMvp[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       position: sm5Scorecard.position,
       avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
     })
     .from(sm5Scorecard)
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(conditions.length ? and(...conditions) : undefined)
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -137,7 +161,10 @@ export async function getGlobalAvgMvpByPosition(): Promise<PositionAvgMvp[]> {
   }));
 }
 
-export async function getPlayerMvpBoxPlot(playerId: string): Promise<MvpBoxPlotItem[]> {
+export async function getPlayerMvpBoxPlot(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<MvpBoxPlotItem[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -148,7 +175,13 @@ export async function getPlayerMvpBoxPlot(playerId: string): Promise<MvpBoxPlotI
       max: sql<number>`MAX(${sm5Scorecard.mvpPoints})::float`,
     })
     .from(sm5Scorecard)
-    .where(eq(sm5Scorecard.playerId, playerId))
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(
+      and(
+        eq(sm5Scorecard.playerId, playerId),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -167,14 +200,23 @@ export type PositionAvgScore = {
   avgScore: number;
 };
 
-export async function getPlayerAvgScoreByPosition(playerId: string): Promise<PositionAvgScore[]> {
+export async function getPlayerAvgScoreByPosition(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<PositionAvgScore[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
       avgScore: sql<number>`AVG(${sm5Scorecard.score})::float`,
     })
     .from(sm5Scorecard)
-    .where(eq(sm5Scorecard.playerId, playerId))
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(
+      and(
+        eq(sm5Scorecard.playerId, playerId),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -184,13 +226,18 @@ export async function getPlayerAvgScoreByPosition(playerId: string): Promise<Pos
   }));
 }
 
-export async function getGlobalAvgScoreByPosition(): Promise<PositionAvgScore[]> {
+export async function getGlobalAvgScoreByPosition(
+  scopeFilter?: GameScopeFilter,
+): Promise<PositionAvgScore[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       position: sm5Scorecard.position,
       avgScore: sql<number>`AVG(${sm5Scorecard.score})::float`,
     })
     .from(sm5Scorecard)
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(conditions.length ? and(...conditions) : undefined)
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -230,7 +277,7 @@ export type PlayerLeaderboardItem = {
 };
 
 export async function getPlayersLeaderboard(options?: {
-  centerId?: string;
+  scopeFilter?: GameScopeFilter;
   position?: number;
 }): Promise<PlayerLeaderboardItem[]> {
   const rows = await db
@@ -251,7 +298,7 @@ export async function getPlayersLeaderboard(options?: {
     .where(
       and(
         eq(sm5GameTeam.isNeutral, false),
-        options?.centerId ? eq(game.centerId, options.centerId) : undefined,
+        ...(options?.scopeFilter ? gameScopeConditions(options.scopeFilter) : []),
         options?.position !== undefined ? eq(sm5Scorecard.position, options.position) : undefined,
       ),
     )
@@ -282,7 +329,7 @@ export type PlayerMedicHitsItem = {
 };
 
 export async function getPlayersMedicHitsLeaderboard(options?: {
-  centerId?: string;
+  scopeFilter?: GameScopeFilter;
 }): Promise<PlayerMedicHitsItem[]> {
   const rows = await db
     .select({
@@ -306,7 +353,7 @@ export async function getPlayersMedicHitsLeaderboard(options?: {
     .where(
       and(
         eq(sm5GameTeam.isNeutral, false),
-        options?.centerId ? eq(game.centerId, options.centerId) : undefined,
+        ...(options?.scopeFilter ? gameScopeConditions(options.scopeFilter) : []),
       ),
     )
     .groupBy(player.id, player.iplId, player.currentCallsign)
@@ -324,7 +371,10 @@ export async function getPlayersMedicHitsLeaderboard(options?: {
   }));
 }
 
-export async function getPlayerGames(playerId: string): Promise<PlayerGameListItem[]> {
+export async function getPlayerGames(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<PlayerGameListItem[]> {
   const rows = await db
     .select({
       scorecardId: sm5Scorecard.id,
@@ -346,7 +396,12 @@ export async function getPlayerGames(playerId: string): Promise<PlayerGameListIt
     .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
     .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
     .innerJoin(center, eq(game.centerId, center.id))
-    .where(eq(sm5Scorecard.playerId, playerId))
+    .where(
+      and(
+        eq(sm5Scorecard.playerId, playerId),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
     .orderBy(desc(game.startTime));
 
   if (rows.length === 0) return [];

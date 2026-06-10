@@ -29,21 +29,7 @@ import {
 } from "@phosphor-icons/react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import * as React from "react";
-function CompetitionNavItems({ competitionCookie }: { competitionCookie: string | null }) {
-  const searchParams = useSearchParams();
-  const competitionSlug = searchParams.get("competition") ?? competitionCookie;
-
-  const items = competitionSlug
-    ? competitionNavItems.map((item) => ({
-        ...item,
-        url: `${item.url}?competition=${competitionSlug}`,
-      }))
-    : competitionNavItems;
-
-  return <NavMain label="Competitions" items={items} />;
-}
 
 const socialNavItems = [
   {
@@ -51,6 +37,24 @@ const socialNavItems = [
     url: "/nightly",
     icon: <CalendarIcon />,
   },
+];
+
+const competitionNavItems = [
+  {
+    title: "Standings",
+    url: "/standings",
+    icon: <TrophyIcon />,
+  },
+  {
+    title: "All Star",
+    url: "/all-star",
+    icon: <StarIcon />,
+  },
+];
+
+// "Browse" pages work across social / competition / all scopes and remember the
+// last context via cookies, so their links are bare (no query string).
+const browseNavItems = [
   {
     title: "Games",
     url: "/games",
@@ -62,49 +66,23 @@ const socialNavItems = [
     icon: <UsersIcon />,
   },
   {
+    title: "Leaderboards",
+    url: "/leaderboards",
+    icon: <TrophyIcon />,
+  },
+  {
     title: "Centers",
     url: "/centers",
     icon: <MapPinIcon />,
   },
-];
-
-const competitionNavItems = [
-  {
-    title: "Standings",
-    url: "/competitions/standings",
-    icon: <TrophyIcon />,
-  },
-  {
-    title: "Top Players",
-    url: "/competitions/top-players",
-    icon: <StarIcon />,
-  },
-  {
-    title: "Leader(loser) Boards",
-    url: "/competitions/leader-boards",
-    icon: <TrophyIcon />,
-  },
-  {
-    title: "Games",
-    url: "/competitions/games",
-    icon: <GameControllerIcon />,
-  },
-  {
-    title: "All Star",
-    url: "/competitions/all-star",
-    icon: <StarIcon />,
-  },
   {
     title: "Penalties",
-    url: "/competitions/penalties",
+    url: "/penalties",
     icon: <CardsIcon />,
   },
 ];
 
-export function AppSidebar({
-  competitionCookie,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & { competitionCookie: string | null }) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
 
   const roles = session?.user?.roles ?? [];
@@ -154,9 +132,8 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain label="Social" items={socialItems} />
-        <React.Suspense fallback={<NavMain label="Competitions" items={competitionNavItems} />}>
-          <CompetitionNavItems competitionCookie={competitionCookie} />
-        </React.Suspense>
+        <NavMain label="Competition" items={competitionNavItems} />
+        <NavMain label="Browse" items={browseNavItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

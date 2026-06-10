@@ -20,9 +20,9 @@ export function RoundFilter({
 
   function handleChange(next: string) {
     if (!next) return;
-    const params = new URLSearchParams({ competition: competitionSlug });
+    const params = new URLSearchParams({ scope: "competition", competition: competitionSlug });
     if (next !== "all") params.set("round", next);
-    router.push(`/competitions/standings?${params.toString()}`);
+    router.push(`/standings?${params.toString()}`);
   }
 
   return (

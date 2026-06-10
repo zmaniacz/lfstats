@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { DateFilter } from "@/components/nightly/DateFilter";
-import { NightlyCenterFilter } from "@/components/nightly/NightlyCenterFilter";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { NightlyStateManager } from "@/components/nightly/NightlyStateManager";
 import {
   NightlyStatsTable,
@@ -15,11 +15,13 @@ import {
   getCenterBySlug,
   getCenterList,
   getGameDatesForCenter,
-  getMostRecentCenterSlug,
+  getMostRecentSocialCenterSlug,
   getNightlyDetails,
   getPlayerSocialAveragesByCenter,
   type PlayerMedicHitsItem,
 } from "@lfstats/db";
+import { CENTER_COOKIE } from "@/lib/filter-cookies";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 
 function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsItem[] {
@@ -71,12 +73,17 @@ export default async function NightlyPage({
   const { center: centerSlugParam, date } = await searchParams;
   const today = new Date().toISOString().split("T")[0];
 
-  const [centers, defaultSlug] = await Promise.all([
-    getCenterList(),
-    centerSlugParam ? Promise.resolve(null) : getMostRecentCenterSlug(),
-  ]);
+  const [centers, cookieStore] = await Promise.all([getCenterList(), cookies()]);
 
-  const centerSlug = centerSlugParam ?? defaultSlug ?? undefined;
+  // Resolve center: explicit param > remembered cookie > most recent social center.
+  const cookieCenter = cookieStore.get(CENTER_COOKIE)?.value;
+  let centerSlug = centerSlugParam;
+  if (!centerSlug && cookieCenter && cookieCenter !== "all") {
+    if (centers.some((c) => c.slug === cookieCenter)) centerSlug = cookieCenter;
+  }
+  if (!centerSlug) {
+    centerSlug = (await getMostRecentSocialCenterSlug()) ?? undefined;
+  }
 
   if (!centerSlug) {
     return (
@@ -84,9 +91,15 @@ export default async function NightlyPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Suspense>
-              <NightlyCenterFilter centers={centers} selected={undefined} />
-            </Suspense>
+            <FilterBar
+              basePath="/nightly"
+              mode="social-only"
+              scope="social"
+              activeCenterSlug={null}
+              activeCompetitionSlug={null}
+              centers={centers}
+              competitions={[]}
+            />
           </div>
         </div>
         <p className="text-muted-foreground">No game data available.</p>
@@ -101,9 +114,15 @@ export default async function NightlyPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Suspense>
-              <NightlyCenterFilter centers={centers} selected={undefined} />
-            </Suspense>
+            <FilterBar
+              basePath="/nightly"
+              mode="social-only"
+              scope="social"
+              activeCenterSlug={null}
+              activeCompetitionSlug={null}
+              centers={centers}
+              competitions={[]}
+            />
           </div>
         </div>
         <p className="text-muted-foreground">Center not found.</p>
@@ -145,12 +164,19 @@ export default async function NightlyPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Suspense>
-              <NightlyCenterFilter centers={centers} selected={centerSlug} />
-            </Suspense>
-            <Suspense>
-              <DateFilter selected={selectedDate} gameDates={gameDates} />
-            </Suspense>
+            <FilterBar
+              basePath="/nightly"
+              mode="social-only"
+              scope="social"
+              activeCenterSlug={centerSlug}
+              activeCompetitionSlug={null}
+              centers={centers}
+              competitions={[]}
+            >
+              <Suspense>
+                <DateFilter selected={selectedDate} gameDates={gameDates} />
+              </Suspense>
+            </FilterBar>
           </div>
         </div>
 

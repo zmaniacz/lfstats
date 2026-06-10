@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import {
-  getCompetitiveCompetitions,
   getCompetitionStandings,
   getCompetitionMatchResults,
   getCompetitionRounds,
@@ -19,31 +18,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CompetitionSelector } from "./CompetitionSelector";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { RoundFilter } from "./RoundFilter";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { MatchCard } from "@/components/competitions/MatchCard";
-import { resolveActiveCompetition } from "@/lib/active-competition";
+import { resolveFilterContext } from "@/lib/filter-context";
 
 export default async function StandingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ competition?: string; round?: string }>;
+  searchParams: Promise<{ scope?: string; competition?: string; round?: string }>;
 }) {
-  const { competition: competitionSlug, round: roundIdParam } = await searchParams;
+  const sp = await searchParams;
+  const roundIdParam = sp.round;
 
-  const competitions = await getCompetitiveCompetitions();
+  const ctx = await resolveFilterContext(sp, {
+    allowedScopes: ["competition"],
+    defaultScope: "competition",
+  });
 
-  if (competitions.length === 0) {
+  if (ctx.competitions.length === 0 || !ctx.competition) {
     return (
-      <div className="space-y-4">
+      <div className="p-6 space-y-4">
         <h2 className="text-xl font-semibold">Standings</h2>
         <p className="text-muted-foreground text-sm">No competitive competitions found.</p>
       </div>
     );
   }
 
-  const activeComp = await resolveActiveCompetition(competitions, competitionSlug);
+  const activeComp = ctx.competition;
   const activeId = activeComp.id;
 
   const allRounds = await getCompetitionRounds(activeId);
@@ -77,10 +80,18 @@ export default async function StandingsPage({
   const sortedRounds = [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-xl font-semibold">Standings</h2>
-        <CompetitionSelector competitions={competitions} activeSlug={activeComp.slug} />
+        <FilterBar
+          basePath="/standings"
+          mode="competition-only"
+          scope="competition"
+          activeCenterSlug={null}
+          activeCompetitionSlug={activeComp.slug}
+          centers={ctx.centers}
+          competitions={ctx.competitions}
+        />
       </div>
 
       {poolRounds.length > 1 && (

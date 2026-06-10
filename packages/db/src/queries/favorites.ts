@@ -9,6 +9,7 @@ import {
   sm5GameTeam,
   sm5Scorecard,
   center,
+  competition,
   player,
 } from "../schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
@@ -42,9 +43,11 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      competitionName: competition.name,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
+    .leftJoin(competition, eq(game.competitionId, competition.id))
     .where(inArray(game.id, gameIds));
 
   const teamRows = await db
@@ -79,6 +82,7 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
       outcome: row.outcome,
       centerName: row.centerName,
       description: row.description,
+      competitionName: row.competitionName,
       teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
         colourEnum: t.colourEnum,
         score: t.score,

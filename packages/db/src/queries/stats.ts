@@ -48,6 +48,7 @@ async function attachTeams(
     outcome: row.outcome,
     centerName: row.centerName,
     description: row.description,
+    competitionName: null,
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,

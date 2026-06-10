@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../client";
 import { center, game, sm5GameTeam, sm5Scorecard, sm5ScorecardMvp } from "../schema";
+import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type CenterListItem = {
   id: string;
@@ -52,7 +53,10 @@ export async function getCenterList(): Promise<CenterListItem[]> {
   }));
 }
 
-export async function getCenterPositionStats(): Promise<CenterPositionStat[]> {
+export async function getCenterPositionStats(
+  scopeFilter?: GameScopeFilter,
+): Promise<CenterPositionStat[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       centerId: center.id,
@@ -65,6 +69,7 @@ export async function getCenterPositionStats(): Promise<CenterPositionStat[]> {
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
     .innerJoin(center, eq(game.centerId, center.id))
+    .where(conditions.length ? and(...conditions) : undefined)
     .groupBy(center.id, center.name, center.countryCode, center.siteCode, sm5Scorecard.position);
 
   return rows.map((r) => ({
@@ -129,6 +134,23 @@ export async function getMostRecentCenterSlug(): Promise<string | null> {
   return row?.slug ?? null;
 }
 
+/**
+ * Center with the most recent *social* (non-competition, non-excluded) game.
+ * Used as the default center for the Nightly page.
+ */
+export async function getMostRecentSocialCenterSlug(): Promise<string | null> {
+  const [row] = await db
+    .select({
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(and(isNull(game.competitionId), eq(game.exclude, false)))
+    .orderBy(desc(game.startTime))
+    .limit(1);
+  return row?.slug ?? null;
+}
+
 export async function getCenterGameCount(id: string): Promise<number> {
   const [row] = await db
     .select({ count: count(game.id) })
@@ -177,7 +199,10 @@ export type MvpBoxPlotItem = {
   max: number;
 };
 
-export async function getGlobalMvpBoxPlot(): Promise<MvpBoxPlotItem[]> {
+export async function getGlobalMvpBoxPlot(
+  scopeFilter?: GameScopeFilter,
+): Promise<MvpBoxPlotItem[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -188,6 +213,8 @@ export async function getGlobalMvpBoxPlot(): Promise<MvpBoxPlotItem[]> {
       max: sql<number>`MAX(${sm5Scorecard.mvpPoints})::float`,
     })
     .from(sm5Scorecard)
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(conditions.length ? and(...conditions) : undefined)
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -233,7 +260,10 @@ export type MvpComponentItem = {
   avgPoints: number;
 };
 
-export async function getGlobalMvpComponents(): Promise<MvpComponentItem[]> {
+export async function getGlobalMvpComponents(
+  scopeFilter?: GameScopeFilter,
+): Promise<MvpComponentItem[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -242,6 +272,8 @@ export async function getGlobalMvpComponents(): Promise<MvpComponentItem[]> {
     })
     .from(sm5ScorecardMvp)
     .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(conditions.length ? and(...conditions) : undefined)
     .groupBy(sm5Scorecard.position, sm5ScorecardMvp.component)
     .orderBy(sm5Scorecard.position);
 

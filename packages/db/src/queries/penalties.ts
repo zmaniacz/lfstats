@@ -5,6 +5,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
+  competition,
   competitionMatch,
   competitionMatchGame,
   competitionRound,
@@ -14,6 +15,7 @@ import {
   sm5Scorecard,
   sm5ScorecardMvp,
 } from "../schema";
+import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type PenaltyRecord = {
   id: string;
@@ -55,6 +57,7 @@ export type CompetitionPenaltyRecord = PenaltyRecord & {
   gameStartTime: Date;
   centerName: string;
   gameSlug: string;
+  competitionName: string | null;
   // Competition match context (null if game not assigned to a match)
   roundNumber: number | null;
   matchNumber: number | null;
@@ -63,9 +66,15 @@ export type CompetitionPenaltyRecord = PenaltyRecord & {
   team2ShortName: string | null;
 };
 
-export async function getCompetitionPenalties(
-  competitionId: string,
+/**
+ * Penalties across any scope (social / competition / all). Competition match
+ * context (round/match/game numbers, team short names, competition name) comes
+ * from left joins, so it is simply null for social games.
+ */
+export async function getPenalties(
+  scopeFilter: GameScopeFilter,
 ): Promise<CompetitionPenaltyRecord[]> {
+  const scopeConditions = gameScopeConditions(scopeFilter);
   return db
     .select({
       id: sm5GamePenalty.id,
@@ -84,6 +93,7 @@ export async function getCompetitionPenalties(
       gameStartTime: game.startTime,
       centerName: center.name,
       gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      competitionName: competition.name,
       roundNumber: competitionRound.roundNumber,
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
@@ -98,16 +108,24 @@ export async function getCompetitionPenalties(
     .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
     .innerJoin(game, eq(game.id, sm5GamePenalty.gameId))
     .innerJoin(center, eq(center.id, game.centerId))
+    .leftJoin(competition, eq(competition.id, game.competitionId))
     .leftJoin(competitionMatchGame, eq(competitionMatchGame.gameId, game.id))
     .leftJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .leftJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
-    .where(eq(game.competitionId, competitionId))
+    .where(scopeConditions.length ? and(...scopeConditions) : undefined)
     .orderBy(
       asc(competitionRound.roundNumber),
       asc(competitionMatch.matchNumber),
       asc(competitionMatchGame.gameNumber),
       asc(sm5GamePenalty.time),
     );
+}
+
+/** Back-compat wrapper: penalties for one competition. */
+export async function getCompetitionPenalties(
+  competitionId: string,
+): Promise<CompetitionPenaltyRecord[]> {
+  return getPenalties({ scope: "competition", competitionId });
 }
 
 export async function getTeamPenaltyTotals(gameId: string): Promise<Map<string, number>> {

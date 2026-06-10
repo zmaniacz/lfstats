@@ -18,6 +18,7 @@ import {
 } from "../schema";
 import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
+import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
 import { getPlayerPictureUrl } from "../lib/player-pictures";
@@ -2296,6 +2297,69 @@ export async function getCompetitionMedicPlayers(
 }
 
 // ---------------------------------------------------------------------------
+// Scope-aware leaderboard game selection
+// ---------------------------------------------------------------------------
+
+/** Selects games for an aliased `g` game row matching the scope. */
+function scopeWhereForAlias(scopeFilter: GameScopeFilter): SQL {
+  switch (scopeFilter.scope) {
+    case "social":
+      return scopeFilter.centerId
+        ? sql`g.competition_id IS NULL AND g.center_id = ${scopeFilter.centerId}`
+        : sql`g.competition_id IS NULL`;
+    case "competition":
+      return scopeFilter.competitionId
+        ? sql`g.competition_id = ${scopeFilter.competitionId}`
+        : sql`g.competition_id IS NOT NULL`;
+    case "all":
+      return sql`TRUE`;
+  }
+}
+
+/**
+ * WHERE conditions selecting player scorecards for a leaderboard, across any
+ * scope (social / competition / all). For a *specific* competition the games are
+ * selected via the match/round structure so the pool/finals toggles apply; for
+ * every other scope they are selected straight from the game table by scope.
+ * Mercenaries are excluded unless `showMercs`. Returns null when a specific
+ * competition's round selection is empty (caller should return no rows).
+ */
+function leaderboardScopeConditions(
+  scopeFilter: GameScopeFilter,
+  options: CompetitionTopPlayersOptions,
+  extra: SQL[] = [],
+): SQL[] | null {
+  const { showPool = true, showFinals = false, showMercs = false } = options;
+
+  let gameSelect: SQL;
+  if (scopeFilter.scope === "competition" && scopeFilter.competitionId) {
+    const roundTypes: string[] = [];
+    if (showPool) roundTypes.push("pool");
+    if (showFinals) roundTypes.push("finals");
+    if (roundTypes.length === 0) return null;
+    const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
+    gameSelect = sql`${sm5GameTeam.gameId} IN (
+      SELECT cmg.game_id
+      FROM competition_match_game cmg
+      JOIN competition_match cm ON cm.id = cmg.match_id
+      JOIN competition_round cr ON cr.id = cm.round_id
+      JOIN game g ON g.id = cmg.game_id
+      WHERE cm.competition_id = ${scopeFilter.competitionId}
+        AND cr.type IN (${sql.raw(roundTypeList)})
+        AND g.exclude = false
+    )`;
+  } else {
+    gameSelect = sql`${sm5GameTeam.gameId} IN (
+      SELECT g.id FROM game g WHERE g.exclude = false AND (${scopeWhereForAlias(scopeFilter)})
+    )`;
+  }
+
+  const conditions: SQL[] = [gameSelect, sql`${sm5Scorecard.playerId} IS NOT NULL`, ...extra];
+  if (!showMercs) conditions.push(eq(sm5Scorecard.isMercenary, false));
+  return conditions;
+}
+
+// ---------------------------------------------------------------------------
 // Per-position scorecard leaderboards (individual game scorecards, not averages)
 // ---------------------------------------------------------------------------
 
@@ -2310,37 +2374,14 @@ export type CompetitionPositionScorecard = {
 };
 
 export async function getCompetitionPositionScorecards(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   position: number,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionPositionScorecard[]> {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  const roundTypes: string[] = [];
-  if (showPool) roundTypes.push("pool");
-  if (showFinals) roundTypes.push("finals");
-  if (roundTypes.length === 0) return [];
-
-  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
-
-  const conditions = [
-    sql`${sm5GameTeam.gameId} IN (
-      SELECT cmg.game_id
-      FROM competition_match_game cmg
-      JOIN competition_match cm ON cm.id = cmg.match_id
-      JOIN competition_round cr ON cr.id = cm.round_id
-      JOIN game g ON g.id = cmg.game_id
-      WHERE cm.competition_id = ${competitionId}
-        AND cr.type IN (${sql.raw(roundTypeList)})
-        AND g.exclude = false
-    )`,
-    sql`${sm5Scorecard.playerId} IS NOT NULL`,
+  const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, position),
-  ];
-
-  if (!showMercs) {
-    conditions.push(eq(sm5Scorecard.isMercenary, false));
-  }
+  ]);
+  if (!conditions) return [];
 
   const rows = await db
     .select({
@@ -2398,35 +2439,11 @@ export type CompetitionTotalTimeItem = {
 };
 
 async function getCompetitionAllPositionRows(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions,
 ) {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  const roundTypes: string[] = [];
-  if (showPool) roundTypes.push("pool");
-  if (showFinals) roundTypes.push("finals");
-  if (roundTypes.length === 0) return [];
-
-  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
-
-  const conditions = [
-    sql`${sm5GameTeam.gameId} IN (
-      SELECT cmg.game_id
-      FROM competition_match_game cmg
-      JOIN competition_match cm ON cm.id = cmg.match_id
-      JOIN competition_round cr ON cr.id = cm.round_id
-      JOIN game g ON g.id = cmg.game_id
-      WHERE cm.competition_id = ${competitionId}
-        AND cr.type IN (${sql.raw(roundTypeList)})
-        AND g.exclude = false
-    )`,
-    sql`${sm5Scorecard.playerId} IS NOT NULL`,
-  ];
-
-  if (!showMercs) {
-    conditions.push(eq(sm5Scorecard.isMercenary, false));
-  }
+  const conditions = leaderboardScopeConditions(scopeFilter, options);
+  if (!conditions) return [];
 
   return db
     .select({
@@ -2445,10 +2462,10 @@ async function getCompetitionAllPositionRows(
 }
 
 export async function getCompetitionGamesPlayed(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionGamesPlayedItem[]> {
-  const rows = await getCompetitionAllPositionRows(competitionId, options);
+  const rows = await getCompetitionAllPositionRows(scopeFilter, options);
   return rows
     .map((r) => ({
       playerId: r.playerId,
@@ -2461,10 +2478,10 @@ export async function getCompetitionGamesPlayed(
 }
 
 export async function getCompetitionTotalScore(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionTotalScoreItem[]> {
-  const rows = await getCompetitionAllPositionRows(competitionId, options);
+  const rows = await getCompetitionAllPositionRows(scopeFilter, options);
   return rows
     .map((r) => ({
       playerId: r.playerId,
@@ -2477,10 +2494,10 @@ export async function getCompetitionTotalScore(
 }
 
 export async function getCompetitionTotalTime(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionTotalTimeItem[]> {
-  const rows = await getCompetitionAllPositionRows(competitionId, options);
+  const rows = await getCompetitionAllPositionRows(scopeFilter, options);
   return rows
     .map((r) => ({
       playerId: r.playerId,
@@ -2512,35 +2529,11 @@ export type CompetitionMiscMischiefItem = {
 };
 
 export async function getCompetitionMiscMischief(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionMiscMischiefItem[]> {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  const roundTypes: string[] = [];
-  if (showPool) roundTypes.push("pool");
-  if (showFinals) roundTypes.push("finals");
-  if (roundTypes.length === 0) return [];
-
-  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
-
-  const conditions = [
-    sql`${sm5GameTeam.gameId} IN (
-      SELECT cmg.game_id
-      FROM competition_match_game cmg
-      JOIN competition_match cm ON cm.id = cmg.match_id
-      JOIN competition_round cr ON cr.id = cm.round_id
-      JOIN game g ON g.id = cmg.game_id
-      WHERE cm.competition_id = ${competitionId}
-        AND cr.type IN (${sql.raw(roundTypeList)})
-        AND g.exclude = false
-    )`,
-    sql`${sm5Scorecard.playerId} IS NOT NULL`,
-  ];
-
-  if (!showMercs) {
-    conditions.push(eq(sm5Scorecard.isMercenary, false));
-  }
+  const conditions = leaderboardScopeConditions(scopeFilter, options);
+  if (!conditions) return [];
 
   const rows = await db
     .select({
@@ -2600,35 +2593,11 @@ export type CompetitionNukeNonsenseItem = {
 };
 
 export async function getCompetitionNukeNonsense(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionNukeNonsenseItem[]> {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  const roundTypes: string[] = [];
-  if (showPool) roundTypes.push("pool");
-  if (showFinals) roundTypes.push("finals");
-  if (roundTypes.length === 0) return [];
-
-  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
-
-  const conditions = [
-    sql`${sm5GameTeam.gameId} IN (
-      SELECT cmg.game_id
-      FROM competition_match_game cmg
-      JOIN competition_match cm ON cm.id = cmg.match_id
-      JOIN competition_round cr ON cr.id = cm.round_id
-      JOIN game g ON g.id = cmg.game_id
-      WHERE cm.competition_id = ${competitionId}
-        AND cr.type IN (${sql.raw(roundTypeList)})
-        AND g.exclude = false
-    )`,
-    sql`${sm5Scorecard.playerId} IS NOT NULL`,
-  ];
-
-  if (!showMercs) {
-    conditions.push(eq(sm5Scorecard.isMercenary, false));
-  }
+  const conditions = leaderboardScopeConditions(scopeFilter, options);
+  if (!conditions) return [];
 
   const rows = await db
     .select({
@@ -2677,35 +2646,11 @@ export type CompetitionMissileMalarkeyItem = {
 };
 
 export async function getCompetitionMissileMalarkey(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionMissileMalarkeyItem[]> {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  const roundTypes: string[] = [];
-  if (showPool) roundTypes.push("pool");
-  if (showFinals) roundTypes.push("finals");
-  if (roundTypes.length === 0) return [];
-
-  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
-
-  const conditions = [
-    sql`${sm5GameTeam.gameId} IN (
-      SELECT cmg.game_id
-      FROM competition_match_game cmg
-      JOIN competition_match cm ON cm.id = cmg.match_id
-      JOIN competition_round cr ON cr.id = cm.round_id
-      JOIN game g ON g.id = cmg.game_id
-      WHERE cm.competition_id = ${competitionId}
-        AND cr.type IN (${sql.raw(roundTypeList)})
-        AND g.exclude = false
-    )`,
-    sql`${sm5Scorecard.playerId} IS NOT NULL`,
-  ];
-
-  if (!showMercs) {
-    conditions.push(eq(sm5Scorecard.isMercenary, false));
-  }
+  const conditions = leaderboardScopeConditions(scopeFilter, options);
+  if (!conditions) return [];
 
   const rows = await db
     .select({
@@ -2749,35 +2694,11 @@ export type CompetitionMedicTomfooleryItem = {
 };
 
 export async function getCompetitionMedicTomfoolery(
-  competitionId: string,
+  scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
 ): Promise<CompetitionMedicTomfooleryItem[]> {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  const roundTypes: string[] = [];
-  if (showPool) roundTypes.push("pool");
-  if (showFinals) roundTypes.push("finals");
-  if (roundTypes.length === 0) return [];
-
-  const roundTypeList = roundTypes.map((t) => `'${t}'`).join(", ");
-
-  const conditions = [
-    sql`${sm5GameTeam.gameId} IN (
-      SELECT cmg.game_id
-      FROM competition_match_game cmg
-      JOIN competition_match cm ON cm.id = cmg.match_id
-      JOIN competition_round cr ON cr.id = cm.round_id
-      JOIN game g ON g.id = cmg.game_id
-      WHERE cm.competition_id = ${competitionId}
-        AND cr.type IN (${sql.raw(roundTypeList)})
-        AND g.exclude = false
-    )`,
-    sql`${sm5Scorecard.playerId} IS NOT NULL`,
-  ];
-
-  if (!showMercs) {
-    conditions.push(eq(sm5Scorecard.isMercenary, false));
-  }
+  const conditions = leaderboardScopeConditions(scopeFilter, options);
+  if (!conditions) return [];
 
   const rows = await db
     .select({
