@@ -13,8 +13,9 @@ Tracking list for known bugs and planned features.
     rounds simultaneously, so the UI must handle both round types gracefully on
     the same page
 
-- **App-wide filter state management**: Need a consistent strategy for persisting
-  and sharing filter state (e.g. competition, nightly filters) as users navigate
-  between pages. Currently filters reset on navigation, which breaks user
-  expectations. Requirements and overall approach TBD — needs design discussion
-  before implementation.
+- **Upload to Events**: Need to change upload behavior to be able to upload directly to
+  a competition. Should use the competition slug as an S3 prefix then have chomper
+  read the prefix to assign an uploaded game to a competition. Also want to be able to
+  toggle events between 'pre-launch', 'upcoming', 'active' and 'ended'. Upload
+  shoudl only be avaialble for active events. 'pre-launch' are hidden except to admins.
+  'upcoming' and 'active' given priority on main page.
