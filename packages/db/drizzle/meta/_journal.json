@@ -190,6 +190,13 @@
       "when": 1781036759957,
       "tag": "0026_dry_garia",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1781068563254,
+      "tag": "0027_dazzling_strong_guy",
+      "breakpoints": true
     }
   ]
 }

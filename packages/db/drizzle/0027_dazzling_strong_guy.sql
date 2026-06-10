@@ -1,0 +1,1 @@
+ALTER TABLE "competition_team_player" ADD COLUMN "has_profile_picture" boolean DEFAULT false NOT NULL;

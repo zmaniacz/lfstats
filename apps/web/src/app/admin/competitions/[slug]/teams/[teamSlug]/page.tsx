@@ -33,6 +33,7 @@ import {
   updateTeamAction,
 } from "./actions";
 import { ParticipantActions } from "./ParticipantActions";
+import { PlayerPictureUpload } from "./PlayerPictureUpload";
 import { TeamLogoUpload } from "./TeamLogoUpload";
 
 export default async function TeamRosterPage({
@@ -154,6 +155,7 @@ export default async function TeamRosterPage({
                   <TableHead>Callsign</TableHead>
                   <TableHead>IPL ID</TableHead>
                   <TableHead className="text-right">Games</TableHead>
+                  <TableHead>Picture</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -180,6 +182,15 @@ export default async function TeamRosterPage({
                       </a>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
+                    <TableCell>
+                      <PlayerPictureUpload
+                        competitionId={id}
+                        teamId={teamId}
+                        entryId={entry.id}
+                        callsign={entry.currentCallsign}
+                        hasProfilePicture={entry.hasProfilePicture}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <DeleteEntityButton
                         id={entry.id}
@@ -210,6 +221,7 @@ export default async function TeamRosterPage({
                   <TableHead>Callsign</TableHead>
                   <TableHead>IPL ID</TableHead>
                   <TableHead className="text-right">Games</TableHead>
+                  <TableHead>Picture</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -236,6 +248,15 @@ export default async function TeamRosterPage({
                       </a>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
+                    <TableCell>
+                      <PlayerPictureUpload
+                        competitionId={id}
+                        teamId={teamId}
+                        entryId={entry.id}
+                        callsign={entry.currentCallsign}
+                        hasProfilePicture={entry.hasProfilePicture}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <DeleteEntityButton
                         id={entry.id}

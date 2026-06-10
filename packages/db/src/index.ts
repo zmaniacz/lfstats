@@ -3,6 +3,7 @@
 
 export { db, getDb, initDb } from "./client";
 export { getTeamLogoUrl } from "./lib/team-logos";
+export { getPlayerPictureUrl } from "./lib/player-pictures";
 export * from "./queries/admin";
 export * from "./queries/penalties";
 export * from "./queries/competition-tournament";

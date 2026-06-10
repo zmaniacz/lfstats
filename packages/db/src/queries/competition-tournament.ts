@@ -53,6 +53,7 @@ export type CompetitionTeamRosterEntry = {
   iplId: string;
   currentCallsign: string;
   isMercenary: boolean;
+  hasProfilePicture: boolean;
   gamesPlayed: number;
 };
 
@@ -219,6 +220,16 @@ export async function setCompetitionTeamLogo(id: string, hasLogo: boolean): Prom
   await db.update(competitionTeam).set({ hasLogo }).where(eq(competitionTeam.id, id));
 }
 
+export async function setCompetitionTeamPlayerPicture(
+  entryId: string,
+  hasProfilePicture: boolean,
+): Promise<void> {
+  await db
+    .update(competitionTeamPlayer)
+    .set({ hasProfilePicture })
+    .where(eq(competitionTeamPlayer.id, entryId));
+}
+
 export async function getCompetitionTeamRoster(
   teamId: string,
 ): Promise<CompetitionTeamRosterEntry[]> {
@@ -229,6 +240,7 @@ export async function getCompetitionTeamRoster(
       iplId: player.iplId,
       currentCallsign: player.currentCallsign,
       isMercenary: competitionTeamPlayer.isMercenary,
+      hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
       gamesPlayed: sql<number>`(
         SELECT count(*)::int FROM sm5_scorecard sc
         WHERE sc.player_id = ${player.id}

@@ -11,6 +11,7 @@ import {
   updateCompetitionTeam,
   setPlayerMercenary,
   setCompetitionTeamLogo,
+  setCompetitionTeamPlayerPicture,
   getCompetitionById,
   getCompetitionTeamById,
   type PlayerSearchResult,
@@ -19,7 +20,7 @@ import { auth } from "@/auth";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const ALLOWED_LOGO_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
 async function requireAdmin() {
   const session = await auth();
@@ -121,7 +122,9 @@ export async function getTeamLogoUploadUrlAction(
   await requireAdmin();
 
   if (
-    !ALLOWED_LOGO_CONTENT_TYPES.includes(contentType as (typeof ALLOWED_LOGO_CONTENT_TYPES)[number])
+    !ALLOWED_IMAGE_CONTENT_TYPES.includes(
+      contentType as (typeof ALLOWED_IMAGE_CONTENT_TYPES)[number],
+    )
   ) {
     throw new Error(`Unsupported image type: ${contentType}`);
   }
@@ -152,4 +155,51 @@ export async function removeTeamLogoAction(competitionId: string, teamId: string
   await setCompetitionTeamLogo(teamId, false);
   await revalidateTeamPaths(competitionId, teamId);
   revalidatePath(`/competitions/standings`);
+}
+
+export async function getPlayerPictureUploadUrlAction(
+  competitionId: string,
+  teamId: string,
+  entryId: string,
+  contentType: string,
+): Promise<string> {
+  await requireAdmin();
+
+  if (
+    !ALLOWED_IMAGE_CONTENT_TYPES.includes(
+      contentType as (typeof ALLOWED_IMAGE_CONTENT_TYPES)[number],
+    )
+  ) {
+    throw new Error(`Unsupported image type: ${contentType}`);
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: getImagesBucket(),
+    Key: entryId,
+    ContentType: contentType,
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return getSignedUrl(getS3Client() as any, command, { expiresIn: 300 });
+}
+
+export async function confirmPlayerPictureUploadAction(
+  competitionId: string,
+  teamId: string,
+  entryId: string,
+): Promise<void> {
+  await requireAdmin();
+  await setCompetitionTeamPlayerPicture(entryId, true);
+  await revalidateTeamPaths(competitionId, teamId);
+}
+
+export async function removePlayerPictureAction(
+  competitionId: string,
+  teamId: string,
+  entryId: string,
+): Promise<void> {
+  await requireAdmin();
+  const s3 = getS3Client();
+  await s3.send(new DeleteObjectCommand({ Bucket: getImagesBucket(), Key: entryId }));
+  await setCompetitionTeamPlayerPicture(entryId, false);
+  await revalidateTeamPaths(competitionId, teamId);
 }
