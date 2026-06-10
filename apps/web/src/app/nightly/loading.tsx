@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { NightlySkeleton } from "@/components/nightly/NightlySkeleton";
 
 export default function NightlyLoading() {
   return (
@@ -14,14 +15,7 @@ export default function NightlyLoading() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Skeleton className="h-6 w-24" />
-        <div className="space-y-1">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      </div>
+      <NightlySkeleton />
     </div>
   );
 }

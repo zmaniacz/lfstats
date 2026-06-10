@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { getCompetitionAllStarRankings } from "@lfstats/db";
+import { Suspense } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
-import { AllStarPositionTable } from "@/components/competitions/AllStarPositionTable";
-import { POSITIONS } from "@/lib/positions";
+import { AllStarContent } from "@/components/competitions/AllStarContent";
+import { AllStarSkeleton } from "@/components/competitions/AllStarSkeleton";
 import { resolveFilterContext } from "@/lib/filter-context";
 
 export default async function AllStarPage({
@@ -41,7 +41,8 @@ export default async function AllStarPage({
 
   const activeComp = ctx.competition;
   const options = { showPool, showFinals, showMercs };
-  const rankings = await getCompetitionAllStarRankings(activeComp.id, options);
+
+  const contentKey = [activeComp.slug, showPool, showFinals, showMercs].join("|");
 
   return (
     <div className="p-6 space-y-6">
@@ -66,9 +67,9 @@ export default async function AllStarPage({
         showMercs={showMercs}
       />
 
-      {([1, 2, 3, 4, 5] as const).map((pos) => (
-        <AllStarPositionTable key={pos} title={POSITIONS[pos].label} players={rankings[pos]} />
-      ))}
+      <Suspense key={contentKey} fallback={<AllStarSkeleton />}>
+        <AllStarContent competitionId={activeComp.id} options={options} />
+      </Suspense>
     </div>
   );
 }

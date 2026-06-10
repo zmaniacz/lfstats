@@ -1,23 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function TableSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-32" />
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-full" />
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
+import { AllStarSkeleton } from "@/components/competitions/AllStarSkeleton";
 
 export default function AllStarLoading() {
   return (
@@ -31,9 +16,7 @@ export default function AllStarLoading() {
         <Skeleton className="h-8 w-28" />
         <Skeleton className="h-8 w-28" />
       </div>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <TableSkeleton key={i} />
-      ))}
+      <AllStarSkeleton />
     </div>
   );
 }
