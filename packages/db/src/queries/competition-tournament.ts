@@ -3267,6 +3267,7 @@ export async function getExcludedCompetitionGames(
 export type CompetitionPlayerStatRow = {
   ipl_id: string | null;
   player_name: string;
+  team_name: string;
   games_played: number;
   wins: number | null;
   losses: number | null;
@@ -3330,7 +3331,7 @@ export type CompetitionPlayerStatRow = {
   medic_total_boosts: number | null;
 };
 
-const ZERO_PLAYER_STATS: Omit<CompetitionPlayerStatRow, "ipl_id" | "player_name"> = {
+const ZERO_PLAYER_STATS: Omit<CompetitionPlayerStatRow, "ipl_id" | "player_name" | "team_name"> = {
   games_played: 0,
   wins: null,
   losses: null,
@@ -3394,9 +3395,7 @@ const ZERO_PLAYER_STATS: Omit<CompetitionPlayerStatRow, "ipl_id" | "player_name"
   medic_total_boosts: null,
 };
 
-export async function getCompetitionPlayerStats(
-  slug: string,
-): Promise<{
+export async function getCompetitionPlayerStats(slug: string): Promise<{
   [key: string]: CompetitionPlayerStatRow[];
   alltime: CompetitionPlayerStatRow[];
 } | null> {
@@ -3407,10 +3406,11 @@ export async function getCompetitionPlayerStats(
   if (!comp) return null;
 
   const rosterRows = await db
-    .selectDistinct({
+    .selectDistinctOn([player.id], {
       playerId: player.id,
       iplId: player.iplId,
       callsign: player.currentCallsign,
+      teamName: competitionTeam.name,
     })
     .from(competitionTeam)
     .innerJoin(
@@ -3418,7 +3418,8 @@ export async function getCompetitionPlayerStats(
       eq(competitionTeamPlayer.competitionTeamId, competitionTeam.id),
     )
     .innerJoin(player, eq(player.id, competitionTeamPlayer.playerId))
-    .where(eq(competitionTeam.competitionId, comp.id));
+    .where(eq(competitionTeam.competitionId, comp.id))
+    .orderBy(player.id, asc(competitionTeamPlayer.isMercenary));
 
   if (rosterRows.length === 0) return { [slug]: [], alltime: [] };
 
@@ -3614,14 +3615,16 @@ export async function getCompetitionPlayerStats(
     r: (typeof compRows)[number] | undefined,
     iplId: string | null,
     callsign: string,
+    teamName: string,
   ): CompetitionPlayerStatRow {
     if (!r) {
-      return { ipl_id: iplId, player_name: callsign, ...ZERO_PLAYER_STATS };
+      return { ipl_id: iplId, player_name: callsign, team_name: teamName, ...ZERO_PLAYER_STATS };
     }
     const n = (v: number | null) => (v !== null ? Number(v) : null);
     return {
       ipl_id: r.iplId,
       player_name: r.callsign,
+      team_name: teamName,
       games_played: Number(r.gamesPlayed),
       wins: Number(r.wins),
       losses: Number(r.losses),
@@ -3690,7 +3693,9 @@ export async function getCompetitionPlayerStats(
   const alltimeMap = new Map(alltimeRows.map((r) => [r.playerId, r]));
 
   return {
-    [slug]: rosterRows.map((p) => mapRow(compMap.get(p.playerId), p.iplId, p.callsign)),
-    alltime: rosterRows.map((p) => mapRow(alltimeMap.get(p.playerId), p.iplId, p.callsign)),
+    [slug]: rosterRows.map((p) => mapRow(compMap.get(p.playerId), p.iplId, p.callsign, p.teamName)),
+    alltime: rosterRows.map((p) =>
+      mapRow(alltimeMap.get(p.playerId), p.iplId, p.callsign, p.teamName),
+    ),
   };
 }
