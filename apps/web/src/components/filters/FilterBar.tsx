@@ -3,9 +3,7 @@
 
 "use client";
 
-import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -47,12 +45,9 @@ export function FilterBar({
   children?: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   function navigate(next: { scope: Scope; center: string | null; competition: string | null }) {
-    startTransition(() => {
-      router.push(buildFilterUrl(basePath, next, extras));
-    });
+    router.push(buildFilterUrl(basePath, next, extras));
   }
 
   function handleScope(value: string) {
@@ -79,13 +74,7 @@ export function FilterBar({
   const allowAllOption = mode === "generic";
 
   return (
-    <div
-      aria-busy={isPending}
-      className={`flex items-center gap-2 flex-wrap transition-opacity ${
-        isPending ? "opacity-60 pointer-events-none" : ""
-      }`}
-    >
-      {isPending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+    <div className="flex items-center gap-2 flex-wrap">
       {showScopeToggle && (
         <ToggleGroup
           type="single"

@@ -3,9 +3,7 @@
 
 "use client";
 
-import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { buildFilterUrl, type FilterUrlState } from "@/components/filters/filter-url";
@@ -24,14 +22,11 @@ export function GamesDateFilter({
   date: string;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const value = (e.currentTarget.elements.namedItem("date") as HTMLInputElement).value;
-    startTransition(() => {
-      router.push(buildFilterUrl(basePath, state, { date: value || null }));
-    });
+    router.push(buildFilterUrl(basePath, state, { date: value || null }));
   }
 
   return (
@@ -40,11 +35,10 @@ export function GamesDateFilter({
         name="date"
         placeholder="Search date (e.g. 2026-06)"
         defaultValue={date}
-        disabled={isPending}
         className="w-56"
       />
-      <Button type="submit" variant="outline" size="sm" disabled={isPending}>
-        {isPending ? <Loader2 className="size-4 animate-spin" /> : "Search"}
+      <Button type="submit" variant="outline" size="sm">
+        Search
       </Button>
     </form>
   );
