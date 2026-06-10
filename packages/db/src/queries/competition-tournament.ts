@@ -20,6 +20,7 @@ import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "
 import type { PlayerMedicHitsItem } from "./players";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
+import { getPlayerPictureUrl } from "../lib/player-pictures";
 
 // ---------------------------------------------------------------------------
 // Competition lookup
@@ -3317,6 +3318,7 @@ export async function getExcludedCompetitionGames(
 export type CompetitionPlayerStatRow = {
   ipl_id: string | null;
   player_name: string;
+  player_picture_url: string | null;
   team_name: string;
   team_logo_url: string | null;
   games_played: number;
@@ -3384,7 +3386,7 @@ export type CompetitionPlayerStatRow = {
 
 const ZERO_PLAYER_STATS: Omit<
   CompetitionPlayerStatRow,
-  "ipl_id" | "player_name" | "team_name" | "team_logo_url"
+  "ipl_id" | "player_name" | "player_picture_url" | "team_name" | "team_logo_url"
 > = {
   games_played: 0,
   wins: null,
@@ -3467,6 +3469,8 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       teamName: competitionTeam.name,
       teamId: competitionTeam.id,
       teamHasLogo: competitionTeam.hasLogo,
+      rosterEntryId: competitionTeamPlayer.id,
+      hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
     })
     .from(competitionTeam)
     .innerJoin(
@@ -3671,6 +3675,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
     r: (typeof compRows)[number] | undefined,
     iplId: string | null,
     callsign: string,
+    playerPictureUrl: string | null,
     teamName: string,
     teamLogoUrl: string | null,
   ): CompetitionPlayerStatRow {
@@ -3678,6 +3683,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       return {
         ipl_id: iplId,
         player_name: callsign,
+        player_picture_url: playerPictureUrl,
         team_name: teamName,
         team_logo_url: teamLogoUrl,
         ...ZERO_PLAYER_STATS,
@@ -3687,6 +3693,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
     return {
       ipl_id: r.iplId,
       player_name: r.callsign,
+      player_picture_url: playerPictureUrl,
       team_name: teamName,
       team_logo_url: teamLogoUrl,
       games_played: Number(r.gamesPlayed),
@@ -3762,6 +3769,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         compMap.get(p.playerId),
         p.iplId,
         p.callsign,
+        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId) : null,
         p.teamName,
         p.teamHasLogo ? getTeamLogoUrl(p.teamId) : null,
       ),
@@ -3771,6 +3779,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         alltimeMap.get(p.playerId),
         p.iplId,
         p.callsign,
+        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId) : null,
         p.teamName,
         p.teamHasLogo ? getTeamLogoUrl(p.teamId) : null,
       ),
