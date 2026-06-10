@@ -22,6 +22,7 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   const [isPendingSearch, setIsPendingSearch] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [isRefreshing, startRefreshTransition] = useTransition();
   const router = useRouter();
   const isPendingAdd = isSubmittingAdd || isRefreshing;
@@ -42,9 +43,13 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   async function handleAdd(playerId: string) {
     setAddingId(playerId);
     setIsSubmittingAdd(true);
+    setAddError(null);
     try {
       await addAction(playerId);
       setAddingId(null);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Failed to add player");
+      return;
     } finally {
       setIsSubmittingAdd(false);
     }
@@ -66,6 +71,8 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
           {isPendingSearch ? "Searching…" : "Search"}
         </Button>
       </form>
+
+      {addError && <p className="text-sm text-destructive">{addError}</p>}
 
       {searched && results.length === 0 && (
         <p className="text-sm text-muted-foreground">No players found.</p>

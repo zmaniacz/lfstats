@@ -388,11 +388,44 @@ export async function getCompetitionTeamResultsByColor(
     }));
 }
 
+// A player may only be a non-mercenary roster member of one team per
+// competition (mercenary appearances on other teams are unrestricted).
+async function findConflictingRosterTeam(
+  competitionTeamId: string,
+  playerId: string,
+): Promise<{ id: string; name: string } | null> {
+  const [team] = await db
+    .select({ competitionId: competitionTeam.competitionId })
+    .from(competitionTeam)
+    .where(eq(competitionTeam.id, competitionTeamId));
+  if (!team) return null;
+
+  const [conflict] = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .from(competitionTeamPlayer)
+    .innerJoin(competitionTeam, eq(competitionTeam.id, competitionTeamPlayer.competitionTeamId))
+    .where(
+      and(
+        eq(competitionTeam.competitionId, team.competitionId),
+        eq(competitionTeamPlayer.playerId, playerId),
+        eq(competitionTeamPlayer.isMercenary, false),
+        ne(competitionTeamPlayer.competitionTeamId, competitionTeamId),
+      ),
+    );
+  return conflict ?? null;
+}
+
 export async function setPlayerMercenary(
   competitionTeamId: string,
   playerId: string,
   isMercenary: boolean,
 ): Promise<void> {
+  if (!isMercenary) {
+    const conflict = await findConflictingRosterTeam(competitionTeamId, playerId);
+    if (conflict) {
+      throw new Error(`Player is already on the roster of "${conflict.name}" for this competition`);
+    }
+  }
   await db
     .insert(competitionTeamPlayer)
     .values({ competitionTeamId, playerId, isMercenary })
@@ -442,6 +475,10 @@ export async function addPlayerToCompetitionTeam(
   competitionTeamId: string,
   playerId: string,
 ): Promise<void> {
+  const conflict = await findConflictingRosterTeam(competitionTeamId, playerId);
+  if (conflict) {
+    throw new Error(`Player is already on the roster of "${conflict.name}" for this competition`);
+  }
   await db
     .insert(competitionTeamPlayer)
     .values({ competitionTeamId, playerId })
