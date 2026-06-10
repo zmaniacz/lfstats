@@ -98,8 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       r.role === "uploader",
   );
 
-  const socialItems = [
-    ...socialNavItems,
+  const otherItems = [
     ...(isLoggedIn ? [{ title: "Favorites", url: "/favorites", icon: <HeartIcon /> }] : []),
     ...(canUpload ? [{ title: "Upload", url: "/upload", icon: <UploadSimpleIcon /> }] : []),
     ...(isAdmin ? [{ title: "Admin", url: "/admin", icon: <ShieldIcon /> }] : []),
@@ -131,7 +130,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain label="Social" items={socialItems} />
+        {otherItems.length > 0 && <NavMain label="User" items={otherItems} />}
+        <NavMain label="Social" items={socialNavItems} />
         <NavMain label="Competition" items={competitionNavItems} />
         <NavMain label="Browse" items={browseNavItems} />
       </SidebarContent>
