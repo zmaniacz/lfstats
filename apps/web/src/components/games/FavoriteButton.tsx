@@ -3,8 +3,8 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useOptimistic, useTransition } from "react";
+import { toast } from "sonner";
 import { HeartIcon } from "@phosphor-icons/react";
 
 type Props = {
@@ -15,24 +15,22 @@ type Props = {
 };
 
 export function FavoriteButton({ gameId, isFavorited, addAction, removeAction }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [optimisticFavorited, setOptimisticFavorited] = useOptimistic(isFavorited);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleClick() {
-    setIsSubmitting(true);
-    try {
-      if (isFavorited) {
-        await removeAction(gameId);
-      } else {
-        await addAction(gameId);
+  function handleClick() {
+    startTransition(async () => {
+      setOptimisticFavorited(!optimisticFavorited);
+      try {
+        if (isFavorited) {
+          await removeAction(gameId);
+        } else {
+          await addAction(gameId);
+        }
+      } catch {
+        // optimistic state reverts to `isFavorited` once the transition settles
+        toast.error(isFavorited ? "Failed to remove favorite" : "Failed to add favorite");
       }
-    } finally {
-      setIsSubmitting(false);
-    }
-    startRefreshTransition(() => {
-      router.refresh();
     });
   }
 
@@ -41,11 +39,11 @@ export function FavoriteButton({ gameId, isFavorited, addAction, removeAction }:
       type="button"
       onClick={handleClick}
       disabled={isPending}
-      aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
-      title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+      aria-label={optimisticFavorited ? "Remove from favorites" : "Add to favorites"}
+      title={optimisticFavorited ? "Remove from favorites" : "Add to favorites"}
       className="text-primary disabled:opacity-50 hover:opacity-70 transition-opacity"
     >
-      <HeartIcon size={24} weight={isFavorited ? "fill" : "regular"} />
+      <HeartIcon size={24} weight={optimisticFavorited ? "fill" : "regular"} />
     </button>
   );
 }

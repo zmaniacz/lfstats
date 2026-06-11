@@ -6,6 +6,7 @@ import { AppSessionProvider } from "@/components/session-provider";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
@@ -44,6 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </TooltipProvider>
           </AppSessionProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );
