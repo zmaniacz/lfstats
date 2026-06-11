@@ -3,8 +3,6 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,9 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateTime, formatGameName } from "@/lib/format";
 import { TEAM_COLORS } from "@/lib/team-colors";
-import { formatGameName, formatDateTime } from "@/lib/format";
 import type { UnassignedCompetitionGame } from "@lfstats/db";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 type Props = {
   team1Name: string;
@@ -50,7 +50,7 @@ export function MatchGameAssignForm({
     setTeam2GameTeamId("");
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData();
     formData.set("gameNumber", gameNumber);

@@ -3,7 +3,6 @@
 
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CompetitionDetail } from "@lfstats/db";
-import type { CenterListItem } from "@lfstats/db";
+import type { CenterListItem, CompetitionDetail } from "@lfstats/db";
+import { useState } from "react";
 
 type Props = {
   competition?: CompetitionDetail;
@@ -28,7 +27,7 @@ export function CompetitionForm({ competition, centers, action }: Props) {
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
   const [hostCenterId, setHostCenterId] = useState<string>(competition?.hostCenterId ?? "none");
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);

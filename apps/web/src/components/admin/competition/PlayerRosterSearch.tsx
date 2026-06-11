@@ -3,11 +3,11 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PlayerSearchResult } from "@lfstats/db";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 type Props = {
   teamId: string;
@@ -27,7 +27,7 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   const router = useRouter();
   const isPendingAdd = isSubmittingAdd || isRefreshing;
 
-  async function handleSearch(e: React.FormEvent) {
+  async function handleSearch(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!query.trim()) return;
     setIsPendingSearch(true);

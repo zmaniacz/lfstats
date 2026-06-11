@@ -3,8 +3,6 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 type Props = {
   nextRoundNumber: number;
@@ -28,7 +28,7 @@ export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
   const router = useRouter();
   const isPending = isSubmitting || isRefreshing;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);

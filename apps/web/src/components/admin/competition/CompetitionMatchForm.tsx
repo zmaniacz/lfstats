@@ -3,8 +3,6 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CompetitionTeamListItem } from "@lfstats/db";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 type Props = {
   roundId: string;
@@ -30,7 +30,7 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
   const router = useRouter();
   const isPending = isSubmitting || isRefreshing;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("team1Id", team1Id);

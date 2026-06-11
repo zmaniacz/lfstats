@@ -3,10 +3,10 @@
 
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { buildFilterUrl, type FilterUrlState } from "@/components/filters/filter-url";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 /**
  * Date-substring search for the games list. Preserves the active scope/center/
@@ -23,7 +23,7 @@ export function GamesDateFilter({
 }) {
   const router = useRouter();
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const value = (e.currentTarget.elements.namedItem("date") as HTMLInputElement).value;
     router.push(buildFilterUrl(basePath, state, { date: value || null }));

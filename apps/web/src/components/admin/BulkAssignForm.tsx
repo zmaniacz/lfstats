@@ -3,7 +3,6 @@
 
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CenterListItem } from "@lfstats/db";
+import { useState } from "react";
 
 type Props = {
   competitionId: string;
@@ -27,7 +27,7 @@ export function BulkAssignForm({ competitionId, centers, action }: Props) {
   const [centerId, setCenterId] = useState("");
   const [result, setResult] = useState<number | null>(null);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("centerId", centerId);
