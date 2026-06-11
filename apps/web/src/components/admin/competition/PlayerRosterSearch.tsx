@@ -6,8 +6,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PlayerSearchResult } from "@lfstats/db";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   teamId: string;
@@ -21,11 +20,8 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
   const [searched, setSearched] = useState(false);
   const [isPendingSearch, setIsPendingSearch] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
-  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+  const [isPendingAdd, setIsPendingAdd] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPendingAdd = isSubmittingAdd || isRefreshing;
 
   async function handleSearch(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,20 +38,17 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
 
   async function handleAdd(playerId: string) {
     setAddingId(playerId);
-    setIsSubmittingAdd(true);
+    setIsPendingAdd(true);
     setAddError(null);
     try {
       await addAction(playerId);
-      setAddingId(null);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add player");
+      setIsPendingAdd(false);
+      setAddingId(null);
       return;
-    } finally {
-      setIsSubmittingAdd(false);
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
+    window.location.reload();
   }
 
   return (

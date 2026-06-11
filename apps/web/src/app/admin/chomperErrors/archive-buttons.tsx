@@ -3,57 +3,44 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { archiveChomperJobAction, archiveAllChomperJobsAction } from "./actions";
 
 export function ArchiveButton({ id }: { id: string }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const pending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleClick() {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await archiveChomperJobAction(id);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (
-    <Button variant="outline" size="sm" disabled={pending} onClick={handleClick}>
-      {pending ? "Archiving…" : "Archive"}
+    <Button variant="outline" size="sm" disabled={isPending} onClick={handleClick}>
+      {isPending ? "Archiving…" : "Archive"}
     </Button>
   );
 }
 
 export function ArchiveAllButton() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const pending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleClick() {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await archiveAllChomperJobsAction();
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (
-    <Button variant="outline" disabled={pending} onClick={handleClick}>
-      {pending ? "Archiving…" : "Archive All"}
+    <Button variant="outline" disabled={isPending} onClick={handleClick}>
+      {isPending ? "Archiving…" : "Archive All"}
     </Button>
   );
 }

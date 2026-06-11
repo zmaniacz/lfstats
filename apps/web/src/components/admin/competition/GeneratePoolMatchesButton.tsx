@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -12,21 +11,15 @@ interface Props {
 }
 
 export function GeneratePoolMatchesButton({ action }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleClick() {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await action();
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (

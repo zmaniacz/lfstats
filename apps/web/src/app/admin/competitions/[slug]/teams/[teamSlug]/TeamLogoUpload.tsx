@@ -4,7 +4,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,25 +20,16 @@ interface TeamLogoUploadProps {
 }
 
 export function TeamLogoUpload({ competitionId, teamId, teamName, hasLogo }: TeamLogoUploadProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isRefreshing, startRefreshTransition] = React.useTransition();
+  const [isPending, setIsPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
-
-  function refresh() {
-    startRefreshTransition(() => {
-      router.refresh();
-    });
-  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
 
-    setIsSubmitting(true);
+    setIsPending(true);
     setError(null);
     try {
       const url = await getTeamLogoUploadUrlAction(competitionId, teamId, file.type);
@@ -52,23 +42,23 @@ export function TeamLogoUpload({ competitionId, teamId, teamName, hasLogo }: Tea
       await confirmTeamLogoUploadAction(competitionId, teamId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsSubmitting(false);
+      setIsPending(false);
+      return;
     }
-    refresh();
+    window.location.reload();
   }
 
   async function handleRemove() {
-    setIsSubmitting(true);
+    setIsPending(true);
     setError(null);
     try {
       await removeTeamLogoAction(competitionId, teamId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove logo");
-    } finally {
-      setIsSubmitting(false);
+      setIsPending(false);
+      return;
     }
-    refresh();
+    window.location.reload();
   }
 
   return (

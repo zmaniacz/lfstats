@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -15,42 +14,33 @@ type Props = {
 };
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
 
   async function handleAddToRoster() {
-    setIsSubmitting(true);
+    setIsPending(true);
     setError(null);
     try {
       await addAction(playerId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add player");
+      setIsPending(false);
       return;
-    } finally {
-      setIsSubmitting(false);
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
+    window.location.reload();
   }
 
   async function handleMercAction() {
-    setIsSubmitting(true);
+    setIsPending(true);
     setError(null);
     try {
       await mercAction(playerId, !isMercenary);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update mercenary status");
+      setIsPending(false);
       return;
-    } finally {
-      setIsSubmitting(false);
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
+    window.location.reload();
   }
 
   return (

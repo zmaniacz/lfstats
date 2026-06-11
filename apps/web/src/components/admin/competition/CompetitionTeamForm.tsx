@@ -6,33 +6,24 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
 };
 
 export function CompetitionTeamForm({ action }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const form = e.currentTarget;
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await action(formData);
-      form.reset();
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (

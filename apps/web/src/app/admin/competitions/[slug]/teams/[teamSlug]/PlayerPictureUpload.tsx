@@ -4,7 +4,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { PlayerPicture } from "@/components/players/PlayerPicture";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,25 +27,16 @@ export function PlayerPictureUpload({
   callsign,
   hasProfilePicture,
 }: PlayerPictureUploadProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isRefreshing, startRefreshTransition] = React.useTransition();
+  const [isPending, setIsPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
-
-  function refresh() {
-    startRefreshTransition(() => {
-      router.refresh();
-    });
-  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
 
-    setIsSubmitting(true);
+    setIsPending(true);
     setError(null);
     try {
       const url = await getPlayerPictureUploadUrlAction(competitionId, teamId, entryId, file.type);
@@ -59,23 +49,23 @@ export function PlayerPictureUpload({
       await confirmPlayerPictureUploadAction(competitionId, teamId, entryId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsSubmitting(false);
+      setIsPending(false);
+      return;
     }
-    refresh();
+    window.location.reload();
   }
 
   async function handleRemove() {
-    setIsSubmitting(true);
+    setIsPending(true);
     setError(null);
     try {
       await removePlayerPictureAction(competitionId, teamId, entryId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove picture");
-    } finally {
-      setIsSubmitting(false);
+      setIsPending(false);
+      return;
     }
-    refresh();
+    window.location.reload();
   }
 
   return (

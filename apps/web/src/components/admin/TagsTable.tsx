@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -57,10 +56,7 @@ export function TagsTable({
   deleteAction,
   mergeAction,
 }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [tagFormOpen, setTagFormOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<GameTagListItem | undefined>();
@@ -142,7 +138,7 @@ export function TagsTable({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={async () => {
-                          setIsSubmitting(true);
+                          setIsPending(true);
                           try {
                             if (tag.archived) {
                               await unarchiveAction(tag.id, centerId);
@@ -150,11 +146,8 @@ export function TagsTable({
                               await archiveAction(tag.id, centerId);
                             }
                           } finally {
-                            setIsSubmitting(false);
+                            window.location.reload();
                           }
-                          startRefreshTransition(() => {
-                            router.refresh();
-                          });
                         }}
                         disabled={isPending}
                       >
@@ -221,16 +214,12 @@ export function TagsTable({
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
-                  setIsSubmitting(true);
+                  setIsPending(true);
                   try {
                     await deleteAction(deleteTarget.id, centerId);
-                    setDeleteTarget(undefined);
                   } finally {
-                    setIsSubmitting(false);
+                    window.location.reload();
                   }
-                  startRefreshTransition(() => {
-                    router.refresh();
-                  });
                 }}
                 disabled={isPending}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
