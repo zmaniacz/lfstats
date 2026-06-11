@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { CompetitionPenaltyRecord } from "@lfstats/db";
 import { Badge } from "@/components/ui/badge";
@@ -56,10 +55,7 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   const [sortKey, setSortKey] = useState<SortKey>("game");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -102,40 +98,30 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
   }, [filtered, sortKey, sortDir]);
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.updateAction(competitionId, penaltyId, formData);
-      setEditingId(null);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.rescindAction(competitionId, penaltyId, rescinded);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.deleteAction(competitionId, penaltyId);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   function SortIcon({ col }: { col: SortKey }) {

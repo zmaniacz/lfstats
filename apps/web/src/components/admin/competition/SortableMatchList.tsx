@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useId, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useId, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -115,10 +114,7 @@ export function SortableMatchList({
   reorderAction,
 }: Props) {
   const [matches, setMatches] = useState(initialMatches);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
   const dndId = useId();
 
   useEffect(() => {
@@ -144,15 +140,12 @@ export function SortableMatchList({
     const withNewNumbers = reordered.map((m, i) => ({ ...m, matchNumber: i + 1 }));
     setMatches(withNewNumbers);
 
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await reorderAction(withNewNumbers.map(({ id, matchNumber }) => ({ id, matchNumber })));
     } finally {
-      setIsSubmitting(false);
+      setIsPending(false);
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   if (matches.length === 0) return null;

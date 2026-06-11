@@ -13,8 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CompetitionTeamListItem } from "@lfstats/db";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   roundId: string;
@@ -25,27 +24,19 @@ type Props = {
 export function CompetitionMatchForm({ roundId, teams, action }: Props) {
   const [team1Id, setTeam1Id] = useState("");
   const [team2Id, setTeam2Id] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("team1Id", team1Id);
     formData.set("team2Id", team2Id);
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await action(roundId, formData);
-      setTeam1Id("");
-      setTeam2Id("");
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (

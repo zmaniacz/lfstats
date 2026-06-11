@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { PenaltyRecord } from "@lfstats/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,59 +28,42 @@ type Props = {
 export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, actions }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleAdd(formData: FormData) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.addAction(gameId, scorecardId, formData);
-      setShowAdd(false);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   async function handleUpdate(penaltyId: string, formData: FormData) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.updateAction(gameId, penaltyId, formData);
-      setEditingId(null);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   async function handleRescind(penaltyId: string, rescinded: boolean) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.rescindAction(gameId, penaltyId, rescinded);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   async function handleDelete(penaltyId: string) {
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await actions.deleteAction(gameId, penaltyId);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   if (penalties.length === 0 && !canEdit) return null;

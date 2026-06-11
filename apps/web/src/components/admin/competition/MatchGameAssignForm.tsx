@@ -15,8 +15,7 @@ import {
 import { formatDateTime, formatGameName } from "@/lib/format";
 import { TEAM_COLORS } from "@/lib/team-colors";
 import type { UnassignedCompetitionGame } from "@lfstats/db";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   team1Name: string;
@@ -37,10 +36,7 @@ export function MatchGameAssignForm({
   const [gameId, setGameId] = useState("");
   const [team1GameTeamId, setTeam1GameTeamId] = useState("");
   const [team2GameTeamId, setTeam2GameTeamId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   const selectedGame = unassignedGames.find((g) => g.id === gameId);
 
@@ -57,18 +53,12 @@ export function MatchGameAssignForm({
     formData.set("gameId", gameId);
     formData.set("team1GameTeamId", team1GameTeamId);
     formData.set("team2GameTeamId", team2GameTeamId);
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await action(formData);
-      setGameId("");
-      setTeam1GameTeamId("");
-      setTeam2GameTeamId("");
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   const canSubmit =

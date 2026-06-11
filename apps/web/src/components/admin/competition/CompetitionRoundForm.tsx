@@ -13,8 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   nextRoundNumber: number;
@@ -23,27 +22,18 @@ type Props = {
 
 export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
   const [type, setType] = useState<"pool" | "finals">("pool");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);
-    const form = e.currentTarget;
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       await action(formData);
-      form.reset();
-      setType("pool");
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (

@@ -14,8 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GameTagListItem } from "@lfstats/db";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   centerId: string;
@@ -27,28 +26,21 @@ type Props = {
 };
 
 export function TagForm({ centerId, tag, open, onOpenChange, createAction, updateAction }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    setIsSubmitting(true);
+    setIsPending(true);
     try {
       if (tag) {
         await updateAction(tag.id, centerId, formData);
       } else {
         await createAction(centerId, formData);
       }
-      onOpenChange(false);
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (

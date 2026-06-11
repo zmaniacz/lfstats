@@ -11,8 +11,7 @@ import { formatPct, formatMs } from "@/lib/format";
 import { getPosition } from "@/lib/positions";
 import { PenaltyManager } from "@/components/games/PenaltyManager";
 import { WarningIcon } from "@phosphor-icons/react";
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type PenaltyActions = React.ComponentProps<typeof PenaltyManager>["actions"];
 
@@ -64,10 +63,7 @@ export function PlayerStatsSheet({
   penaltyActions,
   mercenaryAction,
 }: Props) {
-  const [isMercSubmitting, setIsMercSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isMercPending = isMercSubmitting || isRefreshing;
+  const [isMercPending, setIsMercPending] = useState(false);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -100,15 +96,12 @@ export function PlayerStatsSheet({
                       className="h-7 px-2 text-xs ml-auto"
                       disabled={isMercPending}
                       onClick={async () => {
-                        setIsMercSubmitting(true);
+                        setIsMercPending(true);
                         try {
                           await mercenaryAction(player.id, !player.isMercenary);
                         } finally {
-                          setIsMercSubmitting(false);
+                          window.location.reload();
                         }
-                        startRefreshTransition(() => {
-                          router.refresh();
-                        });
                       }}
                     >
                       {player.isMercenary ? "Unmark Merc" : "Mark as Merc"}
