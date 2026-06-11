@@ -58,14 +58,20 @@ export function MatchCard({
       <CardContent>
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
-            <Link
-              href={`/competitions/${competitionSlug}/teams/${match.team1Slug}`}
-              className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team1" ? "font-semibold" : "text-muted-foreground"}`}
-            >
-              {t1Label}
-            </Link>
+            {match.team1Id && match.team1Slug ? (
+              <Link
+                href={`/competitions/${competitionSlug}/teams/${match.team1Slug}`}
+                className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team1" ? "font-semibold" : "text-muted-foreground"}`}
+              >
+                {t1Label}
+              </Link>
+            ) : (
+              <span className="text-sm text-center truncate w-full text-muted-foreground italic">
+                {t1Label}
+              </span>
+            )}
             <TeamLogo
-              teamId={match.team1Id}
+              teamId={match.team1Id ?? undefined}
               hasLogo={match.team1HasLogo}
               name={match.team1Name}
               size={48}
@@ -107,14 +113,20 @@ export function MatchCard({
           </div>
 
           <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
-            <Link
-              href={`/competitions/${competitionSlug}/teams/${match.team2Slug}`}
-              className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team2" ? "font-semibold" : "text-muted-foreground"}`}
-            >
-              {t2Label}
-            </Link>
+            {match.team2Id && match.team2Slug ? (
+              <Link
+                href={`/competitions/${competitionSlug}/teams/${match.team2Slug}`}
+                className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team2" ? "font-semibold" : "text-muted-foreground"}`}
+              >
+                {t2Label}
+              </Link>
+            ) : (
+              <span className="text-sm text-center truncate w-full text-muted-foreground italic">
+                {t2Label}
+              </span>
+            )}
             <TeamLogo
-              teamId={match.team2Id}
+              teamId={match.team2Id ?? undefined}
               hasLogo={match.team2HasLogo}
               name={match.team2Name}
               size={48}

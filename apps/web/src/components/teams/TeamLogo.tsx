@@ -19,13 +19,13 @@ export function TeamLogo({
   size = 32,
   className,
 }: {
-  teamId: string;
+  teamId?: string;
   hasLogo: boolean;
   name: string;
   size?: number;
   className?: string;
 }) {
-  if (hasLogo) {
+  if (teamId && hasLogo) {
     return (
       <Image
         src={getTeamLogoUrl(teamId)}

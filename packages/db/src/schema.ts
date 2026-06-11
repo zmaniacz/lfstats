@@ -132,6 +132,7 @@ export const competition = pgTable("competition", {
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
   description: text("description"),
+  challongeLink: text("challonge_link"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -197,12 +198,8 @@ export const competitionMatch = pgTable(
       .notNull()
       .references(() => competitionRound.id, { onDelete: "cascade" }),
     matchNumber: integer("match_number").notNull(),
-    team1Id: uuid("team1_id")
-      .notNull()
-      .references(() => competitionTeam.id),
-    team2Id: uuid("team2_id")
-      .notNull()
-      .references(() => competitionTeam.id),
+    team1Id: uuid("team1_id").references(() => competitionTeam.id),
+    team2Id: uuid("team2_id").references(() => competitionTeam.id),
     scheduledTime: timestamp("scheduled_time"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

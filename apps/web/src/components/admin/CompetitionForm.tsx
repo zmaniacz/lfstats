@@ -109,6 +109,17 @@ export function CompetitionForm({ competition, centers, action }: Props) {
         />
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="challongeLink">Challonge Link (optional)</Label>
+        <Input
+          id="challongeLink"
+          name="challongeLink"
+          type="url"
+          defaultValue={competition?.challongeLink ?? ""}
+          placeholder="https://challonge.com/..."
+        />
+      </div>
+
       <Button type="submit" disabled={isPending}>
         {isPending ? "Saving…" : competition ? "Save Changes" : "Create Competition"}
       </Button>

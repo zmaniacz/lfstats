@@ -6,7 +6,9 @@ import { getCompetitionRounds } from "@lfstats/db";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { RoundFilter } from "./RoundFilter";
 import { StandingsContent } from "@/components/competitions/StandingsContent";
+import { FinalsContent } from "@/components/competitions/FinalsContent";
 import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { resolveFilterContext } from "@/lib/filter-context";
 
 export default async function StandingsPage({
@@ -38,6 +40,9 @@ export default async function StandingsPage({
   const poolRounds = allRounds
     .filter((r) => r.type === "pool")
     .sort((a, b) => a.roundNumber - b.roundNumber);
+  const finalsRounds = allRounds
+    .filter((r) => r.type === "finals")
+    .sort((a, b) => a.roundNumber - b.roundNumber);
 
   const activeRoundId = poolRounds.some((r) => r.id === roundIdParam) ? roundIdParam! : null;
 
@@ -58,22 +63,41 @@ export default async function StandingsPage({
         />
       </div>
 
-      {poolRounds.length > 1 && (
-        <RoundFilter
-          competitionSlug={activeComp.slug}
-          rounds={poolRounds.map((r) => ({ id: r.id, name: r.name }))}
-          activeRoundId={activeRoundId}
-        />
-      )}
+      <Tabs defaultValue="standings">
+        <TabsList>
+          <TabsTrigger value="standings">Standings</TabsTrigger>
+          {finalsRounds.length > 0 && <TabsTrigger value="finals">Finals</TabsTrigger>}
+        </TabsList>
+        <TabsContent value="standings" className="space-y-6">
+          {poolRounds.length > 1 && (
+            <RoundFilter
+              competitionSlug={activeComp.slug}
+              rounds={poolRounds.map((r) => ({ id: r.id, name: r.name }))}
+              activeRoundId={activeRoundId}
+            />
+          )}
 
-      <Suspense key={contentKey} fallback={<StandingsSkeleton />}>
-        <StandingsContent
-          activeId={activeId}
-          activeRoundId={activeRoundId}
-          competitionSlug={activeComp.slug}
-          competitionName={activeComp.name}
-        />
-      </Suspense>
+          <Suspense key={contentKey} fallback={<StandingsSkeleton />}>
+            <StandingsContent
+              activeId={activeId}
+              activeRoundId={activeRoundId}
+              competitionSlug={activeComp.slug}
+              competitionName={activeComp.name}
+            />
+          </Suspense>
+        </TabsContent>
+        {finalsRounds.length > 0 && (
+          <TabsContent value="finals" className="space-y-6">
+            <Suspense fallback={<StandingsSkeleton />}>
+              <FinalsContent
+                activeId={activeId}
+                competitionSlug={activeComp.slug}
+                challongeLink={activeComp.challongeLink}
+              />
+            </Suspense>
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

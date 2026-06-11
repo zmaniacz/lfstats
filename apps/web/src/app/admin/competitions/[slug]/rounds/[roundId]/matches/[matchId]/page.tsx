@@ -8,15 +8,22 @@ import {
   getCompetitionMatchById,
   getMatchGameAssignments,
   getUnassignedCompetitionGames,
+  getCompetitionTeams,
 } from "@lfstats/db";
 import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { EditMatchTeamsForm } from "@/components/admin/competition/EditMatchTeamsForm";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TEAM_COLORS } from "@/lib/team-colors";
 import { formatGameName, formatDateTime } from "@/lib/format";
-import { assignGameAction, removeGameAction, createForfeitAction } from "./actions";
+import {
+  assignGameAction,
+  removeGameAction,
+  createForfeitAction,
+  updateMatchTeamsAction,
+} from "./actions";
 import { ForfeitButtons } from "./ForfeitButtons";
 
 export default async function MatchDetailPage({
@@ -28,10 +35,11 @@ export default async function MatchDetailPage({
   const comp = await getCompetitionBySlug(slug);
   if (!comp) notFound();
 
-  const [match, assignments, unassignedGames] = await Promise.all([
+  const [match, assignments, unassignedGames, teams] = await Promise.all([
     getCompetitionMatchById(matchId),
     getMatchGameAssignments(matchId),
     getUnassignedCompetitionGames(comp.id),
+    getCompetitionTeams(comp.id),
   ]);
 
   if (!match) notFound();
@@ -42,20 +50,35 @@ export default async function MatchDetailPage({
   const boundAssign = assignGameAction.bind(null, comp.id, matchId);
   const boundRemove = removeGameAction.bind(null, comp.id, matchId);
   const boundForfeit = createForfeitAction.bind(null, comp.id, matchId);
+  const boundUpdateTeams = updateMatchTeamsAction.bind(null, comp.id, matchId);
 
   return (
     <div className="space-y-6">
       <div>
         <Link
-          href={`/admin/competitions/${comp.slug}/rounds`}
+          href={`/admin/competitions/${comp.slug}/rounds/${roundId}`}
           className="text-sm text-muted-foreground hover:underline"
         >
-          ← Rounds & Matches
+          ← Round Matches
         </Link>
         <h2 className="text-xl font-semibold mt-1">
           {match.team1Name} vs {match.team2Name}
         </h2>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Teams</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EditMatchTeamsForm
+            teams={teams}
+            initialTeam1Id={match.team1Id}
+            initialTeam2Id={match.team2Id}
+            action={boundUpdateTeams}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -98,7 +121,7 @@ export default async function MatchDetailPage({
         </CardContent>
       </Card>
 
-      {availableGameNumbers.length > 0 && (
+      {availableGameNumbers.length > 0 && match.team1Id && match.team2Id && (
         <Card>
           <CardHeader>
             <CardTitle>Assign Game</CardTitle>

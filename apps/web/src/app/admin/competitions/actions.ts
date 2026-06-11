@@ -48,6 +48,7 @@ export async function createCompetitionAction(formData: FormData) {
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
   const description = (formData.get("description") as string) || null;
+  const challongeLink = (formData.get("challongeLink") as string) || null;
 
   const { slug } = await createCompetition({
     name,
@@ -55,6 +56,7 @@ export async function createCompetitionAction(formData: FormData) {
     startDate,
     endDate,
     description,
+    challongeLink,
     hostCenterId,
   });
 
@@ -71,9 +73,18 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
   const description = (formData.get("description") as string) || null;
+  const challongeLink = (formData.get("challongeLink") as string) || null;
   const hostCenterId = (formData.get("hostCenterId") as string) || null;
 
-  await updateCompetition(id, { name, type, startDate, endDate, description, hostCenterId });
+  await updateCompetition(id, {
+    name,
+    type,
+    startDate,
+    endDate,
+    description,
+    challongeLink,
+    hostCenterId,
+  });
   const updated = await getCompetitionById(id);
   redirect(`/admin/competitions/${updated!.slug}`);
 }

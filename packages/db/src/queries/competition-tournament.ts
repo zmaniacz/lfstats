@@ -72,9 +72,9 @@ export type CompetitionMatchListItem = {
   id: string;
   roundId: string;
   matchNumber: number;
-  team1Id: string;
+  team1Id: string | null;
   team1Name: string;
-  team2Id: string;
+  team2Id: string | null;
   team2Name: string;
   scheduledTime: Date | null;
   game1Assigned: boolean;
@@ -85,9 +85,9 @@ export type CompetitionMatchDetail = {
   id: string;
   competitionId: string;
   roundId: string;
-  team1Id: string;
+  team1Id: string | null;
   team1Name: string;
-  team2Id: string;
+  team2Id: string | null;
   team2Name: string;
   scheduledTime: Date | null;
 };
@@ -555,6 +555,26 @@ export async function getCompetitionRounds(
   return rows;
 }
 
+export async function getCompetitionRoundById(
+  id: string,
+): Promise<CompetitionRoundListItem | null> {
+  const [row] = await db
+    .select({
+      id: competitionRound.id,
+      competitionId: competitionRound.competitionId,
+      name: competitionRound.name,
+      roundNumber: competitionRound.roundNumber,
+      type: competitionRound.type,
+      matchCount: sql<number>`count(${competitionMatch.id})::int`,
+    })
+    .from(competitionRound)
+    .leftJoin(competitionMatch, eq(competitionMatch.roundId, competitionRound.id))
+    .where(eq(competitionRound.id, id))
+    .groupBy(competitionRound.id);
+
+  return row ?? null;
+}
+
 export async function createCompetitionRound(data: {
   competitionId: string;
   name: string;
@@ -566,6 +586,13 @@ export async function createCompetitionRound(data: {
     .values(data)
     .returning({ id: competitionRound.id });
   return row.id;
+}
+
+export async function updateCompetitionRound(
+  id: string,
+  data: { name: string; roundNumber: number; type: "pool" | "finals" },
+): Promise<void> {
+  await db.update(competitionRound).set(data).where(eq(competitionRound.id, id));
 }
 
 export async function deleteCompetitionRound(id: string): Promise<void> {
@@ -595,13 +622,20 @@ export async function getCompetitionMatchesByRound(
   if (matchRows.length === 0) return [];
 
   const teamIds = [
-    ...new Set([...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)]),
+    ...new Set(
+      [...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)].filter(
+        (id): id is string => id !== null,
+      ),
+    ),
   ];
 
-  const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, teamIds));
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
 
   const teamMap = new Map(teams.map((t) => [t.id, t.name]));
 
@@ -625,9 +659,9 @@ export async function getCompetitionMatchesByRound(
     roundId: m.roundId,
     matchNumber: m.matchNumber,
     team1Id: m.team1Id,
-    team1Name: teamMap.get(m.team1Id) ?? "Unknown",
+    team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
     team2Id: m.team2Id,
-    team2Name: teamMap.get(m.team2Id) ?? "Unknown",
+    team2Name: m.team2Id ? (teamMap.get(m.team2Id) ?? "Unknown") : "TBD",
     scheduledTime: m.scheduledTime,
     game1Assigned: assignedMap.get(m.id)?.has(1) ?? false,
     game2Assigned: assignedMap.get(m.id)?.has(2) ?? false,
@@ -639,10 +673,15 @@ export async function getCompetitionMatchById(id: string): Promise<CompetitionMa
 
   if (!match) return null;
 
-  const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, [match.team1Id, match.team2Id]));
+  const teamIds = [match.team1Id, match.team2Id].filter((id): id is string => id !== null);
+
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
 
   const teamMap = new Map(teams.map((t) => [t.id, t.name]));
 
@@ -651,9 +690,9 @@ export async function getCompetitionMatchById(id: string): Promise<CompetitionMa
     competitionId: match.competitionId,
     roundId: match.roundId,
     team1Id: match.team1Id,
-    team1Name: teamMap.get(match.team1Id) ?? "Unknown",
+    team1Name: match.team1Id ? (teamMap.get(match.team1Id) ?? "Unknown") : "TBD",
     team2Id: match.team2Id,
-    team2Name: teamMap.get(match.team2Id) ?? "Unknown",
+    team2Name: match.team2Id ? (teamMap.get(match.team2Id) ?? "Unknown") : "TBD",
     scheduledTime: match.scheduledTime,
   };
 }
@@ -680,8 +719,8 @@ export async function createCompetitionMatch(data: {
   competitionId: string;
   roundId: string;
   matchNumber: number;
-  team1Id: string;
-  team2Id: string;
+  team1Id: string | null;
+  team2Id: string | null;
   scheduledTime?: Date | null;
 }): Promise<string> {
   const [row] = await db
@@ -693,6 +732,13 @@ export async function createCompetitionMatch(data: {
 
 export async function deleteCompetitionMatch(id: string): Promise<void> {
   await db.delete(competitionMatch).where(eq(competitionMatch.id, id));
+}
+
+export async function updateCompetitionMatchTeams(
+  id: string,
+  data: { team1Id: string | null; team2Id: string | null },
+): Promise<void> {
+  await db.update(competitionMatch).set(data).where(eq(competitionMatch.id, id));
 }
 
 // ---------------------------------------------------------------------------
@@ -879,12 +925,19 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
   if (matchRows.length === 0) return [];
 
   const teamIds = [
-    ...new Set([...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)]),
+    ...new Set(
+      [...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)].filter(
+        (id): id is string => id !== null,
+      ),
+    ),
   ];
-  const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, teamIds));
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
   const teamMap = new Map(teams.map((t) => [t.id, t.name]));
 
   const matchIds = matchRows.map((m) => m.id);
@@ -910,8 +963,8 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
         id: m.id,
         matchNumber: m.matchNumber,
         roundName: m.roundName,
-        team1Name: teamMap.get(m.team1Id) ?? "Unknown",
-        team2Name: teamMap.get(m.team2Id) ?? "Unknown",
+        team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
+        team2Name: m.team2Id ? (teamMap.get(m.team2Id) ?? "Unknown") : "TBD",
         availableGameNumbers,
       };
     })
@@ -1012,11 +1065,20 @@ export async function getCompetitionAssignedGamesForAdmin(
 
   if (rows.length === 0) return [];
 
-  const teamIds = [...new Set([...rows.map((r) => r.team1Id), ...rows.map((r) => r.team2Id)])];
-  const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, teamIds));
+  const teamIds = [
+    ...new Set(
+      [...rows.map((r) => r.team1Id), ...rows.map((r) => r.team2Id)].filter(
+        (id): id is string => id !== null,
+      ),
+    ),
+  ];
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
   const teamMap = new Map(teams.map((t) => [t.id, t.name]));
 
   return rows.map((r) => ({
@@ -1026,9 +1088,9 @@ export async function getCompetitionAssignedGamesForAdmin(
     roundName: r.roundName,
     matchNumber: r.matchNumber,
     gameNumber: r.gameNumber,
-    team1Name: teamMap.get(r.team1Id) ?? "Unknown",
+    team1Name: r.team1Id ? (teamMap.get(r.team1Id) ?? "Unknown") : "TBD",
     team1ColourEnum: r.team1ColourEnum,
-    team2Name: teamMap.get(r.team2Id) ?? "Unknown",
+    team2Name: r.team2Id ? (teamMap.get(r.team2Id) ?? "Unknown") : "TBD",
     team2ColourEnum: r.team2ColourEnum,
     startTime: r.startTime,
     outcome: r.outcome,
@@ -1085,6 +1147,7 @@ export type CompetitiveCompetitionSummary = {
   slug: string;
   startDate: string;
   endDate: string | null;
+  challongeLink: string | null;
 };
 
 export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetitionSummary[]> {
@@ -1095,6 +1158,7 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
       slug: competition.slug,
       startDate: competition.startDate,
       endDate: competition.endDate,
+      challongeLink: competition.challongeLink,
     })
     .from(competition)
     .where(eq(competition.type, "competitive"))
@@ -1166,9 +1230,10 @@ export async function getCompetitionStandings(
 
   if (gameRows.length === 0) return [];
 
-  // Group games by match
+  // Group games by match (pool matches always have both teams assigned)
   const matchMap = new Map<string, { team1Id: string; team2Id: string; games: typeof gameRows }>();
   for (const row of gameRows) {
+    if (row.team1Id === null || row.team2Id === null) continue;
     if (!matchMap.has(row.matchId)) {
       matchMap.set(row.matchId, { team1Id: row.team1Id, team2Id: row.team2Id, games: [] });
     }
@@ -1316,12 +1381,12 @@ export type CompetitionMatchResult = {
   roundId: string;
   roundName: string;
   roundNumber: number;
-  team1Id: string;
+  team1Id: string | null;
   team1Name: string;
   team1Slug: string | null;
   team1ShortName: string | null;
   team1HasLogo: boolean;
-  team2Id: string;
+  team2Id: string | null;
   team2Name: string;
   team2Slug: string | null;
   team2ShortName: string | null;
@@ -1348,6 +1413,7 @@ export type CompetitionMatchResult = {
 export async function getCompetitionMatchResults(
   competitionId: string,
   roundId?: string,
+  roundType: "pool" | "finals" = "pool",
 ): Promise<CompetitionMatchResult[]> {
   const gameRows = await db
     .select({
@@ -1380,7 +1446,7 @@ export async function getCompetitionMatchResults(
     .where(
       and(
         eq(competitionMatch.competitionId, competitionId),
-        eq(competitionRound.type, "pool"),
+        eq(competitionRound.type, roundType),
         roundId ? eq(competitionMatch.roundId, roundId) : undefined,
       ),
     )
@@ -1393,17 +1459,24 @@ export async function getCompetitionMatchResults(
   if (gameRows.length === 0) return [];
 
   // Fetch team names and short names
-  const teamIds = [...new Set(gameRows.flatMap((r) => [r.team1Id, r.team2Id]))];
-  const teams = await db
-    .select({
-      id: competitionTeam.id,
-      name: competitionTeam.name,
-      slug: competitionTeam.slug,
-      shortName: competitionTeam.shortName,
-      hasLogo: competitionTeam.hasLogo,
-    })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, teamIds));
+  const teamIds = [
+    ...new Set(
+      gameRows.flatMap((r) => [r.team1Id, r.team2Id]).filter((id): id is string => id !== null),
+    ),
+  ];
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({
+            id: competitionTeam.id,
+            name: competitionTeam.name,
+            slug: competitionTeam.slug,
+            shortName: competitionTeam.shortName,
+            hasLogo: competitionTeam.hasLogo,
+          })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
   const teamMap = new Map(teams.map((t) => [t.id, t]));
 
   // Group into matches
@@ -1423,8 +1496,8 @@ export async function getCompetitionMatchResults(
   for (const row of gameRows) {
     if (!matchMap.has(row.matchId)) {
       matchOrder.push(row.matchId);
-      const t1 = teamMap.get(row.team1Id);
-      const t2 = teamMap.get(row.team2Id);
+      const t1 = row.team1Id ? teamMap.get(row.team1Id) : undefined;
+      const t2 = row.team2Id ? teamMap.get(row.team2Id) : undefined;
       matchMap.set(row.matchId, {
         matchId: row.matchId,
         matchNumber: row.matchNumber,
@@ -1432,12 +1505,12 @@ export async function getCompetitionMatchResults(
         roundName: row.roundName,
         roundNumber: row.roundNumber,
         team1Id: row.team1Id,
-        team1Name: t1?.name ?? "Unknown",
+        team1Name: row.team1Id ? (t1?.name ?? "Unknown") : "TBD",
         team1Slug: t1?.slug ?? null,
         team1ShortName: t1?.shortName ?? null,
         team1HasLogo: t1?.hasLogo ?? false,
         team2Id: row.team2Id,
-        team2Name: t2?.name ?? "Unknown",
+        team2Name: row.team2Id ? (t2?.name ?? "Unknown") : "TBD",
         team2Slug: t2?.slug ?? null,
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
@@ -1532,10 +1605,14 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
 
   if (!row) return null;
 
-  const teams = await db
-    .select({ id: competitionTeam.id, name: competitionTeam.name })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, [row.team1Id, row.team2Id]));
+  const teamIds = [row.team1Id, row.team2Id].filter((id): id is string => id !== null);
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
   const teamMap = new Map(teams.map((t) => [t.id, t.name]));
 
   return {
@@ -1545,9 +1622,9 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
     gameNumber: row.gameNumber,
     roundName: row.roundName,
     team1GameTeamId: row.team1GameTeamId,
-    team1Name: teamMap.get(row.team1Id) ?? "Unknown",
+    team1Name: row.team1Id ? (teamMap.get(row.team1Id) ?? "Unknown") : "TBD",
     team2GameTeamId: row.team2GameTeamId,
-    team2Name: teamMap.get(row.team2Id) ?? "Unknown",
+    team2Name: row.team2Id ? (teamMap.get(row.team2Id) ?? "Unknown") : "TBD",
   };
 }
 
@@ -3089,15 +3166,22 @@ async function queryCompetitionGames(
 
   if (rows.length === 0) return [];
 
-  const teamIds = [...new Set(rows.flatMap((r) => [r.team1Id, r.team2Id]))];
-  const teams = await db
-    .select({
-      id: competitionTeam.id,
-      shortName: competitionTeam.shortName,
-      name: competitionTeam.name,
-    })
-    .from(competitionTeam)
-    .where(inArray(competitionTeam.id, teamIds));
+  const teamIds = [
+    ...new Set(
+      rows.flatMap((r) => [r.team1Id, r.team2Id]).filter((id): id is string => id !== null),
+    ),
+  ];
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({
+            id: competitionTeam.id,
+            shortName: competitionTeam.shortName,
+            name: competitionTeam.name,
+          })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
   const teamMap = new Map(teams.map((t) => [t.id, t]));
 
   const gameIds = rows.map((r) => r.id);
@@ -3121,8 +3205,8 @@ async function queryCompetitionGames(
   }
 
   return rows.map((row) => {
-    const t1 = teamMap.get(row.team1Id);
-    const t2 = teamMap.get(row.team2Id);
+    const t1 = row.team1Id ? teamMap.get(row.team1Id) : undefined;
+    const t2 = row.team2Id ? teamMap.get(row.team2Id) : undefined;
     return {
       id: row.id,
       slug: row.slug,

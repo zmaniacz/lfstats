@@ -16,14 +16,15 @@ import type { CompetitionTeamListItem } from "@lfstats/db";
 import { useState } from "react";
 
 type Props = {
-  roundId: string;
   teams: CompetitionTeamListItem[];
-  action: (roundId: string, formData: FormData) => Promise<void>;
+  initialTeam1Id: string | null;
+  initialTeam2Id: string | null;
+  action: (formData: FormData) => Promise<void>;
 };
 
-export function CompetitionMatchForm({ roundId, teams, action }: Props) {
-  const [team1Id, setTeam1Id] = useState("tbd");
-  const [team2Id, setTeam2Id] = useState("tbd");
+export function EditMatchTeamsForm({ teams, initialTeam1Id, initialTeam2Id, action }: Props) {
+  const [team1Id, setTeam1Id] = useState(initialTeam1Id ?? "tbd");
+  const [team2Id, setTeam2Id] = useState(initialTeam2Id ?? "tbd");
   const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
@@ -33,7 +34,7 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
     formData.set("team2Id", team2Id === "tbd" ? "" : team2Id);
     setIsPending(true);
     try {
-      await action(roundId, formData);
+      await action(formData);
     } finally {
       window.location.reload();
     }
@@ -75,7 +76,7 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
         </Select>
       </div>
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Adding…" : "Add Match"}
+        {isPending ? "Saving…" : "Save"}
       </Button>
     </form>
   );

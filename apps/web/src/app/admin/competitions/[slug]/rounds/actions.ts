@@ -6,6 +6,7 @@
 import { revalidatePath } from "next/cache";
 import {
   createCompetitionRound,
+  updateCompetitionRound,
   deleteCompetitionRound,
   createCompetitionMatch,
   deleteCompetitionMatch,
@@ -28,6 +29,14 @@ async function revalidateRoundsPage(competitionId: string): Promise<void> {
   if (comp) revalidatePath(`/admin/competitions/${comp.slug}/rounds`);
 }
 
+async function revalidateRoundPage(competitionId: string, roundId: string): Promise<void> {
+  const comp = await getCompetitionById(competitionId);
+  if (comp) {
+    revalidatePath(`/admin/competitions/${comp.slug}/rounds`);
+    revalidatePath(`/admin/competitions/${comp.slug}/rounds/${roundId}`);
+  }
+}
+
 export async function createRoundAction(competitionId: string, formData: FormData): Promise<void> {
   await requireAdmin();
   const name = formData.get("name") as string;
@@ -35,6 +44,19 @@ export async function createRoundAction(competitionId: string, formData: FormDat
   const type = formData.get("type") as "pool" | "finals";
   await createCompetitionRound({ competitionId, name, roundNumber, type });
   await revalidateRoundsPage(competitionId);
+}
+
+export async function updateRoundAction(
+  competitionId: string,
+  roundId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const name = formData.get("name") as string;
+  const roundNumber = parseInt(formData.get("roundNumber") as string, 10);
+  const type = formData.get("type") as "pool" | "finals";
+  await updateCompetitionRound(roundId, { name, roundNumber, type });
+  await revalidateRoundPage(competitionId, roundId);
 }
 
 export async function deleteRoundAction(competitionId: string, roundId: string): Promise<void> {
@@ -49,19 +71,23 @@ export async function createMatchAction(
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
-  const team1Id = formData.get("team1Id") as string;
-  const team2Id = formData.get("team2Id") as string;
+  const team1Id = (formData.get("team1Id") as string) || null;
+  const team2Id = (formData.get("team2Id") as string) || null;
   // Auto-assign next match number within this round
   const existing = await getCompetitionMatchesByRound(roundId);
   const matchNumber = existing.length > 0 ? Math.max(...existing.map((m) => m.matchNumber)) + 1 : 1;
   await createCompetitionMatch({ competitionId, roundId, matchNumber, team1Id, team2Id });
-  await revalidateRoundsPage(competitionId);
+  await revalidateRoundPage(competitionId, roundId);
 }
 
-export async function deleteMatchAction(competitionId: string, matchId: string): Promise<void> {
+export async function deleteMatchAction(
+  competitionId: string,
+  roundId: string,
+  matchId: string,
+): Promise<void> {
   await requireAdmin();
   await deleteCompetitionMatch(matchId);
-  await revalidateRoundsPage(competitionId);
+  await revalidateRoundPage(competitionId, roundId);
 }
 
 export async function generatePoolMatchesAction(
@@ -85,14 +111,15 @@ export async function generatePoolMatchesAction(
       });
     }
   }
-  await revalidateRoundsPage(competitionId);
+  await revalidateRoundPage(competitionId, roundId);
 }
 
 export async function reorderMatchesAction(
   competitionId: string,
+  roundId: string,
   reorders: { id: string; matchNumber: number }[],
 ): Promise<void> {
   await requireAdmin();
   await reorderCompetitionMatches(reorders);
-  await revalidateRoundsPage(competitionId);
+  await revalidateRoundPage(competitionId, roundId);
 }

@@ -11,6 +11,7 @@ import {
   createForfeitGame,
   getCompetitionHostCenterId,
   getCompetitionById,
+  updateCompetitionMatchTeams,
 } from "@lfstats/db";
 import { auth } from "@/auth";
 
@@ -37,8 +38,12 @@ export async function assignGameAction(
   const team1GameTeamId = formData.get("team1GameTeamId") as string;
   const team2GameTeamId = formData.get("team2GameTeamId") as string;
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId);
+  const match = await getCompetitionMatchById(matchId);
   const slug = await competitionSlug(competitionId);
-  if (slug) revalidatePath(`/admin/competitions/${slug}/rounds`);
+  if (slug && match) {
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
+  }
 }
 
 export async function removeGameAction(
@@ -48,8 +53,30 @@ export async function removeGameAction(
 ): Promise<void> {
   await requireAdmin();
   await removeGameFromMatch(matchGameId);
+  const match = await getCompetitionMatchById(matchId);
   const slug = await competitionSlug(competitionId);
-  if (slug) revalidatePath(`/admin/competitions/${slug}/rounds`);
+  if (slug && match) {
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
+  }
+}
+
+export async function updateMatchTeamsAction(
+  competitionId: string,
+  matchId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const team1Id = (formData.get("team1Id") as string) || null;
+  const team2Id = (formData.get("team2Id") as string) || null;
+  await updateCompetitionMatchTeams(matchId, { team1Id, team2Id });
+
+  const match = await getCompetitionMatchById(matchId);
+  const slug = await competitionSlug(competitionId);
+  if (slug && match) {
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
+  }
 }
 
 export async function createForfeitAction(
@@ -67,6 +94,9 @@ export async function createForfeitAction(
 
   if (!centerId || !match) throw new Error("Competition or match not found");
   if (!centerId) throw new Error("Competition has no host center");
+  if (!match.team1Id || !match.team2Id) {
+    throw new Error("Cannot record a forfeit until both teams are determined");
+  }
 
   await createForfeitGame({
     matchId,
@@ -81,6 +111,6 @@ export async function createForfeitAction(
   const slug = await competitionSlug(competitionId);
   if (slug) {
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
-    revalidatePath(`/admin/competitions/${slug}/rounds`);
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
 }

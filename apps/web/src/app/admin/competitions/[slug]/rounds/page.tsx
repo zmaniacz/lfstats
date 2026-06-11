@@ -3,45 +3,24 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  getCompetitionBySlug,
-  getCompetitionTeams,
-  getCompetitionRounds,
-  getCompetitionMatchesByRound,
-} from "@lfstats/db";
+import { getCompetitionBySlug, getCompetitionRounds } from "@lfstats/db";
 import { CompetitionRoundForm } from "@/components/admin/competition/CompetitionRoundForm";
-import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
-import { SortableMatchList } from "@/components/admin/competition/SortableMatchList";
-import { GeneratePoolMatchesButton } from "@/components/admin/competition/GeneratePoolMatchesButton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  createRoundAction,
-  deleteRoundAction,
-  createMatchAction,
-  deleteMatchAction,
-  reorderMatchesAction,
-  generatePoolMatchesAction,
-} from "./actions";
+import { Button } from "@/components/ui/button";
+import { createRoundAction, deleteRoundAction } from "./actions";
 
 export default async function RoundsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const comp = await getCompetitionBySlug(slug);
   if (!comp) notFound();
 
-  const [teams, rounds] = await Promise.all([
-    getCompetitionTeams(comp.id),
-    getCompetitionRounds(comp.id),
-  ]);
-
-  const matchesByRound = await Promise.all(rounds.map((r) => getCompetitionMatchesByRound(r.id)));
+  const rounds = await getCompetitionRounds(comp.id);
 
   const id = comp.id;
   const boundCreateRound = createRoundAction.bind(null, id);
   const boundDeleteRound = deleteRoundAction.bind(null, id);
-  const boundDeleteMatch = deleteMatchAction.bind(null, id);
-  const boundReorder = reorderMatchesAction.bind(null, id);
 
   const nextRoundNumber = rounds.length > 0 ? Math.max(...rounds.map((r) => r.roundNumber)) + 1 : 1;
 
@@ -69,71 +48,36 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
       {rounds.length === 0 ? (
         <p className="text-sm text-muted-foreground">No rounds yet.</p>
       ) : (
-        rounds.map((round, i) => {
-          const matches = matchesByRound[i];
-          const boundCreateMatch = createMatchAction.bind(null, id, round.id);
-
-          return (
-            <Card key={round.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle>
-                      {round.roundNumber}. {round.name}
-                    </CardTitle>
-                    <Badge variant={round.type === "finals" ? "default" : "secondary"}>
-                      {round.type}
-                    </Badge>
-                  </div>
-                  <DeleteEntityButton
-                    id={round.id}
-                    label={`"${round.name}"`}
-                    description="This removes the round and all its matches."
-                    action={boundDeleteRound}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {teams.length >= 2 ? (
-                  <div>
-                    {round.type === "pool" && (
-                      <div className="mb-4">
-                        <GeneratePoolMatchesButton
-                          action={generatePoolMatchesAction.bind(null, id, round.id)}
-                        />
-                      </div>
-                    )}
-                    <p className="text-sm text-muted-foreground mb-2">Add Match</p>
-                    <CompetitionMatchForm
-                      roundId={round.id}
-                      teams={teams}
-                      action={createMatchAction.bind(null, id)}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Add at least 2 teams before creating matches.{" "}
-                    <Link href={`/admin/competitions/${comp.slug}/teams`} className="underline">
-                      Manage teams
-                    </Link>
-                  </p>
-                )}
-
-                {matches.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No matches yet.</p>
-                ) : (
-                  <SortableMatchList
-                    competitionSlug={comp.slug}
-                    roundId={round.id}
-                    matches={matches}
-                    deleteAction={boundDeleteMatch}
-                    reorderAction={boundReorder}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          );
-        })
+        <div className="divide-y border rounded-md">
+          {rounds.map((round) => (
+            <div key={round.id} className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  {round.roundNumber}. {round.name}
+                </span>
+                <Badge variant={round.type === "finals" ? "default" : "secondary"}>
+                  {round.type}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {round.matchCount} {round.matchCount === 1 ? "match" : "matches"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/admin/competitions/${comp.slug}/rounds/${round.id}`}>
+                    Manage Matches
+                  </Link>
+                </Button>
+                <DeleteEntityButton
+                  id={round.id}
+                  label={`"${round.name}"`}
+                  description="This removes the round and all its matches."
+                  action={boundDeleteRound}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
