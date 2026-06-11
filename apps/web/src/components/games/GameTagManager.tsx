@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +23,7 @@ type Props = {
 };
 
 export function GameTagManager({ gameId, tags, availableTags, assignAction, removeAction }: Props) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+  const [isPending, setIsPending] = useState(false);
 
   const assignedIds = new Set(tags.map((t) => t.id));
   const unassigned = availableTags.filter((t) => !assignedIds.has(t.id) && !t.archived);
@@ -38,15 +34,12 @@ export function GameTagManager({ gameId, tags, availableTags, assignAction, remo
         <button
           key={tag.id}
           onClick={async () => {
-            setIsSubmitting(true);
+            setIsPending(true);
             try {
               await removeAction(gameId, tag.id);
             } finally {
-              setIsSubmitting(false);
+              window.location.reload();
             }
-            startRefreshTransition(() => {
-              router.refresh();
-            });
           }}
           disabled={isPending}
           title="Click to remove tag"
@@ -69,15 +62,12 @@ export function GameTagManager({ gameId, tags, availableTags, assignAction, remo
               <DropdownMenuItem
                 key={tag.id}
                 onClick={async () => {
-                  setIsSubmitting(true);
+                  setIsPending(true);
                   try {
                     await assignAction(gameId, tag.id);
                   } finally {
-                    setIsSubmitting(false);
+                    window.location.reload();
                   }
-                  startRefreshTransition(() => {
-                    router.refresh();
-                  });
                 }}
               >
                 <span

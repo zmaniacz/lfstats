@@ -149,38 +149,67 @@ uncapped total.
 
 ## Server Actions and UI Updates
 
-Client components that call server actions must explicitly call `router.refresh()` after the action completes. `revalidatePath` alone does not reliably clear the Next.js client-side router cache in production — the RSC re-fetch returns 200 but React applies a stale cached payload, leaving the button in a permanent loading state.
+**Do not use `useTransition` or `router.refresh()` for server-action follow-up UI updates.** Both have proven unreliable in production: `startTransition` around `await action()` and/or `router.refresh()` can leave `isPending` stuck forever (the transition never settles), permanently disabling the control. This is the same family of scheduler/transition bugs as vercel/next.js#88767, #77504, #86055, and #82289.
 
-**Do NOT tie the button's loading state to the same transition that calls `router.refresh()`.** Two separate bugs bracket this:
+Use one of two patterns instead, depending on whether the mutation's effect is visible only in the component that triggered it, or also shown elsewhere on the page.
 
-- Wrapping `await action(); router.refresh()` together in one `startTransition` can leave `isPending` stuck forever (the transition's pending state doesn't reliably resolve after `router.refresh()`).
-- Calling `router.refresh()` completely outside any transition causes the opposite failure: the RSC refetch completes (200 in the network tab) but React never commits the new payload to the rendered tree — the UI stays stale until you navigate away and back or hard-refresh. `router.refresh()` needs React's transition machinery to actually apply the patch.
+**Pattern A — self-contained mutation (e.g. a favorite toggle):**
 
-The fix is to **decouple them**: track the action's own loading with plain `useState`, and wrap _only_ the `router.refresh()` call in its own `startTransition` — but then **OR the two pending flags together** for the button's displayed state. If you don't, the button flashes back to its resting state the instant `await action()` resolves, while the page still shows stale data until the refresh transition commits a moment later — a visible flash/flicker of wrong UI.
-
-**Required pattern for any client component that calls a server action:**
+Track the displayed value and the pending flag with plain `useState`. No transition, no refresh.
 
 ```tsx
 "use client";
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-export function MyActionButton({ action }: { action: () => Promise<void> }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, startRefreshTransition] = useTransition();
-  const router = useRouter();
-  const isPending = isSubmitting || isRefreshing;
+export function MyToggleButton({
+  value,
+  action,
+}: {
+  value: boolean;
+  action: (next: boolean) => Promise<void>;
+}) {
+  const [current, setCurrent] = useState(value);
+  const [isPending, setIsPending] = useState(false);
 
   async function handleClick() {
-    setIsSubmitting(true);
+    const next = !current;
+    setCurrent(next);
+    setIsPending(true);
+    try {
+      await action(next);
+    } catch {
+      setCurrent(!next);
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <Button disabled={isPending} onClick={handleClick}>
+      ...
+    </Button>
+  );
+}
+```
+
+**Pattern B — mutation affects other UI on the page (e.g. tags, exclusion status, competition assignment):**
+
+Track only the pending flag with `useState`, then call `window.location.reload()` once the action resolves. A full reload is heavier (loses scroll position / tab selection) but is unconditionally correct and avoids the RSC-cache/scheduler issue entirely. These are infrequent, deliberate actions, not high-frequency interactions.
+
+```tsx
+"use client";
+import { useState } from "react";
+
+export function MyActionButton({ action }: { action: () => Promise<void> }) {
+  const [isPending, setIsPending] = useState(false);
+
+  async function handleClick() {
+    setIsPending(true);
     try {
       await action();
     } finally {
-      setIsSubmitting(false);
+      window.location.reload();
     }
-    startRefreshTransition(() => {
-      router.refresh();
-    });
   }
 
   return (
@@ -191,9 +220,7 @@ export function MyActionButton({ action }: { action: () => Promise<void> }) {
 }
 ```
 
-`router.refresh()` runs **after** the `try/finally` resolves `isSubmitting`, inside its own dedicated transition — this gives Next.js the transition context it needs to commit the refreshed RSC payload without the "stuck forever" bug that comes from wrapping `await action()` itself in a transition. The displayed `isPending = isSubmitting || isRefreshing` keeps the button in its loading state across the _entire_ sequence — action call through to the page actually showing fresh data — eliminating the flash where the button looks done but the UI hasn't caught up yet.
-
-Server actions should still call `revalidatePath` — it clears the server-side cache so the fresh fetch returns updated data. The two work together: `revalidatePath` on the server, `router.refresh()` on the client.
+Server actions should still call `revalidatePath` — it clears the server-side cache so the reloaded page returns fresh data.
 
 ## What Not to Build
 

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { HeartIcon } from "@phosphor-icons/react";
 
@@ -15,23 +15,25 @@ type Props = {
 };
 
 export function FavoriteButton({ playerId, isFavorited, addAction, removeAction }: Props) {
-  const [optimisticFavorited, setOptimisticFavorited] = useOptimistic(isFavorited);
-  const [isPending, startTransition] = useTransition();
+  const [favorited, setFavorited] = useState(isFavorited);
+  const [isPending, setIsPending] = useState(false);
 
-  function handleClick() {
-    startTransition(async () => {
-      setOptimisticFavorited(!optimisticFavorited);
-      try {
-        if (isFavorited) {
-          await removeAction(playerId);
-        } else {
-          await addAction(playerId);
-        }
-      } catch {
-        // optimistic state reverts to `isFavorited` once the transition settles
-        toast.error(isFavorited ? "Failed to remove favorite" : "Failed to add favorite");
+  async function handleClick() {
+    const next = !favorited;
+    setFavorited(next);
+    setIsPending(true);
+    try {
+      if (next) {
+        await addAction(playerId);
+      } else {
+        await removeAction(playerId);
       }
-    });
+    } catch {
+      setFavorited(!next);
+      toast.error(next ? "Failed to add favorite" : "Failed to remove favorite");
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -39,11 +41,11 @@ export function FavoriteButton({ playerId, isFavorited, addAction, removeAction 
       type="button"
       onClick={handleClick}
       disabled={isPending}
-      aria-label={optimisticFavorited ? "Remove from favorites" : "Add to favorites"}
-      title={optimisticFavorited ? "Remove from favorites" : "Add to favorites"}
+      aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+      title={favorited ? "Remove from favorites" : "Add to favorites"}
       className="text-primary disabled:opacity-50 hover:opacity-70 transition-opacity"
     >
-      <HeartIcon size={24} weight={optimisticFavorited ? "fill" : "regular"} />
+      <HeartIcon size={24} weight={favorited ? "fill" : "regular"} />
     </button>
   );
 }
