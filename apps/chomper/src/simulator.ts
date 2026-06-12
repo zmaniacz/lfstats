@@ -644,6 +644,30 @@ class Simulator {
     target.entityEndForcedLives = source.entityEndForcedLives ?? target.entityEndForcedLives;
 
     // Replay snapshots concatenate — source's period starts after target's ends.
+    // Both generations existed in playerStates at mission-start, so
+    // handleMissionStart() recorded an (identical, default-initialized) snapshot
+    // for each against the mission-start eventIndex. Drop source's copy to avoid
+    // a duplicate (event_id, scorecard_id) row.
+    if (
+      target.stateSnapshots.length > 0 &&
+      source.stateSnapshots.length > 0 &&
+      target.stateSnapshots[0]!.eventIndex === source.stateSnapshots[0]!.eventIndex
+    ) {
+      source.stateSnapshots = source.stateSnapshots.slice(1);
+    }
+
+    // Similarly, if target wasn't eliminated before the restart took effect, it
+    // was still in playerStates at mission-end and got a (stale) final snapshot
+    // there too. Drop target's copy in favor of source's true final snapshot.
+    if (
+      target.stateSnapshots.length > 0 &&
+      source.stateSnapshots.length > 0 &&
+      target.stateSnapshots[target.stateSnapshots.length - 1]!.eventIndex ===
+        source.stateSnapshots[source.stateSnapshots.length - 1]!.eventIndex
+    ) {
+      target.stateSnapshots = target.stateSnapshots.slice(0, -1);
+    }
+
     target.stateSnapshots.push(...source.stateSnapshots);
 
     this.playerStates.delete(sourceId);
