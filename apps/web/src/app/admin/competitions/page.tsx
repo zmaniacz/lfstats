@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { COMPETITION_STATE_LABELS, competitionStateBadgeVariant } from "@/lib/competition-state";
 
 export default async function CompetitionsPage() {
   const competitions = await getCompetitions();
@@ -34,6 +35,7 @@ export default async function CompetitionsPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>State</TableHead>
               <TableHead>Start</TableHead>
               <TableHead>End</TableHead>
               <TableHead>Games</TableHead>
@@ -54,6 +56,11 @@ export default async function CompetitionsPage() {
                 <TableCell>
                   <Badge variant={c.type === "competitive" ? "default" : "secondary"}>
                     {c.type}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={competitionStateBadgeVariant(c.state)}>
+                    {COMPETITION_STATE_LABELS[c.state]}
                   </Badge>
                 </TableCell>
                 <TableCell className="tabular-nums">{c.startDate}</TableCell>

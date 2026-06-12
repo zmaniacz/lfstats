@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CenterListItem, CompetitionDetail } from "@lfstats/db";
+import type { CenterListItem, CompetitionDetail, CompetitionState } from "@lfstats/db";
+import { COMPETITION_STATE_LABELS } from "@/lib/competition-state";
 import { useState } from "react";
 
 type Props = {
@@ -27,12 +28,14 @@ type Props = {
 export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
+  const [state, setState] = useState<CompetitionState>(competition?.state ?? "preshow");
   const [hostCenterId, setHostCenterId] = useState<string>(competition?.hostCenterId ?? "none");
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);
+    formData.set("state", state);
     formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId);
     setIsPending(true);
     try {
@@ -65,6 +68,22 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
           <SelectContent>
             <SelectItem value="competitive">Competitive</SelectItem>
             <SelectItem value="social">Social</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>State</Label>
+        <Select value={state} onValueChange={(v) => setState(v as CompetitionState)} name="state">
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(COMPETITION_STATE_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

@@ -1145,6 +1145,7 @@ export type CompetitiveCompetitionSummary = {
   id: string;
   name: string;
   slug: string;
+  state: "preshow" | "upcoming" | "active" | "completed";
   startDate: string;
   endDate: string | null;
   challongeLink: string | null;
@@ -1157,13 +1158,14 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
       id: competition.id,
       name: competition.name,
       slug: competition.slug,
+      state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
       challongeLink: competition.challongeLink,
       challongeBracketHeight: competition.challongeBracketHeight,
     })
     .from(competition)
-    .where(eq(competition.type, "competitive"))
+    .where(and(eq(competition.type, "competitive"), ne(competition.state, "preshow")))
     .orderBy(desc(competition.startDate));
 }
 

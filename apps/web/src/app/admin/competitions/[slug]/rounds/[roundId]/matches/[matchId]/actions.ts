@@ -9,7 +9,6 @@ import {
   removeGameFromMatch,
   getCompetitionMatchById,
   createForfeitGame,
-  getCompetitionHostCenterId,
   getCompetitionById,
   updateCompetitionMatchTeams,
 } from "@lfstats/db";
@@ -33,6 +32,11 @@ export async function assignGameAction(
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
+  const competition = await getCompetitionById(competitionId);
+  if (!competition) throw new Error("Competition not found");
+  if (competition.state !== "active") {
+    throw new Error("Games can only be assigned while the competition is active.");
+  }
   const gameNumber = parseInt(formData.get("gameNumber") as string, 10);
   const gameId = formData.get("gameId") as string;
   const team1GameTeamId = formData.get("team1GameTeamId") as string;
@@ -87,13 +91,16 @@ export async function createForfeitAction(
 ): Promise<void> {
   await requireAdmin();
 
-  const [centerId, match] = await Promise.all([
-    getCompetitionHostCenterId(competitionId),
+  const [competition, match] = await Promise.all([
+    getCompetitionById(competitionId),
     getCompetitionMatchById(matchId),
   ]);
 
-  if (!centerId || !match) throw new Error("Competition or match not found");
-  if (!centerId) throw new Error("Competition has no host center");
+  if (!competition || !match) throw new Error("Competition or match not found");
+  if (!competition.hostCenterId) throw new Error("Competition has no host center");
+  if (competition.state !== "active") {
+    throw new Error("Games can only be assigned while the competition is active.");
+  }
   if (!match.team1Id || !match.team2Id) {
     throw new Error("Cannot record a forfeit until both teams are determined");
   }
@@ -101,7 +108,7 @@ export async function createForfeitAction(
   await createForfeitGame({
     matchId,
     competitionId,
-    centerId,
+    centerId: competition.hostCenterId,
     gameNumber,
     team1Id: match.team1Id,
     team2Id: match.team2Id,

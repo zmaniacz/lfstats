@@ -5,9 +5,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompetitionForm } from "./CompetitionForm";
 import type { CenterListItem, CompetitionDetail } from "@lfstats/db";
+import { COMPETITION_STATE_LABELS, competitionStateBadgeVariant } from "@/lib/competition-state";
 
 type Props = {
   competition: CompetitionDetail;
@@ -38,7 +40,12 @@ export function CompetitionDetailsCard({ competition, centers, action }: Props) 
             onSaved={() => setIsEditing(false)}
           />
         ) : (
-          <p className="text-sm font-medium">{competition.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">{competition.name}</p>
+            <Badge variant={competitionStateBadgeVariant(competition.state)}>
+              {COMPETITION_STATE_LABELS[competition.state]}
+            </Badge>
+          </div>
         )}
       </CardContent>
     </Card>

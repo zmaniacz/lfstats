@@ -10,11 +10,14 @@ import { slugify, resolveUniqueSlug } from "../lib/slug";
 // Competition types
 // ---------------------------------------------------------------------------
 
+export type CompetitionState = "preshow" | "upcoming" | "active" | "completed";
+
 export type CompetitionListItem = {
   id: string;
   name: string;
   slug: string;
   type: "competitive" | "social";
+  state: CompetitionState;
   startDate: string;
   endDate: string | null;
   hostCenterId: string | null;
@@ -27,6 +30,7 @@ export type CompetitionDetail = {
   name: string;
   slug: string;
   type: "competitive" | "social";
+  state: CompetitionState;
   startDate: string;
   endDate: string | null;
   description: string | null;
@@ -47,6 +51,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
       hostCenterId: competition.hostCenterId,
@@ -64,6 +69,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
     name: r.name,
     slug: r.slug,
     type: r.type,
+    state: r.state,
     startDate: r.startDate,
     endDate: r.endDate,
     hostCenterId: r.hostCenterId,
@@ -79,6 +85,7 @@ export async function getCompetitionById(id: string): Promise<CompetitionDetail 
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
       description: competition.description,
@@ -100,6 +107,7 @@ export async function getCompetitionBySlug(slug: string): Promise<CompetitionDet
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
       description: competition.description,

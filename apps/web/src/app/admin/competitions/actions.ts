@@ -45,6 +45,7 @@ export async function createCompetitionAction(formData: FormData) {
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
+  const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
   const description = (formData.get("description") as string) || null;
@@ -57,6 +58,7 @@ export async function createCompetitionAction(formData: FormData) {
   const { slug } = await createCompetition({
     name,
     type,
+    state,
     startDate,
     endDate,
     description,
@@ -75,6 +77,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
+  const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
   const description = (formData.get("description") as string) || null;
@@ -88,6 +91,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
   await updateCompetition(id, {
     name,
     type,
+    state,
     startDate,
     endDate,
     description,
@@ -133,6 +137,10 @@ export async function bulkAssignGamesAction(competitionId: string, formData: For
   const competition = await getCompetitionById(competitionId);
   if (!competition) throw new Error("Not found");
   await requireCompetitionAccess(competition.hostCenterId ?? null);
+
+  if (competition.state !== "active") {
+    throw new Error("Games can only be assigned while the competition is active.");
+  }
 
   const centerId = formData.get("centerId") as string;
   const dateFrom = formData.get("dateFrom") as string;

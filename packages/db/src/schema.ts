@@ -39,6 +39,13 @@ export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "s
 
 export const competitionRoundTypeEnum = pgEnum("competition_round_type", ["pool", "finals"]);
 
+export const competitionStateEnum = pgEnum("competition_state", [
+  "preshow",
+  "upcoming",
+  "active",
+  "completed",
+]);
+
 // ---------------------------------------------------------------------------
 // Reference & Identity Tables
 // ---------------------------------------------------------------------------
@@ -128,6 +135,7 @@ export const competition = pgTable("competition", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   type: competitionTypeEnum("type").notNull(),
+  state: competitionStateEnum("state").notNull().default("active"),
   hostCenterId: uuid("host_center_id").references(() => center.id),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),

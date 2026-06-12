@@ -1,0 +1,2 @@
+CREATE TYPE "public"."competition_state" AS ENUM('preshow', 'upcoming', 'active', 'completed');--> statement-breakpoint
+ALTER TABLE "competition" ADD COLUMN "state" "competition_state" DEFAULT 'active' NOT NULL;
