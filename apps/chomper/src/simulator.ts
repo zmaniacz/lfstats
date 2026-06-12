@@ -367,6 +367,7 @@ class Simulator {
     this.detectAndFixStatSwaps();
     this.reconcilePendingBoosts();
     this.applyEntityEnds();
+    this.mergeRestartGenerations();
 
     return this.buildResult();
   }
@@ -524,6 +525,207 @@ class Simulator {
       if (finalSnap) {
         if (ps.lives !== finalSnap.lives) finalSnap.lives = ps.lives;
         if (ps.shots !== finalSnap.shots) finalSnap.shots = ps.shots;
+      }
+    }
+  }
+
+  // Same-position hardware restarts (entity routing Case 2/3) are simulated as
+  // separate generations so each period's counters start from the correct
+  // baseline, but they represent one human player and should produce a single
+  // Scorecard. Mid-game position changes (Case 1, different category per
+  // generation) genuinely represent different roles and remain separate
+  // scorecards.
+  private mergeRestartGenerations(): void {
+    for (const route of this.parsed.entityRouting) {
+      if (route.generations.length < 2) continue;
+
+      const categories = route.generations.map((g) => this.entityById.get(g.internalId)?.category);
+      if (new Set(categories).size > 1) continue; // position change — keep separate
+
+      const targetId = route.generations[0]!.internalId;
+      for (let i = 1; i < route.generations.length; i++) {
+        this.mergeGenerationInto(targetId, route.generations[i]!.internalId);
+      }
+    }
+  }
+
+  // Folds the `source` generation's stats, replay snapshots, and references
+  // into `target` (the gen0 entity), then removes `source` entirely so
+  // ingestion sees a single player entity / scorecard / sm5Stats / entity-end.
+  private mergeGenerationInto(targetId: string, sourceId: string): void {
+    const target = this.playerStates.get(targetId);
+    const source = this.playerStates.get(sourceId);
+    if (!target || !source) return;
+
+    // Sum cumulative counters across both periods.
+    target.uptime += source.uptime;
+    target.resupplyDowntime += source.resupplyDowntime;
+    target.otherDowntime += source.otherDowntime;
+    target.shotsFired += source.shotsFired;
+    target.shotsHit += source.shotsHit;
+    target.shotsHitOpponent += source.shotsHitOpponent;
+    target.shotsHitTeam += source.shotsHitTeam;
+    target.shotsHitOpponent3hit += source.shotsHitOpponent3hit;
+    target.shotsHitOpponentMedic += source.shotsHitOpponentMedic;
+    target.shotsHitTeamMedic += source.shotsHitTeamMedic;
+    target.timesHit += source.timesHit;
+    target.missileHits += source.missileHits;
+    target.missilesHitOpponent += source.missilesHitOpponent;
+    target.missilesHitTeam += source.missilesHitTeam;
+    target.missilesHitOpponentMedic += source.missilesHitOpponentMedic;
+    target.missilesHitTeamMedic += source.missilesHitTeamMedic;
+    target.missilesHitOpponentMedicLives += source.missilesHitOpponentMedicLives;
+    target.missilesHitTeamMedicLives += source.missilesHitTeamMedicLives;
+    target.timesHitByMissile += source.timesHitByMissile;
+    target.nukesActivated += source.nukesActivated;
+    target.nukesDetonated += source.nukesDetonated;
+    target.nukesHitMedic += source.nukesHitMedic;
+    target.livesRemovedByNuke += source.livesRemovedByNuke;
+    target.totalNukeActivationTime += source.totalNukeActivationTime;
+    target.nukesCanceled += source.nukesCanceled;
+    target.teamNukesCanceled += source.teamNukesCanceled;
+    target.nukesCanceledByNuke += source.nukesCanceledByNuke;
+    target.ownNukesCanceledByNuke += source.ownNukesCanceledByNuke;
+    target.rapidFire += source.rapidFire;
+    target.totalRapidTime += source.totalRapidTime;
+    target.shotsFiredDuringRapid += source.shotsFiredDuringRapid;
+    target.shotsHitDuringRapid += source.shotsHitDuringRapid;
+    target.shotsHitOpponentDuringRapid += source.shotsHitOpponentDuringRapid;
+    target.shotsHitTeamDuringRapid += source.shotsHitTeamDuringRapid;
+    target.ammoBoost += source.ammoBoost;
+    target.lifeBoost += source.lifeBoost;
+    target.resuppliesGiven += source.resuppliesGiven;
+    target.doubleResuppliesGiven += source.doubleResuppliesGiven;
+    target.resuppliesReceivedAmmo += source.resuppliesReceivedAmmo;
+    target.resuppliesReceivedLives += source.resuppliesReceivedLives;
+    target.emergencyResuppliesReceivedAmmo += source.emergencyResuppliesReceivedAmmo;
+    target.emergencyResuppliesReceivedLives += source.emergencyResuppliesReceivedLives;
+    target.doubleResuppliesReceived += source.doubleResuppliesReceived;
+    target.deactivatedOpponent += source.deactivatedOpponent;
+    target.deactivatedTeam += source.deactivatedTeam;
+    target.eliminatedOpponent += source.eliminatedOpponent;
+    target.eliminatedTeam += source.eliminatedTeam;
+    target.eliminatedOpponentMedic += source.eliminatedOpponentMedic;
+    target.eliminatedTeamMedic += source.eliminatedTeamMedic;
+    target.assists += source.assists;
+    target.resetOpponent += source.resetOpponent;
+    target.resetTeam += source.resetTeam;
+    target.missileResetOpponent += source.missileResetOpponent;
+    target.missileResetTeam += source.missileResetTeam;
+    target.spEarned += source.spEarned;
+    target.spSpent += source.spSpent;
+    target.targetsDestroyed += source.targetsDestroyed;
+    target.penalties += source.penalties;
+    target.phantomDeactivations += source.phantomDeactivations;
+    target.hadRestart = true;
+
+    // Live/final state carries over from the later generation.
+    target.state = source.state;
+    target.stateEnteredAt = source.stateEnteredAt;
+    target.state3EnteredAt = source.state3EnteredAt;
+    target.lastTransitionToActiveAt = source.lastTransitionToActiveAt;
+    target.hitPoints = source.hitPoints;
+    target.lives = source.lives;
+    target.shots = source.shots;
+    target.missiles = source.missiles;
+    target.sp = source.sp;
+    target.isRapidFire = source.isRapidFire;
+    target.rapidFireStartedAt = source.rapidFireStartedAt;
+    target.isNuking = source.isNuking;
+    target.nukeActivatedAt = source.nukeActivatedAt;
+    target.isEliminated = source.isEliminated;
+    target.eliminatedAt = source.eliminatedAt;
+    target.deactivationCause = source.deactivationCause;
+    target.receivedAmmoResupplyThisCycle = source.receivedAmmoResupplyThisCycle;
+    target.receivedLivesResupplyThisCycle = source.receivedLivesResupplyThisCycle;
+    target.lastAmmoResuppliedBy = source.lastAmmoResuppliedBy;
+    target.lastLivesResuppliedBy = source.lastLivesResuppliedBy;
+    target.score = source.score;
+    target.entityEndForcedLives = source.entityEndForcedLives ?? target.entityEndForcedLives;
+
+    // Replay snapshots concatenate — source's period starts after target's ends.
+    target.stateSnapshots.push(...source.stateSnapshots);
+
+    this.playerStates.delete(sourceId);
+
+    // Merge sm5Stats: sum accumulated counters, take the later generation's residuals.
+    const targetStats = this.parsed.sm5Stats.find((s) => s.id === targetId);
+    const sourceStatsIdx = this.parsed.sm5Stats.findIndex((s) => s.id === sourceId);
+    if (targetStats && sourceStatsIdx >= 0) {
+      const sourceStats = this.parsed.sm5Stats[sourceStatsIdx]!;
+      targetStats.shotsHit += sourceStats.shotsHit;
+      targetStats.shotsFired += sourceStats.shotsFired;
+      targetStats.timesZapped += sourceStats.timesZapped;
+      targetStats.timesMissiled += sourceStats.timesMissiled;
+      targetStats.missileHits += sourceStats.missileHits;
+      targetStats.nukesDetonated += sourceStats.nukesDetonated;
+      targetStats.nukesActivated += sourceStats.nukesActivated;
+      targetStats.nukeCancels += sourceStats.nukeCancels;
+      targetStats.medicHits += sourceStats.medicHits;
+      targetStats.ownMedicHits += sourceStats.ownMedicHits;
+      targetStats.medicNukes += sourceStats.medicNukes;
+      targetStats.scoutRapid += sourceStats.scoutRapid;
+      targetStats.lifeBoost += sourceStats.lifeBoost;
+      targetStats.ammoBoost += sourceStats.ammoBoost;
+      targetStats.penalties += sourceStats.penalties;
+      targetStats.shot3Hit += sourceStats.shot3Hit;
+      targetStats.ownNukeCancels += sourceStats.ownNukeCancels;
+      targetStats.shotOpponent += sourceStats.shotOpponent;
+      targetStats.shotTeam += sourceStats.shotTeam;
+      targetStats.missiledOpponent += sourceStats.missiledOpponent;
+      targetStats.missiledTeam += sourceStats.missiledTeam;
+      targetStats.livesLeft = sourceStats.livesLeft;
+      targetStats.shotsLeft = sourceStats.shotsLeft;
+      this.parsed.sm5Stats.splice(sourceStatsIdx, 1);
+    }
+
+    // Merge entity-ends: keep the later generation's exit record (the real
+    // game-end outcome), dropping the earlier generation's mid-game record.
+    const targetEndIdx = this.parsed.entityEnds.findIndex((e) => e.id === targetId);
+    const sourceEndIdx = this.parsed.entityEnds.findIndex((e) => e.id === sourceId);
+    if (sourceEndIdx >= 0) {
+      this.parsed.entityEnds[sourceEndIdx]!.id = targetId;
+    }
+    if (targetEndIdx >= 0 && targetEndIdx !== sourceEndIdx) {
+      this.parsed.entityEnds.splice(targetEndIdx, 1);
+    }
+
+    // Remove the source generation's entity so ingestion produces one Scorecard.
+    const entityIdx = this.parsed.entities.findIndex((e) => e.id === sourceId);
+    if (entityIdx >= 0) this.parsed.entities.splice(entityIdx, 1);
+
+    // Rewrite event/destruction/penalty references from source → target.
+    for (const event of this.events) {
+      if (event.actorEntityId === sourceId) event.actorEntityId = targetId;
+      if (event.targetEntityId === sourceId) event.targetEntityId = targetId;
+    }
+    for (const d of this.targetDestructions) {
+      if (d.actorEntityId === sourceId) d.actorEntityId = targetId;
+    }
+    for (const p of this.penalties) {
+      if (p.targetEntityId === sourceId) p.targetEntityId = targetId;
+      if (p.refereeEntityId === sourceId) p.refereeEntityId = targetId;
+    }
+
+    // Merge interaction rows: combine any pair that now collapses onto the same
+    // (target, other) key, and drop self-pairs created by the merge.
+    for (const [key, counts] of [...this.interactions.entries()]) {
+      if (!key.includes(sourceId)) continue;
+      this.interactions.delete(key);
+
+      const [actorId, otherId] = key.split("->") as [string, string];
+      const newActorId = actorId === sourceId ? targetId : actorId;
+      const newTargetId = otherId === sourceId ? targetId : otherId;
+      if (newActorId === newTargetId) continue; // self-pair from merged generations
+
+      const newKey = `${newActorId}->${newTargetId}`;
+      const existing = this.interactions.get(newKey);
+      if (existing) {
+        existing.shotsHit += counts.shotsHit;
+        existing.shotDeactivations += counts.shotDeactivations;
+        existing.missileHits += counts.missileHits;
+      } else {
+        this.interactions.set(newKey, counts);
       }
     }
   }
@@ -823,7 +1025,7 @@ class Simulator {
         position: pos,
         teamIndex: entity.team,
         state: 0,
-        stateEnteredAt: 0,
+        stateEnteredAt: entity.time,
         state3EnteredAt: null,
         lastTransitionToActiveAt: null,
         hitPoints: stats.hitPoints,
@@ -903,6 +1105,7 @@ class Simulator {
         penalties: 0,
         phantomDeactivations: 0,
         entityEndForcedLives: null,
+        hadRestart: false,
         stateSnapshots: [],
       };
 
@@ -1552,7 +1755,10 @@ class Simulator {
     this.missionStartTime = time;
     // Record initial snapshots for all players
     for (const ps of this.playerStates.values()) {
-      ps.stateEnteredAt = time;
+      // Players who register after mission start (late joins, or a generation's
+      // re-registration) shouldn't accrue uptime for the time before they existed.
+      const joinTime = this.entityById.get(ps.entityId)?.time ?? time;
+      ps.stateEnteredAt = Math.max(time, joinTime);
       this.recordSnapshot(ps, eventIndex);
     }
   }
@@ -2335,7 +2541,7 @@ export function runConsistencyCheck(
   // Detect games with multi-battlesuit players (hardware restarts mid-game).
   // In these games nuke-on-medic interaction counts can be inaccurate because
   // the hardware tracks hits on the restarted vest separately from our sim.
-  const hasMultiBattlesuit = [...playerStats.keys()].some((id) => /_gen\d+$/.test(id));
+  const hasMultiBattlesuit = [...playerStats.values()].some((ps) => ps.hadRestart);
   if (hasMultiBattlesuit) {
     warnings.push(
       "Game contains player(s) with mid-game hardware restarts (multiple battlesuits) — nuke interaction stats may be inaccurate",

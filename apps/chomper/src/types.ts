@@ -211,6 +211,7 @@ export interface PlayerSimState {
   // Tracking for consistency checks
   phantomDeactivations: number; // HP reached 0 on a 0205 (non-deactivating) event
   entityEndForcedLives: number | null; // lives value when entity-end "04" forced elimination
+  hadRestart: boolean; // true if this entity absorbed a same-position hardware-restart generation
 
   // GamePlayerState snapshots — one per state-changing event
   stateSnapshots: GamePlayerStateSnapshot[];
