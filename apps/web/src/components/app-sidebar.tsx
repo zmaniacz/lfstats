@@ -20,6 +20,7 @@ import {
   CrosshairIcon,
   GameControllerIcon,
   HeartIcon,
+  InfoIcon,
   MapPinIcon,
   ShieldIcon,
   StarIcon,
@@ -79,6 +80,11 @@ const browseNavItems = [
     title: "Penalties",
     url: "/penalties",
     icon: <CardsIcon />,
+  },
+  {
+    title: "About SM5",
+    url: "/about-sm5",
+    icon: <InfoIcon />,
   },
 ];
 
