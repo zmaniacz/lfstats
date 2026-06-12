@@ -103,6 +103,49 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
   }));
 }
 
+export async function getCompetitionsByState(
+  states: CompetitionState[],
+  options?: { limit?: number; order?: "asc" | "desc" },
+): Promise<CompetitionListItem[]> {
+  const order = options?.order ?? "asc";
+
+  const query = db
+    .select({
+      id: competition.id,
+      name: competition.name,
+      slug: competition.slug,
+      type: competition.type,
+      state: competition.state,
+      startDate: competition.startDate,
+      endDate: competition.endDate,
+      hostCenterId: competition.hostCenterId,
+      hostCenterName: center.name,
+      gameCount: sql<number>`count(${game.id})::int`,
+    })
+    .from(competition)
+    .leftJoin(center, eq(competition.hostCenterId, center.id))
+    .leftJoin(game, eq(game.competitionId, competition.id))
+    .where(inArray(competition.state, states))
+    .groupBy(competition.id, center.name)
+    .orderBy(order === "asc" ? asc(competition.startDate) : desc(competition.startDate))
+    .$dynamic();
+
+  const rows = options?.limit ? await query.limit(options.limit) : await query;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    type: r.type,
+    state: r.state,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    hostCenterId: r.hostCenterId,
+    hostCenterName: r.hostCenterName,
+    gameCount: r.gameCount,
+  }));
+}
+
 export async function getCompetitionById(id: string): Promise<CompetitionDetail | null> {
   const [row] = await db
     .select({

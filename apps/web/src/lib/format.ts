@@ -60,3 +60,9 @@ export function formatDateTime(d: Date | null): string {
   const m = String(d.getUTCMinutes()).padStart(2, "0");
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${h}:${m}`;
 }
+
+export function formatDateOnly(d: string | null): string {
+  if (d === null) return EM_DASH;
+  const date = new Date(`${d}T00:00:00Z`);
+  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
