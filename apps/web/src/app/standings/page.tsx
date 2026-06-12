@@ -93,6 +93,7 @@ export default async function StandingsPage({
                 activeId={activeId}
                 competitionSlug={activeComp.slug}
                 challongeLink={activeComp.challongeLink}
+                challongeBracketHeight={activeComp.challongeBracketHeight}
               />
             </Suspense>
           </TabsContent>

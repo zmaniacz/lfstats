@@ -1148,6 +1148,7 @@ export type CompetitiveCompetitionSummary = {
   startDate: string;
   endDate: string | null;
   challongeLink: string | null;
+  challongeBracketHeight: number | null;
 };
 
 export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetitionSummary[]> {
@@ -1159,6 +1160,7 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
       startDate: competition.startDate,
       endDate: competition.endDate,
       challongeLink: competition.challongeLink,
+      challongeBracketHeight: competition.challongeBracketHeight,
     })
     .from(competition)
     .where(eq(competition.type, "competitive"))

@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { getCompetitionMatchResults, type CompetitionMatchResult } from "@lfstats/db";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { MatchCard } from "@/components/competitions/MatchCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCompetitionMatchResults, type CompetitionMatchResult } from "@lfstats/db";
 
 export async function FinalsContent({
   activeId,
   competitionSlug,
   challongeLink,
+  challongeBracketHeight,
 }: {
   activeId: string;
   competitionSlug: string;
   challongeLink: string | null;
+  challongeBracketHeight: number | null;
 }) {
   const matchResults = await getCompetitionMatchResults(activeId, undefined, "finals");
 
@@ -33,6 +35,8 @@ export async function FinalsContent({
   }
   const sortedRounds = [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber);
 
+  const bracketUrl = challongeLink?.replace(/\/+$/, "").replace(/\/module$/, "") ?? null;
+
   return (
     <>
       <Card>
@@ -40,18 +44,25 @@ export async function FinalsContent({
           <CardTitle>Bracket</CardTitle>
         </CardHeader>
         <CardContent>
-          {challongeLink ? (
-            <p className="text-sm text-muted-foreground">
-              Bracket:{" "}
-              <a
-                href={challongeLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                {challongeLink}
-              </a>
-            </p>
+          {bracketUrl ? (
+            <>
+              <iframe
+                src={`${bracketUrl}/module?show_final_results=1&show_standings=1`}
+                width="100%"
+                height={challongeBracketHeight ?? 500}
+                className="rounded-md border"
+              />
+              <p className="mt-2 text-sm text-muted-foreground">
+                <a
+                  href={bracketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  View bracket on Challonge
+                </a>
+              </p>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">Bracket not configured.</p>
           )}

@@ -31,6 +31,7 @@ export type CompetitionDetail = {
   endDate: string | null;
   description: string | null;
   challongeLink: string | null;
+  challongeBracketHeight: number | null;
   hostCenterId: string | null;
   createdAt: Date;
 };
@@ -82,6 +83,7 @@ export async function getCompetitionById(id: string): Promise<CompetitionDetail 
       endDate: competition.endDate,
       description: competition.description,
       challongeLink: competition.challongeLink,
+      challongeBracketHeight: competition.challongeBracketHeight,
       hostCenterId: competition.hostCenterId,
       createdAt: competition.createdAt,
     })
@@ -102,6 +104,7 @@ export async function getCompetitionBySlug(slug: string): Promise<CompetitionDet
       endDate: competition.endDate,
       description: competition.description,
       challongeLink: competition.challongeLink,
+      challongeBracketHeight: competition.challongeBracketHeight,
       hostCenterId: competition.hostCenterId,
       createdAt: competition.createdAt,
     })

@@ -120,6 +120,18 @@ export function CompetitionForm({ competition, centers, action }: Props) {
         />
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="challongeBracketHeight">Bracket Embed Height (px, optional)</Label>
+        <Input
+          id="challongeBracketHeight"
+          name="challongeBracketHeight"
+          type="number"
+          min={0}
+          defaultValue={competition?.challongeBracketHeight ?? ""}
+          placeholder="500"
+        />
+      </div>
+
       <Button type="submit" disabled={isPending}>
         {isPending ? "Saving…" : competition ? "Save Changes" : "Create Competition"}
       </Button>

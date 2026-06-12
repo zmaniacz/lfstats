@@ -49,6 +49,10 @@ export async function createCompetitionAction(formData: FormData) {
   const endDate = (formData.get("endDate") as string) || null;
   const description = (formData.get("description") as string) || null;
   const challongeLink = (formData.get("challongeLink") as string) || null;
+  const challongeBracketHeightRaw = formData.get("challongeBracketHeight") as string;
+  const challongeBracketHeight = challongeBracketHeightRaw
+    ? parseInt(challongeBracketHeightRaw, 10)
+    : null;
 
   const { slug } = await createCompetition({
     name,
@@ -57,6 +61,7 @@ export async function createCompetitionAction(formData: FormData) {
     endDate,
     description,
     challongeLink,
+    challongeBracketHeight,
     hostCenterId,
   });
 
@@ -74,6 +79,10 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
   const endDate = (formData.get("endDate") as string) || null;
   const description = (formData.get("description") as string) || null;
   const challongeLink = (formData.get("challongeLink") as string) || null;
+  const challongeBracketHeightRaw = formData.get("challongeBracketHeight") as string;
+  const challongeBracketHeight = challongeBracketHeightRaw
+    ? parseInt(challongeBracketHeightRaw, 10)
+    : null;
   const hostCenterId = (formData.get("hostCenterId") as string) || null;
 
   await updateCompetition(id, {
@@ -83,6 +92,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
     endDate,
     description,
     challongeLink,
+    challongeBracketHeight,
     hostCenterId,
   });
   const updated = await getCompetitionById(id);

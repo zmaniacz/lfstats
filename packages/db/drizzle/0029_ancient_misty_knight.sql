@@ -1,0 +1,1 @@
+ALTER TABLE "competition" ADD COLUMN "challonge_bracket_height" integer;

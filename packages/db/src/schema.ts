@@ -133,6 +133,7 @@ export const competition = pgTable("competition", {
   endDate: date("end_date"),
   description: text("description"),
   challongeLink: text("challonge_link"),
+  challongeBracketHeight: integer("challonge_bracket_height"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
