@@ -41,6 +41,7 @@ export const competitionRoundTypeEnum = pgEnum("competition_round_type", [
   "pool",
   "finals",
   "split-pool",
+  "wildcard",
 ]);
 
 export const competitionStateEnum = pgEnum("competition_state", [

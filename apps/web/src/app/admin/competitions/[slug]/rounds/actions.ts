@@ -48,7 +48,7 @@ export async function createRoundAction(competitionId: string, formData: FormDat
   await requireAdmin();
   const name = formData.get("name") as string;
   const roundNumber = parseInt(formData.get("roundNumber") as string, 10);
-  const type = formData.get("type") as "pool" | "finals" | "split-pool";
+  const type = formData.get("type") as "pool" | "finals" | "split-pool" | "wildcard";
   await createCompetitionRound({ competitionId, name, roundNumber, type });
   await revalidateRoundsPage(competitionId);
 }
@@ -61,7 +61,7 @@ export async function updateRoundAction(
   await requireAdmin();
   const name = formData.get("name") as string;
   const roundNumber = parseInt(formData.get("roundNumber") as string, 10);
-  const type = formData.get("type") as "pool" | "finals" | "split-pool";
+  const type = formData.get("type") as "pool" | "finals" | "split-pool" | "wildcard";
   await updateCompetitionRound(roundId, { name, roundNumber, type });
   await revalidateRoundPage(competitionId, roundId);
 }

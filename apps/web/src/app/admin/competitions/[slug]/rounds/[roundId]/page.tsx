@@ -50,7 +50,9 @@ export default async function RoundMatchesPage({
   ]);
 
   const isSplitPool = round.type === "split-pool";
-  const [pools, teamPoolAssignments] = isSplitPool
+  const isWildcard = round.type === "wildcard";
+  const usesPools = isSplitPool || isWildcard;
+  const [pools, teamPoolAssignments] = usesPools
     ? await Promise.all([
         getCompetitionPoolsByRound(round.id),
         getCompetitionRoundTeamPoolAssignments(comp.id, round.id),
@@ -81,7 +83,9 @@ export default async function RoundMatchesPage({
                 ? "default"
                 : round.type === "split-pool"
                   ? "outline"
-                  : "secondary"
+                  : round.type === "wildcard"
+                    ? "destructive"
+                    : "secondary"
             }
           >
             {round.type}
@@ -121,6 +125,22 @@ export default async function RoundMatchesPage({
         </Card>
       )}
 
+      {isWildcard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Wildcard Teams</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PoolManager
+              pools={pools}
+              assignments={teamPoolAssignments}
+              managePools={false}
+              assignTeamAction={assignTeamToPoolAction.bind(null, id, round.id)}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Matches</CardTitle>
@@ -135,7 +155,7 @@ export default async function RoundMatchesPage({
                   />
                 </div>
               )}
-              {isSplitPool && (
+              {usesPools && (
                 <div className="mb-4">
                   <GeneratePoolMatchesButton
                     action={generateSplitPoolMatchesAction.bind(null, id, round.id)}
@@ -146,8 +166,8 @@ export default async function RoundMatchesPage({
               <CompetitionMatchForm
                 roundId={round.id}
                 teams={teams}
-                pools={isSplitPool ? pools : undefined}
-                teamPoolAssignments={isSplitPool ? teamPoolAssignments : undefined}
+                pools={usesPools ? pools : undefined}
+                teamPoolAssignments={usesPools ? teamPoolAssignments : undefined}
                 action={createMatchAction.bind(null, id)}
               />
             </div>
@@ -168,7 +188,7 @@ export default async function RoundMatchesPage({
               roundId={round.id}
               matches={matches}
               teams={teams}
-              pools={isSplitPool ? pools : undefined}
+              pools={usesPools ? pools : undefined}
               deleteAction={boundDeleteMatch}
               reorderAction={boundReorder}
               updateTeamsAction={boundUpdateTeams}

@@ -61,7 +61,7 @@ export type CompetitionTeamRosterEntry = {
   gamesPlayed: number;
 };
 
-export type CompetitionRoundType = "pool" | "finals" | "split-pool";
+export type CompetitionRoundType = "pool" | "finals" | "split-pool" | "wildcard";
 
 export type CompetitionRoundListItem = {
   id: string;
@@ -581,6 +581,19 @@ export async function getCompetitionRoundById(
   return row ?? null;
 }
 
+// A wildcard round plays its matches within a single auto-created "Wildcard"
+// pool, reusing the split-pool team-assignment and standings machinery.
+async function ensureWildcardPool(roundId: string): Promise<void> {
+  const existing = await db
+    .select({ id: competitionPool.id })
+    .from(competitionPool)
+    .where(eq(competitionPool.roundId, roundId))
+    .limit(1);
+  if (existing.length === 0) {
+    await createCompetitionPool({ roundId, name: "Wildcard" });
+  }
+}
+
 export async function createCompetitionRound(data: {
   competitionId: string;
   name: string;
@@ -591,6 +604,7 @@ export async function createCompetitionRound(data: {
     .insert(competitionRound)
     .values(data)
     .returning({ id: competitionRound.id });
+  if (data.type === "wildcard") await ensureWildcardPool(row.id);
   return row.id;
 }
 
@@ -599,6 +613,7 @@ export async function updateCompetitionRound(
   data: { name: string; roundNumber: number; type: CompetitionRoundType },
 ): Promise<void> {
   await db.update(competitionRound).set(data).where(eq(competitionRound.id, id));
+  if (data.type === "wildcard") await ensureWildcardPool(id);
 }
 
 export async function deleteCompetitionRound(id: string): Promise<void> {
@@ -1529,8 +1544,9 @@ export async function getCompetitionStandings(
     .where(
       and(
         eq(competitionMatch.competitionId, competitionId),
-        inArray(competitionRound.type, ["pool", "split-pool"]),
-        roundId ? eq(competitionMatch.roundId, roundId) : undefined,
+        roundId
+          ? eq(competitionMatch.roundId, roundId)
+          : inArray(competitionRound.type, ["pool", "split-pool"]),
         poolId ? eq(competitionMatch.poolId, poolId) : undefined,
       ),
     );
@@ -1642,7 +1658,7 @@ export type CompetitionMatchResult = {
 export async function getCompetitionMatchResults(
   competitionId: string,
   roundId?: string,
-  roundType: "pool" | "finals" | "split-pool" = "pool",
+  roundType: CompetitionRoundType = "pool",
   poolId?: string,
 ): Promise<CompetitionMatchResult[]> {
   const gameRows = await db

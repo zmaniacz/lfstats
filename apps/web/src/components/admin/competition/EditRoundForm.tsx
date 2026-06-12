@@ -18,12 +18,12 @@ import { useState } from "react";
 type Props = {
   initialName: string;
   initialRoundNumber: number;
-  initialType: "pool" | "finals" | "split-pool";
+  initialType: "pool" | "finals" | "split-pool" | "wildcard";
   action: (formData: FormData) => Promise<void>;
 };
 
 export function EditRoundForm({ initialName, initialRoundNumber, initialType, action }: Props) {
-  const [type, setType] = useState<"pool" | "finals" | "split-pool">(initialType);
+  const [type, setType] = useState<"pool" | "finals" | "split-pool" | "wildcard">(initialType);
   const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
@@ -65,13 +65,17 @@ export function EditRoundForm({ initialName, initialRoundNumber, initialType, ac
       </div>
       <div className="space-y-1">
         <Label>Type</Label>
-        <Select value={type} onValueChange={(v) => setType(v as "pool" | "finals" | "split-pool")}>
+        <Select
+          value={type}
+          onValueChange={(v) => setType(v as "pool" | "finals" | "split-pool" | "wildcard")}
+        >
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="pool">Pool</SelectItem>
             <SelectItem value="split-pool">Split Pool</SelectItem>
+            <SelectItem value="wildcard">Wildcard</SelectItem>
             <SelectItem value="finals">Finals</SelectItem>
           </SelectContent>
         </Select>

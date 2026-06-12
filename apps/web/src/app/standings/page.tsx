@@ -47,7 +47,7 @@ export default async function StandingsPage({
 
   const allRounds = await getCompetitionRounds(activeId);
   const standingsRounds = allRounds
-    .filter((r) => r.type === "pool" || r.type === "split-pool")
+    .filter((r) => r.type === "pool" || r.type === "split-pool" || r.type === "wildcard")
     .sort((a, b) => a.roundNumber - b.roundNumber);
   const finalsRounds = allRounds
     .filter((r) => r.type === "finals")

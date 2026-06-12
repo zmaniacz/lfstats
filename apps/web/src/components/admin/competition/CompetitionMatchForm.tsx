@@ -62,7 +62,7 @@ export function CompetitionMatchForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
-      {pools && (
+      {pools && pools.length > 1 && (
         <div className="space-y-1">
           <Label>Pool</Label>
           <Select value={poolId} onValueChange={setPoolId}>

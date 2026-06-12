@@ -1,0 +1,1 @@
+ALTER TYPE "public"."competition_round_type" ADD VALUE 'wildcard';

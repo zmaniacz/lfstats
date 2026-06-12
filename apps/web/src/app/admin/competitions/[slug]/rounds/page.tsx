@@ -61,7 +61,9 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
                       ? "default"
                       : round.type === "split-pool"
                         ? "outline"
-                        : "secondary"
+                        : round.type === "wildcard"
+                          ? "destructive"
+                          : "secondary"
                   }
                 >
                   {round.type}

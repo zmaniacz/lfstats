@@ -25,9 +25,10 @@ const UNASSIGNED = "unassigned";
 type Props = {
   pools: CompetitionPoolListItem[];
   assignments: CompetitionPoolTeamAssignment[];
-  createPoolAction: (formData: FormData) => Promise<void>;
-  renamePoolAction: (poolId: string, formData: FormData) => Promise<void>;
-  deletePoolAction: (poolId: string) => Promise<void>;
+  managePools?: boolean;
+  createPoolAction?: (formData: FormData) => Promise<void>;
+  renamePoolAction?: (poolId: string, formData: FormData) => Promise<void>;
+  deletePoolAction?: (poolId: string) => Promise<void>;
   assignTeamAction: (teamId: string, poolId: string | null) => Promise<void>;
 };
 
@@ -155,6 +156,7 @@ function PoolColumn({
 export function PoolManager({
   pools,
   assignments,
+  managePools = true,
   createPoolAction,
   renamePoolAction,
   deletePoolAction,
@@ -207,7 +209,7 @@ export function PoolManager({
 
   return (
     <div className="space-y-4">
-      <AddPoolForm action={createPoolAction} />
+      {managePools && createPoolAction && <AddPoolForm action={createPoolAction} />}
       {pools.length === 0 ? (
         <p className="text-sm text-muted-foreground">Add a pool to start assigning teams.</p>
       ) : (
@@ -219,7 +221,7 @@ export function PoolManager({
                 id={pool.id}
                 teams={teamsByPool.get(pool.id) ?? []}
                 title={
-                  renamingPoolId === pool.id ? (
+                  managePools && renamingPoolId === pool.id && renamePoolAction ? (
                     <RenamePoolForm
                       pool={pool}
                       action={renamePoolAction}
@@ -230,7 +232,7 @@ export function PoolManager({
                   )
                 }
                 controls={
-                  renamingPoolId === pool.id ? undefined : (
+                  managePools && renamingPoolId !== pool.id ? (
                     <div className="flex items-center gap-1">
                       <Button
                         variant="outline"
@@ -239,14 +241,16 @@ export function PoolManager({
                       >
                         Rename
                       </Button>
-                      <DeleteEntityButton
-                        id={pool.id}
-                        label={`"${pool.name}"`}
-                        description="Matches assigned to this pool will become unscoped, not deleted."
-                        action={deletePoolAction}
-                      />
+                      {deletePoolAction && (
+                        <DeleteEntityButton
+                          id={pool.id}
+                          label={`"${pool.name}"`}
+                          description="Matches assigned to this pool will become unscoped, not deleted."
+                          action={deletePoolAction}
+                        />
+                      )}
                     </div>
-                  )
+                  ) : undefined
                 }
               />
             ))}

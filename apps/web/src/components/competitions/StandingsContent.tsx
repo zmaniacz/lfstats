@@ -46,14 +46,14 @@ export async function StandingsContent({
 }) {
   const teams = await getCompetitionTeams(activeId);
 
-  if (activeRoundId && activeRoundType === "split-pool") {
+  if (activeRoundId && (activeRoundType === "split-pool" || activeRoundType === "wildcard")) {
     const pools = await getCompetitionPoolsForStandings(activeRoundId);
 
     const poolData = await Promise.all(
       pools.map(async (pool) => {
         const [standings, matchResults] = await Promise.all([
           getCompetitionStandings(activeId, activeRoundId, pool.id),
-          getCompetitionMatchResults(activeId, activeRoundId, "split-pool", pool.id),
+          getCompetitionMatchResults(activeId, activeRoundId, activeRoundType, pool.id),
         ]);
         return { pool, standings, matchResults };
       }),
