@@ -1481,20 +1481,23 @@ function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAc
       }
     }
 
-    // Match bonus: compare combined scores
-    if (t1TotalScore > t2TotalScore) {
-      t1.matchPoints += 2;
-      t1.matchWins += 1;
-      t2.matchLosses += 1;
-    } else if (t2TotalScore > t1TotalScore) {
-      t2.matchPoints += 2;
-      t2.matchWins += 1;
-      t1.matchLosses += 1;
-    } else {
-      t1.matchPoints += 1;
-      t1.matchDraws += 1;
-      t2.matchPoints += 1;
-      t2.matchDraws += 1;
+    // Match bonus: compare combined scores. Only awarded once the match is complete
+    // (both games reported) — an in-progress match shouldn't grant the win/draw bonus yet.
+    if (games.length >= 2) {
+      if (t1TotalScore > t2TotalScore) {
+        t1.matchPoints += 2;
+        t1.matchWins += 1;
+        t2.matchLosses += 1;
+      } else if (t2TotalScore > t1TotalScore) {
+        t2.matchPoints += 2;
+        t2.matchWins += 1;
+        t1.matchLosses += 1;
+      } else {
+        t1.matchPoints += 1;
+        t1.matchDraws += 1;
+        t2.matchPoints += 1;
+        t2.matchDraws += 1;
+      }
     }
   }
 
@@ -1790,16 +1793,32 @@ export async function getCompetitionMatchResults(
 
   return matchOrder.map((id) => {
     const m = matchMap.get(id)!;
+
+    // Game points: 2 per win, 1 per draw — always reflect what's been reported so far.
+    let t1GamePoints = 0;
+    let t2GamePoints = 0;
+    for (const g of m.games) {
+      if (g.team1Result === "win") {
+        t1GamePoints += 2;
+      } else if (g.team2Result === "win") {
+        t2GamePoints += 2;
+      } else {
+        t1GamePoints += 1;
+        t2GamePoints += 1;
+      }
+    }
+
     if (m.games.length < 2) {
       return {
         ...m,
         matchWinner: "incomplete" as const,
         team1MatchPoints: 0,
         team2MatchPoints: 0,
-        team1TotalPoints: 0,
-        team2TotalPoints: 0,
+        team1TotalPoints: t1GamePoints,
+        team2TotalPoints: t2GamePoints,
       };
     }
+
     const t1Total = m.games.reduce((s, g) => s + (g.team1Score ?? 0), 0);
     const t2Total = m.games.reduce((s, g) => s + (g.team2Score ?? 0), 0);
     let matchWinner: CompetitionMatchResult["matchWinner"];
@@ -1818,19 +1837,7 @@ export async function getCompetitionMatchResults(
       team1MatchPoints = 1;
       team2MatchPoints = 1;
     }
-    // Game points: 2 per win, 1 per draw
-    let t1GamePoints = 0;
-    let t2GamePoints = 0;
-    for (const g of m.games) {
-      if (g.team1Result === "win") {
-        t1GamePoints += 2;
-      } else if (g.team2Result === "win") {
-        t2GamePoints += 2;
-      } else {
-        t1GamePoints += 1;
-        t2GamePoints += 1;
-      }
-    }
+
     return {
       ...m,
       matchWinner,
