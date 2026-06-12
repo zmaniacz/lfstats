@@ -2,6 +2,8 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { Suspense } from "react";
+import Link from "next/link";
+import { Settings } from "lucide-react";
 import { getCompetitionRounds } from "@lfstats/db";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { RoundFilter } from "./RoundFilter";
@@ -10,6 +12,7 @@ import { FinalsContent } from "@/components/competitions/FinalsContent";
 import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { resolveFilterContext } from "@/lib/filter-context";
+import { auth } from "@/auth";
 
 export default async function StandingsPage({
   searchParams,
@@ -36,6 +39,12 @@ export default async function StandingsPage({
   const activeComp = ctx.competition;
   const activeId = activeComp.id;
 
+  const session = await auth();
+  const roles = session?.user?.roles ?? [];
+  const isAdmin = roles.some(
+    (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
+  );
+
   const allRounds = await getCompetitionRounds(activeId);
   const standingsRounds = allRounds
     .filter((r) => r.type === "pool" || r.type === "split-pool")
@@ -53,7 +62,18 @@ export default async function StandingsPage({
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-semibold">Standings</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Standings</h2>
+          {isAdmin && (
+            <Link
+              href={`/admin/competitions/${activeComp.slug}`}
+              className="text-muted-foreground hover:text-foreground"
+              title="Manage competition"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
         <FilterBar
           basePath="/standings"
           mode="competition-only"

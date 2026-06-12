@@ -61,35 +61,36 @@ export async function StandingsContent({
 
     return (
       <>
-        {poolData.map(({ pool, standings, matchResults }) => {
-          const sortedRounds = groupMatchesByRound(matchResults);
+        <div className="grid gap-4 lg:grid-cols-2">
+          {poolData.map(({ pool, standings }) => (
+            <Card key={pool.id}>
+              <CardHeader>
+                <CardTitle>{pool.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StandingsTable
+                  standings={standings}
+                  teams={teams}
+                  competitionSlug={competitionSlug}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {poolData.map(({ pool, matchResults }) => {
+          const matches = [...matchResults].sort(
+            (a, b) => a.roundNumber - b.roundNumber || a.matchNumber - b.matchNumber,
+          );
+          if (matches.length === 0) return null;
           return (
             <div key={pool.id} className="space-y-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{pool.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StandingsTable
-                    standings={standings}
-                    teams={teams}
-                    competitionSlug={competitionSlug}
-                  />
-                </CardContent>
-              </Card>
-              {sortedRounds.map((round) => (
-                <div key={round.roundName} className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {round.matches.map((match) => (
-                      <MatchCard
-                        key={match.matchId}
-                        match={match}
-                        competitionSlug={competitionSlug}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+              <h3 className="text-lg font-semibold">{pool.name}</h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {matches.map((match) => (
+                  <MatchCard key={match.matchId} match={match} competitionSlug={competitionSlug} />
+                ))}
+              </div>
             </div>
           );
         })}

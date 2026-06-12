@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -166,6 +166,7 @@ export function PoolManager({
     return map;
   });
   const [renamingPoolId, setRenamingPoolId] = useState<string | null>(null);
+  const dndId = useId();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -210,7 +211,7 @@ export function PoolManager({
       {pools.length === 0 ? (
         <p className="text-sm text-muted-foreground">Add a pool to start assigning teams.</p>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {pools.map((pool) => (
               <PoolColumn
