@@ -1613,7 +1613,17 @@ export async function getCompetitionStandings(
         ...s,
       };
     })
-    .sort((a, b) => b.matchPoints - a.matchPoints || b.gameWins - a.gameWins);
+    .sort((a, b) => {
+      if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
+
+      const ratioA =
+        a.scoreAgainst === 0 ? (a.scoreFor === 0 ? 0 : Infinity) : a.scoreFor / a.scoreAgainst;
+      const ratioB =
+        b.scoreAgainst === 0 ? (b.scoreFor === 0 ? 0 : Infinity) : b.scoreFor / b.scoreAgainst;
+      if (ratioB !== ratioA) return ratioB - ratioA;
+
+      return b.gameWins - a.gameWins;
+    });
 }
 
 // ---------------------------------------------------------------------------
