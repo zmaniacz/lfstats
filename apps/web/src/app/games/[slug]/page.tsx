@@ -7,6 +7,7 @@ import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
 import { GameTagManager } from "@/components/games/GameTagManager";
+import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
 import { MarkReplayButton } from "@/components/games/MarkReplayButton";
 import { ReplayTab } from "@/components/games/ReplayTab";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
@@ -18,7 +19,7 @@ import { getTeamColor } from "@/lib/team-colors";
 import {
   getAvailableMatchesForGame,
   getCompetitionGameNavigation,
-  getCompetitions,
+  getCompetitionsByState,
   getGameDetailBySlug,
   getGameMatchAssignment,
   getGamePenalties,
@@ -34,6 +35,7 @@ import {
   assignGameToMatchAction,
   assignTagAction,
   deletePenaltyAction,
+  markGameAsAbortedAction,
   markGameAsReplayAction,
   removeFavoriteAction,
   removeGameFromCompetitionAction,
@@ -70,7 +72,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
   ] = await Promise.all([
     canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
-    canDelete ? getCompetitions() : Promise.resolve([]),
+    canDelete ? getCompetitionsByState(["active"]) : Promise.resolve([]),
     canDelete && game.competitionId
       ? getAvailableMatchesForGame(game.competitionId)
       : Promise.resolve([]),
@@ -175,6 +177,11 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
                 gameId={game.id}
                 isReplay={game.outcome === "replay"}
                 action={markGameAsReplayAction}
+              />
+              <MarkAbortedButton
+                gameId={game.id}
+                isAborted={game.outcome === "aborted"}
+                action={markGameAsAbortedAction}
               />
             </>
           )}

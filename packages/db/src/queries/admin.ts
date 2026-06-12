@@ -395,6 +395,10 @@ export async function markGameAsReplay(id: string): Promise<void> {
   await db.update(game).set({ outcome: "replay", exclude: true }).where(eq(game.id, id));
 }
 
+export async function markGameAsAborted(id: string): Promise<void> {
+  await db.update(game).set({ outcome: "aborted", exclude: true }).where(eq(game.id, id));
+}
+
 export async function removeGameFromCompetition(gameId: string): Promise<void> {
   await db.update(game).set({ competitionId: null }).where(eq(game.id, gameId));
 }

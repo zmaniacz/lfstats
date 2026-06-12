@@ -14,6 +14,7 @@ import {
   removeTagFromGame,
   setGameExcluded,
   markGameAsReplay,
+  markGameAsAborted,
   removeGameFromCompetition,
   setGameCompetition,
   assignGameToMatch,
@@ -64,6 +65,12 @@ export async function toggleExcludeAction(gameId: string, exclude: boolean) {
 export async function markGameAsReplayAction(gameId: string) {
   await requireCenterAdmin(gameId);
   await markGameAsReplay(gameId);
+  await revalidateGame(gameId);
+}
+
+export async function markGameAsAbortedAction(gameId: string) {
+  await requireCenterAdmin(gameId);
+  await markGameAsAborted(gameId);
   await revalidateGame(gameId);
 }
 
