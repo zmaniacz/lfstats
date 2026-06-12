@@ -21,6 +21,7 @@ import {
   reorderMatchesAction,
   generatePoolMatchesAction,
   updateRoundAction,
+  updateMatchTeamsAction,
 } from "../actions";
 
 export default async function RoundMatchesPage({
@@ -43,6 +44,7 @@ export default async function RoundMatchesPage({
   const id = comp.id;
   const boundDeleteMatch = deleteMatchAction.bind(null, id, round.id);
   const boundReorder = reorderMatchesAction.bind(null, id, round.id);
+  const boundUpdateTeams = updateMatchTeamsAction.bind(null, id, round.id);
 
   return (
     <div className="space-y-6">
@@ -112,8 +114,10 @@ export default async function RoundMatchesPage({
               competitionSlug={comp.slug}
               roundId={round.id}
               matches={matches}
+              teams={teams}
               deleteAction={boundDeleteMatch}
               reorderAction={boundReorder}
+              updateTeamsAction={boundUpdateTeams}
             />
           )}
         </CardContent>

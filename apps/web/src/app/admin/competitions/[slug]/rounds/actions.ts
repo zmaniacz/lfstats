@@ -14,6 +14,7 @@ import {
   getCompetitionTeams,
   getCompetitionById,
   reorderCompetitionMatches,
+  updateCompetitionMatchTeams,
 } from "@lfstats/db";
 import { auth } from "@/auth";
 
@@ -111,6 +112,19 @@ export async function generatePoolMatchesAction(
       });
     }
   }
+  await revalidateRoundPage(competitionId, roundId);
+}
+
+export async function updateMatchTeamsAction(
+  competitionId: string,
+  roundId: string,
+  matchId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const team1Id = (formData.get("team1Id") as string) || null;
+  const team2Id = (formData.get("team2Id") as string) || null;
+  await updateCompetitionMatchTeams(matchId, { team1Id, team2Id });
   await revalidateRoundPage(competitionId, roundId);
 }
 
