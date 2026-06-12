@@ -37,14 +37,16 @@ export default async function StandingsPage({
   const activeId = activeComp.id;
 
   const allRounds = await getCompetitionRounds(activeId);
-  const poolRounds = allRounds
-    .filter((r) => r.type === "pool")
+  const standingsRounds = allRounds
+    .filter((r) => r.type === "pool" || r.type === "split-pool")
     .sort((a, b) => a.roundNumber - b.roundNumber);
   const finalsRounds = allRounds
     .filter((r) => r.type === "finals")
     .sort((a, b) => a.roundNumber - b.roundNumber);
 
-  const activeRoundId = poolRounds.some((r) => r.id === roundIdParam) ? roundIdParam! : null;
+  const activeRound = standingsRounds.find((r) => r.id === roundIdParam) ?? null;
+  const activeRoundId = activeRound?.id ?? null;
+  const activeRoundType = activeRound?.type ?? null;
 
   const contentKey = [activeComp.slug, activeRoundId].join("|");
 
@@ -69,10 +71,10 @@ export default async function StandingsPage({
           {finalsRounds.length > 0 && <TabsTrigger value="finals">Finals</TabsTrigger>}
         </TabsList>
         <TabsContent value="standings" className="space-y-6">
-          {poolRounds.length > 1 && (
+          {standingsRounds.length > 1 && (
             <RoundFilter
               competitionSlug={activeComp.slug}
-              rounds={poolRounds.map((r) => ({ id: r.id, name: r.name }))}
+              rounds={standingsRounds.map((r) => ({ id: r.id, name: r.name }))}
               activeRoundId={activeRoundId}
             />
           )}
@@ -81,6 +83,7 @@ export default async function StandingsPage({
             <StandingsContent
               activeId={activeId}
               activeRoundId={activeRoundId}
+              activeRoundType={activeRoundType}
               competitionSlug={activeComp.slug}
               competitionName={activeComp.name}
             />

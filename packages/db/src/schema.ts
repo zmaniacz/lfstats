@@ -37,7 +37,11 @@ export const destructionMethodEnum = pgEnum("destruction_method", ["shot", "miss
 
 export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "social"]);
 
-export const competitionRoundTypeEnum = pgEnum("competition_round_type", ["pool", "finals"]);
+export const competitionRoundTypeEnum = pgEnum("competition_round_type", [
+  "pool",
+  "finals",
+  "split-pool",
+]);
 
 export const competitionStateEnum = pgEnum("competition_state", [
   "preshow",
@@ -196,6 +200,41 @@ export const competitionRound = pgTable(
   (t) => [unique().on(t.competitionId, t.roundNumber)],
 );
 
+export const competitionPool = pgTable(
+  "competition_pool",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => competitionRound.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.roundId, t.name)],
+);
+
+export const competitionRoundTeamPool = pgTable(
+  "competition_round_team_pool",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => competitionRound.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => competitionTeam.id, { onDelete: "cascade" }),
+    poolId: uuid("pool_id")
+      .notNull()
+      .references(() => competitionPool.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.roundId, t.teamId),
+    index("competition_round_team_pool_pool_id_idx").on(t.poolId),
+  ],
+);
+
 export const competitionMatch = pgTable(
   "competition_match",
   {
@@ -206,6 +245,7 @@ export const competitionMatch = pgTable(
     roundId: uuid("round_id")
       .notNull()
       .references(() => competitionRound.id, { onDelete: "cascade" }),
+    poolId: uuid("pool_id").references(() => competitionPool.id, { onDelete: "set null" }),
     matchNumber: integer("match_number").notNull(),
     team1Id: uuid("team1_id").references(() => competitionTeam.id),
     team2Id: uuid("team2_id").references(() => competitionTeam.id),

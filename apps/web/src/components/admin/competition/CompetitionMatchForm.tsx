@@ -12,25 +12,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CompetitionTeamListItem } from "@lfstats/db";
+import type {
+  CompetitionPoolListItem,
+  CompetitionPoolTeamAssignment,
+  CompetitionTeamListItem,
+} from "@lfstats/db";
 import { useState } from "react";
 
 type Props = {
   roundId: string;
   teams: CompetitionTeamListItem[];
+  pools?: CompetitionPoolListItem[];
+  teamPoolAssignments?: CompetitionPoolTeamAssignment[];
   action: (roundId: string, formData: FormData) => Promise<void>;
 };
 
-export function CompetitionMatchForm({ roundId, teams, action }: Props) {
+export function CompetitionMatchForm({
+  roundId,
+  teams,
+  pools,
+  teamPoolAssignments,
+  action,
+}: Props) {
   const [team1Id, setTeam1Id] = useState("tbd");
   const [team2Id, setTeam2Id] = useState("tbd");
+  const [poolId, setPoolId] = useState(pools && pools.length > 0 ? pools[0].id : "none");
   const [isPending, setIsPending] = useState(false);
+
+  const teamOptions =
+    pools && poolId !== "none" && teamPoolAssignments
+      ? teams.filter((t) =>
+          teamPoolAssignments.some((a) => a.teamId === t.id && a.poolId === poolId),
+        )
+      : teams;
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("team1Id", team1Id === "tbd" ? "" : team1Id);
     formData.set("team2Id", team2Id === "tbd" ? "" : team2Id);
+    if (pools) formData.set("poolId", poolId === "none" ? "" : poolId);
     setIsPending(true);
     try {
       await action(roundId, formData);
@@ -41,6 +62,24 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
+      {pools && (
+        <div className="space-y-1">
+          <Label>Pool</Label>
+          <Select value={poolId} onValueChange={setPoolId}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Select pool…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {pools.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="space-y-1">
         <Label>Team 1</Label>
         <Select value={team1Id} onValueChange={setTeam1Id}>
@@ -49,7 +88,7 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="tbd">TBD</SelectItem>
-            {teams.map((t) => (
+            {teamOptions.map((t) => (
               <SelectItem key={t.id} value={t.id} disabled={t.id === team2Id}>
                 {t.name}
               </SelectItem>
@@ -66,7 +105,7 @@ export function CompetitionMatchForm({ roundId, teams, action }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="tbd">TBD</SelectItem>
-            {teams.map((t) => (
+            {teamOptions.map((t) => (
               <SelectItem key={t.id} value={t.id} disabled={t.id === team1Id}>
                 {t.name}
               </SelectItem>

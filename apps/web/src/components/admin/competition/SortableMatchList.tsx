@@ -33,13 +33,18 @@ import {
 } from "@/components/ui/select";
 import { DeleteEntityButton } from "./DeleteEntityButton";
 import Link from "next/link";
-import type { CompetitionMatchListItem, CompetitionTeamListItem } from "@lfstats/db";
+import type {
+  CompetitionMatchListItem,
+  CompetitionPoolListItem,
+  CompetitionTeamListItem,
+} from "@lfstats/db";
 
 type Props = {
   competitionSlug: string;
   roundId: string;
   matches: CompetitionMatchListItem[];
   teams: CompetitionTeamListItem[];
+  pools?: CompetitionPoolListItem[];
   deleteAction: (matchId: string) => Promise<void>;
   reorderAction: (reorders: { id: string; matchNumber: number }[]) => Promise<void>;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
@@ -48,16 +53,19 @@ type Props = {
 function EditMatchTeamsForm({
   match,
   teams,
+  pools,
   updateTeamsAction,
   onCancel,
 }: {
   match: CompetitionMatchListItem;
   teams: CompetitionTeamListItem[];
+  pools?: CompetitionPoolListItem[];
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
   onCancel: () => void;
 }) {
   const [team1Id, setTeam1Id] = useState(match.team1Id ?? "tbd");
   const [team2Id, setTeam2Id] = useState(match.team2Id ?? "tbd");
+  const [poolId, setPoolId] = useState(match.poolId ?? "none");
   const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
@@ -65,6 +73,7 @@ function EditMatchTeamsForm({
     const formData = new FormData(e.currentTarget);
     formData.set("team1Id", team1Id === "tbd" ? "" : team1Id);
     formData.set("team2Id", team2Id === "tbd" ? "" : team2Id);
+    if (pools) formData.set("poolId", poolId === "none" ? "" : poolId);
     setIsPending(true);
     try {
       await updateTeamsAction(match.id, formData);
@@ -75,6 +84,21 @@ function EditMatchTeamsForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-2 flex-wrap">
+      {pools && (
+        <Select value={poolId} onValueChange={setPoolId}>
+          <SelectTrigger className="w-28">
+            <SelectValue placeholder="Pool…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No Pool</SelectItem>
+            {pools.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
       <Select value={team1Id} onValueChange={setTeam1Id}>
         <SelectTrigger className="w-40">
           <SelectValue placeholder="Select team…" />
@@ -117,6 +141,7 @@ function SortableMatch({
   competitionSlug,
   roundId,
   teams,
+  pools,
   deleteAction,
   updateTeamsAction,
 }: {
@@ -124,6 +149,7 @@ function SortableMatch({
   competitionSlug: string;
   roundId: string;
   teams: CompetitionTeamListItem[];
+  pools?: CompetitionPoolListItem[];
   deleteAction: (id: string) => Promise<void>;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
 }) {
@@ -161,6 +187,7 @@ function SortableMatch({
           <EditMatchTeamsForm
             match={match}
             teams={teams}
+            pools={pools}
             updateTeamsAction={updateTeamsAction}
             onCancel={() => setIsEditingTeams(false)}
           />
@@ -170,6 +197,11 @@ function SortableMatch({
               {match.team1Name} vs {match.team2Name}
             </span>
             <div className="flex gap-1">
+              {match.poolName && (
+                <Badge variant="outline" className="text-xs">
+                  {match.poolName}
+                </Badge>
+              )}
               <Badge variant={match.game1Assigned ? "default" : "outline"} className="text-xs">
                 G1
               </Badge>
@@ -209,6 +241,7 @@ export function SortableMatchList({
   roundId,
   matches: initialMatches,
   teams,
+  pools,
   deleteAction,
   reorderAction,
   updateTeamsAction,
@@ -266,6 +299,7 @@ export function SortableMatchList({
               competitionSlug={competitionSlug}
               roundId={roundId}
               teams={teams}
+              pools={pools}
               deleteAction={deleteAction}
               updateTeamsAction={updateTeamsAction}
             />

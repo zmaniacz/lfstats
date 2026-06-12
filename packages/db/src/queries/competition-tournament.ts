@@ -6,6 +6,8 @@ import {
   competitionTeam,
   competitionTeamPlayer,
   competitionRound,
+  competitionPool,
+  competitionRoundTeamPool,
   competitionMatch,
   competitionMatchGame,
   player,
@@ -59,12 +61,14 @@ export type CompetitionTeamRosterEntry = {
   gamesPlayed: number;
 };
 
+export type CompetitionRoundType = "pool" | "finals" | "split-pool";
+
 export type CompetitionRoundListItem = {
   id: string;
   competitionId: string;
   name: string;
   roundNumber: number;
-  type: "pool" | "finals";
+  type: CompetitionRoundType;
   matchCount: number;
 };
 
@@ -72,6 +76,8 @@ export type CompetitionMatchListItem = {
   id: string;
   roundId: string;
   matchNumber: number;
+  poolId: string | null;
+  poolName: string | null;
   team1Id: string | null;
   team1Name: string;
   team2Id: string | null;
@@ -579,7 +585,7 @@ export async function createCompetitionRound(data: {
   competitionId: string;
   name: string;
   roundNumber: number;
-  type: "pool" | "finals";
+  type: CompetitionRoundType;
 }): Promise<string> {
   const [row] = await db
     .insert(competitionRound)
@@ -590,7 +596,7 @@ export async function createCompetitionRound(data: {
 
 export async function updateCompetitionRound(
   id: string,
-  data: { name: string; roundNumber: number; type: "pool" | "finals" },
+  data: { name: string; roundNumber: number; type: CompetitionRoundType },
 ): Promise<void> {
   await db.update(competitionRound).set(data).where(eq(competitionRound.id, id));
 }
@@ -611,11 +617,14 @@ export async function getCompetitionMatchesByRound(
       id: competitionMatch.id,
       roundId: competitionMatch.roundId,
       matchNumber: competitionMatch.matchNumber,
+      poolId: competitionMatch.poolId,
+      poolName: competitionPool.name,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
       scheduledTime: competitionMatch.scheduledTime,
     })
     .from(competitionMatch)
+    .leftJoin(competitionPool, eq(competitionPool.id, competitionMatch.poolId))
     .where(eq(competitionMatch.roundId, roundId))
     .orderBy(asc(competitionMatch.matchNumber));
 
@@ -658,6 +667,8 @@ export async function getCompetitionMatchesByRound(
     id: m.id,
     roundId: m.roundId,
     matchNumber: m.matchNumber,
+    poolId: m.poolId,
+    poolName: m.poolName,
     team1Id: m.team1Id,
     team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
     team2Id: m.team2Id,
@@ -718,6 +729,7 @@ export async function reorderCompetitionMatches(
 export async function createCompetitionMatch(data: {
   competitionId: string;
   roundId: string;
+  poolId?: string | null;
   matchNumber: number;
   team1Id: string | null;
   team2Id: string | null;
@@ -736,9 +748,175 @@ export async function deleteCompetitionMatch(id: string): Promise<void> {
 
 export async function updateCompetitionMatchTeams(
   id: string,
-  data: { team1Id: string | null; team2Id: string | null },
+  data: { team1Id: string | null; team2Id: string | null; poolId?: string | null },
 ): Promise<void> {
   await db.update(competitionMatch).set(data).where(eq(competitionMatch.id, id));
+}
+
+// ---------------------------------------------------------------------------
+// Pools (split-pool rounds)
+// ---------------------------------------------------------------------------
+
+export type CompetitionPoolListItem = {
+  id: string;
+  roundId: string;
+  name: string;
+  sortOrder: number;
+  teamCount: number;
+};
+
+export async function getCompetitionPoolsByRound(
+  roundId: string,
+): Promise<CompetitionPoolListItem[]> {
+  return db
+    .select({
+      id: competitionPool.id,
+      roundId: competitionPool.roundId,
+      name: competitionPool.name,
+      sortOrder: competitionPool.sortOrder,
+      teamCount: sql<number>`count(${competitionRoundTeamPool.id})::int`,
+    })
+    .from(competitionPool)
+    .leftJoin(competitionRoundTeamPool, eq(competitionRoundTeamPool.poolId, competitionPool.id))
+    .where(eq(competitionPool.roundId, roundId))
+    .groupBy(competitionPool.id)
+    .orderBy(asc(competitionPool.sortOrder));
+}
+
+export type CompetitionPoolOption = { id: string; name: string };
+
+export async function getCompetitionPoolsForStandings(
+  roundId: string,
+): Promise<CompetitionPoolOption[]> {
+  return db
+    .select({ id: competitionPool.id, name: competitionPool.name })
+    .from(competitionPool)
+    .where(eq(competitionPool.roundId, roundId))
+    .orderBy(asc(competitionPool.sortOrder));
+}
+
+export async function createCompetitionPool(data: {
+  roundId: string;
+  name: string;
+}): Promise<string> {
+  const [{ maxSort }] = await db
+    .select({ maxSort: sql<number>`coalesce(max(${competitionPool.sortOrder}), -1)::int` })
+    .from(competitionPool)
+    .where(eq(competitionPool.roundId, data.roundId));
+
+  const [row] = await db
+    .insert(competitionPool)
+    .values({ roundId: data.roundId, name: data.name, sortOrder: maxSort + 1 })
+    .returning({ id: competitionPool.id });
+  return row.id;
+}
+
+export async function renameCompetitionPool(id: string, name: string): Promise<void> {
+  await db.update(competitionPool).set({ name }).where(eq(competitionPool.id, id));
+}
+
+export async function deleteCompetitionPool(id: string): Promise<void> {
+  await db.delete(competitionPool).where(eq(competitionPool.id, id));
+}
+
+export async function reorderCompetitionPools(
+  reorders: { id: string; sortOrder: number }[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (const { id, sortOrder } of reorders) {
+      await tx.update(competitionPool).set({ sortOrder }).where(eq(competitionPool.id, id));
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Team <-> pool assignment (split-pool rounds)
+// ---------------------------------------------------------------------------
+
+export type CompetitionPoolTeamAssignment = {
+  teamId: string;
+  teamName: string;
+  poolId: string | null;
+};
+
+export async function getCompetitionRoundTeamPoolAssignments(
+  competitionId: string,
+  roundId: string,
+): Promise<CompetitionPoolTeamAssignment[]> {
+  return db
+    .select({
+      teamId: competitionTeam.id,
+      teamName: competitionTeam.name,
+      poolId: competitionRoundTeamPool.poolId,
+    })
+    .from(competitionTeam)
+    .leftJoin(
+      competitionRoundTeamPool,
+      and(
+        eq(competitionRoundTeamPool.teamId, competitionTeam.id),
+        eq(competitionRoundTeamPool.roundId, roundId),
+      ),
+    )
+    .where(eq(competitionTeam.competitionId, competitionId))
+    .orderBy(asc(competitionTeam.name));
+}
+
+export async function assignTeamToPool(
+  roundId: string,
+  teamId: string,
+  poolId: string,
+): Promise<void> {
+  await db
+    .insert(competitionRoundTeamPool)
+    .values({ roundId, teamId, poolId })
+    .onConflictDoUpdate({
+      target: [competitionRoundTeamPool.roundId, competitionRoundTeamPool.teamId],
+      set: { poolId },
+    });
+}
+
+export async function unassignTeamFromPool(roundId: string, teamId: string): Promise<void> {
+  await db
+    .delete(competitionRoundTeamPool)
+    .where(
+      and(
+        eq(competitionRoundTeamPool.roundId, roundId),
+        eq(competitionRoundTeamPool.teamId, teamId),
+      ),
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Pool-scoped match generation (split-pool rounds)
+// ---------------------------------------------------------------------------
+
+export type PoolTeamItem = { id: string; name: string };
+
+export async function getTeamsGroupedByPool(
+  roundId: string,
+): Promise<Map<string, { poolName: string; teams: PoolTeamItem[] }>> {
+  const rows = await db
+    .select({
+      poolId: competitionPool.id,
+      poolName: competitionPool.name,
+      poolSortOrder: competitionPool.sortOrder,
+      teamId: competitionTeam.id,
+      teamName: competitionTeam.name,
+    })
+    .from(competitionRoundTeamPool)
+    .innerJoin(competitionPool, eq(competitionPool.id, competitionRoundTeamPool.poolId))
+    .innerJoin(competitionTeam, eq(competitionTeam.id, competitionRoundTeamPool.teamId))
+    .where(eq(competitionRoundTeamPool.roundId, roundId))
+    .orderBy(asc(competitionPool.sortOrder), asc(competitionTeam.name));
+
+  const result = new Map<string, { poolName: string; teams: PoolTeamItem[] }>();
+  for (const row of rows) {
+    if (!result.has(row.poolId)) {
+      result.set(row.poolId, { poolName: row.poolName, teams: [] });
+    }
+    result.get(row.poolId)!.teams.push({ id: row.teamId, name: row.teamName });
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -1191,51 +1369,40 @@ export type CompetitionStandingsRow = {
   scoreAgainst: number;
 };
 
-export async function getCompetitionStandings(
-  competitionId: string,
-  roundId?: string,
-): Promise<CompetitionStandingsRow[]> {
-  // Pull every assigned match-game with both teams' scores and results.
-  // We need:
-  //   - match-level W/L/D (compare combined score+elim_bonus across both games)
-  //   - game-level W/L/D (sm5_game_team.result per game)
-  //   - full-team eliminations (opposing sm5_game_team.eliminated = true)
-  //   - score totals for ratio
-  //
-  // Standings are computed only from 'pool' rounds; optionally narrowed to a single round.
+type StandingsGameRow = {
+  matchId: string;
+  gameNumber: number;
+  team1Id: string | null;
+  team1Score: number;
+  team1Result: string;
+  team1EliminatedOpponent: boolean;
+  team2Id: string | null;
+  team2Score: number;
+  team2Result: string;
+  team2EliminatedOpponent: boolean;
+};
 
-  const gameRows = await db
-    .select({
-      matchId: competitionMatch.id,
-      gameNumber: competitionMatchGame.gameNumber,
-      // team1 perspective
-      team1Id: competitionMatch.team1Id,
-      team1Score: sql<number>`t1.score + t1.elimination_bonus`,
-      team1Result: sql<string>`t1.result`,
-      team1EliminatedOpponent: sql<boolean>`t2.eliminated`,
-      // team2 perspective
-      team2Id: competitionMatch.team2Id,
-      team2Score: sql<number>`t2.score + t2.elimination_bonus`,
-      team2Result: sql<string>`t2.result`,
-      team2EliminatedOpponent: sql<boolean>`t1.eliminated`,
-    })
-    .from(competitionMatchGame)
-    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
-    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
-    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
-    .where(
-      and(
-        eq(competitionMatch.competitionId, competitionId),
-        eq(competitionRound.type, "pool"),
-        roundId ? eq(competitionMatch.roundId, roundId) : undefined,
-      ),
-    );
+type TeamStatsAccumulator = {
+  matchPoints: number;
+  matchWins: number;
+  matchLosses: number;
+  matchDraws: number;
+  gameWins: number;
+  gameLosses: number;
+  gameDraws: number;
+  teamEliminations: number;
+  scoreFor: number;
+  scoreAgainst: number;
+};
 
-  if (gameRows.length === 0) return [];
-
-  // Group games by match (pool matches always have both teams assigned)
-  const matchMap = new Map<string, { team1Id: string; team2Id: string; games: typeof gameRows }>();
+// Accumulates per-team match/game stats from a set of match-game rows.
+// Shared by the overall round standings and per-pool standings (split-pool rounds).
+function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAccumulator> {
+  // Group games by match (matches always have both teams assigned once games are linked)
+  const matchMap = new Map<
+    string,
+    { team1Id: string; team2Id: string; games: StandingsGameRow[] }
+  >();
   for (const row of gameRows) {
     if (row.team1Id === null || row.team2Id === null) continue;
     if (!matchMap.has(row.matchId)) {
@@ -1244,22 +1411,7 @@ export async function getCompetitionStandings(
     matchMap.get(row.matchId)!.games.push(row);
   }
 
-  // Accumulate per-team stats
-  const stats = new Map<
-    string,
-    {
-      matchPoints: number;
-      matchWins: number;
-      matchLosses: number;
-      matchDraws: number;
-      gameWins: number;
-      gameLosses: number;
-      gameDraws: number;
-      teamEliminations: number;
-      scoreFor: number;
-      scoreAgainst: number;
-    }
-  >();
+  const stats = new Map<string, TeamStatsAccumulator>();
 
   function ensureTeam(id: string) {
     if (!stats.has(id)) {
@@ -1336,18 +1488,91 @@ export async function getCompetitionStandings(
     s.matchPoints += s.gameWins * 2 + s.gameDraws;
   }
 
-  // Fetch team names for all teams in competition (including 0-game teams)
-  const allTeams = await db
+  return stats;
+}
+
+export async function getCompetitionStandings(
+  competitionId: string,
+  roundId?: string,
+  poolId?: string,
+): Promise<CompetitionStandingsRow[]> {
+  // Pull every assigned match-game with both teams' scores and results.
+  // We need:
+  //   - match-level W/L/D (compare combined score+elim_bonus across both games)
+  //   - game-level W/L/D (sm5_game_team.result per game)
+  //   - full-team eliminations (opposing sm5_game_team.eliminated = true)
+  //   - score totals for ratio
+  //
+  // Standings are computed from 'pool' and 'split-pool' rounds; optionally narrowed to a
+  // single round and/or a single pool (for split-pool rounds).
+
+  const gameRows: StandingsGameRow[] = await db
     .select({
-      id: competitionTeam.id,
-      name: competitionTeam.name,
-      slug: competitionTeam.slug,
-      shortName: competitionTeam.shortName,
-      hasLogo: competitionTeam.hasLogo,
+      matchId: competitionMatch.id,
+      gameNumber: competitionMatchGame.gameNumber,
+      // team1 perspective
+      team1Id: competitionMatch.team1Id,
+      team1Score: sql<number>`t1.score + t1.elimination_bonus`,
+      team1Result: sql<string>`t1.result`,
+      team1EliminatedOpponent: sql<boolean>`t2.eliminated`,
+      // team2 perspective
+      team2Id: competitionMatch.team2Id,
+      team2Score: sql<number>`t2.score + t2.elimination_bonus`,
+      team2Result: sql<string>`t2.result`,
+      team2EliminatedOpponent: sql<boolean>`t1.eliminated`,
     })
-    .from(competitionTeam)
-    .where(eq(competitionTeam.competitionId, competitionId))
-    .orderBy(asc(competitionTeam.name));
+    .from(competitionMatchGame)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .where(
+      and(
+        eq(competitionMatch.competitionId, competitionId),
+        inArray(competitionRound.type, ["pool", "split-pool"]),
+        roundId ? eq(competitionMatch.roundId, roundId) : undefined,
+        poolId ? eq(competitionMatch.poolId, poolId) : undefined,
+      ),
+    );
+
+  if (gameRows.length === 0 && !poolId) return [];
+
+  const stats = computeTeamStats(gameRows);
+
+  // Fetch team names (including 0-game teams). For a specific pool, only include teams
+  // assigned to that pool; otherwise all teams in the competition.
+  const allTeams = poolId
+    ? await db
+        .select({
+          id: competitionTeam.id,
+          name: competitionTeam.name,
+          slug: competitionTeam.slug,
+          shortName: competitionTeam.shortName,
+          hasLogo: competitionTeam.hasLogo,
+        })
+        .from(competitionTeam)
+        .innerJoin(
+          competitionRoundTeamPool,
+          eq(competitionRoundTeamPool.teamId, competitionTeam.id),
+        )
+        .where(
+          and(
+            eq(competitionTeam.competitionId, competitionId),
+            eq(competitionRoundTeamPool.poolId, poolId),
+          ),
+        )
+        .orderBy(asc(competitionTeam.name))
+    : await db
+        .select({
+          id: competitionTeam.id,
+          name: competitionTeam.name,
+          slug: competitionTeam.slug,
+          shortName: competitionTeam.shortName,
+          hasLogo: competitionTeam.hasLogo,
+        })
+        .from(competitionTeam)
+        .where(eq(competitionTeam.competitionId, competitionId))
+        .orderBy(asc(competitionTeam.name));
 
   return allTeams
     .map((team) => {
@@ -1417,7 +1642,8 @@ export type CompetitionMatchResult = {
 export async function getCompetitionMatchResults(
   competitionId: string,
   roundId?: string,
-  roundType: "pool" | "finals" = "pool",
+  roundType: "pool" | "finals" | "split-pool" = "pool",
+  poolId?: string,
 ): Promise<CompetitionMatchResult[]> {
   const gameRows = await db
     .select({
@@ -1452,6 +1678,7 @@ export async function getCompetitionMatchResults(
         eq(competitionMatch.competitionId, competitionId),
         eq(competitionRound.type, roundType),
         roundId ? eq(competitionMatch.roundId, roundId) : undefined,
+        poolId ? eq(competitionMatch.poolId, poolId) : undefined,
       ),
     )
     .orderBy(

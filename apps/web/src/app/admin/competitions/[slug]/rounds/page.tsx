@@ -55,7 +55,15 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
                 <span className="font-medium">
                   {round.roundNumber}. {round.name}
                 </span>
-                <Badge variant={round.type === "finals" ? "default" : "secondary"}>
+                <Badge
+                  variant={
+                    round.type === "finals"
+                      ? "default"
+                      : round.type === "split-pool"
+                        ? "outline"
+                        : "secondary"
+                  }
+                >
                   {round.type}
                 </Badge>
                 <span className="text-sm text-muted-foreground">

@@ -8,11 +8,14 @@ import {
   getCompetitionTeams,
   getCompetitionRoundById,
   getCompetitionMatchesByRound,
+  getCompetitionPoolsByRound,
+  getCompetitionRoundTeamPoolAssignments,
 } from "@lfstats/db";
 import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm";
 import { EditRoundForm } from "@/components/admin/competition/EditRoundForm";
 import { SortableMatchList } from "@/components/admin/competition/SortableMatchList";
 import { GeneratePoolMatchesButton } from "@/components/admin/competition/GeneratePoolMatchesButton";
+import { PoolManager } from "@/components/admin/competition/PoolManager";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,8 +23,13 @@ import {
   deleteMatchAction,
   reorderMatchesAction,
   generatePoolMatchesAction,
+  generateSplitPoolMatchesAction,
   updateRoundAction,
   updateMatchTeamsAction,
+  createPoolAction,
+  renamePoolAction,
+  deletePoolAction,
+  assignTeamToPoolAction,
 } from "../actions";
 
 export default async function RoundMatchesPage({
@@ -41,6 +49,14 @@ export default async function RoundMatchesPage({
     getCompetitionMatchesByRound(round.id),
   ]);
 
+  const isSplitPool = round.type === "split-pool";
+  const [pools, teamPoolAssignments] = isSplitPool
+    ? await Promise.all([
+        getCompetitionPoolsByRound(round.id),
+        getCompetitionRoundTeamPoolAssignments(comp.id, round.id),
+      ])
+    : [[], []];
+
   const id = comp.id;
   const boundDeleteMatch = deleteMatchAction.bind(null, id, round.id);
   const boundReorder = reorderMatchesAction.bind(null, id, round.id);
@@ -59,7 +75,17 @@ export default async function RoundMatchesPage({
           <h2 className="text-xl font-semibold">
             {round.roundNumber}. {round.name}
           </h2>
-          <Badge variant={round.type === "finals" ? "default" : "secondary"}>{round.type}</Badge>
+          <Badge
+            variant={
+              round.type === "finals"
+                ? "default"
+                : round.type === "split-pool"
+                  ? "outline"
+                  : "secondary"
+            }
+          >
+            {round.type}
+          </Badge>
         </div>
       </div>
 
@@ -77,6 +103,24 @@ export default async function RoundMatchesPage({
         </CardContent>
       </Card>
 
+      {isSplitPool && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pools</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PoolManager
+              pools={pools}
+              assignments={teamPoolAssignments}
+              createPoolAction={createPoolAction.bind(null, id, round.id)}
+              renamePoolAction={renamePoolAction.bind(null, id, round.id)}
+              deletePoolAction={deletePoolAction.bind(null, id, round.id)}
+              assignTeamAction={assignTeamToPoolAction.bind(null, id, round.id)}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Matches</CardTitle>
@@ -91,10 +135,19 @@ export default async function RoundMatchesPage({
                   />
                 </div>
               )}
+              {isSplitPool && (
+                <div className="mb-4">
+                  <GeneratePoolMatchesButton
+                    action={generateSplitPoolMatchesAction.bind(null, id, round.id)}
+                  />
+                </div>
+              )}
               <p className="text-sm text-muted-foreground mb-2">Add Match</p>
               <CompetitionMatchForm
                 roundId={round.id}
                 teams={teams}
+                pools={isSplitPool ? pools : undefined}
+                teamPoolAssignments={isSplitPool ? teamPoolAssignments : undefined}
                 action={createMatchAction.bind(null, id)}
               />
             </div>
@@ -115,6 +168,7 @@ export default async function RoundMatchesPage({
               roundId={round.id}
               matches={matches}
               teams={teams}
+              pools={isSplitPool ? pools : undefined}
               deleteAction={boundDeleteMatch}
               reorderAction={boundReorder}
               updateTeamsAction={boundUpdateTeams}
