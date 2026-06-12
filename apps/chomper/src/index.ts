@@ -7,6 +7,7 @@ import {
   findCenterByNaturalKey,
   findChomperJobByLambdaRequestId,
   findGameByNaturalKey,
+  getCompetitionBySlug,
   initDb,
   updateChomperJob,
 } from "@lfstats/db";
@@ -53,6 +54,9 @@ export const handler: S3Handler = async (event, context) => {
   const bucket = record.s3.bucket.name;
   const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "));
   const lambdaRequestId = context.awsRequestId;
+
+  const slashIdx = key.indexOf("/");
+  const competitionSlug = slashIdx === -1 ? null : key.slice(0, slashIdx);
 
   // 1. Write ChomperJob (status: processing) — outside main transaction.
   //    Check first so re-invocations with the same request ID are idempotent.
@@ -174,8 +178,26 @@ export const handler: S3Handler = async (event, context) => {
       parsed.meta.duration,
     );
 
+    // 8b. Resolve competition slug prefix (if any) to a competitionId
+    let competitionId: string | null = null;
+    if (competitionSlug) {
+      const competition = await getCompetitionBySlug(competitionSlug);
+      if (competition) {
+        competitionId = competition.id;
+      } else {
+        console.warn(`No competition found for slug "${competitionSlug}" (key: ${key})`);
+      }
+    }
+
     // 9–15. Write all rows to database in a single transaction (Phase 3)
-    const gameId = await ingestWithRetry(parsed, simResult, gameStartTime, mvpRows, gameType);
+    const gameId = await ingestWithRetry(
+      parsed,
+      simResult,
+      gameStartTime,
+      mvpRows,
+      gameType,
+      competitionId,
+    );
 
     // 10. Update ChomperJob (status: completed) — outside transaction
     await updateChomperJob(job.id, {

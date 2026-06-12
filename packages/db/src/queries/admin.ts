@@ -44,6 +44,31 @@ export type CompetitionDetail = {
 // Competition CRUD
 // ---------------------------------------------------------------------------
 
+export type UploadCompetitionOption = {
+  id: string;
+  name: string;
+  slug: string;
+  hostCenterId: string | null;
+};
+
+export async function getActiveCompetitionsForUpload(
+  hostCenterIds?: string[],
+): Promise<UploadCompetitionOption[]> {
+  const conditions = [eq(competition.state, "active")];
+  if (hostCenterIds) conditions.push(inArray(competition.hostCenterId, hostCenterIds));
+
+  return db
+    .select({
+      id: competition.id,
+      name: competition.name,
+      slug: competition.slug,
+      hostCenterId: competition.hostCenterId,
+    })
+    .from(competition)
+    .where(and(...conditions))
+    .orderBy(asc(competition.name));
+}
+
 export async function getCompetitions(): Promise<CompetitionListItem[]> {
   const rows = await db
     .select({

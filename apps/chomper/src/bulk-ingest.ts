@@ -247,7 +247,7 @@ async function processKey(key: string): Promise<void> {
   // 8. Ingest to database
   let gameId: string;
   try {
-    gameId = await ingestWithRetry(parsed, simResult, gameStartTime, mvpRows, "sm5");
+    gameId = await ingestWithRetry(parsed, simResult, gameStartTime, mvpRows, "sm5", null);
   } catch (err) {
     const reason = `Ingest failed: ${(err as Error).message}`;
     log(`FAIL [ingest] ${key}`);

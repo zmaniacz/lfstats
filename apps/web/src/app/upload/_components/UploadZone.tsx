@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { UploadSimpleIcon, XIcon, FileIcon } from "@phosphor-icons/react";
 
 interface UploadZoneProps {
+  competitionSlug: string | null;
+  canUpload: boolean;
   onUploadComplete: (s3Keys: string[]) => void;
 }
 
-export function UploadZone({ onUploadComplete }: UploadZoneProps) {
+export function UploadZone({ competitionSlug, canUpload, onUploadComplete }: UploadZoneProps) {
   const [files, setFiles] = React.useState<File[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
@@ -55,11 +57,14 @@ export function UploadZone({ onUploadComplete }: UploadZoneProps) {
   }
 
   async function handleUpload() {
-    if (files.length === 0) return;
+    if (files.length === 0 || !canUpload) return;
     setIsPending(true);
     setError(null);
     try {
-      const presigned = await getPresignedUrlsAction(files.map((f) => f.name));
+      const presigned = await getPresignedUrlsAction(
+        files.map((f) => f.name),
+        competitionSlug,
+      );
 
       await Promise.all(
         presigned.map(({ filename, url }) => {
@@ -75,7 +80,7 @@ export function UploadZone({ onUploadComplete }: UploadZoneProps) {
       );
 
       setFiles([]);
-      onUploadComplete(presigned.map((p) => p.filename));
+      onUploadComplete(presigned.map((p) => p.key));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -114,11 +119,14 @@ export function UploadZone({ onUploadComplete }: UploadZoneProps) {
 
       {files.length > 0 && (
         <div className="space-y-2">
-          <Button onClick={handleUpload} disabled={isPending} className="w-full">
+          <Button onClick={handleUpload} disabled={isPending || !canUpload} className="w-full">
             {isPending
               ? "Uploading…"
               : `Upload ${files.length} file${files.length === 1 ? "" : "s"}`}
           </Button>
+          {!canUpload && (
+            <p className="text-sm text-muted-foreground">Select a competition to upload to.</p>
+          )}
 
           {files.map((file) => (
             <div
