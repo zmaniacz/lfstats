@@ -20,9 +20,11 @@ type Props = {
   competition?: CompetitionDetail;
   centers: CenterListItem[];
   action: (formData: FormData) => Promise<void>;
+  onCancel?: () => void;
+  onSaved?: () => void;
 };
 
-export function CompetitionForm({ competition, centers, action }: Props) {
+export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
   const [hostCenterId, setHostCenterId] = useState<string>(competition?.hostCenterId ?? "none");
@@ -37,6 +39,7 @@ export function CompetitionForm({ competition, centers, action }: Props) {
       await action(formData);
     } finally {
       setIsPending(false);
+      onSaved?.();
     }
   }
 
@@ -132,9 +135,16 @@ export function CompetitionForm({ competition, centers, action }: Props) {
         />
       </div>
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? "Saving…" : competition ? "Save Changes" : "Create Competition"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving…" : competition ? "Save Changes" : "Create Competition"}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

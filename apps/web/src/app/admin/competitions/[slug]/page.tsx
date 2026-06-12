@@ -11,7 +11,7 @@ import {
   getCompetitionUnassignedGamesForAdmin,
   getCompetitionAssignedGamesForAdmin,
 } from "@lfstats/db";
-import { CompetitionForm } from "@/components/admin/CompetitionForm";
+import { CompetitionDetailsCard } from "@/components/admin/CompetitionDetailsCard";
 import { BulkAssignForm } from "@/components/admin/BulkAssignForm";
 import { DeleteCompetitionButton } from "@/components/admin/DeleteCompetitionButton";
 import {
@@ -75,14 +75,7 @@ export default async function CompetitionDetailPage({
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CompetitionForm competition={comp} centers={centers} action={boundUpdate} />
-        </CardContent>
-      </Card>
+      <CompetitionDetailsCard competition={comp} centers={centers} action={boundUpdate} />
 
       <Card>
         <CardHeader>
