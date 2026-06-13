@@ -49,6 +49,8 @@ export type CompetitionTeamListItem = {
   shortName: string | null;
   hasLogo: boolean;
   playerCount: number;
+  mercCount: number;
+  unassignedCount: number;
 };
 
 export type CompetitionTeamRosterEntry = {
@@ -143,7 +145,22 @@ export async function getCompetitionTeams(
       slug: competitionTeam.slug,
       shortName: competitionTeam.shortName,
       hasLogo: competitionTeam.hasLogo,
-      playerCount: sql<number>`count(${competitionTeamPlayer.id})::int`,
+      playerCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = false)::int`,
+      mercCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = true)::int`,
+      unassignedCount: sql<number>`(
+        SELECT count(DISTINCT sc.player_id)::int FROM sm5_scorecard sc
+        WHERE sc.team_id IN (
+          SELECT CASE WHEN cm.team1_id = ${competitionTeam.id} THEN cmg.team1_game_team_id
+                      ELSE cmg.team2_game_team_id END
+          FROM competition_match cm
+          JOIN competition_match_game cmg ON cmg.match_id = cm.id
+          WHERE cm.team1_id = ${competitionTeam.id} OR cm.team2_id = ${competitionTeam.id}
+        )
+        AND sc.player_id NOT IN (
+          SELECT player_id FROM competition_team_player
+          WHERE competition_team_id = ${competitionTeam.id}
+        )
+      )`,
     })
     .from(competitionTeam)
     .leftJoin(

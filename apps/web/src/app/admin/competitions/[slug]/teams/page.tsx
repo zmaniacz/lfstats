@@ -68,6 +68,8 @@ export default async function CompetitionTeamsPage({
                   <TableHead>Name</TableHead>
                   <TableHead>Short Name</TableHead>
                   <TableHead>Players</TableHead>
+                  <TableHead>Mercs</TableHead>
+                  <TableHead>Unassigned</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -90,6 +92,8 @@ export default async function CompetitionTeamsPage({
                     </TableCell>
                     <TableCell className="text-muted-foreground">{team.shortName ?? "—"}</TableCell>
                     <TableCell className="tabular-nums">{team.playerCount}</TableCell>
+                    <TableCell className="tabular-nums">{team.mercCount}</TableCell>
+                    <TableCell className="tabular-nums">{team.unassignedCount}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="outline" size="sm" className="mr-2">
                         <Link href={`/admin/competitions/${comp.slug}/teams/${team.slug}`}>
