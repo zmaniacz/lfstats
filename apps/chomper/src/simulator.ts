@@ -619,6 +619,13 @@ class Simulator {
     target.phantomDeactivations += source.phantomDeactivations;
     target.hadRestart = true;
 
+    // Score resets to 0 at the start of each generation (like lives/shots/etc.),
+    // so the merged total is the sum. Stash target's score-at-merge so the
+    // source-generation snapshots below can be offset to show a continuous
+    // running total instead of resetting back to 0.
+    const targetScoreAtMerge = target.score;
+    target.score += source.score;
+
     // Live/final state carries over from the later generation.
     target.state = source.state;
     target.stateEnteredAt = source.stateEnteredAt;
@@ -640,7 +647,6 @@ class Simulator {
     target.receivedLivesResupplyThisCycle = source.receivedLivesResupplyThisCycle;
     target.lastAmmoResuppliedBy = source.lastAmmoResuppliedBy;
     target.lastLivesResuppliedBy = source.lastLivesResuppliedBy;
-    target.score = source.score;
     target.entityEndForcedLives = source.entityEndForcedLives ?? target.entityEndForcedLives;
 
     // Replay snapshots concatenate — source's period starts after target's ends.
@@ -666,6 +672,12 @@ class Simulator {
         source.stateSnapshots[source.stateSnapshots.length - 1]!.eventIndex
     ) {
       target.stateSnapshots = target.stateSnapshots.slice(0, -1);
+    }
+
+    // Source's snapshots recorded score relative to its own (reset-to-0) period;
+    // offset them so the merged scorecard shows a continuous running total.
+    for (const snap of source.stateSnapshots) {
+      snap.score += targetScoreAtMerge;
     }
 
     target.stateSnapshots.push(...source.stateSnapshots);
