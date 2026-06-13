@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateOnly } from "@/lib/format";
 import {
-  getRecentSocialEvents,
   getCompetitionsByState,
+  getRecentSocialEvents,
   type CompetitionListItem,
 } from "@lfstats/db";
-import { formatDateOnly } from "@/lib/format";
+import Link from "next/link";
 
 function formatCompetitionDates(competition: CompetitionListItem): string {
   if (competition.endDate && competition.endDate !== competition.startDate) {
@@ -70,20 +70,27 @@ export default async function Home() {
         <Card>
           <CardContent>
             <p className="mb-4">
-              Over the next few weeks, you'll see this new version of the site more fully come to
-              life. Any games uploaded to the current lfstats.com will appear here as well. I'm
-              targeting end of June for the full launch, so we'll have time to work out any kinks
-              prior to Internats.
+              Welcome to the new LFstats. Faster, Moderner, Statier. All games are loaded from the
+              TDF era (~2020-present), however I'll slowly be reconstructing the various
+              competitions. Legacy PDF stats will be migrated over as well, but that will take some
+              time. Feedback welcome!
             </p>
             <p className="mb-4">
-              You'll note the stats here are limited to the TDF (~2020-present) era. Hammering TDF
-              data into a system designed to read the old PDFs was no longer feasible. The current
-              site will continue as a read-only version until I'm able to migrate the legacy data.
+              Need access to upload stats? Login with a Google account and let me know on{" "}
+              <a
+                href="https://discord.com/channels/1345551651238576189/1378169370144149504"
+                className="underline"
+              >
+                the Discord
+              </a>
+              , Facebook Messenger, Text, or pigeon.
             </p>
             <p>
-              For now, enjoy the new site and let me know on Discord what you like or hate. Any site
-              admins, please login to the website with your Google account so we can get access set
-              up.
+              You can find the old stats at{" "}
+              <a href="https://legacy.lfstats.com" className="underline">
+                legacy.lfstats.com
+              </a>
+              . That site is now read-only.
             </p>
           </CardContent>
         </Card>
