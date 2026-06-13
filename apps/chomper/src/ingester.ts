@@ -231,7 +231,10 @@ export async function ingest(
       const eliminated = end?.exitType === "04";
       const endOffset = end?.time ?? missionEndOffset;
       const endTime = new Date(gameStartTime.getTime() + endOffset);
-      const score = end?.score ?? 0;
+      // For restart-merged players, the surviving entity-end record reflects
+      // only one generation's exit score — ps.score is the simulator's
+      // cross-generation total and should be preferred.
+      const score = ps?.score ?? end?.score ?? 0;
 
       const accuracy =
         (sm5?.shotsFired ?? 0) > 0 ? r3((sm5?.shotsHit ?? 0) / (sm5?.shotsFired ?? 1)) : 0;

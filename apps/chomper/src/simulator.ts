@@ -2439,14 +2439,13 @@ class Simulator {
   // ---------------------------------------------------------------------------
 
   private buildResult(): SimulatedGame {
-    // Determine final team scores from entityEnds
+    // Determine final team scores from each player's final score. (Not from
+    // entityEnds — restart-generation merges collapse to one entity-end record,
+    // which would undercount a merged player's earlier-generation score.)
     const teamScores = new Map<number, number>();
 
-    for (const end of this.parsed.entityEnds) {
-      const entity = this.entityById.get(end.id);
-      if (!entity || entity.type !== "player") continue;
-      const teamIndex = entity.team;
-      teamScores.set(teamIndex, (teamScores.get(teamIndex) ?? 0) + end.score);
+    for (const ps of this.playerStates.values()) {
+      teamScores.set(ps.teamIndex, (teamScores.get(ps.teamIndex) ?? 0) + ps.score);
     }
 
     // Determine which teams are eliminated
