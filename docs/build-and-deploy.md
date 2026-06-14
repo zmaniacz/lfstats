@@ -137,7 +137,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@db:5432/lfstats_modern"
       AUTH_TRUST_HOST: "true"
-      AUTH_URL: "https://modern.lfstats.com"
+      AUTH_URL: "https://lfstats.com"
     ports:
       - "3000:3000"
     networks:
