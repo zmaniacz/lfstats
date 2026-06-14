@@ -113,7 +113,7 @@ function TrendIndicator({
   if (lifetime === undefined) return null;
   const Icon = current > lifetime ? TrendingUp : current < lifetime ? TrendingDown : null;
   if (!Icon) return null;
-  const color = current > lifetime ? "text-green-600" : "text-red-600";
+  const color = current > lifetime ? "text-primary" : "text-destructive";
   return (
     <Tooltip>
       <TooltipTrigger asChild>
