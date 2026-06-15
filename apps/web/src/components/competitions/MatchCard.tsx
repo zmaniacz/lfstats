@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { CompetitionMatchResult } from "@lfstats/db";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 
@@ -30,6 +31,18 @@ export function MatchCard({
   const hasScore = Boolean(game1 || game2);
   const diff = hasScore ? t1Total - t2Total : null;
 
+  const firstGame = match.games.find((g) => g.gameNumber === 1) ?? match.games[0];
+  const actualStartTime = firstGame?.startTime ?? null;
+
+  let scheduleLabel: string | null = null;
+  if (upcoming) {
+    if (match.scheduledTime !== null) {
+      scheduleLabel = `Scheduled: ${formatDateTime(match.scheduledTime)}`;
+    }
+  } else if (actualStartTime !== null) {
+    scheduleLabel = `Started: ${formatDateTime(actualStartTime)}`;
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -54,6 +67,9 @@ export function MatchCard({
             </Badge>
           )}
         </div>
+        {scheduleLabel && (
+          <div className="text-xs text-muted-foreground text-right">{scheduleLabel}</div>
+        )}
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-3">

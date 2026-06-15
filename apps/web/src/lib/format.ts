@@ -66,3 +66,17 @@ export function formatDateOnly(d: string | null): string {
   const date = new Date(`${d}T00:00:00Z`);
   return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
 }
+
+export function toDateTimeInputValue(d: Date | null): string {
+  if (d === null) return "";
+  const YYYY = d.getUTCFullYear();
+  const MM = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const DD = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${YYYY}-${MM}-${DD}T${hh}:${mm}`;
+}
+
+export function fromDateTimeInputValue(s: string): Date {
+  return new Date(`${s}:00Z`);
+}

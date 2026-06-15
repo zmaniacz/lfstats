@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DeleteEntityButton } from "./DeleteEntityButton";
+import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import type {
   CompetitionMatchListItem,
@@ -209,6 +210,11 @@ function SortableMatch({
                 G2
               </Badge>
             </div>
+            {match.scheduledTime && (
+              <span className="text-xs text-muted-foreground">
+                {formatDateTime(match.scheduledTime)}
+              </span>
+            )}
           </>
         )}
       </div>
@@ -221,7 +227,7 @@ function SortableMatch({
             <Link
               href={`/admin/competitions/${competitionSlug}/rounds/${roundId}/matches/${match.id}`}
             >
-              Assign Games
+              Edit Match
             </Link>
           </Button>
           <DeleteEntityButton

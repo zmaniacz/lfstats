@@ -785,6 +785,13 @@ export async function updateCompetitionMatchTeams(
   await db.update(competitionMatch).set(data).where(eq(competitionMatch.id, id));
 }
 
+export async function updateCompetitionMatchSchedule(
+  id: string,
+  data: { scheduledTime: Date | null },
+): Promise<void> {
+  await db.update(competitionMatch).set(data).where(eq(competitionMatch.id, id));
+}
+
 // ---------------------------------------------------------------------------
 // Pools (split-pool rounds)
 // ---------------------------------------------------------------------------
@@ -1670,6 +1677,7 @@ export type CompetitionMatchResult = {
     gameNumber: number;
     gameId: string;
     gameSlug: string;
+    startTime: Date;
     team1Score: number | null;
     team2Score: number | null;
     team1Result: string | null;
@@ -1677,6 +1685,7 @@ export type CompetitionMatchResult = {
     team1ColourEnum: number;
     team2ColourEnum: number;
   }[];
+  scheduledTime: Date | null;
   // match-level outcome (compare combined scores across both games)
   matchWinner: "team1" | "team2" | "draw" | "incomplete";
   team1MatchPoints: number; // match bonus only (2/1/0)
@@ -1700,8 +1709,10 @@ export async function getCompetitionMatchResults(
       roundNumber: competitionRound.roundNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
+      scheduledTime: competitionMatch.scheduledTime,
       gameNumber: competitionMatchGame.gameNumber,
       gameId: game.id,
+      gameStartTime: game.startTime,
       gameSlug: sql<
         string | null
       >`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
@@ -1792,6 +1803,7 @@ export async function getCompetitionMatchResults(
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
         games: [],
+        scheduledTime: row.scheduledTime,
       });
     }
     if (row.gameId === null || row.gameNumber === null) continue;
@@ -1799,6 +1811,7 @@ export async function getCompetitionMatchResults(
       gameNumber: row.gameNumber,
       gameId: row.gameId,
       gameSlug: row.gameSlug!,
+      startTime: row.gameStartTime!,
       team1Score: row.team1Score,
       team2Score: row.team2Score,
       team1Result: row.team1Result,

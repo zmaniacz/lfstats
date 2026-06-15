@@ -11,8 +11,10 @@ import {
   createForfeitGame,
   getCompetitionById,
   updateCompetitionMatchTeams,
+  updateCompetitionMatchSchedule,
 } from "@lfstats/db";
 import { auth } from "@/auth";
+import { fromDateTimeInputValue } from "@/lib/format";
 
 async function requireAdmin() {
   const session = await auth();
@@ -74,6 +76,24 @@ export async function updateMatchTeamsAction(
   const team1Id = (formData.get("team1Id") as string) || null;
   const team2Id = (formData.get("team2Id") as string) || null;
   await updateCompetitionMatchTeams(matchId, { team1Id, team2Id });
+
+  const match = await getCompetitionMatchById(matchId);
+  const slug = await competitionSlug(competitionId);
+  if (slug && match) {
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
+  }
+}
+
+export async function updateMatchScheduleAction(
+  competitionId: string,
+  matchId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const raw = (formData.get("scheduledTime") as string) || null;
+  const scheduledTime = raw ? fromDateTimeInputValue(raw) : null;
+  await updateCompetitionMatchSchedule(matchId, { scheduledTime });
 
   const match = await getCompetitionMatchById(matchId);
   const slug = await competitionSlug(competitionId);

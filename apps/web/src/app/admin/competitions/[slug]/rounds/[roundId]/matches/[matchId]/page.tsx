@@ -13,6 +13,7 @@ import {
 import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
 import { EditMatchTeamsForm } from "@/components/admin/competition/EditMatchTeamsForm";
+import { EditMatchScheduleForm } from "@/components/admin/competition/EditMatchScheduleForm";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
   removeGameAction,
   createForfeitAction,
   updateMatchTeamsAction,
+  updateMatchScheduleAction,
 } from "./actions";
 import { ForfeitButtons } from "./ForfeitButtons";
 
@@ -51,6 +53,7 @@ export default async function MatchDetailPage({
   const boundRemove = removeGameAction.bind(null, comp.id, matchId);
   const boundForfeit = createForfeitAction.bind(null, comp.id, matchId);
   const boundUpdateTeams = updateMatchTeamsAction.bind(null, comp.id, matchId);
+  const boundUpdateSchedule = updateMatchScheduleAction.bind(null, comp.id, matchId);
 
   return (
     <div className="space-y-6">
@@ -76,6 +79,18 @@ export default async function MatchDetailPage({
             initialTeam1Id={match.team1Id}
             initialTeam2Id={match.team2Id}
             action={boundUpdateTeams}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Schedule</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EditMatchScheduleForm
+            initialScheduledTime={match.scheduledTime}
+            action={boundUpdateSchedule}
           />
         </CardContent>
       </Card>
