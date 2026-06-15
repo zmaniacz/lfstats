@@ -29,6 +29,23 @@ type Speed = (typeof SPEEDS)[number];
 
 const HEAVY_WEAPONS_POSITION = 2;
 
+// Respawn cycle: state 3 (down) for 4s, then state 2 (vulnerable) for 4s, then state 0 (active).
+const RESPAWN_PHASE_MS = 4000;
+
+function RespawnIndicator({ progress, color }: { progress: number; color: "red" | "yellow" }) {
+  const deg = Math.round(Math.min(Math.max(progress, 0), 1) * 360);
+  const fillColor = color === "red" ? "var(--color-red-500)" : "var(--color-yellow-400)";
+  return (
+    <span
+      className="inline-block size-2.5 rounded-full border border-border shrink-0"
+      style={{
+        background: `conic-gradient(${fillColor} ${deg}deg, transparent ${deg}deg)`,
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+
 const MISS_EVENT_TYPES = new Set(["0201", "0202", "0301", "0304"]);
 
 function isMissEvent(eventType: string): boolean {
@@ -67,6 +84,8 @@ type ComputedPlayer = ReplayPlayer & {
   missiles: number;
   sp: number | null;
   state: number;
+  respawnProgress: number | null;
+  respawnColor: "red" | "yellow" | null;
   isEliminated: boolean;
 };
 
@@ -179,6 +198,17 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
       const score = state?.score ?? 0;
       const team = teamMap.get(player.teamId)!;
       team.totalScore += score;
+
+      let respawnProgress: number | null = null;
+      let respawnColor: "red" | "yellow" | null = null;
+      if (state?.state === 3) {
+        respawnProgress = (currentTime - state.time) / RESPAWN_PHASE_MS / 2;
+        respawnColor = "red";
+      } else if (state?.state === 2) {
+        respawnProgress = 0.5 + (currentTime - state.time) / RESPAWN_PHASE_MS / 2;
+        respawnColor = "yellow";
+      }
+
       team.players.push({
         ...player,
         rank: 0,
@@ -189,6 +219,8 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
         missiles: state?.missiles ?? 0,
         sp: player.position === HEAVY_WEAPONS_POSITION ? null : (state?.sp ?? 0),
         state: state?.state ?? 0,
+        respawnProgress,
+        respawnColor,
         isEliminated: state?.isEliminated ?? false,
       });
     }
@@ -296,6 +328,7 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
                   <TableRow>
                     <TableHead className="w-8 text-center">#</TableHead>
                     <TableHead>Callsign</TableHead>
+                    <TableHead className="w-4 px-0" />
                     <TableHead className="text-center">Pos</TableHead>
                     <TableHead className="text-right">Score</TableHead>
                     <TableHead className="text-right">Acc</TableHead>
@@ -329,6 +362,16 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
                             OUT
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="px-0">
+                        {!player.isEliminated &&
+                          player.respawnProgress !== null &&
+                          player.respawnColor && (
+                            <RespawnIndicator
+                              progress={player.respawnProgress}
+                              color={player.respawnColor}
+                            />
+                          )}
                       </TableCell>
                       <TableCell className="text-center text-xs text-muted-foreground">
                         {getPosition(player.position)?.abbr ?? "—"}
