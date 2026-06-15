@@ -371,6 +371,100 @@ export async function getPlayersMedicHitsLeaderboard(options?: {
   }));
 }
 
+export type PlayerOverallAverages = {
+  playerIplId: string;
+  playerName: string;
+  avgAvgMvp: number;
+  totalMvp: number;
+  avgAvgAcc: number;
+  hitDiff: number;
+  gamesWon: number;
+  gamesPlayed: number;
+  commanderAvgMvp: number | null;
+  commanderAvgAcc: number | null;
+  commanderGamesWon: number;
+  commanderGamesPlayed: number;
+  heavyAvgMvp: number | null;
+  heavyAvgAcc: number | null;
+  heavyGamesWon: number;
+  heavyGamesPlayed: number;
+  scoutAvgMvp: number | null;
+  scoutAvgAcc: number | null;
+  scoutGamesWon: number;
+  scoutGamesPlayed: number;
+  ammoAvgMvp: number | null;
+  ammoAvgAcc: number | null;
+  ammoGamesWon: number;
+  ammoGamesPlayed: number;
+  medicAvgMvp: number | null;
+  medicAvgAcc: number | null;
+  medicGamesWon: number;
+  medicGamesPlayed: number;
+};
+
+export async function getPlayerOverallAverages(): Promise<PlayerOverallAverages[]> {
+  const rows = await db
+    .select({
+      playerIplId: player.iplId,
+      playerName: player.currentCallsign,
+      avgAvgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
+      totalMvp: sql<number>`SUM(${sm5Scorecard.mvpPoints})::float`,
+      avgAvgAcc: sql<number>`(AVG(${sm5Scorecard.accuracy}) * 100)::float`,
+      hitDiff: sql<number>`AVG(${sm5Scorecard.hitDiff})::float`,
+      gamesWon: sql<number>`(COUNT(*) FILTER (WHERE ${sm5GameTeam.result} = 'win'))::int`,
+      gamesPlayed: sql<number>`(COUNT(*))::int`,
+      commanderAvgMvp: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.mvpPoints}) FILTER (WHERE ${sm5Scorecard.position} = 1))::float`,
+      commanderAvgAcc: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.accuracy}) FILTER (WHERE ${sm5Scorecard.position} = 1) * 100)::float`,
+      commanderGamesWon: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 1 AND ${sm5GameTeam.result} = 'win'))::int`,
+      commanderGamesPlayed: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 1))::int`,
+      heavyAvgMvp: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.mvpPoints}) FILTER (WHERE ${sm5Scorecard.position} = 2))::float`,
+      heavyAvgAcc: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.accuracy}) FILTER (WHERE ${sm5Scorecard.position} = 2) * 100)::float`,
+      heavyGamesWon: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 2 AND ${sm5GameTeam.result} = 'win'))::int`,
+      heavyGamesPlayed: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 2))::int`,
+      scoutAvgMvp: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.mvpPoints}) FILTER (WHERE ${sm5Scorecard.position} = 3))::float`,
+      scoutAvgAcc: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.accuracy}) FILTER (WHERE ${sm5Scorecard.position} = 3) * 100)::float`,
+      scoutGamesWon: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 3 AND ${sm5GameTeam.result} = 'win'))::int`,
+      scoutGamesPlayed: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 3))::int`,
+      ammoAvgMvp: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.mvpPoints}) FILTER (WHERE ${sm5Scorecard.position} = 4))::float`,
+      ammoAvgAcc: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.accuracy}) FILTER (WHERE ${sm5Scorecard.position} = 4) * 100)::float`,
+      ammoGamesWon: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 4 AND ${sm5GameTeam.result} = 'win'))::int`,
+      ammoGamesPlayed: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 4))::int`,
+      medicAvgMvp: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.mvpPoints}) FILTER (WHERE ${sm5Scorecard.position} = 5))::float`,
+      medicAvgAcc: sql<
+        number | null
+      >`(AVG(${sm5Scorecard.accuracy}) FILTER (WHERE ${sm5Scorecard.position} = 5) * 100)::float`,
+      medicGamesWon: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 5 AND ${sm5GameTeam.result} = 'win'))::int`,
+      medicGamesPlayed: sql<number>`(COUNT(*) FILTER (WHERE ${sm5Scorecard.position} = 5))::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
+    .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
+    .innerJoin(player, eq(sm5Scorecard.playerId, player.id))
+    .where(and(eq(sm5GameTeam.isNeutral, false), eq(game.exclude, false)))
+    .groupBy(player.id, player.iplId, player.currentCallsign)
+    .orderBy(desc(sql`AVG(${sm5Scorecard.mvpPoints})`));
+
+  return rows;
+}
+
 export async function getPlayerGames(
   playerId: string,
   scopeFilter?: GameScopeFilter,
