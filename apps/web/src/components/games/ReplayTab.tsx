@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Toggle } from "@/components/ui/toggle";
 import { formatMs, formatScore, formatPct } from "@/lib/format";
 import { getPosition } from "@/lib/positions";
 import { getTeamColor } from "@/lib/team-colors";
@@ -26,6 +27,16 @@ const SPEEDS = [1, 2, 4, 8] as const;
 type Speed = (typeof SPEEDS)[number];
 
 const HEAVY_WEAPONS_POSITION = 2;
+
+const MISS_EVENT_TYPES = new Set(["0201", "0202", "0301", "0304"]);
+
+function isMissEvent(eventType: string): boolean {
+  return MISS_EVENT_TYPES.has(eventType);
+}
+
+function isStateChangeEvent(eventType: string): boolean {
+  return eventType.startsWith("state_");
+}
 
 function binarySearchLatestState(
   states: ReplayPlayerState[],
@@ -71,6 +82,8 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
+  const [showMisses, setShowMisses] = useState(false);
+  const [showStateChanges, setShowStateChanges] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -95,11 +108,12 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
     return map;
   }, [data]);
 
-  // Pre-process: callsign lookup for event stream
+  // Pre-process: callsign + team color lookup for event stream
   const playerMap = useMemo(() => {
-    if (!data) return new Map<string, string>();
-    const map = new Map<string, string>();
-    for (const p of data.players) map.set(p.scorecardId, p.callsign);
+    if (!data) return new Map<string, { callsign: string; teamColour: number }>();
+    const map = new Map<string, { callsign: string; teamColour: number }>();
+    for (const p of data.players)
+      map.set(p.scorecardId, { callsign: p.callsign, teamColour: p.teamColour });
     return map;
   }, [data]);
 
@@ -190,9 +204,14 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
   // Event stream computation
   const visibleEvents = useMemo(() => {
     if (!data) return [];
-    const visible = data.events.filter((e) => e.time <= currentTime);
+    const visible = data.events.filter((e) => {
+      if (e.time > currentTime) return false;
+      if (!showMisses && isMissEvent(e.eventType)) return false;
+      if (!showStateChanges && isStateChangeEvent(e.eventType)) return false;
+      return true;
+    });
     return visible.slice(-20).reverse();
-  }, [data, currentTime]);
+  }, [data, currentTime, showMisses, showStateChanges]);
 
   if (loading) {
     return (
@@ -319,32 +338,73 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
 
       {/* Event stream */}
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Events
-        </h3>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Events
+          </h3>
+          <div className="flex items-center gap-1">
+            <Toggle
+              variant="outline"
+              size="sm"
+              pressed={showMisses}
+              onPressedChange={setShowMisses}
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              Misses
+            </Toggle>
+            <Toggle
+              variant="outline"
+              size="sm"
+              pressed={showStateChanges}
+              onPressedChange={setShowStateChanges}
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              State Changes
+            </Toggle>
+          </div>
+        </div>
         <div className="rounded-md border bg-muted/20 p-3 space-y-1 min-h-[80px] max-h-64 overflow-y-auto">
           {visibleEvents.length === 0 ? (
             <p className="text-xs text-muted-foreground">No events yet.</p>
           ) : (
             visibleEvents.map((event) => {
-              const actor = event.actorScorecardId
+              const actorPlayer = event.actorScorecardId
                 ? playerMap.get(event.actorScorecardId)
+                : null;
+              const actorName = actorPlayer
+                ? actorPlayer.callsign
                 : event.actorGameTargetId
                   ? nonPlayerActorMap.get(event.actorGameTargetId)
                   : null;
-              const target =
+              const actorColor = actorPlayer
+                ? getTeamColor(actorPlayer.teamColour)?.text
+                : undefined;
+
+              const targetPlayer =
                 event.isPlayerTarget && event.targetScorecardId
                   ? playerMap.get(event.targetScorecardId)
-                  : event.targetScorecardId === null && !event.isPlayerTarget
-                    ? null
-                    : "a target";
-              const parts = [actor, event.description.trim(), target].filter(Boolean);
+                  : null;
+              const targetName = targetPlayer
+                ? targetPlayer.callsign
+                : event.targetScorecardId === null && !event.isPlayerTarget
+                  ? null
+                  : "a target";
+              const targetColor = targetPlayer
+                ? getTeamColor(targetPlayer.teamColour)?.text
+                : undefined;
+
               return (
                 <div key={event.id} className="flex items-baseline gap-2 text-sm">
                   <span className="tabular-nums text-xs text-muted-foreground shrink-0 w-12">
                     {formatMs(event.time)}
                   </span>
-                  <span>{parts.join(" ")}</span>
+                  <span>
+                    {actorName && <span className={actorColor}>{actorName}</span>}
+                    {actorName && " "}
+                    {event.description.trim()}
+                    {targetName && " "}
+                    {targetName && <span className={targetColor}>{targetName}</span>}
+                  </span>
                 </div>
               );
             })
