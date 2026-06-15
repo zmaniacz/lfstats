@@ -73,6 +73,7 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --animate-rank-flash-up: rank-flash-up 0.8s ease-out;
   --animate-team-lead-flash: team-lead-flash 0.8s ease-out;
+  --animate-rapid-pulse: rapid-pulse 1s ease-in-out infinite;
 }
 
 :root {
@@ -233,5 +234,21 @@
   }
   75% {
     transform: translateY(-3px);
+  }
+}
+
+@keyframes rapid-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.7);
+  }
+}
+
+@keyframes rainbow-text {
+  to {
+    background-position: 200% center;
   }
 }

@@ -1065,6 +1065,8 @@ export type ReplayPlayerState = {
   missiles: number;
   sp: number;
   state: number;
+  isRapidFire: boolean;
+  isNuking: boolean;
   isEliminated: boolean;
   accuracy: number;
   hitDiff: number;
@@ -1112,6 +1114,8 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
         missiles: sm5GamePlayerState.missiles,
         sp: sm5GamePlayerState.sp,
         state: sm5GamePlayerState.state,
+        isRapidFire: sm5GamePlayerState.isRapidFire,
+        isNuking: sm5GamePlayerState.isNuking,
         isEliminated: sm5GamePlayerState.isEliminated,
         accuracy: sm5GamePlayerState.accuracy,
         hitDiff: sm5GamePlayerState.hitDiff,
@@ -1176,6 +1180,8 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       missiles: s.missiles,
       sp: s.sp,
       state: s.state,
+      isRapidFire: s.isRapidFire,
+      isNuking: s.isNuking,
       isEliminated: s.isEliminated,
       accuracy: s.accuracy,
       hitDiff: s.hitDiff,

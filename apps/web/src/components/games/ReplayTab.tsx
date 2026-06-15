@@ -87,6 +87,8 @@ type ComputedPlayer = ReplayPlayer & {
   state: number;
   respawnProgress: number | null;
   respawnColor: "red" | "yellow" | null;
+  isRapidFire: boolean;
+  isNuking: boolean;
   isEliminated: boolean;
 };
 
@@ -222,6 +224,8 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
         state: state?.state ?? 0,
         respawnProgress,
         respawnColor,
+        isRapidFire: state?.isRapidFire ?? false,
+        isNuking: state?.isNuking ?? false,
         isEliminated: state?.isEliminated ?? false,
       });
     }
@@ -433,7 +437,30 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
                                 : (color?.text ?? "")
                           }`}
                         >
-                          {player.callsign}
+                          <span
+                            className={cn(
+                              !player.isEliminated &&
+                                player.state === 0 &&
+                                player.isRapidFire &&
+                                "animate-rapid-pulse",
+                            )}
+                            style={
+                              !player.isEliminated && player.isNuking
+                                ? {
+                                    backgroundImage:
+                                      "linear-gradient(90deg, var(--color-red-500), var(--color-orange-500), var(--color-yellow-400), var(--color-green-500), var(--color-blue-500), var(--color-purple-500), var(--color-red-500))",
+                                    backgroundSize: "200% auto",
+                                    backgroundClip: "text",
+                                    WebkitBackgroundClip: "text",
+                                    color: "transparent",
+                                    WebkitTextFillColor: "transparent",
+                                    animation: "rainbow-text 2s linear infinite",
+                                  }
+                                : undefined
+                            }
+                          >
+                            {player.callsign}
+                          </span>
                           {player.isEliminated && (
                             <Badge variant="destructive" className="text-xs px-1 py-0">
                               OUT
