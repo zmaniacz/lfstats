@@ -71,6 +71,8 @@
   --shadow-opacity: var(--shadow-opacity);
   --color-shadow-color: var(--shadow-color);
   --color-destructive-foreground: var(--destructive-foreground);
+  --animate-rank-flash-up: rank-flash-up 0.8s ease-out;
+  --animate-team-lead-flash: team-lead-flash 0.8s ease-out;
 }
 
 :root {
@@ -195,5 +197,41 @@
   }
   html {
     @apply font-mono;
+  }
+}
+
+@keyframes rank-flash-up {
+  0%,
+  100% {
+    background-color: transparent;
+    transform: translateY(0);
+  }
+  25% {
+    background-color: color-mix(in oklch, var(--color-green-500) 18%, transparent);
+    transform: translateY(-5px);
+  }
+  50% {
+    transform: translateY(1px);
+  }
+  75% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes team-lead-flash {
+  0%,
+  100% {
+    background-color: transparent;
+    transform: translateY(0);
+  }
+  25% {
+    background-color: color-mix(in oklch, var(--color-green-500) 18%, transparent);
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+  75% {
+    transform: translateY(-3px);
   }
 }

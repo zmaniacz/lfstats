@@ -21,6 +21,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { formatMs, formatScore, formatPct } from "@/lib/format";
 import { getPosition } from "@/lib/positions";
 import { getTeamColor } from "@/lib/team-colors";
+import { cn } from "@/lib/utils";
 import type { ReplayData, ReplayPlayer, ReplayPlayerState } from "@lfstats/db";
 
 const TICK_MS = 100;
@@ -236,6 +237,67 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
     return teams;
   }, [data, statesByPlayer, currentTime]);
 
+  // Detect rank changes and team-order swaps to trigger bounce animations
+  const prevRanksRef = useRef<Map<string, number>>(new Map());
+  const prevTeamOrderRef = useRef<string[]>([]);
+  const rankTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const teamLeadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rankChanges, setRankChanges] = useState<Set<string>>(new Set());
+  const [newLeaderTeamId, setNewLeaderTeamId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+
+    for (const team of computedTeams) {
+      for (const player of team.players) {
+        const prevRank = prevRanksRef.current.get(player.scorecardId);
+        if (prevRank !== undefined && player.rank < prevRank) {
+          setRankChanges((prev) => new Set(prev).add(player.scorecardId));
+
+          const existing = rankTimeoutsRef.current.get(player.scorecardId);
+          if (existing) clearTimeout(existing);
+          rankTimeoutsRef.current.set(
+            player.scorecardId,
+            setTimeout(() => {
+              setRankChanges((prev) => {
+                const next = new Set(prev);
+                next.delete(player.scorecardId);
+                return next;
+              });
+              rankTimeoutsRef.current.delete(player.scorecardId);
+            }, 700),
+          );
+        }
+        prevRanksRef.current.set(player.scorecardId, player.rank);
+      }
+    }
+
+    const newOrder = computedTeams.map((t) => t.teamId);
+    const prevOrder = prevTeamOrderRef.current;
+    if (
+      prevOrder.length === newOrder.length &&
+      prevOrder.length > 0 &&
+      newOrder[0] !== prevOrder[0]
+    ) {
+      const newLeader = newOrder[0];
+      setNewLeaderTeamId(newLeader);
+      if (teamLeadTimeoutRef.current) clearTimeout(teamLeadTimeoutRef.current);
+      teamLeadTimeoutRef.current = setTimeout(() => {
+        setNewLeaderTeamId(null);
+        teamLeadTimeoutRef.current = null;
+      }, 700);
+    }
+    prevTeamOrderRef.current = newOrder;
+  }, [computedTeams, data]);
+
+  // Clean up pending animation timeouts on unmount
+  useEffect(() => {
+    return () => {
+      for (const timeout of rankTimeoutsRef.current.values()) clearTimeout(timeout);
+      if (teamLeadTimeoutRef.current) clearTimeout(teamLeadTimeoutRef.current);
+    };
+  }, []);
+
   // Event stream computation
   const visibleEvents = useMemo(() => {
     if (!data) return [];
@@ -316,7 +378,13 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
         {computedTeams.map((team) => {
           const color = getTeamColor(team.teamColour);
           return (
-            <div key={team.teamId} className="space-y-0">
+            <div
+              key={team.teamId}
+              className={cn(
+                "space-y-0",
+                newLeaderTeamId === team.teamId && "animate-team-lead-flash",
+              )}
+            >
               <div
                 className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
               >
@@ -339,57 +407,67 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {team.players.map((player) => (
-                    <TableRow
-                      key={player.scorecardId}
-                      className={player.isEliminated ? "opacity-50" : ""}
-                    >
-                      <TableCell className="text-center tabular-nums text-muted-foreground">
-                        {player.rank}
-                      </TableCell>
-                      <TableCell
-                        className={`font-medium flex items-center gap-1.5 ${
-                          player.isEliminated
-                            ? "text-muted-foreground"
-                            : player.state === 2 || player.state === 3
-                              ? `${color?.text ?? ""} opacity-50`
-                              : (color?.text ?? "")
-                        }`}
-                      >
-                        {player.callsign}
-                        {player.isEliminated && (
-                          <Badge variant="destructive" className="text-xs px-1 py-0">
-                            OUT
-                          </Badge>
+                  {team.players.map((player) => {
+                    const rankImproved = rankChanges.has(player.scorecardId);
+                    return (
+                      <TableRow
+                        key={player.scorecardId}
+                        className={cn(
+                          player.isEliminated && "opacity-50",
+                          rankImproved && "animate-rank-flash-up",
                         )}
-                      </TableCell>
-                      <TableCell className="px-0">
-                        {!player.isEliminated &&
-                          player.respawnProgress !== null &&
-                          player.respawnColor && (
-                            <RespawnIndicator
-                              progress={player.respawnProgress}
-                              color={player.respawnColor}
-                            />
+                      >
+                        <TableCell className="text-center tabular-nums text-muted-foreground">
+                          <span
+                            className={cn(rankImproved && "text-green-600 dark:text-green-400")}
+                          >
+                            {player.rank}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className={`font-medium flex items-center gap-1.5 ${
+                            player.isEliminated
+                              ? "text-muted-foreground"
+                              : player.state === 2 || player.state === 3
+                                ? `${color?.text ?? ""} opacity-50`
+                                : (color?.text ?? "")
+                          }`}
+                        >
+                          {player.callsign}
+                          {player.isEliminated && (
+                            <Badge variant="destructive" className="text-xs px-1 py-0">
+                              OUT
+                            </Badge>
                           )}
-                      </TableCell>
-                      <TableCell className="text-center text-xs text-muted-foreground">
-                        {getPosition(player.position)?.abbr ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatScore(player.score)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPct(player.accuracy)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{player.lives}</TableCell>
-                      <TableCell className="text-right tabular-nums">{player.shots}</TableCell>
-                      <TableCell className="text-right tabular-nums">{player.missiles}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {player.sp === null ? "—" : player.sp}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className="px-0">
+                          {!player.isEliminated &&
+                            player.respawnProgress !== null &&
+                            player.respawnColor && (
+                              <RespawnIndicator
+                                progress={player.respawnProgress}
+                                color={player.respawnColor}
+                              />
+                            )}
+                        </TableCell>
+                        <TableCell className="text-center text-xs text-muted-foreground">
+                          {getPosition(player.position)?.abbr ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatScore(player.score)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatPct(player.accuracy)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{player.lives}</TableCell>
+                        <TableCell className="text-right tabular-nums">{player.shots}</TableCell>
+                        <TableCell className="text-right tabular-nums">{player.missiles}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {player.sp === null ? "—" : player.sp}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
