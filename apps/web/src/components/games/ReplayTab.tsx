@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toggle } from "@/components/ui/toggle";
 import { formatMs, formatScore, formatPct } from "@/lib/format";
@@ -65,6 +66,7 @@ type ComputedPlayer = ReplayPlayer & {
   shots: number;
   missiles: number;
   sp: number | null;
+  state: number;
   isEliminated: boolean;
 };
 
@@ -186,6 +188,7 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
         shots: state?.shots ?? 0,
         missiles: state?.missiles ?? 0,
         sp: player.position === HEAVY_WEAPONS_POSITION ? null : (state?.sp ?? 0),
+        state: state?.state ?? 0,
         isEliminated: state?.isEliminated ?? false,
       });
     }
@@ -311,7 +314,22 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
                       <TableCell className="text-center tabular-nums text-muted-foreground">
                         {player.rank}
                       </TableCell>
-                      <TableCell className="font-medium">{player.callsign}</TableCell>
+                      <TableCell
+                        className={`font-medium flex items-center gap-1.5 ${
+                          player.isEliminated
+                            ? "text-muted-foreground"
+                            : player.state === 2 || player.state === 3
+                              ? `${color?.text ?? ""} opacity-50`
+                              : (color?.text ?? "")
+                        }`}
+                      >
+                        {player.callsign}
+                        {player.isEliminated && (
+                          <Badge variant="destructive" className="text-xs px-1 py-0">
+                            OUT
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center text-xs text-muted-foreground">
                         {getPosition(player.position)?.abbr ?? "—"}
                       </TableCell>
