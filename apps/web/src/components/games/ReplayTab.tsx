@@ -404,9 +404,9 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
                   : null;
               const targetName = targetPlayer
                 ? targetPlayer.callsign
-                : event.targetScorecardId === null && !event.isPlayerTarget
-                  ? null
-                  : "a target";
+                : event.targetGameTargetId
+                  ? (nonPlayerActorMap.get(event.targetGameTargetId) ?? "a target")
+                  : null;
               const targetColor = targetPlayer
                 ? getTeamColor(targetPlayer.teamColour)?.text
                 : undefined;

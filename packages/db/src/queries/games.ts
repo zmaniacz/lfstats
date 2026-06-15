@@ -1046,6 +1046,7 @@ export type ReplayEvent = {
   actorScorecardId: string | null;
   actorGameTargetId: string | null;
   targetScorecardId: string | null;
+  targetGameTargetId: string | null;
   isPlayerTarget: boolean;
 };
 
@@ -1163,6 +1164,7 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       actorScorecardId: e.actorScorecardId,
       actorGameTargetId: e.actorGameTargetId,
       targetScorecardId: e.targetScorecardId,
+      targetGameTargetId: e.targetGameTargetId,
       isPlayerTarget: e.targetScorecardId !== null,
     })),
     playerStates: stateRows.map((s) => ({
