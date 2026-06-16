@@ -288,6 +288,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
                   <TeamStatsTable
                     team={team}
                     gameId={game.id}
+                    gameStartTime={game.startTime}
+                    gameDuration={game.actualDuration}
                     penaltiesByScorecard={penaltiesByScorecard}
                     canEdit={canDelete}
                     penaltyActions={penaltyActions}

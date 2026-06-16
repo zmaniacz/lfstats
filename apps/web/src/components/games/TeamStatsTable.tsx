@@ -15,7 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatPct, formatScore } from "@/lib/format";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatMs, formatPct, formatScore } from "@/lib/format";
 import { getPosition } from "@/lib/positions";
 import type { GameDetailPlayer, GameDetailTeam, PenaltyRecord } from "@lfstats/db";
 import { CardsIcon, WarningIcon } from "@phosphor-icons/react";
@@ -27,6 +28,8 @@ type PenaltyActions = React.ComponentProps<typeof PlayerStatsSheet>["penaltyActi
 type Props = {
   team: GameDetailTeam;
   gameId: string;
+  gameStartTime: Date;
+  gameDuration: number;
   penaltiesByScorecard: Map<string, PenaltyRecord[]>;
   canEdit: boolean;
   penaltyActions: PenaltyActions;
@@ -36,6 +39,8 @@ type Props = {
 export function TeamStatsTable({
   team,
   gameId,
+  gameStartTime,
+  gameDuration,
   penaltiesByScorecard,
   canEdit,
   penaltyActions,
@@ -55,17 +60,18 @@ export function TeamStatsTable({
         <Table className="table-fixed min-w-175 w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[20%]">Callsign</TableHead>
-              <TableHead className="w-[6%]">Pos</TableHead>
-              <TableHead className="w-[9%] text-center">Score</TableHead>
-              <TableHead className="w-[8%] text-center">MVP</TableHead>
-              <TableHead className="w-[9%] text-center">Hit Diff</TableHead>
-              <TableHead className="w-[9%] text-center">Accuracy</TableHead>
-              <TableHead className="w-[9%] text-center">Medic Hits</TableHead>
-              <TableHead className="w-[6%] text-center">Msls</TableHead>
-              <TableHead className="w-[6%] text-center">Lives</TableHead>
-              <TableHead className="w-[6%] text-center">Shots</TableHead>
-              <TableHead className="w-[6%] text-center">Missiled</TableHead>
+              <TableHead className="w-4/24">Callsign</TableHead>
+              <TableHead className="w-1/24">Pos</TableHead>
+              <TableHead className="w-1/24 text-center">Score</TableHead>
+              <TableHead className="w-1/24 text-center">MVP</TableHead>
+              <TableHead className="w-1/24 text-center">HitDiff</TableHead>
+              <TableHead className="w-1/24 text-center">Acc</TableHead>
+              <TableHead className="w-1/24 text-center">Medic Hits</TableHead>
+              <TableHead className="w-1/24 text-center">Lives</TableHead>
+              <TableHead className="w-1/24 text-center">Shots</TableHead>
+              <TableHead className="w-1/24 text-center">Msls</TableHead>
+              <TableHead className="w-1/24 text-center">Msld</TableHead>
+              <TableHead className="w-1/24 text-center">Survived</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -158,13 +164,43 @@ export function TeamStatsTable({
                     ) : null;
                   })()}
                 </TableCell>
-                <TableCell className="text-center tabular-nums">
-                  {player.missilesHitOpponent}
-                </TableCell>
+
                 <TableCell className="text-center tabular-nums">{player.livesLeft}</TableCell>
                 <TableCell className="text-center tabular-nums">{player.shotsLeft}</TableCell>
                 <TableCell className="text-center tabular-nums">
+                  {player.missilesHitOpponent}
+                </TableCell>
+                <TableCell className="text-center tabular-nums">
                   {player.timesHitByMissile}
+                </TableCell>
+                <TableCell className="px-3">
+                  {(() => {
+                    const survivalMs = player.eliminated
+                      ? Math.min(
+                          Math.max(player.endTime.getTime() - gameStartTime.getTime(), 0),
+                          gameDuration,
+                        )
+                      : gameDuration;
+                    const pct = survivalMs / gameDuration;
+                    const label = player.eliminated
+                      ? `Eliminated at ${formatMs(survivalMs)} / ${formatMs(gameDuration)}`
+                      : `Survived (${formatMs(gameDuration)})`;
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${player.eliminated ? "bg-destructive" : "bg-primary"}`}
+                                style={{ width: `${Math.round(pct * 100)}%` }}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{label}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             ))}

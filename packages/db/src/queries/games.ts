@@ -240,6 +240,7 @@ export type GameDetailPlayer = {
   uptime: number;
   resupplyDowntime: number;
   otherDowntime: number;
+  endTime: Date;
   mvpComponents: MvpComponentRow[];
   hitInteractions: PlayerHitData[];
 };
@@ -403,6 +404,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         uptime: sm5Scorecard.uptime,
         resupplyDowntime: sm5Scorecard.resupplyDowntime,
         otherDowntime: sm5Scorecard.otherDowntime,
+        endTime: sm5Scorecard.endTime,
       })
       .from(sm5Scorecard)
       .where(inArray(sm5Scorecard.gameId, gameIds))
@@ -570,6 +572,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       uptime: sc.uptime,
       resupplyDowntime: sc.resupplyDowntime,
       otherDowntime: sc.otherDowntime,
+      endTime: sc.endTime,
       mvpComponents: mvpByScorecard.get(sc.id) ?? [],
       hitInteractions: (() => {
         const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>();
@@ -766,6 +769,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
           uptime: sm5Scorecard.uptime,
           resupplyDowntime: sm5Scorecard.resupplyDowntime,
           otherDowntime: sm5Scorecard.otherDowntime,
+          endTime: sm5Scorecard.endTime,
         })
         .from(sm5Scorecard)
         .where(eq(sm5Scorecard.gameId, id))
@@ -941,6 +945,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         uptime: sc.uptime,
         resupplyDowntime: sc.resupplyDowntime,
         otherDowntime: sc.otherDowntime,
+        endTime: sc.endTime,
         mvpComponents: mvpByScorecard.get(sc.id) ?? [],
         hitInteractions: (() => {
           const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>();
