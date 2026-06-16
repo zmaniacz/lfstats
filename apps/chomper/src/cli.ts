@@ -5,10 +5,17 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
 import { parseTdf, ParseError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
+import { simulateLaserball } from "./laserball/simulator.js";
+import { ingestLaserball } from "./laserball/ingester.js";
+import { LASERBALL_MISSION_TYPE } from "./laserball/types.js";
+import { parseGameStartTime } from "./ingester.js";
 
-const filePath = process.argv[2];
+// Flags: --db writes the simulated game to the database (Laserball only).
+const args = process.argv.slice(2);
+const writeDb = args.includes("--db");
+const filePath = args.find((a) => !a.startsWith("--"));
 if (!filePath) {
-  console.error("Usage: pnpm ingest <file.tdf>");
+  console.error("Usage: pnpm ingest [--db] <file.tdf>");
   process.exit(1);
 }
 
@@ -40,6 +47,55 @@ console.log(
     `${parsed.entities.length} entities, ` +
     `${parsed.events.length} events`,
 );
+
+// Laserball — separate simulation path (no line-7 ground truth; cross-check goals↔scores)
+if (parsed.meta.missionType === LASERBALL_MISSION_TYPE) {
+  const lb = simulateLaserball(parsed);
+  console.log(
+    `Simulated (laserball): outcome=${lb.outcome}, ` +
+      `${lb.events.length} events, ${lb.playerStats.size} players, ` +
+      `goalCheck=${lb.goalCheck.ok ? "ok" : "MISMATCH"}`,
+  );
+  if (writeDb) {
+    if (!lb.goalCheck.ok) {
+      console.error(
+        `Refusing to ingest: goal/score mismatch ` +
+          `goals=${JSON.stringify(lb.goalCheck.teamGoals)} ` +
+          `scoreEvents=${JSON.stringify(lb.goalCheck.scoreEventGoals)}`,
+      );
+      process.exit(1);
+    }
+    const gameStartTime = parseGameStartTime(parsed.meta.startTime);
+    const gameId = await ingestLaserball(parsed, lb, gameStartTime, null);
+    console.log(`Ingested to DB: gameId=${gameId}`);
+    process.exit(0);
+  }
+  const lbDebug = {
+    missionType: parsed.meta.missionType,
+    outcome: lb.outcome,
+    actualDuration: lb.actualDuration,
+    goalCheck: lb.goalCheck,
+    teams: lb.teams,
+    players: Object.fromEntries(
+      [...lb.playerStats.entries()].map(([id, p]) => {
+        const { actionTimes, chainTracker, stateSnapshots, ...rest } = p;
+        void actionTimes;
+        void chainTracker;
+        void stateSnapshots;
+        return [id, rest];
+      }),
+    ),
+  };
+  const lbDebugPath = resolve(dirname(absPath), basename(absPath, ".tdf") + ".debug.json");
+  writeFileSync(lbDebugPath, JSON.stringify(lbDebug, null, 2));
+  console.log(`Debug output: ${lbDebugPath}`);
+  process.exit(0);
+}
+
+if (writeDb) {
+  console.error("--db ingest is only supported for Laserball in the CLI");
+  process.exit(1);
+}
 
 if (parsed.meta.missionType !== 5) {
   console.warn(`Skipped: mission type ${parsed.meta.missionType} is not SM5`);

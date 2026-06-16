@@ -711,6 +711,208 @@ export const sm5GamePlayerState = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Laserball Tables
+//
+// Laserball is a separate game mode (mission type 28). It reuses the shared
+// identity tables (center, player, battlesuit, player_callsign_history) and the
+// `game` table (game.type = "lb", game.outcome = "score" | "draw" | "aborted").
+// All laserball-specific data lives in the lb_-prefixed tables below.
+//
+// Stat definitions and computation are a port of the European reference
+// implementation (demo_files/laserball-code/process_logs.php). See
+// docs/laserball-chomper-design.md and docs/Laserball_Scorecard_Table_Spec.md.
+// Laserball has no roles/positions, so every stat applies to every player and
+// is stored notNull (no null-vs-zero ambiguity).
+// ---------------------------------------------------------------------------
+
+export const lbGameTeam = pgTable(
+  "lb_game_team",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    tdfTeamIndex: integer("tdf_team_index").notNull(),
+    isNeutral: boolean("is_neutral").notNull(),
+    name: text("name").notNull(),
+    colourEnum: integer("colour_enum").notNull(),
+    colourRgb: text("colour_rgb"),
+    // Null for the Neutral team — concept does not apply
+    score: integer("score"),
+    result: teamResultEnum("result"),
+  },
+  (t) => [unique().on(t.gameId, t.tdfTeamIndex)],
+);
+
+export const lbScorecard = pgTable(
+  "lb_scorecard",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    // Identity & Context
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id").references(() => player.id),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => lbGameTeam.id, { onDelete: "cascade" }),
+    battlesuitId: uuid("battlesuit_id").references(() => battlesuit.id),
+    iplId: text("ipl_id"),
+    callsign: text("callsign").notNull(),
+    // ms relative to mission start; first-to-last action span (process_logs.php:641)
+    timePlayedMs: integer("time_played_ms").notNull(),
+    // ms of last-seen action relative to mission start
+    endTime: integer("end_time").notNull(),
+
+    // Offensive (process_logs.php:667-668)
+    goals: integer("goals").notNull(),
+    bigGoals: integer("big_goals").notNull(),
+    futileAttacks: integer("futile_attacks").notNull(),
+    badAttacksFc: integer("bad_attacks_fc").notNull(),
+    futileAttacksGoal: integer("futile_attacks_goal").notNull(),
+    assists1: integer("assists1").notNull(),
+    assists2: integer("assists2").notNull(),
+    clearAssists1: integer("clear_assists1").notNull(),
+    clearAssists2: integer("clear_assists2").notNull(),
+    passesDone: integer("passes_done").notNull(),
+    passesReceived: integer("passes_received").notNull(),
+    passOverOpponent: integer("pass_over_opponent").notNull(),
+    turnoverPass: integer("turnover_pass").notNull(),
+
+    // Clearing / possession (process_logs.php:669)
+    clearsDone: integer("clears_done").notNull(),
+    clearsReceived: integer("clears_received").notNull(),
+    clutchSaves: integer("clutch_saves").notNull(),
+    failedClearsCalc: integer("failed_clears_calc").notNull(),
+    failedClearsRaw: integer("failed_clears_raw").notNull(),
+    inactiveClearPenalty: integer("inactive_clear_penalty").notNull(),
+    noClearGoal: integer("no_clear_goal").notNull(),
+    noClearBlocks: integer("no_clear_blocks").notNull(),
+    defenseScore: integer("defense_score").notNull(),
+
+    // Defensive / blocking (process_logs.php:670)
+    stealsDone: integer("steals_done").notNull(),
+    stealsReceived: integer("steals_received").notNull(),
+    blocksDone: integer("blocks_done").notNull(),
+    blocksReceived: integer("blocks_received").notNull(),
+    blocksWithBall: integer("blocks_with_ball").notNull(),
+    blocksBeforeGoal: integer("blocks_before_goal").notNull(),
+    resetBlocksDone: integer("reset_blocks_done").notNull(),
+    resetBlocksReceived: integer("reset_blocks_received").notNull(),
+    blockSerieMax: integer("block_serie_max").notNull(),
+    bigMid: integer("big_mid").notNull(),
+    resetPoint: integer("reset_point").notNull(),
+
+    // Possession / misc (process_logs.php:671)
+    possessionTimeMs: integer("possession_time_ms").notNull(),
+    misses: integer("misses").notNull(),
+    targetResetSelf: integer("target_reset_self").notNull(),
+    targetResetPlayer: integer("target_reset_player").notNull(),
+    startRoundBall: integer("start_round_ball").notNull(),
+    startRoundLoss: integer("start_round_loss").notNull(),
+    ballTimeout: integer("ball_timeout").notNull(),
+
+    // State counts (process_logs.php:672)
+    state0: integer("state0").notNull(),
+    state2: integer("state2").notNull(),
+    state3: integer("state3").notNull(),
+  },
+  (t) => [
+    index("lb_scorecard_game_id_idx").on(t.gameId),
+    index("lb_scorecard_team_id_idx").on(t.teamId),
+    index("lb_scorecard_player_id_idx").on(t.playerId),
+    index("lb_scorecard_battlesuit_id_idx").on(t.battlesuitId),
+    index("lb_scorecard_ipl_id_idx").on(t.iplId),
+  ],
+);
+
+export const lbGamePlayerInteraction = pgTable(
+  "lb_game_player_interaction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    scorecardId: uuid("scorecard_id")
+      .notNull()
+      .references(() => lbScorecard.id, { onDelete: "cascade" }),
+    targetScorecardId: uuid("target_scorecard_id").notNull(),
+    steals: integer("steals").notNull(),
+    blocks: integer("blocks").notNull(),
+    passes: integer("passes").notNull(),
+  },
+  (t) => [
+    unique("lb_game_player_interaction_unique").on(t.gameId, t.scorecardId, t.targetScorecardId),
+    foreignKey({
+      name: "lb_gpi_tgt_scorecard_id_fk",
+      columns: [t.targetScorecardId],
+      foreignColumns: [lbScorecard.id],
+    }).onDelete("cascade"),
+    index("lb_gpi_scorecard_id_idx").on(t.scorecardId),
+    index("lb_gpi_target_scorecard_id_idx").on(t.targetScorecardId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Laserball Replay Data Tables
+// ---------------------------------------------------------------------------
+
+export const lbGameEvent = pgTable(
+  "lb_game_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    time: integer("time").notNull(),
+    eventType: text("event_type").notNull(),
+    // Null for events with no actor/target (e.g. round start/end)
+    actorScorecardId: uuid("actor_scorecard_id").references(() => lbScorecard.id, {
+      onDelete: "cascade",
+    }),
+    targetScorecardId: uuid("target_scorecard_id").references(() => lbScorecard.id, {
+      onDelete: "cascade",
+    }),
+    description: text("description").notNull(),
+  },
+  (t) => [
+    index("lb_game_event_game_id_idx").on(t.gameId),
+    index("lb_game_event_actor_sc_idx").on(t.actorScorecardId),
+    index("lb_game_event_target_sc_idx").on(t.targetScorecardId),
+  ],
+);
+
+export const lbGamePlayerState = pgTable(
+  "lb_game_player_state",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => lbGameEvent.id, { onDelete: "cascade" }),
+    scorecardId: uuid("scorecard_id")
+      .notNull()
+      .references(() => lbScorecard.id, { onDelete: "cascade" }),
+    time: integer("time").notNull(),
+    // Running goals scored by this player up to this event
+    score: integer("score").notNull(),
+    // Player state: 0 = active, 2 = down/resettable, 3 = down
+    state: integer("state").notNull(),
+    hasBall: boolean("has_ball").notNull(),
+    isActive: boolean("is_active").notNull(),
+  },
+  (t) => [
+    unique().on(t.eventId, t.scorecardId),
+    index("lb_game_player_state_sc_time_idx").on(t.gameId, t.scorecardId, t.time),
+    index("lb_game_player_state_event_id_idx").on(t.eventId),
+    index("lb_game_player_state_scorecard_id_idx").on(t.scorecardId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Auth Tables (NextAuth.js v5 / Auth.js + custom RBAC)
 // ---------------------------------------------------------------------------
 

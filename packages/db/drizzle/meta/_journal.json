@@ -232,6 +232,13 @@
       "when": 1781299622106,
       "tag": "0032_perpetual_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781632702525,
+      "tag": "0033_complete_the_twelve",
+      "breakpoints": true
     }
   ]
 }

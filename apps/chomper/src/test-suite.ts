@@ -5,23 +5,51 @@ import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "nod
 import { resolve, join } from "node:path";
 import { parseTdf, ParseError, RejectionError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
+import { simulateLaserball } from "./laserball/simulator.js";
+import { LASERBALL_MISSION_TYPE } from "./laserball/types.js";
 
 const demoDir = resolve(import.meta.dirname, "../../../demo_files");
+const lbDir = join(demoDir, "laserball");
 
-const files = readdirSync(demoDir)
+// Collect SM5 demo files (top-level) and Laserball demo files (laserball/ subdir).
+const sm5Files = readdirSync(demoDir)
   .filter((f) => f.endsWith(".tdf"))
-  .sort();
+  .sort()
+  .map((f) => ({ file: f, path: join(demoDir, f) }));
+let lbFiles: { file: string; path: string }[] = [];
+try {
+  lbFiles = readdirSync(lbDir)
+    .filter((f) => f.endsWith(".tdf"))
+    .sort()
+    .map((f) => ({ file: `laserball/${f}`, path: join(lbDir, f) }));
+} catch {
+  // no laserball dir — fine
+}
+const entries = [...sm5Files, ...lbFiles];
 
-if (files.length === 0) {
+if (entries.length === 0) {
   console.error("No .tdf files found in demo_files/");
   process.exit(1);
 }
 
-const staleDebug = readdirSync(demoDir).filter((f) => f.endsWith(".debug.json"));
-for (const f of staleDebug) rmSync(join(demoDir, f));
-if (staleDebug.length > 0) console.log(`Deleted ${staleDebug.length} stale .debug.json files\n`);
+for (const dir of [demoDir, lbDir]) {
+  let stale: string[] = [];
+  try {
+    stale = readdirSync(dir).filter((f) => f.endsWith(".debug.json"));
+  } catch {
+    continue;
+  }
+  for (const f of stale) rmSync(join(dir, f));
+  if (stale.length > 0) console.log(`Deleted ${stale.length} stale .debug.json files in ${dir}`);
+}
 
-console.log(`Running ingest on ${files.length} TDF files...\n`);
+// Heuristic: a downloaded file that is actually an HTML error page (404), not a TDF.
+function looksLikeHtml(buf: Buffer): boolean {
+  const head = buf.subarray(0, 64).toString("latin1").toLowerCase();
+  return head.includes("<!doctype html") || head.includes("<html") || head.includes("<head");
+}
+
+console.log(`Running ingest on ${entries.length} TDF files...\n`);
 
 let passed = 0;
 let failed = 0;
@@ -30,9 +58,8 @@ const failures: { file: string; reason: string }[] = [];
 const skips: { file: string; reason: string }[] = [];
 const passes: string[] = [];
 
-for (const file of files) {
-  const filePath = join(demoDir, file);
-  const debugPath = join(demoDir, file.replace(".tdf", ".debug.json"));
+for (const { file, path: filePath } of entries) {
+  const debugPath = filePath.replace(".tdf", ".debug.json");
 
   let buffer: Buffer;
   try {
@@ -42,6 +69,14 @@ for (const file of files) {
     console.error(`FAIL [read error] ${file}`);
     failures.push({ file, reason });
     failed++;
+    continue;
+  }
+
+  // Some downloaded samples are HTML 404 error pages, not TDFs — skip gracefully.
+  if (looksLikeHtml(buffer)) {
+    console.log(`SKIP ${file} (not a TDF — HTML page)`);
+    skips.push({ file, reason: "not a TDF (HTML page)" });
+    skipped++;
     continue;
   }
 
@@ -59,6 +94,39 @@ for (const file of files) {
     console.error(`FAIL [parse error] ${file}`);
     failures.push({ file, reason });
     failed++;
+    continue;
+  }
+
+  // --- Laserball: validate the goals↔line-5-score invariant (no line-7 truth) ---
+  if (parsed.meta.missionType === LASERBALL_MISSION_TYPE) {
+    let lb;
+    try {
+      lb = simulateLaserball(parsed);
+    } catch (err) {
+      console.error(`FAIL [lb sim error] ${file}`);
+      failures.push({ file, reason: String(err) });
+      failed++;
+      continue;
+    }
+    const lbDebug = {
+      missionType: parsed.meta.missionType,
+      outcome: lb.outcome,
+      actualDuration: lb.actualDuration,
+      goalCheck: lb.goalCheck,
+      teams: lb.teams,
+      playerCount: lb.playerStats.size,
+      eventCount: lb.events.length,
+    };
+    writeFileSync(debugPath, JSON.stringify(lbDebug, null, 2));
+    if (lb.goalCheck.ok) {
+      console.log(`PASS [lb] ${file} (${lb.outcome}, ${lb.playerStats.size} players)`);
+      passes.push(file);
+      passed++;
+    } else {
+      console.error(`FAIL [lb goal/score mismatch] ${file}`);
+      failures.push({ file, reason: JSON.stringify(lb.goalCheck, null, 2) });
+      failed++;
+    }
     continue;
   }
 
