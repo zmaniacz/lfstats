@@ -16,17 +16,20 @@ export function GamesDateFilter({
   basePath,
   state,
   date,
+  extras,
 }: {
   basePath: string;
   state: FilterUrlState;
   date: string;
+  /** Extra params to preserve across a date search (e.g. game type). */
+  extras?: Record<string, string | null | undefined>;
 }) {
   const router = useRouter();
 
   function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const value = (e.currentTarget.elements.namedItem("date") as HTMLInputElement).value;
-    router.push(buildFilterUrl(basePath, state, { date: value || null }));
+    router.push(buildFilterUrl(basePath, state, { ...extras, date: value || null }));
   }
 
   return (

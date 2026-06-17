@@ -13,7 +13,7 @@ import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
 import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
-import { PlayerGameTypeToggle } from "@/components/players/PlayerGameTypeToggle";
+import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 
 export default async function PlayerDetailPage({
   params,
@@ -55,7 +55,7 @@ export default async function PlayerDetailPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="space-y-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             {playerDetail.currentCallsign}
@@ -83,7 +83,7 @@ export default async function PlayerDetailPage({
           )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <PlayerGameTypeToggle active={gameType} />
+          <GameTypeToggle active={gameType} />
           <FilterBar
             basePath={`/players/${iplId}`}
             scope={ctx.scope}

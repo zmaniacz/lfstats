@@ -3,9 +3,11 @@
 
 import { Suspense } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { PlayersContent } from "@/components/players/PlayersContent";
 import { PlayersSkeleton } from "@/components/players/PlayersSkeleton";
+import { LaserballStub } from "@/components/laserball/LaserballStub";
 import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
 
 export default async function PlayersPage({
@@ -18,12 +20,15 @@ export default async function PlayersPage({
     pool?: string;
     finals?: string;
     mercs?: string;
+    game?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const ctx = await resolveFilterContext(sp);
+  const gameType: "sm5" | "lb" = sp.game === "lb" ? "lb" : "sm5";
+  const ctx = await resolveFilterContext(sp, { gameType });
 
-  const useCompetitionView = ctx.scope === "competition" && ctx.competition !== null;
+  const useCompetitionView =
+    gameType === "sm5" && ctx.scope === "competition" && ctx.competition !== null;
 
   const showPool = sp.pool !== "0";
   const showFinals = sp.finals === "1";
@@ -31,6 +36,7 @@ export default async function PlayersPage({
   const options = { showPool, showFinals, showMercs };
 
   const contentKey = [
+    gameType,
     ctx.scope,
     ctx.center?.slug ?? null,
     ctx.competition?.slug ?? null,
@@ -41,37 +47,52 @@ export default async function PlayersPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="space-y-4">
         <h1 className="text-2xl font-bold">Players</h1>
-        <FilterBar
-          basePath="/players"
-          scope={ctx.scope}
-          activeCenterSlug={ctx.center?.slug ?? null}
-          activeCompetitionSlug={ctx.competition?.slug ?? null}
-          centers={ctx.centers}
-          competitions={ctx.competitions}
-          extras={{ pool: sp.pool, finals: sp.finals, mercs: sp.mercs }}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <GameTypeToggle active={gameType} />
+          <FilterBar
+            basePath="/players"
+            gameType={gameType}
+            scope={ctx.scope}
+            activeCenterSlug={ctx.center?.slug ?? null}
+            activeCompetitionSlug={ctx.competition?.slug ?? null}
+            centers={ctx.centers}
+            competitions={ctx.competitions}
+            extras={{
+              pool: sp.pool,
+              finals: sp.finals,
+              mercs: sp.mercs,
+              game: gameType === "lb" ? "lb" : null,
+            }}
+          />
+        </div>
       </div>
 
-      {useCompetitionView && ctx.competition && (
-        <ScopeExtraToggles
-          basePath="/players"
-          competitionSlug={ctx.competition.slug}
-          showPool={showPool}
-          showFinals={showFinals}
-          showMercs={showMercs}
-        />
-      )}
+      {gameType === "lb" ? (
+        <LaserballStub feature="player rankings" />
+      ) : (
+        <>
+          {useCompetitionView && ctx.competition && (
+            <ScopeExtraToggles
+              basePath="/players"
+              competitionSlug={ctx.competition.slug}
+              showPool={showPool}
+              showFinals={showFinals}
+              showMercs={showMercs}
+            />
+          )}
 
-      <Suspense key={contentKey} fallback={<PlayersSkeleton />}>
-        <PlayersContent
-          useCompetitionView={useCompetitionView}
-          competitionId={ctx.competition?.id ?? ""}
-          options={options}
-          scopeFilter={toGameScopeFilter(ctx)}
-        />
-      </Suspense>
+          <Suspense key={contentKey} fallback={<PlayersSkeleton />}>
+            <PlayersContent
+              useCompetitionView={useCompetitionView}
+              competitionId={ctx.competition?.id ?? ""}
+              options={options}
+              scopeFilter={toGameScopeFilter(ctx)}
+            />
+          </Suspense>
+        </>
+      )}
     </div>
   );
 }

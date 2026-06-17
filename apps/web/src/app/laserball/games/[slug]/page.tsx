@@ -44,13 +44,6 @@ export default async function LaserballGameDetailPage({
         </div>
       </div>
 
-      <section className="space-y-1.5">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Possession
-        </h2>
-        <LbPossessionBar teams={possessionTeams} />
-      </section>
-
       {teams.map((team) => {
         const color = getTeamColor(team.colourEnum);
         return (
@@ -70,6 +63,12 @@ export default async function LaserballGameDetailPage({
           </section>
         );
       })}
+      <section className="space-y-1.5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Possession
+        </h2>
+        <LbPossessionBar teams={possessionTeams} />
+      </section>
     </div>
   );
 }

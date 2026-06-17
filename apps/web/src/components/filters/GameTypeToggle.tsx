@@ -4,19 +4,22 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { FilterGameType } from "@/lib/filter-cookies";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-// Toggles the player profile between SM5 and Laserball stats via the `game`
-// search param, preserving all other filters (scope/center/competition).
-export function PlayerGameTypeToggle({ active }: { active: "sm5" | "lb" }) {
+// Toggles a page between SM5 and Laserball via the `game` search param, preserving
+// all other filters. Used across the shared section pages.
+export function GameTypeToggle({ active }: { active: FilterGameType }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  function href(gameType: "sm5" | "lb") {
+  function href(gameType: FilterGameType) {
     const params = new URLSearchParams(searchParams.toString());
     if (gameType === "sm5") params.delete("game");
     else params.set("game", "lb");
+    // Reset pagination when switching game type.
+    params.delete("page");
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   }

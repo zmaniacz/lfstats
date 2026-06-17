@@ -27,9 +27,10 @@ export async function LaserballGamesContent({
   const totalPages = Math.max(1, Math.ceil(total / LB_GAMES_PER_PAGE));
 
   function pageUrl(p: number) {
-    return buildFilterUrl("/laserball/games", urlState, {
+    return buildFilterUrl("/games", urlState, {
       page: p > 1 ? String(p) : null,
       date: dateSearch || null,
+      game: "lb",
     });
   }
 

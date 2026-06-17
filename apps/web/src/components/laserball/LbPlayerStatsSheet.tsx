@@ -3,10 +3,10 @@
 
 "use client";
 
-import type { LbGameDetailPlayer } from "@lfstats/db";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatMs } from "@/lib/format";
+import type { LbGameDetailPlayer } from "@lfstats/db";
 import { WarningIcon } from "@phosphor-icons/react";
 
 type Props = {
@@ -86,8 +86,7 @@ export function LbPlayerStatsSheet({ player, open, onOpenChange }: Props) {
                   value={`${fmt(player.clearsDone)} / ${fmt(player.clearsReceived)}`}
                 />
                 <StatRow label="Clutch Saves" value={fmt(player.clutchSaves)} />
-                <StatRow label="Failed Clears (calc)" value={fmt(player.failedClearsCalc)} />
-                <StatRow label="Failed Clears (raw)" value={fmt(player.failedClearsRaw)} />
+                <StatRow label="Failed Clears" value={fmt(player.failedClearsCalc)} />
                 <StatRow label="Inactive Clear Penalty" value={fmt(player.inactiveClearPenalty)} />
                 <StatRow label="No-Clear Goal" value={fmt(player.noClearGoal)} />
                 <StatRow label="No-Clear Blocks" value={fmt(player.noClearBlocks)} />
