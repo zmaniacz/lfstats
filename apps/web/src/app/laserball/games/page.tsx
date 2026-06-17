@@ -1,71 +1,59 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Link from "next/link";
-import { getLbGamesPage, getLbGamesCount, LB_GAMES_PER_PAGE } from "@lfstats/db";
-import { LaserballGamesTable } from "@/components/laserball/LaserballGamesTable";
-import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { GamesDateFilter } from "@/components/games/GamesDateFilter";
+import { GamesTableSkeleton } from "@/components/games/GamesTableSkeleton";
+import { LaserballGamesContent } from "@/components/laserball/LaserballGamesContent";
+import { resolveFilterContext } from "@/lib/filter-context";
+import { type FilterUrlState } from "@/components/filters/filter-url";
 
 export default async function LaserballGamesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; date?: string }>;
+  searchParams: Promise<{
+    scope?: string;
+    center?: string;
+    competition?: string;
+    page?: string;
+    date?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const dateSearch = sp.date ?? "";
 
-  const filters = { dateSearch: dateSearch || undefined };
-  const [games, total] = await Promise.all([
-    getLbGamesPage(page, filters),
-    getLbGamesCount(filters),
-  ]);
-  const totalPages = Math.max(1, Math.ceil(total / LB_GAMES_PER_PAGE));
+  const ctx = await resolveFilterContext(sp, { gameType: "lb" });
+  const urlState: FilterUrlState = {
+    scope: ctx.scope,
+    center: ctx.center?.slug ?? null,
+    competition: ctx.competition?.slug ?? null,
+  };
 
-  function pageUrl(p: number) {
-    const params = new URLSearchParams();
-    if (p > 1) params.set("page", String(p));
-    if (dateSearch) params.set("date", dateSearch);
-    const qs = params.toString();
-    return qs ? `/laserball/games?${qs}` : "/laserball/games";
-  }
+  const contentKey = [ctx.scope, urlState.center, urlState.competition, page, dateSearch].join("|");
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Laserball Games</h1>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">Laserball Games</h1>
+        <FilterBar
+          basePath="/laserball/games"
+          gameType="lb"
+          scope={ctx.scope}
+          activeCenterSlug={urlState.center}
+          activeCompetitionSlug={urlState.competition}
+          centers={ctx.centers}
+          competitions={ctx.competitions}
+          extras={{ date: dateSearch || null }}
+        >
+          <GamesDateFilter basePath="/laserball/games" state={urlState} date={dateSearch} />
+        </FilterBar>
+      </div>
 
-      {games.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No laserball games found.</p>
-      ) : (
-        <div className="space-y-4">
-          <LaserballGamesTable games={games} />
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {total} games · page {page} of {totalPages}
-            </p>
-            <div className="flex gap-2">
-              {page > 1 ? (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={pageUrl(page - 1)}>Previous</Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-              )}
-              {page < totalPages ? (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={pageUrl(page + 1)}>Next</Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <Suspense key={contentKey} fallback={<GamesTableSkeleton />}>
+        <LaserballGamesContent ctx={ctx} urlState={urlState} page={page} dateSearch={dateSearch} />
+      </Suspense>
     </div>
   );
 }

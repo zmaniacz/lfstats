@@ -9,13 +9,7 @@ import {
   type CompetitiveCompetitionSummary,
   type GameScopeFilter,
 } from "@lfstats/db";
-import {
-  CENTER_COOKIE,
-  COMPETITION_COOKIE,
-  SCOPE_COOKIE,
-  isScope,
-  type Scope,
-} from "./filter-cookies";
+import { filterCookieNames, isScope, type Scope } from "./filter-cookies";
 
 /** Raw filter params a generic page may receive. */
 export type FilterSearchParams = {
@@ -62,10 +56,10 @@ export async function resolveFilterContext(
 ): Promise<FilterContext> {
   const { allowedScopes, gameType = "sm5" } = options;
 
-  // Laserball is displayed fully separately: it shares no filter cookies with
-  // SM5 (so an SM5 center selection can't hide Laserball games) and defaults to
-  // "social" since all Laserball games are social. It reads only explicit params.
-  const readCookies = gameType !== "lb";
+  // Laserball is displayed fully separately: it keeps its own filter cookies
+  // (so an SM5 center selection can't hide Laserball games) and defaults to
+  // "social" since all Laserball games are social.
+  const cookieNames = filterCookieNames(gameType);
   const defaultScope: Scope = options.defaultScope ?? (gameType === "lb" ? "social" : "all");
 
   const [centers, competitions, cookieStore] = await Promise.all([
@@ -77,7 +71,7 @@ export async function resolveFilterContext(
   const isAllowed = (s: Scope) => !allowedScopes || allowedScopes.includes(s);
 
   // --- scope ---
-  const scopeCookie = readCookies ? cookieStore.get(SCOPE_COOKIE)?.value : undefined;
+  const scopeCookie = cookieStore.get(cookieNames.scope)?.value;
   let scope: Scope = defaultScope;
   if (isScope(searchParams.scope) && isAllowed(searchParams.scope)) {
     scope = searchParams.scope;
@@ -99,7 +93,7 @@ export async function resolveFilterContext(
   };
 
   // --- center (slug param/cookie; null = all centers) ---
-  const centerCookie = readCookies ? cookieStore.get(CENTER_COOKIE)?.value : undefined;
+  const centerCookie = cookieStore.get(cookieNames.center)?.value;
   const resolveCenter = (slug: string | undefined): CenterListItem | null | undefined => {
     if (!slug) return undefined; // not specified at this source
     if (slug === ALL) return null; // explicitly "all centers"
@@ -111,7 +105,7 @@ export async function resolveFilterContext(
   );
 
   // --- competition (slug param/cookie; null = all competitions) ---
-  const competitionCookie = readCookies ? cookieStore.get(COMPETITION_COOKIE)?.value : undefined;
+  const competitionCookie = cookieStore.get(cookieNames.competition)?.value;
   const resolveCompetition = (
     slug: string | undefined,
   ): CompetitiveCompetitionSummary | null | undefined => {

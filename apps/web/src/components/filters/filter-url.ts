@@ -3,9 +3,8 @@
 
 import {
   ALL_VALUE,
-  CENTER_COOKIE,
-  COMPETITION_COOKIE,
-  SCOPE_COOKIE,
+  filterCookieNames,
+  type FilterGameType,
   type Scope,
 } from "@/lib/filter-cookies";
 
@@ -47,15 +46,22 @@ export function buildFilterUrl(
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-/** Persists the filter dimensions to cookies (1y) so other pages inherit them. */
-export function writeFilterCookies(state: Partial<FilterUrlState>): void {
+/**
+ * Persists the filter dimensions to cookies (1y) so other pages inherit them.
+ * The cookie set is game-type specific so SM5 and Laserball never cross-contaminate.
+ */
+export function writeFilterCookies(
+  state: Partial<FilterUrlState>,
+  gameType: FilterGameType = "sm5",
+): void {
+  const names = filterCookieNames(gameType);
   const maxAge = 31536000; // 1 year
   const set = (name: string, value: string) => {
     document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; samesite=lax`;
   };
-  if (state.scope) set(SCOPE_COOKIE, state.scope);
-  if (state.center !== undefined) set(CENTER_COOKIE, state.center ?? ALL_VALUE);
+  if (state.scope) set(names.scope, state.scope);
+  if (state.center !== undefined) set(names.center, state.center ?? ALL_VALUE);
   if (state.competition !== undefined) {
-    set(COMPETITION_COOKIE, state.competition ?? ALL_VALUE);
+    set(names.competition, state.competition ?? ALL_VALUE);
   }
 }

@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ALL_VALUE, type Scope } from "@/lib/filter-cookies";
+import { ALL_VALUE, type FilterGameType, type Scope } from "@/lib/filter-cookies";
 import { buildFilterUrl, writeFilterCookies } from "./filter-url";
 
 type Option = { slug: string; name: string };
@@ -30,7 +30,7 @@ export function FilterBar({
   centers,
   competitions,
   extras,
-  persistCookies = true,
+  gameType = "sm5",
   children,
 }: {
   basePath: string;
@@ -43,11 +43,10 @@ export function FilterBar({
   /** Page-specific params (e.g. pool/finals/mercs, date) to carry across changes. */
   extras?: Record<string, string | null | undefined>;
   /**
-   * Persist filter choices to shared cookies so other pages inherit them.
-   * Set false for game types displayed separately (e.g. Laserball) so their
-   * selections don't leak into SM5's remembered filters. Defaults to true.
+   * Which game type's cookie set to persist filter choices into. Game types are
+   * displayed separately and keep independent filter state. Defaults to "sm5".
    */
-  persistCookies?: boolean;
+  gameType?: FilterGameType;
   /** Page-specific controls rendered inline next to the selectors. */
   children?: React.ReactNode;
 }) {
@@ -59,19 +58,19 @@ export function FilterBar({
 
   function handleScope(value: string) {
     if (value !== "social" && value !== "competition" && value !== "all") return;
-    if (persistCookies) writeFilterCookies({ scope: value });
+    writeFilterCookies({ scope: value }, gameType);
     navigate({ scope: value, center: activeCenterSlug, competition: activeCompetitionSlug });
   }
 
   function handleCenter(value: string) {
     const center = value === ALL_VALUE ? null : value;
-    if (persistCookies) writeFilterCookies({ scope: "social", center });
+    writeFilterCookies({ scope: "social", center }, gameType);
     navigate({ scope: "social", center, competition: activeCompetitionSlug });
   }
 
   function handleCompetition(value: string) {
     const competition = value === ALL_VALUE ? null : value;
-    if (persistCookies) writeFilterCookies({ scope: "competition", competition });
+    writeFilterCookies({ scope: "competition", competition }, gameType);
     navigate({ scope: "competition", center: activeCenterSlug, competition });
   }
 

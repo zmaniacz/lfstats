@@ -92,7 +92,7 @@ export default async function PlayerDetailPage({
             centers={ctx.centers}
             competitions={ctx.competitions}
             extras={{ game: gameType === "lb" ? "lb" : null }}
-            persistCookies={gameType !== "lb"}
+            gameType={gameType}
           />
         </div>
       </div>

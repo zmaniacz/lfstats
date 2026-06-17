@@ -23,7 +23,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export const LB_GAMES_PER_PAGE = 10;
 
 export type LbGameListFilters = {
-  centerId?: string;
+  scopeFilter?: GameScopeFilter;
   dateSearch?: string;
 };
 
@@ -46,7 +46,7 @@ export type LbGameListItem = {
 
 function buildLbGameListConditions(filters: LbGameListFilters): SQL[] {
   const conditions: SQL[] = [eq(game.type, "lb")];
-  if (filters.centerId) conditions.push(eq(game.centerId, filters.centerId));
+  if (filters.scopeFilter) conditions.push(...gameScopeConditions(filters.scopeFilter));
   if (filters.dateSearch) {
     conditions.push(
       sql`to_char(${game.startTime}, 'YYYY-MM-DD') ILIKE ${"%" + filters.dateSearch + "%"}`,

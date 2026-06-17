@@ -17,6 +17,28 @@ export const SCOPE_COOKIE = "lastScope";
 export const CENTER_COOKIE = "lastCenterSlug";
 export const COMPETITION_COOKIE = "lastCompetitionSlug";
 
+/** Game types display fully separately and keep independent filter cookies. */
+export type FilterGameType = "sm5" | "lb";
+
+/**
+ * Cookie names for a game type's remembered filter state. SM5 uses the original
+ * names; Laserball uses an `lb`-prefixed set so the two never cross-contaminate.
+ */
+export function filterCookieNames(gameType: FilterGameType): {
+  scope: string;
+  center: string;
+  competition: string;
+} {
+  if (gameType === "lb") {
+    return {
+      scope: "lbLastScope",
+      center: "lbLastCenterSlug",
+      competition: "lbLastCompetitionSlug",
+    };
+  }
+  return { scope: SCOPE_COOKIE, center: CENTER_COOKIE, competition: COMPETITION_COOKIE };
+}
+
 export type Scope = "social" | "competition" | "all";
 
 export const SCOPES: readonly Scope[] = ["social", "competition", "all"];
