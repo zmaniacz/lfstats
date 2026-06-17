@@ -8,7 +8,7 @@ import { GamesDateFilter } from "@/components/games/GamesDateFilter";
 import { GamesContent } from "@/components/games/GamesContent";
 import { GamesTableSkeleton } from "@/components/games/GamesTableSkeleton";
 import { LaserballGamesContent } from "@/components/laserball/LaserballGamesContent";
-import { resolveFilterContext } from "@/lib/filter-context";
+import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
 import { type FilterUrlState } from "@/components/filters/filter-url";
 
 export default async function GamesPage({
@@ -26,7 +26,7 @@ export default async function GamesPage({
   const sp = await searchParams;
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const dateSearch = sp.date ?? "";
-  const gameType: "sm5" | "lb" = sp.game === "lb" ? "lb" : "sm5";
+  const gameType = await resolveGameType(sp.game);
 
   const ctx = await resolveFilterContext(sp, { gameType });
   const urlState: FilterUrlState = {

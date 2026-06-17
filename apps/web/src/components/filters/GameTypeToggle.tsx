@@ -4,7 +4,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { FilterGameType } from "@/lib/filter-cookies";
+import { GAME_TYPE_COOKIE, type FilterGameType } from "@/lib/filter-cookies";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -13,6 +13,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 export function GameTypeToggle({ active }: { active: FilterGameType }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  function persistGameType(gameType: FilterGameType) {
+    document.cookie = `${GAME_TYPE_COOKIE}=${gameType}; path=/; max-age=31536000; SameSite=Lax`;
+  }
 
   function href(gameType: FilterGameType) {
     const params = new URLSearchParams(searchParams.toString());
@@ -31,10 +35,18 @@ export function GameTypeToggle({ active }: { active: FilterGameType }) {
 
   return (
     <div className="inline-flex items-center rounded-md border p-0.5">
-      <Link href={href("sm5")} className={cn(base, active === "sm5" ? activeCls : inactiveCls)}>
+      <Link
+        href={href("sm5")}
+        onClick={() => persistGameType("sm5")}
+        className={cn(base, active === "sm5" ? activeCls : inactiveCls)}
+      >
         SM5
       </Link>
-      <Link href={href("lb")} className={cn(base, active === "lb" ? activeCls : inactiveCls)}>
+      <Link
+        href={href("lb")}
+        onClick={() => persistGameType("lb")}
+        className={cn(base, active === "lb" ? activeCls : inactiveCls)}
+      >
         Laserball
       </Link>
     </div>

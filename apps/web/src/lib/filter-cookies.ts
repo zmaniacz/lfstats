@@ -16,6 +16,7 @@
 export const SCOPE_COOKIE = "lastScope";
 export const CENTER_COOKIE = "lastCenterSlug";
 export const COMPETITION_COOKIE = "lastCompetitionSlug";
+export const GAME_TYPE_COOKIE = "lastGameType";
 
 /** Game types display fully separately and keep independent filter cookies. */
 export type FilterGameType = "sm5" | "lb";

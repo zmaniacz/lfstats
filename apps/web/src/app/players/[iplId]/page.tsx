@@ -9,7 +9,7 @@ import { auth } from "@/auth";
 import { FavoriteButton } from "@/components/players/FavoriteButton";
 import { addFavoritePlayerAction, removeFavoritePlayerAction } from "./actions";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
+import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
@@ -24,7 +24,7 @@ export default async function PlayerDetailPage({
 }) {
   const { iplId } = await params;
   const sp = await searchParams;
-  const gameType: "sm5" | "lb" = sp.game === "lb" ? "lb" : "sm5";
+  const gameType = await resolveGameType(sp.game);
 
   const [playerDetail, session, ctx] = await Promise.all([
     getPlayerByIplId(iplId),

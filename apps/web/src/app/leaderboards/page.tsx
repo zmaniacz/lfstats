@@ -8,7 +8,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
-import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
+import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
 export default async function LeaderboardsPage({
   searchParams,
@@ -24,7 +24,7 @@ export default async function LeaderboardsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const gameType: "sm5" | "lb" = sp.game === "lb" ? "lb" : "sm5";
+  const gameType = await resolveGameType(sp.game);
   const ctx = await resolveFilterContext(sp, { gameType });
 
   // Same loser-board stats for every scope. pool/finals/mercs only apply when a

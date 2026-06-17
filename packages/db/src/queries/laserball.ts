@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -397,6 +397,109 @@ export async function insertLbGameEvents(tx: Tx, rows: (typeof lbGameEvent.$infe
     results.push(...batch);
   }
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Laserball Nightly (read)
+// ---------------------------------------------------------------------------
+
+export async function getLbGameDatesForCenter(centerId: string): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ gameDate: sql<string>`date(${game.startTime})::text` })
+    .from(game)
+    .where(
+      and(
+        eq(game.type, "lb"),
+        eq(game.centerId, centerId),
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
+    .orderBy(desc(sql`date(${game.startTime})::text`));
+  return rows.map((r) => r.gameDate);
+}
+
+export async function getMostRecentLbCenterSlug(): Promise<string | null> {
+  const [row] = await db
+    .select({
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(and(eq(game.type, "lb"), isNull(game.competitionId), eq(game.exclude, false)))
+    .orderBy(desc(game.startTime))
+    .limit(1);
+  return row?.slug ?? null;
+}
+
+export async function getLbNightlyDetails(centerId: string, date: string): Promise<LbGameDetail[]> {
+  const gameRows = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerId: game.centerId,
+      centerName: center.name,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      description: game.description,
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      tdfFilename: game.tdfFilename,
+      exclude: game.exclude,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(game.type, "lb"),
+        eq(game.centerId, centerId),
+        sql`date(${game.startTime}) = ${date}::date`,
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
+    .orderBy(desc(game.startTime));
+
+  if (gameRows.length === 0) return [];
+
+  const gameIds = gameRows.map((r) => r.id);
+
+  const [teamRows, scorecardRows] = await Promise.all([
+    db
+      .select()
+      .from(lbGameTeam)
+      .where(and(inArray(lbGameTeam.gameId, gameIds), eq(lbGameTeam.isNeutral, false)))
+      .orderBy(lbGameTeam.tdfTeamIndex),
+    db
+      .select()
+      .from(lbScorecard)
+      .where(inArray(lbScorecard.gameId, gameIds))
+      .orderBy(desc(lbScorecard.goals)),
+  ]);
+
+  const playersByTeam = new Map<string, LbGameDetailPlayer[]>();
+  for (const s of scorecardRows) {
+    const list = playersByTeam.get(s.teamId) ?? [];
+    list.push(s);
+    playersByTeam.set(s.teamId, list);
+  }
+
+  const teamsByGame = new Map<string, LbGameDetailTeam[]>();
+  for (const t of teamRows) {
+    const list = teamsByGame.get(t.gameId) ?? [];
+    list.push({
+      id: t.id,
+      tdfTeamIndex: t.tdfTeamIndex,
+      name: t.name,
+      colourEnum: t.colourEnum,
+      score: t.score,
+      result: t.result,
+      players: playersByTeam.get(t.id) ?? [],
+    });
+    teamsByGame.set(t.gameId, list);
+  }
+
+  return gameRows.map((row) => ({ ...row, teams: teamsByGame.get(row.id) ?? [] }));
 }
 
 export async function insertLbGamePlayerStates(

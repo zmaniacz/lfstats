@@ -9,7 +9,13 @@ import {
   type CompetitiveCompetitionSummary,
   type GameScopeFilter,
 } from "@lfstats/db";
-import { filterCookieNames, isScope, type Scope } from "./filter-cookies";
+import {
+  filterCookieNames,
+  isScope,
+  GAME_TYPE_COOKIE,
+  type FilterGameType,
+  type Scope,
+} from "./filter-cookies";
 
 /** Raw filter params a generic page may receive. */
 export type FilterSearchParams = {
@@ -129,6 +135,16 @@ export async function resolveFilterContext(
   }
 
   return { scope, center, competition, centers, competitions };
+}
+
+/**
+ * Resolves the active game type for a page.
+ * Resolution order: URL param > lastGameType cookie > "sm5".
+ */
+export async function resolveGameType(searchParam: string | undefined): Promise<FilterGameType> {
+  if (searchParam === "lb") return "lb";
+  const cookieStore = await cookies();
+  return cookieStore.get(GAME_TYPE_COOKIE)?.value === "lb" ? "lb" : "sm5";
 }
 
 /** Adapts a resolved FilterContext into the db-layer GameScopeFilter. */

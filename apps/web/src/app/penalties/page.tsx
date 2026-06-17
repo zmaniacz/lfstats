@@ -8,7 +8,7 @@ import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
 import { PenaltiesContent } from "./PenaltiesContent";
 import { PenaltiesSkeleton } from "./PenaltiesSkeleton";
-import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
+import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
 export default async function PenaltiesPage({
   searchParams,
@@ -16,7 +16,7 @@ export default async function PenaltiesPage({
   searchParams: Promise<{ scope?: string; center?: string; competition?: string; game?: string }>;
 }) {
   const sp = await searchParams;
-  const gameType: "sm5" | "lb" = sp.game === "lb" ? "lb" : "sm5";
+  const gameType = await resolveGameType(sp.game);
   const [ctx, session] = await Promise.all([resolveFilterContext(sp, { gameType }), auth()]);
 
   const roles = session?.user?.roles ?? [];

@@ -67,7 +67,7 @@ export function LbTeamScoreboard({ team }: { team: LbGameDetailTeam }) {
                   )}
                   {player.playerId !== null ? (
                     <Link
-                      href={`/players/${player.iplId?.replace(/^#/, "")}`}
+                      href={`/players/${player.iplId?.replace(/^#/, "")}?game=lb`}
                       className="hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
