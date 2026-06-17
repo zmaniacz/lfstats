@@ -124,12 +124,6 @@ export function LbPlayerStatsSheet({ player, open, onOpenChange }: Props) {
                 <StatRow label="Ball Timeouts" value={fmt(player.ballTimeout)} />
                 <StatRow label="Time Played" value={formatMs(player.timePlayedMs)} />
               </StatSection>
-
-              <StatSection title="State Transitions">
-                <StatRow label="Active (state 0)" value={fmt(player.state0)} />
-                <StatRow label="Down/Resettable (state 2)" value={fmt(player.state2)} />
-                <StatRow label="Down (state 3)" value={fmt(player.state3)} />
-              </StatSection>
             </div>
           </>
         )}

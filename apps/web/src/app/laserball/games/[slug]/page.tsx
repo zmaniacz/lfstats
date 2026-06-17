@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
@@ -17,6 +18,17 @@ export default async function LaserballGameDetailPage({
   const game = await getLbGameDetailBySlug(slug);
   if (!game) notFound();
 
+  // Winning team first; draws keep tdf order.
+  const teams = [...game.teams].sort((a, b) =>
+    a.result === "win" ? -1 : b.result === "win" ? 1 : 0,
+  );
+
+  const possessionTeams = teams.map((t) => ({
+    name: t.name,
+    colourEnum: t.colourEnum,
+    possessionMs: t.players.reduce((sum, p) => sum + p.possessionTimeMs, 0),
+  }));
+
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
@@ -32,7 +44,14 @@ export default async function LaserballGameDetailPage({
         </div>
       </div>
 
-      {game.teams.map((team) => {
+      <section className="space-y-1.5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Possession
+        </h2>
+        <LbPossessionBar teams={possessionTeams} />
+      </section>
+
+      {teams.map((team) => {
         const color = getTeamColor(team.colourEnum);
         return (
           <section key={team.id} className="space-y-0">
