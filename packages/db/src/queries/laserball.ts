@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -12,6 +12,7 @@ import {
   lbGameEvent,
   lbGamePlayerState,
 } from "../schema";
+import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -119,6 +120,43 @@ export async function getLbGamesCount(filters: LbGameListFilters = {}): Promise<
     .innerJoin(center, eq(game.centerId, center.id))
     .where(and(...conditions));
   return row?.count ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// Laserball Player Stats (read)
+// ---------------------------------------------------------------------------
+
+export type LbPlayerWinLoss = {
+  wins: number;
+  losses: number;
+  draws: number;
+};
+
+export async function getLbPlayerWinLoss(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<LbPlayerWinLoss> {
+  const rows = await db
+    .select({ result: lbGameTeam.result, count: count() })
+    .from(lbScorecard)
+    .innerJoin(lbGameTeam, eq(lbScorecard.teamId, lbGameTeam.id))
+    .innerJoin(game, eq(lbGameTeam.gameId, game.id))
+    .where(
+      and(
+        eq(lbScorecard.playerId, playerId),
+        eq(lbGameTeam.isNeutral, false),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
+    .groupBy(lbGameTeam.result);
+
+  const out: LbPlayerWinLoss = { wins: 0, losses: 0, draws: 0 };
+  for (const r of rows) {
+    if (r.result === "win") out.wins = r.count;
+    else if (r.result === "loss") out.losses = r.count;
+    else if (r.result === "draw") out.draws = r.count;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

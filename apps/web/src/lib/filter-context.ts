@@ -40,6 +40,11 @@ export type ResolveFilterContextOptions = {
   defaultScope?: Scope;
   /** Restrict the page to a subset of scopes (e.g. competition-only pages). */
   allowedScopes?: Scope[];
+  /**
+   * Game type whose competitions populate the competition filter. Defaults to
+   * "sm5". Laserball has no competitions yet, so "lb" yields an empty list.
+   */
+  gameType?: "sm5" | "lb";
 };
 
 const ALL = "all";
@@ -55,11 +60,11 @@ export async function resolveFilterContext(
   searchParams: FilterSearchParams,
   options: ResolveFilterContextOptions = {},
 ): Promise<FilterContext> {
-  const { defaultScope = "all", allowedScopes } = options;
+  const { defaultScope = "all", allowedScopes, gameType = "sm5" } = options;
 
   const [centers, competitions, cookieStore] = await Promise.all([
     getCenterList(),
-    getCompetitiveCompetitions(),
+    gameType === "lb" ? Promise.resolve([]) : getCompetitiveCompetitions(),
     cookies(),
   ]);
 
