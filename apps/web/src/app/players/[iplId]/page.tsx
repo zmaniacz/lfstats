@@ -9,24 +9,27 @@ import { auth } from "@/auth";
 import { FavoriteButton } from "@/components/players/FavoriteButton";
 import { addFavoritePlayerAction, removeFavoritePlayerAction } from "./actions";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
+import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
+import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
+import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 
 export default async function PlayerDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ iplId: string }>;
-  searchParams: Promise<{ scope?: string; center?: string; competition?: string }>;
+  searchParams: Promise<{ scope?: string; center?: string; competition?: string; game?: string }>;
 }) {
   const { iplId } = await params;
   const sp = await searchParams;
+  const gameType = await resolveGameType(sp.game);
 
   const [playerDetail, session, ctx] = await Promise.all([
     getPlayerByIplId(iplId),
     auth(),
-    resolveFilterContext(sp),
+    resolveFilterContext(sp, { gameType }),
   ]);
   if (!playerDetail) notFound();
 
@@ -44,6 +47,7 @@ export default async function PlayerDetailPage({
 
   const contentKey = [
     playerDetail.id,
+    gameType,
     ctx.scope,
     ctx.center?.slug ?? null,
     ctx.competition?.slug ?? null,
@@ -51,7 +55,7 @@ export default async function PlayerDetailPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="space-y-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             {playerDetail.currentCallsign}
@@ -78,18 +82,27 @@ export default async function PlayerDetailPage({
             </p>
           )}
         </div>
-        <FilterBar
-          basePath={`/players/${iplId}`}
-          scope={ctx.scope}
-          activeCenterSlug={ctx.center?.slug ?? null}
-          activeCompetitionSlug={ctx.competition?.slug ?? null}
-          centers={ctx.centers}
-          competitions={ctx.competitions}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <GameTypeToggle active={gameType} />
+          <FilterBar
+            basePath={`/players/${iplId}`}
+            scope={ctx.scope}
+            activeCenterSlug={ctx.center?.slug ?? null}
+            activeCompetitionSlug={ctx.competition?.slug ?? null}
+            centers={ctx.centers}
+            competitions={ctx.competitions}
+            extras={{ game: gameType === "lb" ? "lb" : null }}
+            gameType={gameType}
+          />
+        </div>
       </div>
 
       <Suspense key={contentKey} fallback={<PlayerDetailSkeleton />}>
-        <PlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
+        {gameType === "lb" ? (
+          <LbPlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
+        ) : (
+          <PlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
+        )}
       </Suspense>
     </div>
   );

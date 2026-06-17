@@ -8,6 +8,19 @@ import { getPresignedUrlsAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { UploadSimpleIcon, XIcon, FileIcon } from "@phosphor-icons/react";
 
+async function getMissionType(file: File): Promise<number> {
+  const buffer = await file.arrayBuffer();
+  let bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) bytes = bytes.slice(2);
+  const text = new TextDecoder("utf-16le").decode(bytes);
+  for (const line of text.split(/\r\n|\r|\n/)) {
+    if (line.startsWith("1\t")) {
+      return parseInt(line.split("\t")[1] ?? "0", 10);
+    }
+  }
+  return 0;
+}
+
 interface UploadZoneProps {
   competitionSlug: string | null;
   canUpload: boolean;
@@ -61,6 +74,17 @@ export function UploadZone({ competitionSlug, canUpload, onUploadComplete }: Upl
     setIsPending(true);
     setError(null);
     try {
+      if (competitionSlug !== null) {
+        const missionTypes = await Promise.all(files.map((f) => getMissionType(f)));
+        const invalid = files.filter((_, i) => missionTypes[i] !== 5);
+        if (invalid.length > 0) {
+          const names = invalid.map((f) => f.name).join(", ");
+          throw new Error(
+            `${invalid.length === 1 ? "This file is" : "These files are"} not valid SM5 scorecard${invalid.length === 1 ? "" : "s"} and cannot be uploaded to a competition: ${names}`,
+          );
+        }
+      }
+
       const presigned = await getPresignedUrlsAction(
         files.map((f) => f.name),
         competitionSlug,

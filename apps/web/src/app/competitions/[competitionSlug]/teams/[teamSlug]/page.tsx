@@ -183,24 +183,42 @@ export default async function CompetitionTeamPage({
                       return (
                         <TableRow key={r.playerId}>
                           <TableCell className="font-medium">
-                            <Link
-                              href={`/players/${r.iplId}`}
-                              className="hover:underline inline-flex items-center gap-1.5"
-                            >
-                              {r.currentCallsign}
-                              {r.isMercenary && (
-                                <TriangleAlert
-                                  className="h-3.5 w-3.5 text-amber-500"
-                                  aria-label="Mercenary"
-                                />
-                              )}
-                              {r.isUnassigned && (
-                                <CircleAlert
-                                  className="h-3.5 w-3.5 text-destructive"
-                                  aria-label="Unassigned"
-                                />
-                              )}
-                            </Link>
+                            {r.iplId !== null ? (
+                              <Link
+                                href={`/players/${r.iplId.replace(/^#/, "")}`}
+                                className="hover:underline inline-flex items-center gap-1.5"
+                              >
+                                {r.currentCallsign}
+                                {r.isMercenary && (
+                                  <TriangleAlert
+                                    className="h-3.5 w-3.5 text-amber-500"
+                                    aria-label="Mercenary"
+                                  />
+                                )}
+                                {r.isUnassigned && (
+                                  <CircleAlert
+                                    className="h-3.5 w-3.5 text-destructive"
+                                    aria-label="Unassigned"
+                                  />
+                                )}
+                              </Link>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5">
+                                {r.currentCallsign}
+                                {r.isMercenary && (
+                                  <TriangleAlert
+                                    className="h-3.5 w-3.5 text-amber-500"
+                                    aria-label="Mercenary"
+                                  />
+                                )}
+                                {r.isUnassigned && (
+                                  <CircleAlert
+                                    className="h-3.5 w-3.5 text-destructive"
+                                    aria-label="Unassigned"
+                                  />
+                                )}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{r.gamesPlayed}</TableCell>
                           {POSITION_IDS.flatMap((p) => {

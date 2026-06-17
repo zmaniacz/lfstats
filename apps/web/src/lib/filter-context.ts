@@ -10,10 +10,10 @@ import {
   type GameScopeFilter,
 } from "@lfstats/db";
 import {
-  CENTER_COOKIE,
-  COMPETITION_COOKIE,
-  SCOPE_COOKIE,
+  filterCookieNames,
   isScope,
+  GAME_TYPE_COOKIE,
+  type FilterGameType,
   type Scope,
 } from "./filter-cookies";
 
@@ -40,6 +40,11 @@ export type ResolveFilterContextOptions = {
   defaultScope?: Scope;
   /** Restrict the page to a subset of scopes (e.g. competition-only pages). */
   allowedScopes?: Scope[];
+  /**
+   * Game type whose competitions populate the competition filter. Defaults to
+   * "sm5". Laserball has no competitions yet, so "lb" yields an empty list.
+   */
+  gameType?: "sm5" | "lb";
 };
 
 const ALL = "all";
@@ -55,18 +60,24 @@ export async function resolveFilterContext(
   searchParams: FilterSearchParams,
   options: ResolveFilterContextOptions = {},
 ): Promise<FilterContext> {
-  const { defaultScope = "all", allowedScopes } = options;
+  const { allowedScopes, gameType = "sm5" } = options;
+
+  // Laserball is displayed fully separately: it keeps its own filter cookies
+  // (so an SM5 center selection can't hide Laserball games) and defaults to
+  // "social" since all Laserball games are social.
+  const cookieNames = filterCookieNames(gameType);
+  const defaultScope: Scope = options.defaultScope ?? (gameType === "lb" ? "social" : "all");
 
   const [centers, competitions, cookieStore] = await Promise.all([
     getCenterList(),
-    getCompetitiveCompetitions(),
+    gameType === "lb" ? Promise.resolve([]) : getCompetitiveCompetitions(),
     cookies(),
   ]);
 
   const isAllowed = (s: Scope) => !allowedScopes || allowedScopes.includes(s);
 
   // --- scope ---
-  const scopeCookie = cookieStore.get(SCOPE_COOKIE)?.value;
+  const scopeCookie = cookieStore.get(cookieNames.scope)?.value;
   let scope: Scope = defaultScope;
   if (isScope(searchParams.scope) && isAllowed(searchParams.scope)) {
     scope = searchParams.scope;
@@ -88,7 +99,7 @@ export async function resolveFilterContext(
   };
 
   // --- center (slug param/cookie; null = all centers) ---
-  const centerCookie = cookieStore.get(CENTER_COOKIE)?.value;
+  const centerCookie = cookieStore.get(cookieNames.center)?.value;
   const resolveCenter = (slug: string | undefined): CenterListItem | null | undefined => {
     if (!slug) return undefined; // not specified at this source
     if (slug === ALL) return null; // explicitly "all centers"
@@ -100,7 +111,7 @@ export async function resolveFilterContext(
   );
 
   // --- competition (slug param/cookie; null = all competitions) ---
-  const competitionCookie = cookieStore.get(COMPETITION_COOKIE)?.value;
+  const competitionCookie = cookieStore.get(cookieNames.competition)?.value;
   const resolveCompetition = (
     slug: string | undefined,
   ): CompetitiveCompetitionSummary | null | undefined => {
@@ -124,6 +135,16 @@ export async function resolveFilterContext(
   }
 
   return { scope, center, competition, centers, competitions };
+}
+
+/**
+ * Resolves the active game type for a page.
+ * Resolution order: URL param > lastGameType cookie > "sm5".
+ */
+export async function resolveGameType(searchParam: string | undefined): Promise<FilterGameType> {
+  if (searchParam === "lb") return "lb";
+  const cookieStore = await cookies();
+  return cookieStore.get(GAME_TYPE_COOKIE)?.value === "lb" ? "lb" : "sm5";
 }
 
 /** Adapts a resolved FilterContext into the db-layer GameScopeFilter. */

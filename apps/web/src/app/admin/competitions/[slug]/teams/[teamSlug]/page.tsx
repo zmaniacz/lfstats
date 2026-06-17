@@ -163,23 +163,31 @@ export default async function TeamRosterPage({
                 {regularRoster.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">
-                      <Link
-                        href={`/players/${entry.iplId.replace("#", "")}`}
-                        className="hover:underline"
-                      >
-                        {entry.currentCallsign}
-                      </Link>
+                      {entry.iplId !== null ? (
+                        <Link
+                          href={`/players/${entry.iplId.replace(/^#/, "")}`}
+                          className="hover:underline"
+                        >
+                          {entry.currentCallsign}
+                        </Link>
+                      ) : (
+                        entry.currentCallsign
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      <a
-                        href={`https://www.iplaylaserforce.com/mission-stats/?t=${entry.iplId.slice(1)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                      >
-                        {entry.iplId}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                      {entry.iplId !== null ? (
+                        <a
+                          href={`https://www.iplaylaserforce.com/mission-stats/?t=${entry.iplId.replace(/^#/, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                        >
+                          {entry.iplId}
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
                     <TableCell>
@@ -229,23 +237,31 @@ export default async function TeamRosterPage({
                 {mercs.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">
-                      <Link
-                        href={`/players/${entry.iplId.replace("#", "")}`}
-                        className="hover:underline"
-                      >
-                        {entry.currentCallsign}
-                      </Link>
+                      {entry.iplId !== null ? (
+                        <Link
+                          href={`/players/${entry.iplId.replace(/^#/, "")}`}
+                          className="hover:underline"
+                        >
+                          {entry.currentCallsign}
+                        </Link>
+                      ) : (
+                        entry.currentCallsign
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      <a
-                        href={`https://www.iplaylaserforce.com/mission-stats/?t=${entry.iplId.slice(1)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                      >
-                        {entry.iplId}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                      {entry.iplId !== null ? (
+                        <a
+                          href={`https://www.iplaylaserforce.com/mission-stats/?t=${entry.iplId.replace(/^#/, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                        >
+                          {entry.iplId}
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{entry.gamesPlayed}</TableCell>
                     <TableCell>
@@ -295,23 +311,31 @@ export default async function TeamRosterPage({
                 {unassigned.map((p) => (
                   <TableRow key={p.playerId}>
                     <TableCell className="font-medium">
-                      <Link
-                        href={`/players/${p.iplId.replace("#", "")}`}
-                        className="hover:underline"
-                      >
-                        {p.currentCallsign}
-                      </Link>
+                      {p.iplId !== null ? (
+                        <Link
+                          href={`/players/${p.iplId.replace(/^#/, "")}`}
+                          className="hover:underline"
+                        >
+                          {p.currentCallsign}
+                        </Link>
+                      ) : (
+                        p.currentCallsign
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
-                      <a
-                        href={`https://www.iplaylaserforce.com/mission-stats/?t=${p.iplId.slice(1)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                      >
-                        {p.iplId}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
+                      {p.iplId !== null ? (
+                        <a
+                          href={`https://www.iplaylaserforce.com/mission-stats/?t=${p.iplId.replace(/^#/, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                        >
+                          {p.iplId}
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{p.gamesPlayed}</TableCell>
                     <TableCell className="text-right">

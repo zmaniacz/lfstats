@@ -28,7 +28,15 @@ function formatDisplay(s: string): string {
   });
 }
 
-export function DateFilter({ selected, gameDates }: { selected: string; gameDates: string[] }) {
+export function DateFilter({
+  selected,
+  gameDates,
+  basePath = "/nightly",
+}: {
+  selected: string;
+  gameDates: string[];
+  basePath?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -36,7 +44,7 @@ export function DateFilter({ selected, gameDates }: { selected: string; gameDate
     if (!value) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("date", value);
-    router.push(`/nightly?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   }
 
   return (

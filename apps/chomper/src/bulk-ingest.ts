@@ -14,6 +14,9 @@ import { calculateMvp } from "./mvp.js";
 import { ParseError, parseTdf, RejectionError } from "./parser.js";
 import { archiveTdf, fetchTdf, listTdfs } from "./s3.js";
 import { runConsistencyCheck, simulate } from "./simulator.js";
+import { simulateLaserball } from "./laserball/simulator.js";
+import { ingestLaserball } from "./laserball/ingester.js";
+import { LASERBALL_MISSION_TYPE } from "./laserball/types.js";
 
 const DEADLOCK_CODE = "40P01";
 const MAX_INGEST_RETRIES = 3;
@@ -163,13 +166,13 @@ async function processKey(key: string): Promise<void> {
     return;
   }
 
-  // 3. Skip non-SM5
-  if (parsed.meta.missionType !== 5) {
+  // 3. Skip mission types we don't track
+  if (parsed.meta.missionType !== 5 && parsed.meta.missionType !== LASERBALL_MISSION_TYPE) {
     log(`SKIP ${key} (mission type ${parsed.meta.missionType})`);
     results.push({
       key,
       status: "skipped",
-      reason: `Mission type ${parsed.meta.missionType} is not SM5`,
+      reason: `Mission type ${parsed.meta.missionType} is not SM5 or Laserball`,
     });
     skipped++;
     return;
@@ -205,6 +208,48 @@ async function processKey(key: string): Promise<void> {
       skipped++;
       return;
     }
+  }
+
+  // 4b. Laserball path (no line-7 consistency / MVP; assert goals↔score invariant)
+  if (parsed.meta.missionType === LASERBALL_MISSION_TYPE) {
+    let lbGameId: string;
+    try {
+      const lb = simulateLaserball(parsed);
+      if (lb.playerStats.size === 0) {
+        log(`SKIP ${key} (no qualifying Laserball players)`);
+        results.push({
+          key,
+          status: "skipped",
+          reason: "No qualifying Laserball players (all under playtime threshold)",
+        });
+        skipped++;
+        return;
+      }
+      if (!lb.goalCheck.ok) {
+        throw new Error(
+          `goal/score mismatch goals=${JSON.stringify(lb.goalCheck.teamGoals)} ` +
+            `scoreEvents=${JSON.stringify(lb.goalCheck.scoreEventGoals)}`,
+        );
+      }
+      lbGameId = await ingestLaserball(parsed, lb, gameStartTime, null);
+    } catch (err) {
+      const reason = `Laserball ingest failed: ${(err as Error).message}`;
+      log(`FAIL [laserball] ${key}`);
+      results.push({ key, status: "failed", reason });
+      failed++;
+      await archiveTdf(ARCHIVE_BUCKET!, key, ERROR_BUCKET!, key, false);
+      return;
+    }
+    log(`OK ${key} → gameId=${lbGameId} (laserball)`);
+    results.push({ key, status: "ingested", gameId: lbGameId });
+    ingested++;
+    const lbArchiveKey = buildArchiveKey(
+      parsed.meta.countryCode,
+      parsed.meta.siteCode,
+      parsed.meta.startTime,
+    );
+    await archiveTdf(ARCHIVE_BUCKET!, key, MODERN_ARCHIVE_BUCKET!, lbArchiveKey, false);
+    return;
   }
 
   // 5. Simulate

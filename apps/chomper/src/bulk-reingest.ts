@@ -137,9 +137,11 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
     return;
   }
 
-  // 3. Skip non-SM5 (sanity check — all DB games should be SM5)
+  // 3. Only SM5 is re-ingestable by this tool. Laserball games (mission type 28)
+  // have no preserved SM5 metadata (penalties/mercenaries/MVP) and no reingester,
+  // so they are intentionally skipped here rather than treated as anomalies.
   if (parsed.meta.missionType !== 5) {
-    const reason = `Mission type ${parsed.meta.missionType} is not SM5`;
+    const reason = `Mission type ${parsed.meta.missionType} is not SM5 (not re-ingestable here)`;
     log(`SKIP ${gameId}: ${reason}`);
     results.push({ id: gameId, status: "skipped", reason });
     skipped++;

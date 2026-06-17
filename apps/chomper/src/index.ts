@@ -17,6 +17,9 @@ import { calculateMvp } from "./mvp.js";
 import { ParseError, RejectionError, parseTdf } from "./parser.js";
 import { archiveTdf, deleteTdf, fetchTdf } from "./s3.js";
 import { runConsistencyCheck, simulate } from "./simulator.js";
+import { simulateLaserball } from "./laserball/simulator.js";
+import { ingestLaserball } from "./laserball/ingester.js";
+import { LASERBALL_MISSION_TYPE } from "./laserball/types.js";
 
 const DEADLOCK_CODE = "40P01";
 const MAX_INGEST_RETRIES = 3;
@@ -105,17 +108,17 @@ export const handler: S3Handler = async (event, context) => {
       throw err;
     }
 
-    // 4. Validate — skip if not SM5
-    if (parsed.meta.missionType !== 5) {
+    // 4. Validate — skip if neither SM5 nor Laserball
+    if (parsed.meta.missionType !== 5 && parsed.meta.missionType !== LASERBALL_MISSION_TYPE) {
       await updateChomperJob(job.id, {
         status: "skipped",
-        skipReason: `Mission type ${parsed.meta.missionType} is not SM5`,
+        skipReason: `Mission type ${parsed.meta.missionType} is not SM5 or Laserball`,
         completedAt: new Date(),
       });
       await deleteTdf(bucket, key);
       return;
     }
-    const gameType = "sm5";
+    const gameType = parsed.meta.missionType === LASERBALL_MISSION_TYPE ? "lb" : "sm5";
 
     // 4b. Skip playerless games (started and immediately cancelled before anyone joined)
     const hasPlayers = parsed.entities.some((e) => e.type === "player");
@@ -150,35 +153,7 @@ export const handler: S3Handler = async (event, context) => {
       }
     }
 
-    // 6. Simulate state machine (Phase 2)
-    const simResult = simulate(parsed);
-
-    // 6a. Consistency check — throws if any discrepancy found
-    const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-    const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
-    if (discrepancies.length > 0) {
-      throw new Error(`Consistency check failed:\n${discrepancies.join("\n")}`);
-    }
-
-    // 7. Find active MVP model
-    const mvpModel = await findActiveMvpModel();
-    if (!mvpModel) {
-      throw new Error("No active MVP model found");
-    }
-
-    // 8. Calculate MVP scores
-    const entityEndsById = new Map(
-      parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
-    );
-    const mvpRows = calculateMvp(
-      simResult,
-      sm5StatsById,
-      entityEndsById,
-      mvpModel,
-      parsed.meta.duration,
-    );
-
-    // 8b. Resolve competition slug prefix (if any) to a competitionId
+    // 6b. Resolve competition slug prefix (if any) to a competitionId (shared)
     let competitionId: string | null = null;
     if (competitionSlug) {
       const competition = await getCompetitionBySlug(competitionSlug);
@@ -189,15 +164,66 @@ export const handler: S3Handler = async (event, context) => {
       }
     }
 
-    // 9–15. Write all rows to database in a single transaction (Phase 3)
-    const gameId = await ingestWithRetry(
-      parsed,
-      simResult,
-      gameStartTime,
-      mvpRows,
-      gameType,
-      competitionId,
-    );
+    let gameId: string;
+    if (gameType === "lb") {
+      // --- Laserball pipeline (Phase 2 + 3) ---
+      const lb = simulateLaserball(parsed);
+      if (lb.playerStats.size === 0) {
+        await updateChomperJob(job.id, {
+          status: "skipped",
+          skipReason: "No qualifying Laserball players (all under playtime threshold)",
+          completedAt: new Date(),
+        });
+        await deleteTdf(bucket, key);
+        return;
+      }
+      // No line-7 ground truth; instead assert the goals↔line-5-score invariant.
+      if (!lb.goalCheck.ok) {
+        throw new Error(
+          `Laserball goal/score mismatch: goals=${JSON.stringify(lb.goalCheck.teamGoals)} ` +
+            `scoreEvents=${JSON.stringify(lb.goalCheck.scoreEventGoals)}`,
+        );
+      }
+      gameId = await ingestLaserball(parsed, lb, gameStartTime, competitionId);
+    } else {
+      // --- SM5 pipeline (Phase 2 + 3) ---
+      const simResult = simulate(parsed);
+
+      // 6a. Consistency check — throws if any discrepancy found
+      const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
+      const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+      if (discrepancies.length > 0) {
+        throw new Error(`Consistency check failed:\n${discrepancies.join("\n")}`);
+      }
+
+      // 7. Find active MVP model
+      const mvpModel = await findActiveMvpModel();
+      if (!mvpModel) {
+        throw new Error("No active MVP model found");
+      }
+
+      // 8. Calculate MVP scores
+      const entityEndsById = new Map(
+        parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
+      );
+      const mvpRows = calculateMvp(
+        simResult,
+        sm5StatsById,
+        entityEndsById,
+        mvpModel,
+        parsed.meta.duration,
+      );
+
+      // 9–15. Write all rows to database in a single transaction (Phase 3)
+      gameId = await ingestWithRetry(
+        parsed,
+        simResult,
+        gameStartTime,
+        mvpRows,
+        gameType,
+        competitionId,
+      );
+    }
 
     // 10. Update ChomperJob (status: completed) — outside transaction
     await updateChomperJob(job.id, {

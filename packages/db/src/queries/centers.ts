@@ -129,6 +129,7 @@ export async function getMostRecentCenterSlug(): Promise<string | null> {
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
+    .where(eq(game.type, "sm5"))
     .orderBy(desc(game.startTime))
     .limit(1);
   return row?.slug ?? null;
@@ -145,7 +146,7 @@ export async function getMostRecentSocialCenterSlug(): Promise<string | null> {
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
-    .where(and(isNull(game.competitionId), eq(game.exclude, false)))
+    .where(and(eq(game.type, "sm5"), isNull(game.competitionId), eq(game.exclude, false)))
     .orderBy(desc(game.startTime))
     .limit(1);
   return row?.slug ?? null;
@@ -155,7 +156,7 @@ export async function getCenterGameCount(id: string): Promise<number> {
   const [row] = await db
     .select({ count: count(game.id) })
     .from(game)
-    .where(eq(game.centerId, id));
+    .where(and(eq(game.type, "sm5"), eq(game.centerId, id)));
 
   return row?.count ?? 0;
 }

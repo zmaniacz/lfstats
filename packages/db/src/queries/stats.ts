@@ -77,7 +77,7 @@ export async function getRecentSocialEvents(limit: number): Promise<RecentSocial
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
-    .where(and(isNull(game.competitionId), eq(game.exclude, false)))
+    .where(and(eq(game.type, "sm5"), isNull(game.competitionId), eq(game.exclude, false)))
     .groupBy(center.countryCode, center.siteCode, center.name, sql`date(${game.startTime})`)
     .orderBy(desc(sql`date(${game.startTime})`))
     .limit(limit);
@@ -89,7 +89,14 @@ export async function getGameDatesForCenter(centerId: string): Promise<string[]>
       gameDate: sql<string>`date(${game.startTime})::text`,
     })
     .from(game)
-    .where(and(eq(game.centerId, centerId), isNull(game.competitionId), eq(game.exclude, false)))
+    .where(
+      and(
+        eq(game.type, "sm5"),
+        eq(game.centerId, centerId),
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
     .orderBy(desc(sql`date(${game.startTime})::text`));
 
   return rows.map((r) => r.gameDate);
@@ -110,6 +117,7 @@ export async function getNightlyGames(centerId: string, date: string): Promise<G
     .innerJoin(center, eq(game.centerId, center.id))
     .where(
       and(
+        eq(game.type, "sm5"),
         eq(game.centerId, centerId),
         sql`date(${game.startTime}) = ${date}::date`,
         isNull(game.competitionId),
@@ -132,6 +140,7 @@ export async function getSocialGames(filter: SocialGamesFilter): Promise<GameLis
   const { centerId, dateFrom, dateTo, tagIds } = filter;
 
   const conditions = [
+    eq(game.type, "sm5"),
     eq(game.exclude, false),
     or(isNull(game.competitionId), eq(competition.type, "social")),
   ];

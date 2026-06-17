@@ -89,10 +89,13 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
         sm5Stats.push(parseLine7(fields));
         break;
       case "9":
-        // Type 9 lines were introduced in 2.005. In 2.004 and earlier files they
+        // Type 9 lines became reliable in SM5 2.005. In earlier SM5 files they
         // may appear as a test artefact but their data is unreliable — discard
         // them so the simulator falls back to synthetic 4000ms+4000ms timers.
-        if (meta !== null && meta.fileVersion >= 2.005) {
+        // Laserball (and other non-SM5 modes) record reliable state logs from
+        // 2.004 onward, and their simulators depend on them, so admit line 9 for
+        // any non-SM5 game regardless of file version.
+        if (meta !== null && (meta.fileVersion >= 2.005 || meta.missionType !== 5)) {
           playerStateLog.push(parseLine9(fields));
         }
         break;

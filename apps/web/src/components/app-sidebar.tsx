@@ -15,14 +15,16 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-  CalendarIcon,
   CardsIcon,
   CrosshairIcon,
   GameControllerIcon,
   HeartIcon,
   InfoIcon,
   MapPinIcon,
+  PresentationChartIcon,
+  RadioactiveIcon,
   ShieldIcon,
+  SoccerBallIcon,
   StarIcon,
   TrophyIcon,
   UploadSimpleIcon,
@@ -34,9 +36,14 @@ import * as React from "react";
 
 const socialNavItems = [
   {
-    title: "Nightly Stats",
+    title: "Nightly SM5",
     url: "/nightly",
-    icon: <CalendarIcon />,
+    icon: <RadioactiveIcon />,
+  },
+  {
+    title: "Nightly Laserball",
+    url: "/nightly-lb",
+    icon: <SoccerBallIcon />,
   },
 ];
 
@@ -69,7 +76,7 @@ const browseNavItems = [
   {
     title: "Leaderboards",
     url: "/leaderboards",
-    icon: <TrophyIcon />,
+    icon: <PresentationChartIcon />,
   },
   {
     title: "Centers",

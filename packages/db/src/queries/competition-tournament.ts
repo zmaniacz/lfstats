@@ -56,7 +56,7 @@ export type CompetitionTeamListItem = {
 export type CompetitionTeamRosterEntry = {
   id: string; // competitionTeamPlayer.id — used for removal
   playerId: string;
-  iplId: string;
+  iplId: string | null;
   currentCallsign: string;
   isMercenary: boolean;
   hasProfilePicture: boolean;
@@ -288,7 +288,7 @@ export async function getCompetitionTeamRoster(
 
 export type TeamGameParticipant = {
   playerId: string;
-  iplId: string;
+  iplId: string | null;
   currentCallsign: string;
   isMercenary: boolean;
   gamesPlayed: number;
