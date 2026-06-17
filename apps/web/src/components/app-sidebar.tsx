@@ -23,6 +23,7 @@ import {
   InfoIcon,
   MapPinIcon,
   ShieldIcon,
+  SoccerBallIcon,
   StarIcon,
   TrophyIcon,
   UploadSimpleIcon,
@@ -50,6 +51,14 @@ const competitionNavItems = [
     title: "All Star",
     url: "/all-star",
     icon: <StarIcon />,
+  },
+];
+
+const laserballNavItems = [
+  {
+    title: "Games",
+    url: "/laserball/games",
+    icon: <SoccerBallIcon />,
   },
 ];
 
@@ -139,6 +148,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {otherItems.length > 0 && <NavMain label="User" items={otherItems} />}
         <NavMain label="Social" items={socialNavItems} />
         <NavMain label="Competition" items={competitionNavItems} />
+        <NavMain label="Laserball" items={laserballNavItems} />
         <NavMain label="Browse" items={browseNavItems} />
       </SidebarContent>
       <SidebarFooter>

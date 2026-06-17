@@ -49,7 +49,8 @@ export type GameListItem = {
 };
 
 function buildGameListConditions(filters: GameListFilters): SQL[] {
-  const conditions: SQL[] = [];
+  // SM5 games only — Laserball lives in the same `game` table (type = "lb").
+  const conditions: SQL[] = [eq(game.type, "sm5")];
   if (filters.scopeFilter) {
     conditions.push(...gameScopeConditions(filters.scopeFilter));
   }
@@ -304,6 +305,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
     .innerJoin(center, eq(game.centerId, center.id))
     .where(
       and(
+        eq(game.type, "sm5"),
         eq(game.centerId, centerId),
         sql`date(${game.startTime}) = ${date}::date`,
         isNull(game.competitionId),
@@ -1007,6 +1009,7 @@ export async function getGameDetailBySlug(slug: string): Promise<GameDetail | nu
     .innerJoin(center, eq(game.centerId, center.id))
     .where(
       and(
+        eq(game.type, "sm5"),
         eq(center.countryCode, countryCode),
         eq(center.siteCode, siteCode),
         sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${ts}`,
