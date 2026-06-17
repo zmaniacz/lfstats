@@ -159,6 +159,88 @@ export async function getLbPlayerWinLoss(
   return out;
 }
 
+export type LbPlayerGameListItem = {
+  id: string;
+  gameSlug: string;
+  startTime: Date;
+  outcome: string;
+  centerId: string;
+  centerSlug: string;
+  centerName: string;
+  description: string | null;
+  teams: LbGameTeamSummary[];
+  teamColourEnum: number;
+  result: "win" | "loss" | "draw" | null;
+  goals: number;
+};
+
+export async function getLbPlayerGames(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<LbPlayerGameListItem[]> {
+  const rows = await db
+    .select({
+      id: game.id,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      centerId: center.id,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      centerName: center.name,
+      description: game.description,
+      teamColourEnum: lbGameTeam.colourEnum,
+      result: lbGameTeam.result,
+      goals: lbScorecard.goals,
+    })
+    .from(lbScorecard)
+    .innerJoin(lbGameTeam, eq(lbScorecard.teamId, lbGameTeam.id))
+    .innerJoin(game, eq(lbGameTeam.gameId, game.id))
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(lbScorecard.playerId, playerId),
+        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+      ),
+    )
+    .orderBy(desc(game.startTime));
+
+  if (rows.length === 0) return [];
+
+  const gameIds = [...new Set(rows.map((r) => r.id))];
+  const teamRows = await db
+    .select({
+      gameId: lbGameTeam.gameId,
+      colourEnum: lbGameTeam.colourEnum,
+      score: lbGameTeam.score,
+      result: lbGameTeam.result,
+    })
+    .from(lbGameTeam)
+    .where(and(inArray(lbGameTeam.gameId, gameIds), eq(lbGameTeam.isNeutral, false)))
+    .orderBy(lbGameTeam.tdfTeamIndex);
+
+  const teamsByGame = new Map<string, LbGameTeamSummary[]>();
+  for (const t of teamRows) {
+    const list = teamsByGame.get(t.gameId) ?? [];
+    list.push({ colourEnum: t.colourEnum, score: t.score, result: t.result });
+    teamsByGame.set(t.gameId, list);
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    gameSlug: row.gameSlug,
+    startTime: row.startTime,
+    outcome: row.outcome,
+    centerId: row.centerId,
+    centerSlug: row.centerSlug,
+    centerName: row.centerName,
+    description: row.description,
+    teams: teamsByGame.get(row.id) ?? [],
+    teamColourEnum: row.teamColourEnum,
+    result: row.result,
+    goals: row.goals,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Laserball Game Detail (read)
 // ---------------------------------------------------------------------------
