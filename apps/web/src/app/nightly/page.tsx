@@ -39,9 +39,9 @@ export default async function NightlyPage({
   if (!centerSlug) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
             <FilterBar
               basePath="/nightly"
               mode="social-only"
@@ -62,9 +62,9 @@ export default async function NightlyPage({
   if (!center) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
             <FilterBar
               basePath="/nightly"
               mode="social-only"
@@ -90,9 +90,9 @@ export default async function NightlyPage({
     <>
       <NightlyStateManager center={centerSlug} date={selectedDate} />
       <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
             <FilterBar
               basePath="/nightly"
               mode="social-only"

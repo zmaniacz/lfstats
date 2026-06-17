@@ -52,9 +52,9 @@ export default async function NightlyLbPage({
   if (!centerSlug) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Nightly Laserball</h1>
-          <div className="flex items-center gap-2 w-full sm:w-auto">{filterBar(null)}</div>
+          <div className="flex items-center gap-2">{filterBar(null)}</div>
         </div>
         <p className="text-muted-foreground">No game data available.</p>
       </div>
@@ -65,9 +65,9 @@ export default async function NightlyLbPage({
   if (!center) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Nightly Laserball</h1>
-          <div className="flex items-center gap-2 w-full sm:w-auto">{filterBar(null)}</div>
+          <div className="flex items-center gap-2">{filterBar(null)}</div>
         </div>
         <p className="text-muted-foreground">Center not found.</p>
       </div>
@@ -80,9 +80,9 @@ export default async function NightlyLbPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3">
         <h1 className="text-2xl font-bold">Nightly Laserball</h1>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
           <FilterBar
             basePath="/nightly-lb"
             mode="social-only"
