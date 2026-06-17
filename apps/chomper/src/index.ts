@@ -168,6 +168,15 @@ export const handler: S3Handler = async (event, context) => {
     if (gameType === "lb") {
       // --- Laserball pipeline (Phase 2 + 3) ---
       const lb = simulateLaserball(parsed);
+      if (lb.playerStats.size === 0) {
+        await updateChomperJob(job.id, {
+          status: "skipped",
+          skipReason: "No qualifying Laserball players (all under playtime threshold)",
+          completedAt: new Date(),
+        });
+        await deleteTdf(bucket, key);
+        return;
+      }
       // No line-7 ground truth; instead assert the goals↔line-5-score invariant.
       if (!lb.goalCheck.ok) {
         throw new Error(

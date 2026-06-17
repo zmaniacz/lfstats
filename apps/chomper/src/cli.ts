@@ -57,6 +57,10 @@ if (parsed.meta.missionType === LASERBALL_MISSION_TYPE) {
       `goalCheck=${lb.goalCheck.ok ? "ok" : "MISMATCH"}`,
   );
   if (writeDb) {
+    if (lb.playerStats.size === 0) {
+      console.error("Refusing to ingest: no qualifying players (all under playtime threshold)");
+      process.exit(1);
+    }
     if (!lb.goalCheck.ok) {
       console.error(
         `Refusing to ingest: goal/score mismatch ` +

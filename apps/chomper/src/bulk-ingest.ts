@@ -215,6 +215,16 @@ async function processKey(key: string): Promise<void> {
     let lbGameId: string;
     try {
       const lb = simulateLaserball(parsed);
+      if (lb.playerStats.size === 0) {
+        log(`SKIP ${key} (no qualifying Laserball players)`);
+        results.push({
+          key,
+          status: "skipped",
+          reason: "No qualifying Laserball players (all under playtime threshold)",
+        });
+        skipped++;
+        return;
+      }
       if (!lb.goalCheck.ok) {
         throw new Error(
           `goal/score mismatch goals=${JSON.stringify(lb.goalCheck.teamGoals)} ` +

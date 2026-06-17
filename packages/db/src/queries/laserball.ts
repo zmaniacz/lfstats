@@ -29,6 +29,7 @@ export async function insertLbGameTeams(tx: Tx, rows: (typeof lbGameTeam.$inferI
 // ---------------------------------------------------------------------------
 
 export async function insertLbScorecards(tx: Tx, rows: (typeof lbScorecard.$inferInsert)[]) {
+  if (rows.length === 0) return [];
   return tx.insert(lbScorecard).values(rows).returning();
 }
 
