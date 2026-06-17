@@ -30,6 +30,7 @@ export function FilterBar({
   centers,
   competitions,
   extras,
+  persistCookies = true,
   children,
 }: {
   basePath: string;
@@ -41,6 +42,12 @@ export function FilterBar({
   competitions: Option[];
   /** Page-specific params (e.g. pool/finals/mercs, date) to carry across changes. */
   extras?: Record<string, string | null | undefined>;
+  /**
+   * Persist filter choices to shared cookies so other pages inherit them.
+   * Set false for game types displayed separately (e.g. Laserball) so their
+   * selections don't leak into SM5's remembered filters. Defaults to true.
+   */
+  persistCookies?: boolean;
   /** Page-specific controls rendered inline next to the selectors. */
   children?: React.ReactNode;
 }) {
@@ -52,19 +59,19 @@ export function FilterBar({
 
   function handleScope(value: string) {
     if (value !== "social" && value !== "competition" && value !== "all") return;
-    writeFilterCookies({ scope: value });
+    if (persistCookies) writeFilterCookies({ scope: value });
     navigate({ scope: value, center: activeCenterSlug, competition: activeCompetitionSlug });
   }
 
   function handleCenter(value: string) {
     const center = value === ALL_VALUE ? null : value;
-    writeFilterCookies({ scope: "social", center });
+    if (persistCookies) writeFilterCookies({ scope: "social", center });
     navigate({ scope: "social", center, competition: activeCompetitionSlug });
   }
 
   function handleCompetition(value: string) {
     const competition = value === ALL_VALUE ? null : value;
-    writeFilterCookies({ scope: "competition", competition });
+    if (persistCookies) writeFilterCookies({ scope: "competition", competition });
     navigate({ scope: "competition", center: activeCenterSlug, competition });
   }
 

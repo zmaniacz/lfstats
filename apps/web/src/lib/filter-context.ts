@@ -60,7 +60,13 @@ export async function resolveFilterContext(
   searchParams: FilterSearchParams,
   options: ResolveFilterContextOptions = {},
 ): Promise<FilterContext> {
-  const { defaultScope = "all", allowedScopes, gameType = "sm5" } = options;
+  const { allowedScopes, gameType = "sm5" } = options;
+
+  // Laserball is displayed fully separately: it shares no filter cookies with
+  // SM5 (so an SM5 center selection can't hide Laserball games) and defaults to
+  // "social" since all Laserball games are social. It reads only explicit params.
+  const readCookies = gameType !== "lb";
+  const defaultScope: Scope = options.defaultScope ?? (gameType === "lb" ? "social" : "all");
 
   const [centers, competitions, cookieStore] = await Promise.all([
     getCenterList(),
@@ -71,7 +77,7 @@ export async function resolveFilterContext(
   const isAllowed = (s: Scope) => !allowedScopes || allowedScopes.includes(s);
 
   // --- scope ---
-  const scopeCookie = cookieStore.get(SCOPE_COOKIE)?.value;
+  const scopeCookie = readCookies ? cookieStore.get(SCOPE_COOKIE)?.value : undefined;
   let scope: Scope = defaultScope;
   if (isScope(searchParams.scope) && isAllowed(searchParams.scope)) {
     scope = searchParams.scope;
@@ -93,7 +99,7 @@ export async function resolveFilterContext(
   };
 
   // --- center (slug param/cookie; null = all centers) ---
-  const centerCookie = cookieStore.get(CENTER_COOKIE)?.value;
+  const centerCookie = readCookies ? cookieStore.get(CENTER_COOKIE)?.value : undefined;
   const resolveCenter = (slug: string | undefined): CenterListItem | null | undefined => {
     if (!slug) return undefined; // not specified at this source
     if (slug === ALL) return null; // explicitly "all centers"
@@ -105,7 +111,7 @@ export async function resolveFilterContext(
   );
 
   // --- competition (slug param/cookie; null = all competitions) ---
-  const competitionCookie = cookieStore.get(COMPETITION_COOKIE)?.value;
+  const competitionCookie = readCookies ? cookieStore.get(COMPETITION_COOKIE)?.value : undefined;
   const resolveCompetition = (
     slug: string | undefined,
   ): CompetitiveCompetitionSummary | null | undefined => {
