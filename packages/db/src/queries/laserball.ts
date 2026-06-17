@@ -122,6 +122,117 @@ export async function getLbGamesCount(filters: LbGameListFilters = {}): Promise<
 }
 
 // ---------------------------------------------------------------------------
+// Laserball Game Detail (read)
+// ---------------------------------------------------------------------------
+
+export type LbGameDetailPlayer = typeof lbScorecard.$inferSelect;
+
+export type LbGameDetailTeam = {
+  id: string;
+  tdfTeamIndex: number;
+  name: string;
+  colourEnum: number;
+  score: number | null;
+  result: "win" | "loss" | "draw" | null;
+  players: LbGameDetailPlayer[];
+};
+
+export type LbGameDetail = {
+  id: string;
+  slug: string;
+  centerId: string;
+  centerName: string;
+  startTime: Date;
+  outcome: string;
+  description: string | null;
+  scheduledDuration: number;
+  actualDuration: number;
+  tdfFilename: string;
+  exclude: boolean;
+  teams: LbGameDetailTeam[];
+};
+
+export async function getLbGameDetail(gameId: string): Promise<LbGameDetail | null> {
+  const [gameRow] = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerId: game.centerId,
+      centerName: center.name,
+      startTime: game.startTime,
+      outcome: game.outcome,
+      description: game.description,
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      tdfFilename: game.tdfFilename,
+      exclude: game.exclude,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(and(eq(game.id, gameId), eq(game.type, "lb")));
+
+  if (!gameRow) return null;
+
+  const [teamRows, scorecardRows] = await Promise.all([
+    db
+      .select()
+      .from(lbGameTeam)
+      .where(and(eq(lbGameTeam.gameId, gameId), eq(lbGameTeam.isNeutral, false)))
+      .orderBy(lbGameTeam.tdfTeamIndex),
+    db
+      .select()
+      .from(lbScorecard)
+      .where(eq(lbScorecard.gameId, gameId))
+      .orderBy(desc(lbScorecard.goals)),
+  ]);
+
+  const playersByTeam = new Map<string, LbGameDetailPlayer[]>();
+  for (const s of scorecardRows) {
+    const list = playersByTeam.get(s.teamId) ?? [];
+    list.push(s);
+    playersByTeam.set(s.teamId, list);
+  }
+
+  return {
+    ...gameRow,
+    teams: teamRows.map((t) => ({
+      id: t.id,
+      tdfTeamIndex: t.tdfTeamIndex,
+      name: t.name,
+      colourEnum: t.colourEnum,
+      score: t.score,
+      result: t.result,
+      players: playersByTeam.get(t.id) ?? [],
+    })),
+  };
+}
+
+export async function getLbGameDetailBySlug(slug: string): Promise<LbGameDetail | null> {
+  const parts = slug.split("-");
+  if (parts.length !== 3) return null;
+  const [cc, sc, ts] = parts;
+  const countryCode = parseInt(cc!, 10);
+  const siteCode = parseInt(sc!, 10);
+  if (isNaN(countryCode) || isNaN(siteCode) || !/^\d{14}$/.test(ts!)) return null;
+
+  const [idRow] = await db
+    .select({ id: game.id })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(game.type, "lb"),
+        eq(center.countryCode, countryCode),
+        eq(center.siteCode, siteCode),
+        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${ts}`,
+      ),
+    );
+
+  if (!idRow) return null;
+  return getLbGameDetail(idRow.id);
+}
+
+// ---------------------------------------------------------------------------
 // Laserball Game Structure
 //
 // Identity/reference upserts (center, player, battlesuit, callsign history) and
