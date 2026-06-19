@@ -83,6 +83,21 @@ export async function getRecentSocialEvents(limit: number): Promise<RecentSocial
     .limit(limit);
 }
 
+export async function getRecentSocialLbEvents(limit: number): Promise<RecentSocialEvent[]> {
+  return db
+    .select({
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      centerName: center.name,
+      date: sql<string>`date(${game.startTime})::text`,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(and(eq(game.type, "lb"), isNull(game.competitionId), eq(game.exclude, false)))
+    .groupBy(center.countryCode, center.siteCode, center.name, sql`date(${game.startTime})`)
+    .orderBy(desc(sql`date(${game.startTime})`))
+    .limit(limit);
+}
+
 export async function getGameDatesForCenter(centerId: string): Promise<string[]> {
   const rows = await db
     .selectDistinct({

@@ -6,6 +6,7 @@ import { formatDateOnly } from "@/lib/format";
 import {
   getCompetitionsByState,
   getRecentSocialEvents,
+  getRecentSocialLbEvents,
   type CompetitionListItem,
 } from "@lfstats/db";
 import Link from "next/link";
@@ -55,13 +56,19 @@ function CompetitionListCard({
 }
 
 export default async function Home() {
-  const [recentSocialEvents, activeCompetitions, upcomingCompetitions, recentlyCompleted] =
-    await Promise.all([
-      getRecentSocialEvents(10),
-      getCompetitionsByState(["active"]),
-      getCompetitionsByState(["upcoming"]),
-      getCompetitionsByState(["completed"], { order: "desc", limit: 5 }),
-    ]);
+  const [
+    recentSocialEvents,
+    recentLbEvents,
+    activeCompetitions,
+    upcomingCompetitions,
+    recentlyCompleted,
+  ] = await Promise.all([
+    getRecentSocialEvents(10),
+    getRecentSocialLbEvents(10),
+    getCompetitionsByState(["active"]),
+    getCompetitionsByState(["upcoming"]),
+    getCompetitionsByState(["completed"], { order: "desc", limit: 5 }),
+  ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -99,11 +106,11 @@ export default async function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-4xl">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Social Events</CardTitle>
+            <CardTitle>Recent SM5 Social Events</CardTitle>
           </CardHeader>
           <CardContent>
             {recentSocialEvents.length === 0 ? (
-              <p className="text-muted-foreground">No social events yet.</p>
+              <p className="text-muted-foreground">No SM5 social events yet.</p>
             ) : (
               <ul className="space-y-2">
                 {recentSocialEvents.map((event) => (
@@ -122,19 +129,44 @@ export default async function Home() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-4">
-          {activeCompetitions.length > 0 && (
-            <CompetitionListCard title="Active Competitions" competitions={activeCompetitions} />
-          )}
-          {upcomingCompetitions.length > 0 && (
-            <CompetitionListCard title="Upcoming" competitions={upcomingCompetitions} />
-          )}
-          <CompetitionListCard
-            title="Recently Completed"
-            competitions={recentlyCompleted}
-            emptyMessage="No completed competitions yet."
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Laserball Social Events</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentLbEvents.length === 0 ? (
+              <p className="text-muted-foreground">No Laserball social events yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {recentLbEvents.map((event) => (
+                  <li key={`lb-${event.centerSlug}-${event.date}`}>
+                    <Link
+                      href={`/nightly-lb?center=${event.centerSlug}&date=${event.date}`}
+                      className="flex items-center justify-between gap-2 hover:underline"
+                    >
+                      <span>{event.centerName}</span>
+                      <span className="text-muted-foreground">{formatDateOnly(event.date)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-4xl">
+        {activeCompetitions.length > 0 && (
+          <CompetitionListCard title="Active Competitions" competitions={activeCompetitions} />
+        )}
+        {upcomingCompetitions.length > 0 && (
+          <CompetitionListCard title="Upcoming" competitions={upcomingCompetitions} />
+        )}
+        <CompetitionListCard
+          title="Recently Completed"
+          competitions={recentlyCompleted}
+          emptyMessage="No completed competitions yet."
+        />
       </div>
     </div>
   );
