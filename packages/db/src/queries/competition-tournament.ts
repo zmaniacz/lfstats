@@ -4117,3 +4117,128 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
     ),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Competition schedule
+// ---------------------------------------------------------------------------
+
+export type CompetitionScheduleEntry = {
+  gameName: string;
+  team1Name: string;
+  team2Name: string;
+  scheduledStartTime: Date | null;
+  actualStartTime: Date | null;
+  team1Score: number | null;
+  team2Score: number | null;
+  scoreDifferential: number | null;
+};
+
+export async function getCompetitionSchedule(
+  slug: string,
+): Promise<CompetitionScheduleEntry[] | null> {
+  const comp = await db
+    .select({ id: competition.id })
+    .from(competition)
+    .where(eq(competition.slug, slug));
+  if (comp.length === 0) return null;
+  const competitionId = comp[0].id;
+
+  // Fetch all matches with round and team info
+  const matchRows = await db
+    .select({
+      matchId: competitionMatch.id,
+      matchNumber: competitionMatch.matchNumber,
+      roundNumber: competitionRound.roundNumber,
+      roundType: competitionRound.type,
+      team1Id: competitionMatch.team1Id,
+      team2Id: competitionMatch.team2Id,
+      game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
+      game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
+    })
+    .from(competitionMatch)
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .where(eq(competitionMatch.competitionId, competitionId))
+    .orderBy(asc(competitionRound.roundNumber), asc(competitionMatch.matchNumber));
+
+  if (matchRows.length === 0) return [];
+
+  // Fetch team names
+  const teamIds = [
+    ...new Set(
+      matchRows.flatMap((m) => [m.team1Id, m.team2Id]).filter((id): id is string => id !== null),
+    ),
+  ];
+  const teams =
+    teamIds.length > 0
+      ? await db
+          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .from(competitionTeam)
+          .where(inArray(competitionTeam.id, teamIds))
+      : [];
+  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+
+  // Fetch all game assignments with actual scores
+  const matchIds = matchRows.map((m) => m.matchId);
+  const assignments = await db
+    .select({
+      matchId: competitionMatchGame.matchId,
+      gameNumber: competitionMatchGame.gameNumber,
+      actualStartTime: game.startTime,
+      team1Score: sql<number | null>`t1.score + t1.elimination_bonus`,
+      team2Score: sql<number | null>`t2.score + t2.elimination_bonus`,
+    })
+    .from(competitionMatchGame)
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .leftJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .leftJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .where(inArray(competitionMatchGame.matchId, matchIds));
+
+  // Index assignments by matchId + gameNumber
+  type AssignmentData = {
+    actualStartTime: Date;
+    team1Score: number | null;
+    team2Score: number | null;
+  };
+  const assignmentMap = new Map<string, AssignmentData>();
+  for (const a of assignments) {
+    assignmentMap.set(`${a.matchId}:${a.gameNumber}`, {
+      actualStartTime: a.actualStartTime,
+      team1Score: a.team1Score,
+      team2Score: a.team2Score,
+    });
+  }
+
+  // Build one entry per game slot
+  const entries: CompetitionScheduleEntry[] = [];
+  for (const m of matchRows) {
+    const isFinals = m.roundType === "finals";
+    const roundPrefix = isFinals ? "Finals" : `R${m.roundNumber}`;
+    const team1Name = m.team1Id ? (teamMap.get(m.team1Id) ?? "TBD") : "TBD";
+    const team2Name = m.team2Id ? (teamMap.get(m.team2Id) ?? "TBD") : "TBD";
+
+    for (const gameNumber of [1, 2] as const) {
+      const scheduled = gameNumber === 1 ? m.game1ScheduledStartTime : m.game2ScheduledStartTime;
+      const actual = assignmentMap.get(`${m.matchId}:${gameNumber}`);
+
+      // Skip slots with no scheduled time and no actual game
+      if (!scheduled && !actual) continue;
+
+      const team1Score = actual?.team1Score ?? null;
+      const team2Score = actual?.team2Score ?? null;
+
+      entries.push({
+        gameName: `${roundPrefix} M${m.matchNumber} G${gameNumber}`,
+        team1Name,
+        team2Name,
+        scheduledStartTime: scheduled ?? null,
+        actualStartTime: actual?.actualStartTime ?? null,
+        team1Score,
+        team2Score,
+        scoreDifferential:
+          team1Score !== null && team2Score !== null ? team1Score - team2Score : null,
+      });
+    }
+  }
+
+  return entries;
+}
