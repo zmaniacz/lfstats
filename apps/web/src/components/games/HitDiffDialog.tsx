@@ -30,6 +30,23 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
   const opponents = interactions.filter((i) => !i.isTeammate);
   const teammates = interactions.filter((i) => i.isTeammate);
 
+  const sum = (rows: PlayerHitData[], key: keyof PlayerHitData) =>
+    rows.reduce((acc, r) => acc + (r[key] as number), 0);
+
+  const opponentTotals = {
+    hitsDealt: sum(opponents, "hitsDealt"),
+    hitsReceived: sum(opponents, "hitsReceived"),
+    missilesDealt: sum(opponents, "missilesDealt"),
+    missilesReceived: sum(opponents, "missilesReceived"),
+  };
+
+  const teammateTotals = {
+    hitsDealt: sum(teammates, "hitsDealt"),
+    hitsReceived: sum(teammates, "hitsReceived"),
+    missilesDealt: sum(teammates, "missilesDealt"),
+    missilesReceived: sum(teammates, "missilesReceived"),
+  };
+
   return (
     <>
       <Button
@@ -71,6 +88,21 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
                   <TableCell className="text-center tabular-nums">{row.missilesReceived}</TableCell>
                 </TableRow>
               ))}
+              <TableRow className="font-medium border-t-2">
+                <TableCell>Total</TableCell>
+                <TableCell className="text-center tabular-nums">
+                  {opponentTotals.hitsDealt}
+                </TableCell>
+                <TableCell className="text-center tabular-nums">
+                  {opponentTotals.hitsReceived}
+                </TableCell>
+                <TableCell className="text-center tabular-nums">
+                  {opponentTotals.missilesDealt}
+                </TableCell>
+                <TableCell className="text-center tabular-nums">
+                  {opponentTotals.missilesReceived}
+                </TableCell>
+              </TableRow>
               {teammates.length > 0 && (
                 <>
                   <TableRow>
@@ -99,6 +131,21 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
                       </TableCell>
                     </TableRow>
                   ))}
+                  <TableRow className="font-medium border-t-2">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-center tabular-nums">
+                      {teammateTotals.hitsDealt}
+                    </TableCell>
+                    <TableCell className="text-center tabular-nums">
+                      {teammateTotals.hitsReceived}
+                    </TableCell>
+                    <TableCell className="text-center tabular-nums">
+                      {teammateTotals.missilesDealt}
+                    </TableCell>
+                    <TableCell className="text-center tabular-nums">
+                      {teammateTotals.missilesReceived}
+                    </TableCell>
+                  </TableRow>
                 </>
               )}
             </TableBody>
