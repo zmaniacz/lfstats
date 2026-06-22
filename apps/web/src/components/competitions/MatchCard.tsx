@@ -31,16 +31,31 @@ export function MatchCard({
   const hasScore = Boolean(game1 || game2);
   const diff = hasScore ? t1Total - t2Total : null;
 
-  const firstGame = match.games.find((g) => g.gameNumber === 1) ?? match.games[0];
-  const actualStartTime = firstGame?.startTime ?? null;
+  const gamesPlayed = match.games.length;
 
   let scheduleLabel: string | null = null;
-  if (upcoming) {
-    if (match.scheduledTime !== null) {
-      scheduleLabel = `Scheduled: ${formatDateTime(match.scheduledTime)}`;
+  if (gamesPlayed === 0) {
+    if (match.game1ScheduledStartTime) {
+      scheduleLabel = `G1: ${formatDateTime(match.game1ScheduledStartTime)}`;
+      if (match.game2ScheduledStartTime) {
+        scheduleLabel += ` · G2: ${formatDateTime(match.game2ScheduledStartTime)}`;
+      }
     }
-  } else if (actualStartTime !== null) {
-    scheduleLabel = `Started: ${formatDateTime(actualStartTime)}`;
+  } else if (gamesPlayed === 1) {
+    const g1Actual = game1?.startTime;
+    scheduleLabel = g1Actual ? `G1: ${formatDateTime(g1Actual)}` : null;
+    if (match.game2ScheduledStartTime) {
+      scheduleLabel =
+        (scheduleLabel ? scheduleLabel + " · " : "") +
+        `G2: ${formatDateTime(match.game2ScheduledStartTime)}`;
+    }
+  } else {
+    const g1Actual = game1?.startTime;
+    const g2Actual = game2?.startTime;
+    if (g1Actual) {
+      scheduleLabel = `G1: ${formatDateTime(g1Actual)}`;
+      if (g2Actual) scheduleLabel += ` · G2: ${formatDateTime(g2Actual)}`;
+    }
   }
 
   return (

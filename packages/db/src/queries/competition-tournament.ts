@@ -84,7 +84,10 @@ export type CompetitionMatchListItem = {
   team1Name: string;
   team2Id: string | null;
   team2Name: string;
-  scheduledTime: Date | null;
+  game1ScheduledStartTime: Date | null;
+  game2ScheduledStartTime: Date | null;
+  game1StartTime: Date | null;
+  game2StartTime: Date | null;
   game1Assigned: boolean;
   game2Assigned: boolean;
 };
@@ -97,7 +100,8 @@ export type CompetitionMatchDetail = {
   team1Name: string;
   team2Id: string | null;
   team2Name: string;
-  scheduledTime: Date | null;
+  game1ScheduledStartTime: Date | null;
+  game2ScheduledStartTime: Date | null;
 };
 
 export type MatchGameAssignment = {
@@ -653,7 +657,8 @@ export async function getCompetitionMatchesByRound(
       poolName: competitionPool.name,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
-      scheduledTime: competitionMatch.scheduledTime,
+      game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
+      game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
     })
     .from(competitionMatch)
     .leftJoin(competitionPool, eq(competitionPool.id, competitionMatch.poolId))
@@ -685,30 +690,42 @@ export async function getCompetitionMatchesByRound(
     .select({
       matchId: competitionMatchGame.matchId,
       gameNumber: competitionMatchGame.gameNumber,
+      startTime: game.startTime,
     })
     .from(competitionMatchGame)
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .where(inArray(competitionMatchGame.matchId, matchIds));
 
-  const assignedMap = new Map<string, Set<number>>();
+  const assignedMap = new Map<string, { numbers: Set<number>; startTimes: Map<number, Date> }>();
   for (const a of gameAssignments) {
-    if (!assignedMap.has(a.matchId)) assignedMap.set(a.matchId, new Set());
-    assignedMap.get(a.matchId)!.add(a.gameNumber);
+    if (!assignedMap.has(a.matchId)) {
+      assignedMap.set(a.matchId, { numbers: new Set(), startTimes: new Map() });
+    }
+    const entry = assignedMap.get(a.matchId)!;
+    entry.numbers.add(a.gameNumber);
+    entry.startTimes.set(a.gameNumber, a.startTime);
   }
 
-  return matchRows.map((m) => ({
-    id: m.id,
-    roundId: m.roundId,
-    matchNumber: m.matchNumber,
-    poolId: m.poolId,
-    poolName: m.poolName,
-    team1Id: m.team1Id,
-    team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
-    team2Id: m.team2Id,
-    team2Name: m.team2Id ? (teamMap.get(m.team2Id) ?? "Unknown") : "TBD",
-    scheduledTime: m.scheduledTime,
-    game1Assigned: assignedMap.get(m.id)?.has(1) ?? false,
-    game2Assigned: assignedMap.get(m.id)?.has(2) ?? false,
-  }));
+  return matchRows.map((m) => {
+    const entry = assignedMap.get(m.id);
+    return {
+      id: m.id,
+      roundId: m.roundId,
+      matchNumber: m.matchNumber,
+      poolId: m.poolId,
+      poolName: m.poolName,
+      team1Id: m.team1Id,
+      team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
+      team2Id: m.team2Id,
+      team2Name: m.team2Id ? (teamMap.get(m.team2Id) ?? "Unknown") : "TBD",
+      game1ScheduledStartTime: m.game1ScheduledStartTime,
+      game2ScheduledStartTime: m.game2ScheduledStartTime,
+      game1StartTime: entry?.startTimes.get(1) ?? null,
+      game2StartTime: entry?.startTimes.get(2) ?? null,
+      game1Assigned: entry?.numbers.has(1) ?? false,
+      game2Assigned: entry?.numbers.has(2) ?? false,
+    };
+  });
 }
 
 export async function getCompetitionMatchById(id: string): Promise<CompetitionMatchDetail | null> {
@@ -736,7 +753,8 @@ export async function getCompetitionMatchById(id: string): Promise<CompetitionMa
     team1Name: match.team1Id ? (teamMap.get(match.team1Id) ?? "Unknown") : "TBD",
     team2Id: match.team2Id,
     team2Name: match.team2Id ? (teamMap.get(match.team2Id) ?? "Unknown") : "TBD",
-    scheduledTime: match.scheduledTime,
+    game1ScheduledStartTime: match.game1ScheduledStartTime,
+    game2ScheduledStartTime: match.game2ScheduledStartTime,
   };
 }
 
@@ -765,7 +783,6 @@ export async function createCompetitionMatch(data: {
   matchNumber: number;
   team1Id: string | null;
   team2Id: string | null;
-  scheduledTime?: Date | null;
 }): Promise<string> {
   const [row] = await db
     .insert(competitionMatch)
@@ -787,7 +804,7 @@ export async function updateCompetitionMatchTeams(
 
 export async function updateCompetitionMatchSchedule(
   id: string,
-  data: { scheduledTime: Date | null },
+  data: { game1ScheduledStartTime: Date | null; game2ScheduledStartTime: Date | null },
 ): Promise<void> {
   await db.update(competitionMatch).set(data).where(eq(competitionMatch.id, id));
 }
@@ -1685,7 +1702,8 @@ export type CompetitionMatchResult = {
     team1ColourEnum: number;
     team2ColourEnum: number;
   }[];
-  scheduledTime: Date | null;
+  game1ScheduledStartTime: Date | null;
+  game2ScheduledStartTime: Date | null;
   // match-level outcome (compare combined scores across both games)
   matchWinner: "team1" | "team2" | "draw" | "incomplete";
   team1MatchPoints: number; // match bonus only (2/1/0)
@@ -1709,7 +1727,8 @@ export async function getCompetitionMatchResults(
       roundNumber: competitionRound.roundNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
-      scheduledTime: competitionMatch.scheduledTime,
+      game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
+      game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
       gameNumber: competitionMatchGame.gameNumber,
       gameId: game.id,
       gameStartTime: game.startTime,
@@ -1803,7 +1822,8 @@ export async function getCompetitionMatchResults(
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
         games: [],
-        scheduledTime: row.scheduledTime,
+        game1ScheduledStartTime: row.game1ScheduledStartTime,
+        game2ScheduledStartTime: row.game2ScheduledStartTime,
       });
     }
     if (row.gameId === null || row.gameNumber === null) continue;

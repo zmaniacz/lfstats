@@ -91,9 +91,23 @@ export async function updateMatchScheduleAction(
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
-  const raw = (formData.get("scheduledTime") as string) || null;
-  const scheduledTime = raw ? fromDateTimeInputValue(raw) : null;
-  await updateCompetitionMatchSchedule(matchId, { scheduledTime });
+  const rawG1 = (formData.get("game1ScheduledTime") as string) || null;
+  const game1ScheduledStartTime = rawG1 ? fromDateTimeInputValue(rawG1) : null;
+
+  const game2Mode = (formData.get("game2Mode") as string) || "custom";
+  let game2ScheduledStartTime: Date | null = null;
+  if (game1ScheduledStartTime && game2Mode !== "custom") {
+    const offsetMin = parseInt(game2Mode, 10);
+    game2ScheduledStartTime = new Date(game1ScheduledStartTime.getTime() + offsetMin * 60000);
+  } else {
+    const rawG2 = (formData.get("game2ScheduledTime") as string) || null;
+    game2ScheduledStartTime = rawG2 ? fromDateTimeInputValue(rawG2) : null;
+  }
+
+  await updateCompetitionMatchSchedule(matchId, {
+    game1ScheduledStartTime,
+    game2ScheduledStartTime,
+  });
 
   const match = await getCompetitionMatchById(matchId);
   const slug = await competitionSlug(competitionId);

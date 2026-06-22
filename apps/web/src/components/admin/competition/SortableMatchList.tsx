@@ -210,9 +210,12 @@ function SortableMatch({
                 G2
               </Badge>
             </div>
-            {match.scheduledTime && (
+            {match.game1ScheduledStartTime && (
               <span className="text-xs text-muted-foreground">
-                {formatDateTime(match.scheduledTime)}
+                G1 {formatDateTime(match.game1ScheduledStartTime)}
+                {match.game2ScheduledStartTime && (
+                  <> · G2 {formatDateTime(match.game2ScheduledStartTime)}</>
+                )}
               </span>
             )}
           </>

@@ -239,6 +239,13 @@
       "when": 1781632702525,
       "tag": "0033_complete_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1782146274884,
+      "tag": "0034_per_game_scheduled_times",
+      "breakpoints": true
     }
   ]
 }

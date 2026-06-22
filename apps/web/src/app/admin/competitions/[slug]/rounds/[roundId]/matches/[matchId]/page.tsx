@@ -89,7 +89,8 @@ export default async function MatchDetailPage({
         </CardHeader>
         <CardContent>
           <EditMatchScheduleForm
-            initialScheduledTime={match.scheduledTime}
+            initialGame1ScheduledStartTime={match.game1ScheduledStartTime}
+            initialGame2ScheduledStartTime={match.game2ScheduledStartTime}
             action={boundUpdateSchedule}
           />
         </CardContent>

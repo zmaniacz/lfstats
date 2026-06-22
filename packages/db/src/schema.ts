@@ -250,7 +250,8 @@ export const competitionMatch = pgTable(
     matchNumber: integer("match_number").notNull(),
     team1Id: uuid("team1_id").references(() => competitionTeam.id),
     team2Id: uuid("team2_id").references(() => competitionTeam.id),
-    scheduledTime: timestamp("scheduled_time"),
+    game1ScheduledStartTime: timestamp("game1_scheduled_start_time"),
+    game2ScheduledStartTime: timestamp("game2_scheduled_start_time"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
