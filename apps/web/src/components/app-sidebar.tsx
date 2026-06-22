@@ -93,6 +93,11 @@ const browseNavItems = [
     url: "/about-sm5",
     icon: <InfoIcon />,
   },
+  {
+    title: "About Laserball",
+    url: "/about-laserball",
+    icon: <SoccerBallIcon />,
+  },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
