@@ -21,10 +21,18 @@ import type { PlayerHitData } from "@lfstats/db";
 type Props = {
   callsign: string;
   hitDiff: number;
+  shotsHitOpponent: number;
+  timesHit: number;
   interactions: PlayerHitData[];
 };
 
-export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
+export function HitDiffDialog({
+  callsign,
+  hitDiff,
+  shotsHitOpponent,
+  timesHit,
+  interactions,
+}: Props) {
   const [open, setOpen] = useState(false);
 
   const opponents = interactions.filter((i) => !i.isTeammate);
@@ -55,6 +63,9 @@ export function HitDiffDialog({ callsign, hitDiff, interactions }: Props) {
         onClick={() => setOpen(true)}
       >
         {formatHitDiff(hitDiff)}
+        <span className="text-muted-foreground ml-1">
+          ({shotsHitOpponent}/{timesHit})
+        </span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

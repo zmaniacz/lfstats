@@ -146,6 +146,8 @@ export function TeamStatsTable({
                   <HitDiffDialog
                     callsign={player.callsign}
                     hitDiff={player.hitDiff}
+                    shotsHitOpponent={player.shotsHitOpponent}
+                    timesHit={player.timesHit}
                     interactions={player.hitInteractions}
                   />
                 </TableCell>
