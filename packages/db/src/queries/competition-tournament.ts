@@ -4240,5 +4240,12 @@ export async function getCompetitionSchedule(
     }
   }
 
+  entries.sort((a, b) => {
+    if (!a.scheduledStartTime && !b.scheduledStartTime) return 0;
+    if (!a.scheduledStartTime) return 1;
+    if (!b.scheduledStartTime) return -1;
+    return a.scheduledStartTime.getTime() - b.scheduledStartTime.getTime();
+  });
+
   return entries;
 }
