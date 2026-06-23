@@ -45,6 +45,11 @@ export function formatWinRate(wins: number, total: number): string {
   return `${pct}% (${wins}/${total})`;
 }
 
+export function formatRatio(numerator: number, denominator: number): string {
+  if (denominator === 0) return numerator === 0 ? EM_DASH : "∞";
+  return (numerator / denominator).toFixed(2);
+}
+
 export function formatGameName(description: string | null, startTime: Date): string {
   if (description) return description;
   const h = String(startTime.getUTCHours()).padStart(2, "0");

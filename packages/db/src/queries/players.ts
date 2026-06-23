@@ -8,9 +8,11 @@ import {
   sm5Scorecard,
   sm5GameTeam,
   sm5ScorecardMvp,
+  sm5GamePlayerInteraction,
   game,
   center,
 } from "../schema";
+import { alias } from "drizzle-orm/pg-core";
 import { eq, and, asc, desc, count, sql, inArray } from "drizzle-orm";
 import type { MvpBoxPlotItem } from "./centers";
 import type { GameTeamSummary, MvpComponentRow } from "./games";
@@ -562,5 +564,82 @@ export async function getPlayerGames(
     teamColourEnum: row.teamColourEnum,
     teams: teamsByGame.get(row.id) ?? [],
     mvpComponents: mvpByScorecard.get(row.scorecardId) ?? [],
+  }));
+}
+
+export type HeadToHeadRow = {
+  targetPlayerId: string;
+  targetIplId: string;
+  targetCallsign: string;
+  mainPosition: number;
+  targetPosition: number;
+  isSameTeam: boolean;
+  shotsHit: number;
+  missileHits: number;
+  shotsHitBy: number;
+  missileHitsBy: number;
+  gamesCount: number;
+};
+
+export async function getPlayerHeadToHead(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<HeadToHeadRow[]> {
+  const mainSc = alias(sm5Scorecard, "main_sc");
+  const tgtSc = alias(sm5Scorecard, "tgt_sc");
+  const rev = alias(sm5GamePlayerInteraction, "rev");
+  const tgtPlayer = alias(player, "tgt_player");
+
+  const rows = await db
+    .select({
+      targetPlayerId: tgtPlayer.id,
+      targetIplId: tgtPlayer.iplId,
+      targetCallsign: tgtPlayer.currentCallsign,
+      mainPosition: mainSc.position,
+      targetPosition: tgtSc.position,
+      isSameTeam: sql<boolean>`(${mainSc.teamId} = ${tgtSc.teamId})`,
+      shotsHit: sql<number>`SUM(${sm5GamePlayerInteraction.shotsHit})::int`,
+      missileHits: sql<number>`SUM(${sm5GamePlayerInteraction.missileHits})::int`,
+      shotsHitBy: sql<number>`SUM(COALESCE(${rev.shotsHit}, 0))::int`,
+      missileHitsBy: sql<number>`SUM(COALESCE(${rev.missileHits}, 0))::int`,
+      gamesCount: sql<number>`COUNT(DISTINCT ${sm5GamePlayerInteraction.gameId})::int`,
+    })
+    .from(sm5GamePlayerInteraction)
+    .innerJoin(mainSc, eq(sm5GamePlayerInteraction.scorecardId, mainSc.id))
+    .innerJoin(tgtSc, eq(sm5GamePlayerInteraction.targetScorecardId, tgtSc.id))
+    .innerJoin(game, eq(sm5GamePlayerInteraction.gameId, game.id))
+    .innerJoin(tgtPlayer, eq(tgtSc.playerId, tgtPlayer.id))
+    .leftJoin(
+      rev,
+      and(
+        eq(rev.gameId, sm5GamePlayerInteraction.gameId),
+        eq(rev.scorecardId, sm5GamePlayerInteraction.targetScorecardId),
+        eq(rev.targetScorecardId, sm5GamePlayerInteraction.scorecardId),
+      ),
+    )
+    .where(
+      and(eq(mainSc.playerId, playerId), ...(scopeFilter ? gameScopeConditions(scopeFilter) : [])),
+    )
+    .groupBy(
+      tgtPlayer.id,
+      tgtPlayer.iplId,
+      tgtPlayer.currentCallsign,
+      mainSc.position,
+      tgtSc.position,
+      sql`(${mainSc.teamId} = ${tgtSc.teamId})`,
+    );
+
+  return rows.map((r) => ({
+    targetPlayerId: r.targetPlayerId,
+    targetIplId: r.targetIplId,
+    targetCallsign: r.targetCallsign,
+    mainPosition: r.mainPosition,
+    targetPosition: r.targetPosition,
+    isSameTeam: r.isSameTeam,
+    shotsHit: r.shotsHit,
+    missileHits: r.missileHits,
+    shotsHitBy: r.shotsHitBy,
+    missileHitsBy: r.missileHitsBy,
+    gamesCount: r.gamesCount,
   }));
 }

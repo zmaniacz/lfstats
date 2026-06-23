@@ -20,7 +20,13 @@ export default async function PlayerDetailPage({
   searchParams,
 }: {
   params: Promise<{ iplId: string }>;
-  searchParams: Promise<{ scope?: string; center?: string; competition?: string; game?: string }>;
+  searchParams: Promise<{
+    scope?: string;
+    center?: string;
+    competition?: string;
+    game?: string;
+    tab?: string;
+  }>;
 }) {
   const { iplId } = await params;
   const sp = await searchParams;
@@ -91,7 +97,7 @@ export default async function PlayerDetailPage({
             activeCompetitionSlug={ctx.competition?.slug ?? null}
             centers={ctx.centers}
             competitions={ctx.competitions}
-            extras={{ game: gameType === "lb" ? "lb" : null }}
+            extras={{ game: gameType === "lb" ? "lb" : null, tab: sp.tab ?? null }}
             gameType={gameType}
           />
         </div>

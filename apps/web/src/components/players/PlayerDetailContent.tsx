@@ -9,6 +9,7 @@ import {
   getPlayerAvgScoreByPosition,
   getGlobalAvgScoreByPosition,
   getPlayerGames,
+  getPlayerHeadToHead,
   type GameScopeFilter,
 } from "@lfstats/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
 import { MvpBoxPlotChart } from "@/components/charts/MvpBoxPlotChart";
 import { PlayerTabs } from "@/components/players/PlayerTabs";
 import { PlayerGamesTable } from "@/components/players/PlayerGamesTable";
+import { HeadToHeadTable } from "@/components/players/HeadToHeadTable";
 import { POSITIONS } from "@/lib/positions";
 
 export async function PlayerDetailContent({
@@ -29,16 +31,25 @@ export async function PlayerDetailContent({
   playerId: string;
   scopeFilter: GameScopeFilter;
 }) {
-  const [gameResults, playerMvp, globalMvp, playerBoxPlot, playerScore, globalScore, playerGames] =
-    await Promise.all([
-      getPlayerResultsByColor(playerId, scopeFilter),
-      getPlayerAvgMvpByPosition(playerId, scopeFilter),
-      getGlobalAvgMvpByPosition(scopeFilter),
-      getPlayerMvpBoxPlot(playerId, scopeFilter),
-      getPlayerAvgScoreByPosition(playerId, scopeFilter),
-      getGlobalAvgScoreByPosition(scopeFilter),
-      getPlayerGames(playerId, scopeFilter),
-    ]);
+  const [
+    gameResults,
+    playerMvp,
+    globalMvp,
+    playerBoxPlot,
+    playerScore,
+    globalScore,
+    playerGames,
+    headToHeadRows,
+  ] = await Promise.all([
+    getPlayerResultsByColor(playerId, scopeFilter),
+    getPlayerAvgMvpByPosition(playerId, scopeFilter),
+    getGlobalAvgMvpByPosition(scopeFilter),
+    getPlayerMvpBoxPlot(playerId, scopeFilter),
+    getPlayerAvgScoreByPosition(playerId, scopeFilter),
+    getGlobalAvgScoreByPosition(scopeFilter),
+    getPlayerGames(playerId, scopeFilter),
+    getPlayerHeadToHead(playerId, scopeFilter),
+  ]);
 
   const playerMvpByPosition = new Map(playerMvp.map((p) => [p.position, p.avgMvp]));
   const globalMvpByPosition = new Map(globalMvp.map((p) => [p.position, p.avgMvp]));
@@ -102,6 +113,7 @@ export async function PlayerDetailContent({
         </div>
       }
       gamesContent={<PlayerGamesTable games={playerGames} />}
+      headToHeadContent={<HeadToHeadTable rows={headToHeadRows} />}
     />
   );
 }
