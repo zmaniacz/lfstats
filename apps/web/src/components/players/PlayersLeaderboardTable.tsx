@@ -3,10 +3,11 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { PlayerLeaderboardItem } from "@lfstats/db";
+import { useMinGames } from "@/components/players/MinGamesContext";
 import {
   Table,
   TableBody,
@@ -77,9 +78,14 @@ export function PlayersLeaderboardTable({
   players: PlayerLeaderboardItem[];
   title: string;
 }) {
+  const minGames = useMinGames();
   const [sort, setSort] = useState<SortState>({ column: "avgMvp", dir: "desc" });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [minGames]);
 
   function handleSort(col: SortColumn) {
     setSort((prev) =>
@@ -90,11 +96,16 @@ export function PlayersLeaderboardTable({
     setPage(1);
   }
 
+  const gamesFiltered = useMemo(() => {
+    if (minGames <= 0) return players;
+    return players.filter((p) => p.totalGames >= minGames);
+  }, [players, minGames]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return players;
-    return players.filter((p) => p.callsign.toLowerCase().includes(q));
-  }, [players, search]);
+    if (!q) return gamesFiltered;
+    return gamesFiltered.filter((p) => p.callsign.toLowerCase().includes(q));
+  }, [gamesFiltered, search]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {

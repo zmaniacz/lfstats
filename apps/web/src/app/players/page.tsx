@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
+import { MinGamesProvider } from "@/components/players/MinGamesContext";
 import { PlayersContent } from "@/components/players/PlayersContent";
 import { PlayersSkeleton } from "@/components/players/PlayersSkeleton";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
@@ -72,7 +73,7 @@ export default async function PlayersPage({
       {gameType === "lb" ? (
         <LaserballStub feature="player rankings" />
       ) : (
-        <>
+        <MinGamesProvider enabled={!useCompetitionView}>
           {useCompetitionView && ctx.competition && (
             <ScopeExtraToggles
               basePath="/players"
@@ -91,7 +92,7 @@ export default async function PlayersPage({
               scopeFilter={toGameScopeFilter(ctx)}
             />
           </Suspense>
-        </>
+        </MinGamesProvider>
       )}
     </div>
   );
