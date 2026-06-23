@@ -82,8 +82,7 @@ const offensiveStats: StatDef[] = [
   },
   {
     stat: "Pass Over Opponent",
-    description:
-      "Credited to a passer when their thrown pass results in a steal-back chain that leads to a goal within 3 seconds. Recognizes passes that create dangerous scoring opportunities by getting the ball through or over the defense.",
+    description: "Player whose stolen ball is recovered by a teammate who scores within 5 seconds.",
   },
   {
     stat: "Turnover Pass",
@@ -188,8 +187,7 @@ const defensiveStats: StatDef[] = [
   },
   {
     stat: "Reset Point",
-    description:
-      "Awarded when a player resets a different reset-state opponent than the last one they reset. Rewards varied defensive play rather than repeatedly hitting the same downed player.",
+    description: "Deactivated player used by an opponent to reset another teammate. Not good.",
   },
 ];
 
