@@ -8,6 +8,7 @@
     "ingest-lb-local": "tsx --env-file=../../packages/db/.env src/ingest-local-lb.ts",
     "bulk-ingest": "tsx --env-file=../../packages/db/.env src/bulk-ingest.ts",
     "bulk-reingest": "tsx --env-file=../../packages/db/.env src/bulk-reingest.ts",
+    "bulk-reingest-lb": "tsx --env-file=../../packages/db/.env src/bulk-reingest-lb.ts",
     "recalcMVP": "tsx --env-file=../../packages/db/.env src/recalc-mvp.ts",
     "test": "tsx src/test-suite.ts",
     "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/*",

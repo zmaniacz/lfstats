@@ -1,0 +1,510 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2015 Russell Lewis
+
+"use client";
+
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { Play, Pause, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Toggle } from "@/components/ui/toggle";
+import { formatMs, formatScore } from "@/lib/format";
+import { getTeamColor } from "@/lib/team-colors";
+import { cn } from "@/lib/utils";
+import type { LbReplayData, LbReplayPlayer, LbReplayPlayerState } from "@lfstats/db";
+
+const TICK_MS = 100;
+const SPEEDS = [1, 2, 4, 8] as const;
+type Speed = (typeof SPEEDS)[number];
+
+const RESPAWN_PHASE_MS = 4000;
+
+function RespawnIndicator({ progress, color }: { progress: number; color: "red" | "yellow" }) {
+  const deg = Math.round(Math.min(Math.max(progress, 0), 1) * 360);
+  const fillColor = color === "red" ? "var(--color-red-500)" : "var(--color-yellow-400)";
+  return (
+    <span
+      className="inline-block size-2.5 rounded-full border border-border shrink-0"
+      style={{
+        background: `conic-gradient(${fillColor} ${deg}deg, transparent ${deg}deg)`,
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+
+function BallIndicator() {
+  return (
+    <span
+      className="inline-block size-2.5 rounded-full bg-amber-400 shrink-0"
+      aria-label="Has ball"
+    />
+  );
+}
+
+function isStateChangeEvent(eventType: string): boolean {
+  return eventType.startsWith("state_");
+}
+
+function binarySearchLatestState(
+  states: LbReplayPlayerState[],
+  atTime: number,
+): LbReplayPlayerState | null {
+  let lo = 0;
+  let hi = states.length - 1;
+  let result = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (states[mid].time <= atTime) {
+      result = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return result === -1 ? null : states[result];
+}
+
+type LbComputedPlayer = LbReplayPlayer & {
+  rank: number;
+  goals: number;
+  assists: number;
+  stealsDone: number;
+  blocksDone: number;
+  clearsDone: number;
+  possessionTimeMs: number;
+  state: number;
+  hasBall: boolean;
+  respawnProgress: number | null;
+  respawnColor: "red" | "yellow" | null;
+};
+
+type LbComputedTeam = {
+  teamId: string;
+  teamName: string;
+  teamColour: number;
+  totalGoals: number;
+  players: LbComputedPlayer[];
+};
+
+export function LbReplayTab({ gameId, duration }: { gameId: string; duration: number }) {
+  const [data, setData] = useState<LbReplayData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState<Speed>(1);
+  const [showStateChanges, setShowStateChanges] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/laserball/games/${gameId}/replay`)
+      .then((r) => r.json())
+      .then((d: LbReplayData) => {
+        setData(d);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [gameId]);
+
+  const statesByPlayer = useMemo(() => {
+    if (!data) return new Map<string, LbReplayPlayerState[]>();
+    const map = new Map<string, LbReplayPlayerState[]>();
+    for (const s of data.playerStates) {
+      const arr = map.get(s.scorecardId) ?? [];
+      arr.push(s);
+      map.set(s.scorecardId, arr);
+    }
+    return map;
+  }, [data]);
+
+  const playerMap = useMemo(() => {
+    if (!data) return new Map<string, { callsign: string; teamColour: number }>();
+    const map = new Map<string, { callsign: string; teamColour: number }>();
+    for (const p of data.players)
+      map.set(p.scorecardId, { callsign: p.callsign, teamColour: p.teamColour });
+    return map;
+  }, [data]);
+
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (!isPlaying) return;
+
+    intervalRef.current = setInterval(() => {
+      setCurrentTime((prev) => {
+        const next = prev + TICK_MS * speed;
+        if (next >= duration) {
+          setIsPlaying(false);
+          return duration;
+        }
+        return next;
+      });
+    }, TICK_MS);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isPlaying, speed, duration]);
+
+  const handleReset = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }, []);
+
+  const computedTeams = useMemo((): LbComputedTeam[] => {
+    if (!data) return [];
+
+    const teamMap = new Map<string, LbComputedTeam>();
+    for (const player of data.players) {
+      if (!teamMap.has(player.teamId)) {
+        teamMap.set(player.teamId, {
+          teamId: player.teamId,
+          teamName: player.teamName,
+          teamColour: player.teamColour,
+          totalGoals: 0,
+          players: [],
+        });
+      }
+    }
+
+    for (const player of data.players) {
+      const states = statesByPlayer.get(player.scorecardId) ?? [];
+      const state = binarySearchLatestState(states, currentTime);
+      const goals = state?.score ?? 0;
+      const team = teamMap.get(player.teamId)!;
+      team.totalGoals += goals;
+
+      let respawnProgress: number | null = null;
+      let respawnColor: "red" | "yellow" | null = null;
+      if (state?.state === 3) {
+        respawnProgress = (currentTime - state.time) / RESPAWN_PHASE_MS / 2;
+        respawnColor = "red";
+      } else if (state?.state === 2) {
+        respawnProgress = 0.5 + (currentTime - state.time) / RESPAWN_PHASE_MS / 2;
+        respawnColor = "yellow";
+      }
+
+      team.players.push({
+        ...player,
+        rank: 0,
+        goals,
+        assists: state?.assists ?? 0,
+        stealsDone: state?.stealsDone ?? 0,
+        blocksDone: state?.blocksDone ?? 0,
+        clearsDone: state?.clearsDone ?? 0,
+        possessionTimeMs: state?.possessionTimeMs ?? 0,
+        state: state?.state ?? 0,
+        hasBall: state?.hasBall ?? false,
+        respawnProgress,
+        respawnColor,
+      });
+    }
+
+    const teams = Array.from(teamMap.values());
+    for (const team of teams) {
+      team.players.sort((a, b) => b.goals - a.goals);
+      team.players.forEach((p, i) => {
+        p.rank = i + 1;
+      });
+    }
+    teams.sort((a, b) => b.totalGoals - a.totalGoals);
+    return teams;
+  }, [data, statesByPlayer, currentTime]);
+
+  // Detect rank changes and team-order swaps for animations
+  const prevRanksRef = useRef<Map<string, number>>(new Map());
+  const prevTeamOrderRef = useRef<string[]>([]);
+  const rankTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const teamLeadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rankChanges, setRankChanges] = useState<Set<string>>(new Set());
+  const [newLeaderTeamId, setNewLeaderTeamId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+
+    for (const team of computedTeams) {
+      for (const player of team.players) {
+        const prevRank = prevRanksRef.current.get(player.scorecardId);
+        if (prevRank !== undefined && player.rank < prevRank) {
+          setRankChanges((prev) => new Set(prev).add(player.scorecardId));
+
+          const existing = rankTimeoutsRef.current.get(player.scorecardId);
+          if (existing) clearTimeout(existing);
+          rankTimeoutsRef.current.set(
+            player.scorecardId,
+            setTimeout(() => {
+              setRankChanges((prev) => {
+                const next = new Set(prev);
+                next.delete(player.scorecardId);
+                return next;
+              });
+              rankTimeoutsRef.current.delete(player.scorecardId);
+            }, 700),
+          );
+        }
+        prevRanksRef.current.set(player.scorecardId, player.rank);
+      }
+    }
+
+    const newOrder = computedTeams.map((t) => t.teamId);
+    const prevOrder = prevTeamOrderRef.current;
+    if (
+      prevOrder.length === newOrder.length &&
+      prevOrder.length > 0 &&
+      newOrder[0] !== prevOrder[0]
+    ) {
+      const newLeader = newOrder[0];
+      setNewLeaderTeamId(newLeader);
+      if (teamLeadTimeoutRef.current) clearTimeout(teamLeadTimeoutRef.current);
+      teamLeadTimeoutRef.current = setTimeout(() => {
+        setNewLeaderTeamId(null);
+        teamLeadTimeoutRef.current = null;
+      }, 700);
+    }
+    prevTeamOrderRef.current = newOrder;
+  }, [computedTeams, data]);
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of rankTimeoutsRef.current.values()) clearTimeout(timeout);
+      if (teamLeadTimeoutRef.current) clearTimeout(teamLeadTimeoutRef.current);
+    };
+  }, []);
+
+  const visibleEvents = useMemo(() => {
+    if (!data) return [];
+    const visible = data.events.filter((e) => {
+      if (e.time > currentTime) return false;
+      if (!showStateChanges && isStateChangeEvent(e.eventType)) return false;
+      return true;
+    });
+    return visible.slice(-20).reverse();
+  }, [data, currentTime, showStateChanges]);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-6 w-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <p className="text-muted-foreground text-sm">Replay data not available for this game.</p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Playback controls */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsPlaying((p) => !p)}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="icon" onClick={handleReset} aria-label="Reset">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1">
+            {SPEEDS.map((s) => (
+              <Button
+                key={s}
+                variant={speed === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSpeed(s)}
+              >
+                {s}x
+              </Button>
+            ))}
+          </div>
+          <span className="ml-auto tabular-nums text-sm text-muted-foreground">
+            {formatMs(currentTime)} / {formatMs(duration)}
+          </span>
+        </div>
+        <Slider
+          min={0}
+          max={duration}
+          step={TICK_MS}
+          value={[currentTime]}
+          onValueChange={([v]) => {
+            setIsPlaying(false);
+            setCurrentTime(v);
+          }}
+        />
+      </div>
+
+      {/* Scoreboards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {computedTeams.map((team) => {
+          const color = getTeamColor(team.teamColour);
+          return (
+            <div
+              key={team.teamId}
+              className={cn(
+                "space-y-0",
+                newLeaderTeamId === team.teamId && "animate-team-lead-flash",
+              )}
+            >
+              <div
+                className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
+              >
+                <span className={`font-bold ${color?.text ?? ""}`}>{team.teamName}</span>
+                <span className="tabular-nums font-semibold">{formatScore(team.totalGoals)}</span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 text-center">#</TableHead>
+                    <TableHead>Callsign</TableHead>
+                    <TableHead className="w-4 px-0" />
+                    <TableHead className="text-right">Goals</TableHead>
+                    <TableHead className="text-right">Ast</TableHead>
+                    <TableHead className="text-right">Stl</TableHead>
+                    <TableHead className="text-right">Blk</TableHead>
+                    <TableHead className="text-right">Clr</TableHead>
+                    <TableHead className="text-right">Possn</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {team.players.map((player) => {
+                    const rankImproved = rankChanges.has(player.scorecardId);
+                    return (
+                      <TableRow
+                        key={player.scorecardId}
+                        className={cn(rankImproved && "animate-rank-flash-up")}
+                      >
+                        <TableCell className="text-center tabular-nums text-muted-foreground">
+                          <span
+                            className={cn(rankImproved && "text-green-600 dark:text-green-400")}
+                          >
+                            {player.rank}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className={`font-medium ${
+                            player.state === 2 || player.state === 3
+                              ? `${color?.text ?? ""} opacity-50`
+                              : (color?.text ?? "")
+                          }`}
+                        >
+                          {player.callsign}
+                        </TableCell>
+                        <TableCell className="px-0">
+                          <div className="flex items-center gap-1">
+                            {player.respawnProgress !== null && player.respawnColor && (
+                              <RespawnIndicator
+                                progress={player.respawnProgress}
+                                color={player.respawnColor}
+                              />
+                            )}
+                            {player.hasBall && <BallIndicator />}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">
+                          {player.goals}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{player.assists}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {player.stealsDone}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {player.blocksDone}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {player.clearsDone}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {formatMs(player.possessionTimeMs)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Event stream */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Events
+          </h3>
+          <div className="flex items-center gap-1">
+            <Toggle
+              variant="outline"
+              size="sm"
+              pressed={showStateChanges}
+              onPressedChange={setShowStateChanges}
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              State Changes
+            </Toggle>
+          </div>
+        </div>
+        <div className="rounded-md border bg-muted/20 p-3 space-y-1 min-h-[80px] max-h-64 overflow-y-auto">
+          {visibleEvents.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No events yet.</p>
+          ) : (
+            visibleEvents.map((event) => {
+              const actorPlayer = event.actorScorecardId
+                ? playerMap.get(event.actorScorecardId)
+                : null;
+              const actorName = actorPlayer ? actorPlayer.callsign : null;
+              const actorColor = actorPlayer
+                ? getTeamColor(actorPlayer.teamColour)?.text
+                : undefined;
+
+              const targetPlayer = event.targetScorecardId
+                ? playerMap.get(event.targetScorecardId)
+                : null;
+              const targetName = targetPlayer ? targetPlayer.callsign : null;
+              const targetColor = targetPlayer
+                ? getTeamColor(targetPlayer.teamColour)?.text
+                : undefined;
+
+              return (
+                <div key={event.id} className="flex items-baseline gap-2 text-sm">
+                  <span className="tabular-nums text-xs text-muted-foreground shrink-0 w-12">
+                    {formatMs(event.time)}
+                  </span>
+                  <span>
+                    {actorName && <span className={actorColor}>{actorName}</span>}
+                    {actorName && " "}
+                    {event.description.trim()}
+                    {targetName && " "}
+                    {targetName && <span className={targetColor}>{targetName}</span>}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

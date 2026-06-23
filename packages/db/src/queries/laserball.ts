@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -501,6 +501,136 @@ export async function getLbNightlyDetails(centerId: string, date: string): Promi
 
   return gameRows.map((row) => ({ ...row, teams: teamsByGame.get(row.id) ?? [] }));
 }
+
+// ---------------------------------------------------------------------------
+// Laserball Replay Data (read)
+// ---------------------------------------------------------------------------
+
+export type LbReplayPlayer = {
+  scorecardId: string;
+  callsign: string;
+  teamId: string;
+  teamName: string;
+  teamColour: number;
+};
+
+export type LbReplayEvent = {
+  id: string;
+  time: number;
+  eventType: string;
+  description: string;
+  actorScorecardId: string | null;
+  targetScorecardId: string | null;
+};
+
+export type LbReplayPlayerState = {
+  scorecardId: string;
+  time: number;
+  score: number;
+  state: number;
+  hasBall: boolean;
+  isActive: boolean;
+  assists: number;
+  stealsDone: number;
+  stealsReceived: number;
+  blocksDone: number;
+  blocksReceived: number;
+  clearsDone: number;
+  clearsReceived: number;
+  passesDone: number;
+  passesReceived: number;
+  possessionTimeMs: number;
+};
+
+export type LbReplayData = {
+  duration: number;
+  players: LbReplayPlayer[];
+  events: LbReplayEvent[];
+  playerStates: LbReplayPlayerState[];
+};
+
+export async function getLbGameReplayData(gameId: string): Promise<LbReplayData | null> {
+  const [gameRow] = await db
+    .select({ actualDuration: game.actualDuration })
+    .from(game)
+    .where(and(eq(game.id, gameId), eq(game.type, "lb")));
+
+  if (!gameRow) return null;
+
+  const [eventRows, stateRows, scorecardRows] = await Promise.all([
+    db
+      .select({
+        id: lbGameEvent.id,
+        time: lbGameEvent.time,
+        eventType: lbGameEvent.eventType,
+        description: lbGameEvent.description,
+        actorScorecardId: lbGameEvent.actorScorecardId,
+        targetScorecardId: lbGameEvent.targetScorecardId,
+      })
+      .from(lbGameEvent)
+      .where(eq(lbGameEvent.gameId, gameId))
+      .orderBy(asc(lbGameEvent.time)),
+
+    db
+      .select({
+        scorecardId: lbGamePlayerState.scorecardId,
+        time: lbGamePlayerState.time,
+        score: lbGamePlayerState.score,
+        state: lbGamePlayerState.state,
+        hasBall: lbGamePlayerState.hasBall,
+        isActive: lbGamePlayerState.isActive,
+        assists: lbGamePlayerState.assists,
+        stealsDone: lbGamePlayerState.stealsDone,
+        stealsReceived: lbGamePlayerState.stealsReceived,
+        blocksDone: lbGamePlayerState.blocksDone,
+        blocksReceived: lbGamePlayerState.blocksReceived,
+        clearsDone: lbGamePlayerState.clearsDone,
+        clearsReceived: lbGamePlayerState.clearsReceived,
+        passesDone: lbGamePlayerState.passesDone,
+        passesReceived: lbGamePlayerState.passesReceived,
+        possessionTimeMs: lbGamePlayerState.possessionTimeMs,
+      })
+      .from(lbGamePlayerState)
+      .where(eq(lbGamePlayerState.gameId, gameId))
+      .orderBy(asc(lbGamePlayerState.scorecardId), asc(lbGamePlayerState.time)),
+
+    db
+      .select({
+        id: lbScorecard.id,
+        callsign: lbScorecard.callsign,
+        teamId: lbScorecard.teamId,
+        teamName: lbGameTeam.name,
+        teamColour: lbGameTeam.colourEnum,
+      })
+      .from(lbScorecard)
+      .innerJoin(lbGameTeam, eq(lbScorecard.teamId, lbGameTeam.id))
+      .where(and(eq(lbScorecard.gameId, gameId), eq(lbGameTeam.isNeutral, false))),
+  ]);
+
+  return {
+    duration: gameRow.actualDuration,
+    players: scorecardRows.map((sc) => ({
+      scorecardId: sc.id,
+      callsign: sc.callsign,
+      teamId: sc.teamId,
+      teamName: sc.teamName,
+      teamColour: sc.teamColour,
+    })),
+    events: eventRows.map((e) => ({
+      id: e.id,
+      time: e.time,
+      eventType: e.eventType,
+      description: e.description,
+      actorScorecardId: e.actorScorecardId,
+      targetScorecardId: e.targetScorecardId,
+    })),
+    playerStates: stateRows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Laserball Replay State Insert (write)
+// ---------------------------------------------------------------------------
 
 export async function insertLbGamePlayerStates(
   tx: Tx,

@@ -904,6 +904,17 @@ export const lbGamePlayerState = pgTable(
     state: integer("state").notNull(),
     hasBall: boolean("has_ball").notNull(),
     isActive: boolean("is_active").notNull(),
+    // Running stat tallies for replay
+    assists: integer("assists").notNull().default(0),
+    stealsDone: integer("steals_done").notNull().default(0),
+    stealsReceived: integer("steals_received").notNull().default(0),
+    blocksDone: integer("blocks_done").notNull().default(0),
+    blocksReceived: integer("blocks_received").notNull().default(0),
+    clearsDone: integer("clears_done").notNull().default(0),
+    clearsReceived: integer("clears_received").notNull().default(0),
+    passesDone: integer("passes_done").notNull().default(0),
+    passesReceived: integer("passes_received").notNull().default(0),
+    possessionTimeMs: integer("possession_time_ms").notNull().default(0),
   },
   (t) => [
     unique().on(t.eventId, t.scorecardId),

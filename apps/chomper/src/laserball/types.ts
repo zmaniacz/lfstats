@@ -117,6 +117,16 @@ export interface LbPlayerStateSnapshot {
   state: number; // 0/2/3
   hasBall: boolean;
   isActive: boolean;
+  assists: number;
+  stealsDone: number;
+  stealsReceived: number;
+  blocksDone: number;
+  blocksReceived: number;
+  clearsDone: number;
+  clearsReceived: number;
+  passesDone: number;
+  passesReceived: number;
+  possessionTimeMs: number;
 }
 
 export interface LbSimEvent {

@@ -222,6 +222,16 @@ export async function ingestLaserball(
           state: snap.state,
           hasBall: snap.hasBall,
           isActive: snap.isActive,
+          assists: snap.assists,
+          stealsDone: snap.stealsDone,
+          stealsReceived: snap.stealsReceived,
+          blocksDone: snap.blocksDone,
+          blocksReceived: snap.blocksReceived,
+          clearsDone: snap.clearsDone,
+          clearsReceived: snap.clearsReceived,
+          passesDone: snap.passesDone,
+          passesReceived: snap.passesReceived,
+          possessionTimeMs: snap.possessionTimeMs,
         });
       }
     }
