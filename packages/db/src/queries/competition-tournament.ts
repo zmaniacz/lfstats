@@ -1595,8 +1595,6 @@ export async function getCompetitionStandings(
       ),
     );
 
-  if (gameRows.length === 0 && !poolId) return [];
-
   const stats = computeTeamStats(gameRows);
 
   // Fetch team names (including 0-game teams). For a specific pool, only include teams
@@ -4248,4 +4246,20 @@ export async function getCompetitionSchedule(
   });
 
   return entries;
+}
+
+// ---------------------------------------------------------------------------
+// Competition standings (API)
+// ---------------------------------------------------------------------------
+
+export async function getCompetitionStandingsData(
+  slug: string,
+): Promise<CompetitionStandingsRow[] | null> {
+  const [comp] = await db
+    .select({ id: competition.id })
+    .from(competition)
+    .where(eq(competition.slug, slug));
+  if (!comp) return null;
+
+  return getCompetitionStandings(comp.id);
 }
