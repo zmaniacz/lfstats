@@ -25,6 +25,8 @@ import {
   competitionMatchGame,
   gameOutcomeEnum,
   teamResultEnum,
+  lbGameTeam,
+  lbGameEvent,
 } from "../schema";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -515,6 +517,21 @@ export async function deleteGameChildren(tx: Tx, gameId: string) {
   await tx.delete(sm5GameEvent).where(eq(sm5GameEvent.gameId, gameId));
   // refereeId on sm5GamePenalty is set-null on delete, so safe to remove after penalties gone
   await tx.delete(gameReferee).where(eq(gameReferee.gameId, gameId));
+}
+
+export async function deleteLbGameChildren(tx: Tx, gameId: string) {
+  // Cascades to: lbScorecard (→ lbGamePlayerInteraction, lbGamePlayerState, lbGameEvent actor/target)
+  await tx.delete(lbGameTeam).where(eq(lbGameTeam.gameId, gameId));
+  // Catch remaining events (round start/end with null actor and target)
+  await tx.delete(lbGameEvent).where(eq(lbGameEvent.gameId, gameId));
+}
+
+export async function getLbGameIdsForReingest() {
+  return db
+    .select({ id: game.id, tdfFilename: game.tdfFilename })
+    .from(game)
+    .where(eq(game.type, "lb"))
+    .orderBy(game.startTime);
 }
 
 export async function updateGameRow(

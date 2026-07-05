@@ -2,8 +2,10 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
+import { LbReplayTab } from "@/components/laserball/LbReplayTab";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { getLbGameDetailBySlug } from "@lfstats/db";
@@ -44,31 +46,46 @@ export default async function LaserballGameDetailPage({
         </div>
       </div>
 
-      {teams.map((team) => {
-        const color = getTeamColor(team.colourEnum);
-        return (
-          <section key={team.id} className="space-y-0">
-            <div
-              className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`font-bold text-lg ${color?.text ?? ""}`}>{team.name}</span>
-                {team.result === "win" && <Badge variant="default">Win</Badge>}
-                {team.result === "loss" && <Badge variant="secondary">Loss</Badge>}
-                {team.result === "draw" && <Badge variant="secondary">Draw</Badge>}
-              </div>
-              <span className="tabular-nums font-semibold">{formatScore(team.score ?? 0)}</span>
-            </div>
-            <LbTeamScoreboard team={team} />
-          </section>
-        );
-      })}
-      <section className="space-y-1.5">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Possession
-        </h2>
-        <LbPossessionBar teams={possessionTeams} />
-      </section>
+      <Tabs defaultValue="scoreboard">
+        <TabsList>
+          <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
+          <TabsTrigger value="replay">Replay</TabsTrigger>
+        </TabsList>
+        <TabsContent value="scoreboard" className="mt-6">
+          <>
+            {teams.map((team) => {
+              const color = getTeamColor(team.colourEnum);
+              return (
+                <section key={team.id} className="space-y-0">
+                  <div
+                    className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold text-lg ${color?.text ?? ""}`}>{team.name}</span>
+                      {team.result === "win" && <Badge variant="default">Win</Badge>}
+                      {team.result === "loss" && <Badge variant="secondary">Loss</Badge>}
+                      {team.result === "draw" && <Badge variant="secondary">Draw</Badge>}
+                    </div>
+                    <span className="tabular-nums font-semibold">
+                      {formatScore(team.score ?? 0)}
+                    </span>
+                  </div>
+                  <LbTeamScoreboard team={team} />
+                </section>
+              );
+            })}
+            <section className="space-y-1.5">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Possession
+              </h2>
+              <LbPossessionBar teams={possessionTeams} />
+            </section>
+          </>
+        </TabsContent>
+        <TabsContent value="replay" className="mt-6">
+          <LbReplayTab gameId={game.id} duration={game.actualDuration} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

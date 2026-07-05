@@ -238,6 +238,16 @@ export function simulateLaserball(parsed: ParsedTdf): SimulatedLbGame {
         state: p.status,
         hasBall: currentHolder === id,
         isActive: p.status === 0,
+        assists: p.assists1,
+        stealsDone: p.stealsDone,
+        stealsReceived: p.stealsReceived,
+        blocksDone: p.blocksDone,
+        blocksReceived: p.blocksReceived,
+        clearsDone: p.clearsDone,
+        clearsReceived: p.clearsReceived,
+        passesDone: p.passesDone,
+        passesReceived: p.passesReceived,
+        possessionTimeMs: p.possessionTimeMs,
       });
     }
   };
