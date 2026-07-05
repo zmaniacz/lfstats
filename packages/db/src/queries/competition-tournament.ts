@@ -1413,6 +1413,7 @@ export type CompetitionStandingsRow = {
   teamSlug: string;
   teamShortName: string | null;
   teamHasLogo: boolean;
+  teamLogoUrl: string | null;
   matchPoints: number;
   matchWins: number;
   matchLosses: number;
@@ -1652,6 +1653,7 @@ export async function getCompetitionStandings(
         teamSlug: team.slug,
         teamShortName: team.shortName,
         teamHasLogo: team.hasLogo,
+        teamLogoUrl: team.hasLogo ? getTeamLogoUrl(team.id) : null,
         ...s,
       };
     })
