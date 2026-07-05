@@ -4126,6 +4126,8 @@ export type CompetitionScheduleEntry = {
   gameName: string;
   team1Name: string;
   team2Name: string;
+  team1LogoUrl: string | null;
+  team2LogoUrl: string | null;
   scheduledStartTime: Date | null;
   actualStartTime: Date | null;
   team1Score: number | null;
@@ -4171,11 +4173,15 @@ export async function getCompetitionSchedule(
   const teams =
     teamIds.length > 0
       ? await db
-          .select({ id: competitionTeam.id, name: competitionTeam.name })
+          .select({
+            id: competitionTeam.id,
+            name: competitionTeam.name,
+            hasLogo: competitionTeam.hasLogo,
+          })
           .from(competitionTeam)
           .where(inArray(competitionTeam.id, teamIds))
       : [];
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+  const teamMap = new Map(teams.map((t) => [t.id, t]));
 
   // Fetch all game assignments with actual scores
   const matchIds = matchRows.map((m) => m.matchId);
@@ -4213,8 +4219,12 @@ export async function getCompetitionSchedule(
   for (const m of matchRows) {
     const isFinals = m.roundType === "finals";
     const roundPrefix = isFinals ? "Finals" : `R${m.roundNumber}`;
-    const team1Name = m.team1Id ? (teamMap.get(m.team1Id) ?? "TBD") : "TBD";
-    const team2Name = m.team2Id ? (teamMap.get(m.team2Id) ?? "TBD") : "TBD";
+    const team1 = m.team1Id ? teamMap.get(m.team1Id) : undefined;
+    const team2 = m.team2Id ? teamMap.get(m.team2Id) : undefined;
+    const team1Name = m.team1Id ? (team1?.name ?? "TBD") : "TBD";
+    const team2Name = m.team2Id ? (team2?.name ?? "TBD") : "TBD";
+    const team1LogoUrl = m.team1Id && team1?.hasLogo ? getTeamLogoUrl(m.team1Id) : null;
+    const team2LogoUrl = m.team2Id && team2?.hasLogo ? getTeamLogoUrl(m.team2Id) : null;
 
     for (const gameNumber of [1, 2] as const) {
       const scheduled = gameNumber === 1 ? m.game1ScheduledStartTime : m.game2ScheduledStartTime;
@@ -4230,6 +4240,8 @@ export async function getCompetitionSchedule(
         gameName: `${roundPrefix} M${m.matchNumber} G${gameNumber}`,
         team1Name,
         team2Name,
+        team1LogoUrl,
+        team2LogoUrl,
         scheduledStartTime: scheduled ?? null,
         actualStartTime: actual?.actualStartTime ?? null,
         team1Score,
