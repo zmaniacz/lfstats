@@ -85,12 +85,7 @@ export default async function PlayersPage({
           )}
 
           <Suspense key={contentKey} fallback={<PlayersSkeleton />}>
-            <PlayersContent
-              useCompetitionView={useCompetitionView}
-              competitionId={ctx.competition?.id ?? ""}
-              options={options}
-              scopeFilter={toGameScopeFilter(ctx)}
-            />
+            <PlayersContent options={options} scopeFilter={toGameScopeFilter(ctx)} />
           </Suspense>
         </MinGamesProvider>
       )}

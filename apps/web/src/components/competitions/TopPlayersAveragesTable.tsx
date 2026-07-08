@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { formatHitDiff, formatMVP, formatPct, formatWinRate } from "@/lib/format";
 import type { CompetitionTopPlayer, PositionStats } from "@lfstats/db";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 
@@ -29,6 +29,73 @@ const POSITIONS = [
   { id: 4, label: "Ammo Carrier" },
   { id: 5, label: "Medic" },
 ] as const;
+
+const CSV_HEADERS = [
+  "Callsign",
+  "Avg MVP",
+  "MVP / min",
+  "Total MVP",
+  "Avg Accuracy",
+  "Avg Hit Diff",
+  "Win Rate",
+  "Wins",
+  "Games",
+  ...POSITIONS.flatMap((pos) => [
+    `${pos.label} Avg MVP`,
+    `${pos.label} Avg Accuracy`,
+    `${pos.label} Win Rate`,
+    `${pos.label} Wins`,
+    `${pos.label} Games`,
+  ]),
+];
+
+function csvField(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function toCsvRow(p: CompetitionTopPlayer): string {
+  const positionFields = POSITIONS.flatMap((pos) => {
+    const s: PositionStats | undefined = p.byPosition[pos.id];
+    if (!s) return ["", "", "", "0", "0"];
+    return [
+      s.avgMvp !== null ? formatMVP(s.avgMvp) : "",
+      s.avgAccuracy !== null ? formatPct(s.avgAccuracy) : "",
+      formatWinRate(s.wins, s.totalGames),
+      String(s.wins),
+      String(s.totalGames),
+    ];
+  });
+
+  return [
+    p.callsign,
+    formatMVP(p.avgMvp),
+    formatMVP(p.mvpPerMinute),
+    formatMVP(p.totalMvp),
+    formatPct(p.avgAccuracy),
+    formatHitDiff(p.avgHitDiff),
+    formatWinRate(p.wins, p.totalGames),
+    String(p.wins),
+    String(p.totalGames),
+    ...positionFields,
+  ]
+    .map(csvField)
+    .join(",");
+}
+
+function downloadCsv(players: CompetitionTopPlayer[]) {
+  const rows = [CSV_HEADERS.map(csvField).join(","), ...players.map(toCsvRow)];
+  const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.download = `players-overall-${date}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 type PositionSortMetric = "avgMvp" | "avgAccuracy" | "winRate";
 type PositionSortColumn = `p${1 | 2 | 3 | 4 | 5}_${PositionSortMetric}`;
@@ -138,8 +205,17 @@ export function TopPlayersAveragesTable({ players }: { players: CompetitionTopPl
 
   return (
     <Card className="min-w-0 w-full overflow-hidden">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Average Averages</CardTitle>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => downloadCsv(sorted)}
+          disabled={sorted.length === 0}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export CSV
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <Input
