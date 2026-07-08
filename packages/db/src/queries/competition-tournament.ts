@@ -3685,6 +3685,7 @@ export type CompetitionPlayerStatRow = {
   scout_total_nuke_cancels: number | null;
   scout_total_rapid_fires: number | null;
   scout_total_shot_3hit: number | null;
+  scout_avg_shot_3_hit: number | null;
   ammo_total_games_played: number | null;
   ammo_avg_mvp: number | null;
   ammo_avg_score: number | null;
@@ -3693,6 +3694,7 @@ export type CompetitionPlayerStatRow = {
   ammo_avg_medic_hits: number | null;
   ammo_total_medic_hits: number | null;
   ammo_total_boosts: number | null;
+  ammo_avg_boosts: number | null;
   ammo_avg_double_resup_ratio: number | null;
   medic_total_games_played: number | null;
   medic_avg_mvp: number | null;
@@ -3702,6 +3704,7 @@ export type CompetitionPlayerStatRow = {
   medic_avg_medic_hits: number | null;
   medic_total_medic_hits: number | null;
   medic_total_boosts: number | null;
+  medic_avg_boosts: number | null;
   medic_avg_double_resup_ratio: number | null;
 };
 
@@ -3754,6 +3757,7 @@ const ZERO_PLAYER_STATS: Omit<
   scout_total_nuke_cancels: null,
   scout_total_rapid_fires: null,
   scout_total_shot_3hit: null,
+  scout_avg_shot_3_hit: null,
   ammo_total_games_played: null,
   ammo_avg_mvp: null,
   ammo_avg_score: null,
@@ -3762,6 +3766,7 @@ const ZERO_PLAYER_STATS: Omit<
   ammo_avg_medic_hits: null,
   ammo_total_medic_hits: null,
   ammo_total_boosts: null,
+  ammo_avg_boosts: null,
   ammo_avg_double_resup_ratio: null,
   medic_total_games_played: null,
   medic_avg_mvp: null,
@@ -3771,6 +3776,7 @@ const ZERO_PLAYER_STATS: Omit<
   medic_avg_medic_hits: null,
   medic_total_medic_hits: null,
   medic_total_boosts: null,
+  medic_avg_boosts: null,
   medic_avg_double_resup_ratio: null,
 };
 
@@ -3922,6 +3928,9 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         sctTotalShot3hit: sql<
           number | null
         >`sum(${sm5Scorecard.shotsHitOpponent3hit}) filter (where ${sm5Scorecard.position} = 3)`,
+        sctAvgShot3hit: sql<
+          number | null
+        >`avg(${sm5Scorecard.shotsHitOpponent3hit}) filter (where ${sm5Scorecard.position} = 3)`,
         // Ammo Carrier (position 4)
         ammoGames: sql<
           number | null
@@ -3947,6 +3956,9 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         ammoTotalBoosts: sql<
           number | null
         >`sum(${sm5Scorecard.ammoBoost}) filter (where ${sm5Scorecard.position} = 4)`,
+        ammoAvgBoosts: sql<
+          number | null
+        >`avg(${sm5Scorecard.ammoBoost}) filter (where ${sm5Scorecard.position} = 4)`,
         ammoAvgDoubleResupRatio: sql<
           number | null
         >`avg(${sm5Scorecard.doubleResuppliesGiven}::float / nullif(${sm5Scorecard.resuppliesGiven}, 0)) filter (where ${sm5Scorecard.position} = 4)`,
@@ -3975,6 +3987,9 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         medTotalBoosts: sql<
           number | null
         >`sum(${sm5Scorecard.lifeBoost}) filter (where ${sm5Scorecard.position} = 5)`,
+        medAvgBoosts: sql<
+          number | null
+        >`avg(${sm5Scorecard.lifeBoost}) filter (where ${sm5Scorecard.position} = 5)`,
         medAvgDoubleResupRatio: sql<
           number | null
         >`avg(${sm5Scorecard.doubleResuppliesGiven}::float / nullif(${sm5Scorecard.resuppliesGiven}, 0)) filter (where ${sm5Scorecard.position} = 5)`,
@@ -4070,6 +4085,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       scout_total_nuke_cancels: n(r.sctTotalNukeCancels),
       scout_total_rapid_fires: n(r.sctTotalRapidFires),
       scout_total_shot_3hit: n(r.sctTotalShot3hit),
+      scout_avg_shot_3_hit: n(r.sctAvgShot3hit),
       ammo_total_games_played: n(r.ammoGames),
       ammo_avg_mvp: n(r.ammoAvgMvp),
       ammo_avg_score: n(r.ammoAvgScore),
@@ -4078,6 +4094,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       ammo_avg_medic_hits: n(r.ammoAvgMedicHits),
       ammo_total_medic_hits: n(r.ammoTotalMedicHits),
       ammo_total_boosts: n(r.ammoTotalBoosts),
+      ammo_avg_boosts: n(r.ammoAvgBoosts),
       ammo_avg_double_resup_ratio: n(r.ammoAvgDoubleResupRatio),
       medic_total_games_played: n(r.medGames),
       medic_avg_mvp: n(r.medAvgMvp),
@@ -4087,6 +4104,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       medic_avg_medic_hits: n(r.medAvgMedicHits),
       medic_total_medic_hits: n(r.medTotalMedicHits),
       medic_total_boosts: n(r.medTotalBoosts),
+      medic_avg_boosts: n(r.medAvgBoosts),
       medic_avg_double_resup_ratio: n(r.medAvgDoubleResupRatio),
     };
   }
