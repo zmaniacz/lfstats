@@ -828,6 +828,57 @@ export const lbScorecard = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------------------
+// Laserball Match (side-swap first/second half linking)
+//
+// A Laserball "Match" is two games (halves) played by the same two teams with
+// sides swapped between them. The TDF format has zero cross-file linkage —
+// team `index` is documented as game-scoped only, and name/colour are
+// center-configured display strings, not stable identity — so this link is a
+// pure out-of-band admin action performed from an already-ingested game's
+// detail page. Deliberately independent of the competition/tournament system:
+// no FK to `competition`, `competitionMatch`, or `competitionMatchGame`.
+// ---------------------------------------------------------------------------
+
+export const lbMatch = pgTable("lb_match", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Free-text audit breadcrumb (session.user.email), not a FK.
+  linkedBy: text("linked_by"),
+});
+
+export const lbMatchGame = pgTable(
+  "lb_match_game",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => lbMatch.id, { onDelete: "cascade" }),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    // 1 = first half played, 2 = second (post side-swap) half.
+    half: integer("half").notNull(),
+    // Which lb_game_team row *in this game* is match "Side 1" / "Side 2".
+    // Side identity is match-scoped only — there is no persistent lb team
+    // identity table (colour/name are just center display strings). Side 1
+    // in half 1 and Side 1 in half 2 are asserted by the admin, at link
+    // time, to be "the same real-world team" — they will normally carry a
+    // *different* tdfTeamIndex/colourEnum in each half (that's the swap).
+    side1GameTeamId: uuid("side1_game_team_id")
+      .notNull()
+      .references(() => lbGameTeam.id),
+    side2GameTeamId: uuid("side2_game_team_id")
+      .notNull()
+      .references(() => lbGameTeam.id),
+  },
+  (t) => [
+    unique().on(t.matchId, t.half),
+    unique().on(t.gameId),
+    index("lb_match_game_match_id_idx").on(t.matchId),
+  ],
+);
+
 export const lbGamePlayerInteraction = pgTable(
   "lb_game_player_interaction",
   {

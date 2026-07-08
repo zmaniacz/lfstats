@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { auth } from "@/auth";
+import { LbMatchManager } from "@/components/laserball/LbMatchManager";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
 import { LbReplayTab } from "@/components/laserball/LbReplayTab";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
@@ -8,8 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
-import { getLbGameDetailBySlug } from "@lfstats/db";
+import {
+  getLbGameDetailBySlug,
+  getLbMatchCandidateGames,
+  getLbMatchDetail,
+  getLbMatchIdForGame,
+  getLbMatchRosterWarnings,
+} from "@lfstats/db";
 import { notFound } from "next/navigation";
+import { linkLbMatchAction, unlinkLbMatchAction } from "./actions";
 
 export default async function LaserballGameDetailPage({
   params,
@@ -17,8 +26,23 @@ export default async function LaserballGameDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const game = await getLbGameDetailBySlug(slug);
+  const [game, session] = await Promise.all([getLbGameDetailBySlug(slug), auth()]);
   if (!game) notFound();
+
+  const roles = session?.user.roles ?? [];
+  const canManage = roles.some(
+    (r) =>
+      r.role === "superAdmin" ||
+      r.role === "admin" ||
+      (r.role === "centerAdmin" && r.centerId === game.centerId),
+  );
+
+  const matchId = await getLbMatchIdForGame(game.id);
+  const [matchDetail, rosterWarnings, candidateGames] = await Promise.all([
+    matchId ? getLbMatchDetail(matchId) : Promise.resolve(null),
+    matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
+    !matchId && canManage ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
+  ]);
 
   // Winning team first; draws keep tdf order.
   const teams = [...game.teams].sort((a, b) =>
@@ -44,6 +68,17 @@ export default async function LaserballGameDetailPage({
           </Badge>
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         </div>
+        {canManage && (
+          <LbMatchManager
+            gameId={game.id}
+            gameTeams={teams.map((t) => ({ id: t.id, name: t.name, colourEnum: t.colourEnum }))}
+            matchDetail={matchDetail}
+            rosterWarnings={rosterWarnings}
+            candidateGames={candidateGames}
+            linkAction={linkLbMatchAction}
+            unlinkAction={unlinkLbMatchAction}
+          />
+        )}
       </div>
 
       <Tabs defaultValue="scoreboard">

@@ -12,6 +12,7 @@ export * from "./queries/chomper";
 export * from "./queries/favorites";
 export * from "./queries/games";
 export * from "./queries/laserball";
+export * from "./queries/lb-match";
 export * from "./queries/players";
 export * from "./queries/scope";
 export * from "./queries/stats";
