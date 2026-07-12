@@ -142,6 +142,41 @@ export async function getGamesCount(filters: GameListFilters = {}): Promise<numb
   return row?.count ?? 0;
 }
 
+export type GameExportFilters = {
+  startDate: string;
+  endDate: string;
+  gameType?: "sm5" | "lb";
+  centerId?: string;
+};
+
+export type GameExportItem = {
+  centerSlug: string;
+  startTime: Date;
+  gameType: string;
+  tdfFilename: string;
+};
+
+export async function getGamesForExport(filters: GameExportFilters): Promise<GameExportItem[]> {
+  const conditions: SQL[] = [
+    eq(game.exclude, false),
+    sql`date(${game.startTime}) between ${filters.startDate}::date and ${filters.endDate}::date`,
+  ];
+  if (filters.gameType) conditions.push(eq(game.type, filters.gameType));
+  if (filters.centerId) conditions.push(eq(game.centerId, filters.centerId));
+
+  return db
+    .select({
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      startTime: game.startTime,
+      gameType: game.type,
+      tdfFilename: game.tdfFilename,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(and(...conditions))
+    .orderBy(desc(game.startTime));
+}
+
 export type MvpComponentRow = {
   component: string;
   inputValue: number;

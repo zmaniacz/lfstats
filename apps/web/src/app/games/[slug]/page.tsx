@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
+import { getTdfArchiveUrl } from "@/lib/tdf";
 import {
   getAvailableMatchesForGame,
   getCompetitionGameNavigation,
@@ -153,7 +154,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
         </p>
         <p className="text-muted-foreground text-sm">
           <a
-            href={`https://lfstats-modern-archive.s3.us-west-1.amazonaws.com/${game.tdfFilename}`}
+            href={getTdfArchiveUrl(game.tdfFilename)}
             className="hover:underline"
             target="_blank"
             rel="noopener noreferrer"
