@@ -4,12 +4,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { Settings } from "lucide-react";
-import { getCompetitionRounds } from "@lfstats/db";
+import { getCompetitionRounds, getCompetitionUnassignedGamesForAdmin } from "@lfstats/db";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { RoundFilter } from "./RoundFilter";
 import { StandingsContent } from "@/components/competitions/StandingsContent";
 import { FinalsContent } from "@/components/competitions/FinalsContent";
 import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
+import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesBlock";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { resolveFilterContext } from "@/lib/filter-context";
 import { auth } from "@/auth";
@@ -45,7 +46,10 @@ export default async function StandingsPage({
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
 
-  const allRounds = await getCompetitionRounds(activeId);
+  const [allRounds, unassignedGames] = await Promise.all([
+    getCompetitionRounds(activeId),
+    isAdmin ? getCompetitionUnassignedGamesForAdmin(activeId) : Promise.resolve([]),
+  ]);
   const standingsRounds = allRounds
     .filter((r) => r.type === "pool" || r.type === "split-pool" || r.type === "wildcard")
     .sort((a, b) => a.roundNumber - b.roundNumber);
@@ -61,6 +65,7 @@ export default async function StandingsPage({
 
   return (
     <div className="p-6 space-y-6">
+      {isAdmin && <UnassignedGamesBlock games={unassignedGames} />}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-semibold">Standings</h2>
