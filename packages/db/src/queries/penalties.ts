@@ -128,20 +128,6 @@ export async function getCompetitionPenalties(
   return getPenalties({ scope: "competition", competitionId });
 }
 
-export async function getTeamPenaltyTotals(gameId: string): Promise<Map<string, number>> {
-  const rows = await db
-    .select({
-      teamId: sm5Scorecard.teamId,
-      total: sql<number>`coalesce(sum(${sm5GamePenalty.scoreValue}), 0)::int`,
-    })
-    .from(sm5GamePenalty)
-    .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
-    .where(and(eq(sm5GamePenalty.gameId, gameId), eq(sm5GamePenalty.rescinded, false)))
-    .groupBy(sm5Scorecard.teamId);
-
-  return new Map(rows.map((r) => [r.teamId, r.total]));
-}
-
 export async function addPenalty(data: {
   scorecardId: string;
   gameId: string;
@@ -320,12 +306,11 @@ async function recalculateScorecardMvp(scorecardId: string, tx: Tx): Promise<voi
 }
 
 export async function recalculateGameResult(gameId: string, tx: Tx): Promise<void> {
-  // Elimination games: result is determined by elimination, not score
   const [gameRow] = await tx
     .select({ outcome: game.outcome })
     .from(game)
     .where(eq(game.id, gameId));
-  if (!gameRow || gameRow.outcome === "elimination" || gameRow.outcome === "forfeit") return;
+  if (!gameRow) return;
 
   const teams = await tx
     .select({
@@ -353,15 +338,27 @@ export async function recalculateGameResult(gameId: string, tx: Tx): Promise<voi
 
   const scores = teams.map((t) => ({
     id: t.id,
+    penaltyScore: penaltyMap.get(t.id) ?? 0,
     effective: (t.score ?? 0) + (t.eliminationBonus ?? 0) + (penaltyMap.get(t.id) ?? 0),
   }));
 
+  // Elimination/forfeit games: the winner is determined by elimination, not
+  // score, so `result` is left untouched — but penaltyScore is always kept
+  // current so the displayed score is correct regardless of outcome type.
+  const recomputeResult = gameRow.outcome !== "elimination" && gameRow.outcome !== "forfeit";
   const maxScore = Math.max(...scores.map((s) => s.effective));
   const winners = scores.filter((s) => s.effective === maxScore);
   const isDraw = winners.length > 1;
 
   for (const s of scores) {
-    const result = isDraw ? "draw" : s.effective === maxScore ? "win" : "loss";
-    await tx.update(sm5GameTeam).set({ result }).where(eq(sm5GameTeam.id, s.id));
+    await tx
+      .update(sm5GameTeam)
+      .set({
+        penaltyScore: s.penaltyScore,
+        ...(recomputeResult && {
+          result: isDraw ? "draw" : s.effective === maxScore ? "win" : "loss",
+        }),
+      })
+      .where(eq(sm5GameTeam.id, s.id));
   }
 }

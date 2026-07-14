@@ -27,6 +27,7 @@ async function attachTeams(
       colourEnum: sm5GameTeam.colourEnum,
       score: sm5GameTeam.score,
       eliminationBonus: sm5GameTeam.eliminationBonus,
+      penaltyScore: sm5GameTeam.penaltyScore,
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
@@ -53,6 +54,7 @@ async function attachTeams(
       colourEnum: t.colourEnum,
       score: t.score,
       eliminationBonus: t.eliminationBonus,
+      penaltyScore: t.penaltyScore ?? 0,
       result: t.result,
     })),
   }));

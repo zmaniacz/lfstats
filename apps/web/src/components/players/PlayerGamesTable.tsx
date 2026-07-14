@@ -65,7 +65,10 @@ function enrichGame(g: PlayerGameListItem): EnrichedGame {
         : playerTeamResult === "loss"
           ? `Loss — ${g.outcome === "elimination" ? "Elimination" : "Score"}`
           : g.outcome;
-  const playerTeamTotal = (playerTeam?.score ?? 0) + (playerTeam?.eliminationBonus ?? 0);
+  const playerTeamTotal =
+    (playerTeam?.score ?? 0) +
+    (playerTeam?.eliminationBonus ?? 0) +
+    (playerTeam?.penaltyScore ?? 0);
   return { ...g, outcomeLabel, playerTeamTotal };
 }
 
@@ -340,7 +343,11 @@ export function PlayerGamesTable({ games }: { games: PlayerGameListItem[] }) {
                       <Fragment key={i}>
                         {i > 0 && <span className="text-muted-foreground">–</span>}
                         <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
-                          {formatScore((team.score ?? 0) + (team.eliminationBonus ?? 0))}
+                          {formatScore(
+                            (team.score ?? 0) +
+                              (team.eliminationBonus ?? 0) +
+                              (team.penaltyScore ?? 0),
+                          )}
                         </span>
                       </Fragment>
                     ))}

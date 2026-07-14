@@ -56,6 +56,7 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
       colourEnum: sm5GameTeam.colourEnum,
       score: sm5GameTeam.score,
       eliminationBonus: sm5GameTeam.eliminationBonus,
+      penaltyScore: sm5GameTeam.penaltyScore,
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
@@ -87,6 +88,7 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
         colourEnum: t.colourEnum,
         score: t.score,
         eliminationBonus: t.eliminationBonus,
+        penaltyScore: t.penaltyScore ?? 0,
         result: t.result,
       })),
     }));

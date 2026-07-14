@@ -18,7 +18,6 @@ import {
   gameTagAssignment,
 } from "../schema";
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
-import { getTeamPenaltyTotals } from "./penalties";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export const GAMES_PER_PAGE = 10;
@@ -33,6 +32,7 @@ export type GameTeamSummary = {
   colourEnum: number;
   score: number | null;
   eliminationBonus: number | null;
+  penaltyScore: number;
   result: "win" | "loss" | "draw" | null;
 };
 
@@ -101,6 +101,7 @@ export async function getGamesPage(
       colourEnum: sm5GameTeam.colourEnum,
       score: sm5GameTeam.score,
       eliminationBonus: sm5GameTeam.eliminationBonus,
+      penaltyScore: sm5GameTeam.penaltyScore,
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
@@ -127,6 +128,7 @@ export async function getGamesPage(
       colourEnum: t.colourEnum,
       score: t.score,
       eliminationBonus: t.eliminationBonus,
+      penaltyScore: t.penaltyScore ?? 0,
       result: t.result,
     })),
   }));
@@ -362,6 +364,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         colourEnum: sm5GameTeam.colourEnum,
         score: sm5GameTeam.score,
         eliminationBonus: sm5GameTeam.eliminationBonus,
+        penaltyScore: sm5GameTeam.penaltyScore,
         result: sm5GameTeam.result,
         eliminated: sm5GameTeam.eliminated,
       })
@@ -646,7 +649,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         colourEnum: team.colourEnum,
         score: team.score,
         eliminationBonus: team.eliminationBonus,
-        penaltyScore: 0,
+        penaltyScore: team.penaltyScore ?? 0,
         result: team.result,
         eliminated: team.eliminated,
         players: buildPlayers(team.id, team.id),
@@ -707,144 +710,142 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 
   if (!gameRow) return null;
 
-  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows, penaltyTotals] =
-    await Promise.all([
-      db
-        .select({
-          id: sm5GameTeam.id,
-          name: sm5GameTeam.name,
-          colourEnum: sm5GameTeam.colourEnum,
-          score: sm5GameTeam.score,
-          eliminationBonus: sm5GameTeam.eliminationBonus,
-          result: sm5GameTeam.result,
-          eliminated: sm5GameTeam.eliminated,
-        })
-        .from(sm5GameTeam)
-        .where(and(eq(sm5GameTeam.gameId, id), eq(sm5GameTeam.isNeutral, false))),
+  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows] = await Promise.all([
+    db
+      .select({
+        id: sm5GameTeam.id,
+        name: sm5GameTeam.name,
+        colourEnum: sm5GameTeam.colourEnum,
+        score: sm5GameTeam.score,
+        eliminationBonus: sm5GameTeam.eliminationBonus,
+        penaltyScore: sm5GameTeam.penaltyScore,
+        result: sm5GameTeam.result,
+        eliminated: sm5GameTeam.eliminated,
+      })
+      .from(sm5GameTeam)
+      .where(and(eq(sm5GameTeam.gameId, id), eq(sm5GameTeam.isNeutral, false))),
 
-      db
-        .select({
-          id: sm5Scorecard.id,
-          teamId: sm5Scorecard.teamId,
-          playerId: sm5Scorecard.playerId,
-          iplId: sm5Scorecard.iplId,
-          callsign: sm5Scorecard.callsign,
-          position: sm5Scorecard.position,
-          eliminated: sm5Scorecard.eliminated,
-          score: sm5Scorecard.score,
-          mvpPoints: sm5Scorecard.mvpPoints,
-          livesLeft: sm5Scorecard.livesLeft,
-          shotsLeft: sm5Scorecard.shotsLeft,
-          hitDiff: sm5Scorecard.hitDiff,
-          accuracy: sm5Scorecard.accuracy,
-          // Shot stats
-          shotsFired: sm5Scorecard.shotsFired,
-          shotsHit: sm5Scorecard.shotsHit,
-          shotsHitOpponent: sm5Scorecard.shotsHitOpponent,
-          shotsHitOpponent3hit: sm5Scorecard.shotsHitOpponent3hit,
-          shotsHitTeam: sm5Scorecard.shotsHitTeam,
-          shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
-          shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
-          medicHits: sm5Scorecard.medicHits,
-          teamMedicHits: sm5Scorecard.teamMedicHits,
-          timesHit: sm5Scorecard.timesHit,
-          // Missile stats
-          missileHits: sm5Scorecard.missileHits,
-          missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
-          missilesHitTeam: sm5Scorecard.missilesHitTeam,
-          missilesHitOpponentMedic: sm5Scorecard.missilesHitOpponentMedic,
-          missilesHitTeamMedic: sm5Scorecard.missilesHitTeamMedic,
-          timesHitByMissile: sm5Scorecard.timesHitByMissile,
-          // Nuke stats
-          nukesActivated: sm5Scorecard.nukesActivated,
-          nukesDetonated: sm5Scorecard.nukesDetonated,
-          nukesHitMedic: sm5Scorecard.nukesHitMedic,
-          livesRemovedByNuke: sm5Scorecard.livesRemovedByNuke,
-          totalNukeActivationTime: sm5Scorecard.totalNukeActivationTime,
-          averageNukeActivationTime: sm5Scorecard.averageNukeActivationTime,
-          // Nuke cancel stats
-          nukesCanceled: sm5Scorecard.nukesCanceled,
-          teamNukesCanceled: sm5Scorecard.teamNukesCanceled,
-          // Scout special ability
-          rapidFire: sm5Scorecard.rapidFire,
-          totalRapidTime: sm5Scorecard.totalRapidTime,
-          averageRapidTime: sm5Scorecard.averageRapidTime,
-          shotsFiredDuringRapid: sm5Scorecard.shotsFiredDuringRapid,
-          shotsHitDuringRapid: sm5Scorecard.shotsHitDuringRapid,
-          shotsHitOpponentDuringRapid: sm5Scorecard.shotsHitOpponentDuringRapid,
-          shotsHitTeamDuringRapid: sm5Scorecard.shotsHitTeamDuringRapid,
-          accuracyDuringRapid: sm5Scorecard.accuracyDuringRapid,
-          // Ammo/Medic special ability
-          ammoBoost: sm5Scorecard.ammoBoost,
-          lifeBoost: sm5Scorecard.lifeBoost,
-          // Support stats
-          resuppliesGiven: sm5Scorecard.resuppliesGiven,
-          doubleResuppliesGiven: sm5Scorecard.doubleResuppliesGiven,
-          resuppliesReceivedAmmo: sm5Scorecard.resuppliesReceivedAmmo,
-          resuppliesReceivedLives: sm5Scorecard.resuppliesReceivedLives,
-          doubleResuppliesReceived: sm5Scorecard.doubleResuppliesReceived,
-          // Combat outcomes
-          deactivatedOpponent: sm5Scorecard.deactivatedOpponent,
-          deactivatedTeam: sm5Scorecard.deactivatedTeam,
-          eliminatedOpponent: sm5Scorecard.eliminatedOpponent,
-          eliminatedTeam: sm5Scorecard.eliminatedTeam,
-          eliminatedOpponentMedic: sm5Scorecard.eliminatedOpponentMedic,
-          eliminatedTeamMedic: sm5Scorecard.eliminatedTeamMedic,
-          assists: sm5Scorecard.assists,
-          resetOpponent: sm5Scorecard.resetOpponent,
-          resetTeam: sm5Scorecard.resetTeam,
-          missileResetOpponent: sm5Scorecard.missileResetOpponent,
-          missileResetTeam: sm5Scorecard.missileResetTeam,
-          // SP tracking
-          spEarned: sm5Scorecard.spEarned,
-          spSpent: sm5Scorecard.spSpent,
-          // Targets and penalties
-          targetsDestroyed: sm5Scorecard.targetsDestroyed,
-          penalties: sm5Scorecard.penalties,
-          isMercenary: sm5Scorecard.isMercenary,
-          // Uptime & downtime
-          uptime: sm5Scorecard.uptime,
-          resupplyDowntime: sm5Scorecard.resupplyDowntime,
-          otherDowntime: sm5Scorecard.otherDowntime,
-          endTime: sm5Scorecard.endTime,
-        })
-        .from(sm5Scorecard)
-        .where(eq(sm5Scorecard.gameId, id))
-        .orderBy(desc(sm5Scorecard.score)),
+    db
+      .select({
+        id: sm5Scorecard.id,
+        teamId: sm5Scorecard.teamId,
+        playerId: sm5Scorecard.playerId,
+        iplId: sm5Scorecard.iplId,
+        callsign: sm5Scorecard.callsign,
+        position: sm5Scorecard.position,
+        eliminated: sm5Scorecard.eliminated,
+        score: sm5Scorecard.score,
+        mvpPoints: sm5Scorecard.mvpPoints,
+        livesLeft: sm5Scorecard.livesLeft,
+        shotsLeft: sm5Scorecard.shotsLeft,
+        hitDiff: sm5Scorecard.hitDiff,
+        accuracy: sm5Scorecard.accuracy,
+        // Shot stats
+        shotsFired: sm5Scorecard.shotsFired,
+        shotsHit: sm5Scorecard.shotsHit,
+        shotsHitOpponent: sm5Scorecard.shotsHitOpponent,
+        shotsHitOpponent3hit: sm5Scorecard.shotsHitOpponent3hit,
+        shotsHitTeam: sm5Scorecard.shotsHitTeam,
+        shotsHitOpponentMedic: sm5Scorecard.shotsHitOpponentMedic,
+        shotsHitTeamMedic: sm5Scorecard.shotsHitTeamMedic,
+        medicHits: sm5Scorecard.medicHits,
+        teamMedicHits: sm5Scorecard.teamMedicHits,
+        timesHit: sm5Scorecard.timesHit,
+        // Missile stats
+        missileHits: sm5Scorecard.missileHits,
+        missilesHitOpponent: sm5Scorecard.missilesHitOpponent,
+        missilesHitTeam: sm5Scorecard.missilesHitTeam,
+        missilesHitOpponentMedic: sm5Scorecard.missilesHitOpponentMedic,
+        missilesHitTeamMedic: sm5Scorecard.missilesHitTeamMedic,
+        timesHitByMissile: sm5Scorecard.timesHitByMissile,
+        // Nuke stats
+        nukesActivated: sm5Scorecard.nukesActivated,
+        nukesDetonated: sm5Scorecard.nukesDetonated,
+        nukesHitMedic: sm5Scorecard.nukesHitMedic,
+        livesRemovedByNuke: sm5Scorecard.livesRemovedByNuke,
+        totalNukeActivationTime: sm5Scorecard.totalNukeActivationTime,
+        averageNukeActivationTime: sm5Scorecard.averageNukeActivationTime,
+        // Nuke cancel stats
+        nukesCanceled: sm5Scorecard.nukesCanceled,
+        teamNukesCanceled: sm5Scorecard.teamNukesCanceled,
+        // Scout special ability
+        rapidFire: sm5Scorecard.rapidFire,
+        totalRapidTime: sm5Scorecard.totalRapidTime,
+        averageRapidTime: sm5Scorecard.averageRapidTime,
+        shotsFiredDuringRapid: sm5Scorecard.shotsFiredDuringRapid,
+        shotsHitDuringRapid: sm5Scorecard.shotsHitDuringRapid,
+        shotsHitOpponentDuringRapid: sm5Scorecard.shotsHitOpponentDuringRapid,
+        shotsHitTeamDuringRapid: sm5Scorecard.shotsHitTeamDuringRapid,
+        accuracyDuringRapid: sm5Scorecard.accuracyDuringRapid,
+        // Ammo/Medic special ability
+        ammoBoost: sm5Scorecard.ammoBoost,
+        lifeBoost: sm5Scorecard.lifeBoost,
+        // Support stats
+        resuppliesGiven: sm5Scorecard.resuppliesGiven,
+        doubleResuppliesGiven: sm5Scorecard.doubleResuppliesGiven,
+        resuppliesReceivedAmmo: sm5Scorecard.resuppliesReceivedAmmo,
+        resuppliesReceivedLives: sm5Scorecard.resuppliesReceivedLives,
+        doubleResuppliesReceived: sm5Scorecard.doubleResuppliesReceived,
+        // Combat outcomes
+        deactivatedOpponent: sm5Scorecard.deactivatedOpponent,
+        deactivatedTeam: sm5Scorecard.deactivatedTeam,
+        eliminatedOpponent: sm5Scorecard.eliminatedOpponent,
+        eliminatedTeam: sm5Scorecard.eliminatedTeam,
+        eliminatedOpponentMedic: sm5Scorecard.eliminatedOpponentMedic,
+        eliminatedTeamMedic: sm5Scorecard.eliminatedTeamMedic,
+        assists: sm5Scorecard.assists,
+        resetOpponent: sm5Scorecard.resetOpponent,
+        resetTeam: sm5Scorecard.resetTeam,
+        missileResetOpponent: sm5Scorecard.missileResetOpponent,
+        missileResetTeam: sm5Scorecard.missileResetTeam,
+        // SP tracking
+        spEarned: sm5Scorecard.spEarned,
+        spSpent: sm5Scorecard.spSpent,
+        // Targets and penalties
+        targetsDestroyed: sm5Scorecard.targetsDestroyed,
+        penalties: sm5Scorecard.penalties,
+        isMercenary: sm5Scorecard.isMercenary,
+        // Uptime & downtime
+        uptime: sm5Scorecard.uptime,
+        resupplyDowntime: sm5Scorecard.resupplyDowntime,
+        otherDowntime: sm5Scorecard.otherDowntime,
+        endTime: sm5Scorecard.endTime,
+      })
+      .from(sm5Scorecard)
+      .where(eq(sm5Scorecard.gameId, id))
+      .orderBy(desc(sm5Scorecard.score)),
 
-      db
-        .select({
-          scorecardId: sm5ScorecardMvp.scorecardId,
-          component: sm5ScorecardMvp.component,
-          inputValue: sm5ScorecardMvp.inputValue,
-          points: sm5ScorecardMvp.points,
-        })
-        .from(sm5ScorecardMvp)
-        .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
-        .where(eq(sm5Scorecard.gameId, id)),
+    db
+      .select({
+        scorecardId: sm5ScorecardMvp.scorecardId,
+        component: sm5ScorecardMvp.component,
+        inputValue: sm5ScorecardMvp.inputValue,
+        points: sm5ScorecardMvp.points,
+      })
+      .from(sm5ScorecardMvp)
+      .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
+      .where(eq(sm5Scorecard.gameId, id)),
 
-      db
-        .select({
-          scorecardId: sm5GamePlayerInteraction.scorecardId,
-          targetScorecardId: sm5GamePlayerInteraction.targetScorecardId,
-          shotsHit: sm5GamePlayerInteraction.shotsHit,
-          missileHits: sm5GamePlayerInteraction.missileHits,
-        })
-        .from(sm5GamePlayerInteraction)
-        .where(eq(sm5GamePlayerInteraction.gameId, id)),
+    db
+      .select({
+        scorecardId: sm5GamePlayerInteraction.scorecardId,
+        targetScorecardId: sm5GamePlayerInteraction.targetScorecardId,
+        shotsHit: sm5GamePlayerInteraction.shotsHit,
+        missileHits: sm5GamePlayerInteraction.missileHits,
+      })
+      .from(sm5GamePlayerInteraction)
+      .where(eq(sm5GamePlayerInteraction.gameId, id)),
 
-      db
-        .select({
-          id: gameTag.id,
-          name: gameTag.name,
-          color: gameTag.color,
-        })
-        .from(gameTag)
-        .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
-        .where(eq(gameTagAssignment.gameId, id)),
-
-      getTeamPenaltyTotals(id),
-    ]);
+    db
+      .select({
+        id: gameTag.id,
+        name: gameTag.name,
+        color: gameTag.color,
+      })
+      .from(gameTag)
+      .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
+      .where(eq(gameTagAssignment.gameId, id)),
+  ]);
 
   const mvpByScorecard = new Map<string, MvpComponentRow[]>();
   for (const row of mvpRows) {
@@ -908,7 +909,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
       colourEnum: team.colourEnum,
       score: team.score,
       eliminationBonus: team.eliminationBonus,
-      penaltyScore: penaltyTotals.get(team.id) ?? 0,
+      penaltyScore: team.penaltyScore ?? 0,
       result: team.result,
       eliminated: team.eliminated,
       players: (scorecardsByTeam.get(team.id) ?? []).map((sc) => ({

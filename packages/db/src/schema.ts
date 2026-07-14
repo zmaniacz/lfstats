@@ -305,6 +305,9 @@ export const sm5GameTeam = pgTable(
     // Null for the Neutral team — concept does not apply
     score: integer("score"),
     eliminationBonus: integer("elimination_bonus"),
+    // Live sum of non-rescinded sm5_game_penalty.score_value for this team,
+    // maintained by recalculateGameResult() alongside `result`.
+    penaltyScore: integer("penalty_score"),
     result: teamResultEnum("result"),
     eliminated: boolean("eliminated"),
   },

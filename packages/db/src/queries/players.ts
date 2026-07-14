@@ -417,6 +417,7 @@ export async function getPlayerGames(
         colourEnum: sm5GameTeam.colourEnum,
         score: sm5GameTeam.score,
         eliminationBonus: sm5GameTeam.eliminationBonus,
+        penaltyScore: sm5GameTeam.penaltyScore,
         result: sm5GameTeam.result,
       })
       .from(sm5GameTeam)
@@ -440,6 +441,7 @@ export async function getPlayerGames(
       colourEnum: team.colourEnum,
       score: team.score,
       eliminationBonus: team.eliminationBonus,
+      penaltyScore: team.penaltyScore ?? 0,
       result: team.result,
     });
     teamsByGame.set(team.gameId, list);

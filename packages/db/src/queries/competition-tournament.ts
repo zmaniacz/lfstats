@@ -1572,12 +1572,12 @@ export async function getCompetitionStandings(
       gameNumber: competitionMatchGame.gameNumber,
       // team1 perspective
       team1Id: competitionMatch.team1Id,
-      team1Score: sql<number>`t1.score + t1.elimination_bonus`,
+      team1Score: sql<number>`t1.score + t1.elimination_bonus + coalesce(t1.penalty_score, 0)`,
       team1Result: sql<string>`t1.result`,
       team1EliminatedOpponent: sql<boolean>`t2.eliminated`,
       // team2 perspective
       team2Id: competitionMatch.team2Id,
-      team2Score: sql<number>`t2.score + t2.elimination_bonus`,
+      team2Score: sql<number>`t2.score + t2.elimination_bonus + coalesce(t2.penalty_score, 0)`,
       team2Result: sql<string>`t2.result`,
       team2EliminatedOpponent: sql<boolean>`t1.eliminated`,
     })
@@ -1735,8 +1735,12 @@ export async function getCompetitionMatchResults(
       gameSlug: sql<
         string | null
       >`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
-      team1Score: sql<number | null>`t1.score + t1.elimination_bonus`,
-      team2Score: sql<number | null>`t2.score + t2.elimination_bonus`,
+      team1Score: sql<
+        number | null
+      >`t1.score + t1.elimination_bonus + coalesce(t1.penalty_score, 0)`,
+      team2Score: sql<
+        number | null
+      >`t2.score + t2.elimination_bonus + coalesce(t2.penalty_score, 0)`,
       team1Result: sql<string | null>`t1.result`,
       team2Result: sql<string | null>`t2.result`,
       team1ColourEnum: sql<number | null>`t1.colour_enum`,
@@ -3257,6 +3261,7 @@ export type CompetitionGameListItem = {
     colourEnum: number;
     score: number | null;
     eliminationBonus: number | null;
+    penaltyScore: number;
     result: "win" | "loss" | "draw" | null;
   }[];
 };
@@ -3343,6 +3348,7 @@ async function queryCompetitionGames(
       colourEnum: sm5GameTeam.colourEnum,
       score: sm5GameTeam.score,
       eliminationBonus: sm5GameTeam.eliminationBonus,
+      penaltyScore: sm5GameTeam.penaltyScore,
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
@@ -3378,6 +3384,7 @@ async function queryCompetitionGames(
         colourEnum: t.colourEnum,
         score: t.score,
         eliminationBonus: t.eliminationBonus,
+        penaltyScore: t.penaltyScore ?? 0,
         result: t.result,
       })),
     };
@@ -3428,6 +3435,7 @@ export async function getExcludedCompetitionGames(
       colourEnum: sm5GameTeam.colourEnum,
       score: sm5GameTeam.score,
       eliminationBonus: sm5GameTeam.eliminationBonus,
+      penaltyScore: sm5GameTeam.penaltyScore,
       result: sm5GameTeam.result,
     })
     .from(sm5GameTeam)
@@ -3462,6 +3470,7 @@ export async function getExcludedCompetitionGames(
         colourEnum: t.colourEnum,
         score: t.score,
         eliminationBonus: t.eliminationBonus,
+        penaltyScore: t.penaltyScore ?? 0,
         result: t.result,
       })),
     };
@@ -4046,8 +4055,12 @@ export async function getCompetitionSchedule(
       matchId: competitionMatchGame.matchId,
       gameNumber: competitionMatchGame.gameNumber,
       actualStartTime: game.startTime,
-      team1Score: sql<number | null>`t1.score + t1.elimination_bonus`,
-      team2Score: sql<number | null>`t2.score + t2.elimination_bonus`,
+      team1Score: sql<
+        number | null
+      >`t1.score + t1.elimination_bonus + coalesce(t1.penalty_score, 0)`,
+      team2Score: sql<
+        number | null
+      >`t2.score + t2.elimination_bonus + coalesce(t2.penalty_score, 0)`,
     })
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))

@@ -71,7 +71,11 @@ export default async function FavoritesPage() {
                         <Fragment key={i}>
                           {i > 0 && <span className="text-muted-foreground">–</span>}
                           <span className={getTeamColor(team.colourEnum)?.text ?? ""}>
-                            {formatScore((team.score ?? 0) + (team.eliminationBonus ?? 0))}
+                            {formatScore(
+                              (team.score ?? 0) +
+                                (team.eliminationBonus ?? 0) +
+                                (team.penaltyScore ?? 0),
+                            )}
                           </span>
                         </Fragment>
                       ))}

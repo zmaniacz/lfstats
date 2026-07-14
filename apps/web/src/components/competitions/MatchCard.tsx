@@ -112,28 +112,24 @@ export function MatchCard({
           <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-3 gap-y-1.5 text-sm">
             <GameScore
               score={game1?.team1Score ?? null}
-              result={game1?.team1Result ?? null}
               colourEnum={game1?.team1ColourEnum}
               slug={game1?.gameSlug}
             />
             <span className="text-xs text-muted-foreground text-center">G1</span>
             <GameScore
               score={game1?.team2Score ?? null}
-              result={game1?.team2Result ?? null}
               colourEnum={game1?.team2ColourEnum}
               slug={game1?.gameSlug}
             />
 
             <GameScore
               score={game2?.team1Score ?? null}
-              result={game2?.team1Result ?? null}
               colourEnum={game2?.team1ColourEnum}
               slug={game2?.gameSlug}
             />
             <span className="text-xs text-muted-foreground text-center">G2</span>
             <GameScore
               score={game2?.team2Score ?? null}
-              result={game2?.team2Result ?? null}
               colourEnum={game2?.team2ColourEnum}
               slug={game2?.gameSlug}
             />
@@ -185,12 +181,10 @@ function ScoreDiff({ diff }: { diff: number | null }) {
 
 function GameScore({
   score,
-  result,
   colourEnum,
   slug,
 }: {
   score: number | null;
-  result: string | null;
   colourEnum?: number;
   slug?: string;
 }) {
