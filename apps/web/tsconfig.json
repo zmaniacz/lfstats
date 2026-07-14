@@ -9,6 +9,7 @@
     "incremental": true,
     "declaration": false,
     "declarationMap": false,
+    "types": ["node"],
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"]
