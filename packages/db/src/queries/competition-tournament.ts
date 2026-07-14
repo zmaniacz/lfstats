@@ -2568,7 +2568,7 @@ function scopeWhereForAlias(scopeFilter: GameScopeFilter): SQL {
         ? sql`g.competition_id = ${scopeFilter.competitionId}`
         : sql`g.competition_id IS NOT NULL`;
     case "all":
-      return sql`TRUE`;
+      return scopeFilter.centerId ? sql`g.center_id = ${scopeFilter.centerId}` : sql`TRUE`;
   }
 }
 

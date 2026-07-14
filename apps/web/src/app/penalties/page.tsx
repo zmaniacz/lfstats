@@ -30,7 +30,7 @@ export default async function PenaltiesPage({
   const heading =
     ctx.scope === "competition" && ctx.competition
       ? ctx.competition.name
-      : ctx.scope === "social" && ctx.center
+      : (ctx.scope === "social" || ctx.scope === "all") && ctx.center
         ? ctx.center.name
         : "All Penalties";
 

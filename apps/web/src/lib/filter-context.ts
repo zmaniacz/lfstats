@@ -129,10 +129,7 @@ export async function resolveFilterContext(
   // Normalize: clear the dimension(s) that don't apply to the resolved scope.
   if (scope === "social") competition = null;
   if (scope === "competition") center = null;
-  if (scope === "all") {
-    center = null;
-    competition = null;
-  }
+  if (scope === "all") competition = null;
 
   return { scope, center, competition, centers, competitions };
 }
@@ -157,6 +154,6 @@ export function toGameScopeFilter(ctx: FilterContext): GameScopeFilter {
         ? { scope: "competition", competitionId: ctx.competition.id }
         : { scope: "competition" };
     case "all":
-      return { scope: "all" };
+      return ctx.center ? { scope: "all", centerId: ctx.center.id } : { scope: "all" };
   }
 }

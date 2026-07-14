@@ -64,8 +64,8 @@ export function FilterBar({
 
   function handleCenter(value: string) {
     const center = value === ALL_VALUE ? null : value;
-    writeFilterCookies({ scope: "social", center }, gameType);
-    navigate({ scope: "social", center, competition: activeCompetitionSlug });
+    writeFilterCookies({ scope, center }, gameType);
+    navigate({ scope, center, competition: activeCompetitionSlug });
   }
 
   function handleCompetition(value: string) {
@@ -75,7 +75,8 @@ export function FilterBar({
   }
 
   const showScopeToggle = mode === "generic";
-  const showCenterSelect = scope === "social" || mode === "social-only";
+  const showCenterSelect =
+    mode === "social-only" || (mode === "generic" && scope !== "competition");
   const showCompetitionSelect = scope === "competition" || mode === "competition-only";
   const allowAllOption = mode === "generic";
 

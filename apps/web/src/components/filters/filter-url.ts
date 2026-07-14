@@ -30,7 +30,7 @@ export function buildFilterUrl(
   const params = new URLSearchParams();
   params.set("scope", state.scope);
 
-  if (state.scope === "social" && state.center) {
+  if ((state.scope === "social" || state.scope === "all") && state.center) {
     params.set("center", state.center);
   }
   if (state.scope === "competition") {

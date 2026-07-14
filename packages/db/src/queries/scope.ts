@@ -14,7 +14,7 @@ import { game } from "../schema";
  * Pass the result of gameScopeConditions() into a query's `and(...)` where clause.
  */
 export type GameScopeFilter =
-  | { scope: "all" }
+  | { scope: "all"; centerId?: string }
   | { scope: "social"; centerId?: string }
   | { scope: "competition"; competitionId?: string };
 
@@ -34,7 +34,9 @@ export function gameScopeConditions(filter: GameScopeFilter): SQL[] {
       }
       break;
     case "all":
-      // No constraints — every game qualifies.
+      if (filter.centerId) {
+        conditions.push(eq(game.centerId, filter.centerId));
+      }
       break;
   }
   return conditions;
