@@ -7,8 +7,7 @@ import { useState } from "react";
 import type { PenaltyRecord } from "@lfstats/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PenaltyForm } from "./PenaltyForm";
 
 type Actions = {
   addAction: (gameId: string, scorecardId: string, formData: FormData) => Promise<void>;
@@ -186,80 +185,5 @@ export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, action
           </Button>
         ))}
     </div>
-  );
-}
-
-function PenaltyForm({
-  defaultValues,
-  onSubmit,
-  onCancel,
-  isPending,
-}: {
-  defaultValues?: PenaltyRecord;
-  onSubmit: (fd: FormData) => void;
-  onCancel: () => void;
-  isPending: boolean;
-}) {
-  return (
-    <form action={onSubmit} className="space-y-2 border rounded p-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs">Type</Label>
-          <Input
-            name="type"
-            defaultValue={defaultValues?.type ?? "Common Foul"}
-            className="h-7 text-xs"
-            disabled={isPending}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Score Value</Label>
-          <Input
-            name="scoreValue"
-            type="number"
-            defaultValue={defaultValues?.scoreValue ?? 0}
-            className="h-7 text-xs"
-            disabled={isPending}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs">Description</Label>
-          <Input
-            name="description"
-            defaultValue={defaultValues?.description ?? ""}
-            className="h-7 text-xs"
-            disabled={isPending}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">MVP Value</Label>
-          <Input
-            name="mvpValue"
-            type="number"
-            step="0.001"
-            defaultValue={defaultValues?.mvpValue ?? 0}
-            className="h-7 text-xs"
-            disabled={isPending}
-          />
-        </div>
-      </div>
-      <div className="flex gap-2 justify-end">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 text-xs"
-          onClick={onCancel}
-          disabled={isPending}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" size="sm" className="h-6 text-xs" disabled={isPending}>
-          {isPending ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </form>
   );
 }

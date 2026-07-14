@@ -9,7 +9,7 @@ import type { CompetitionPenaltyRecord } from "@lfstats/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PenaltyForm } from "@/components/games/PenaltyForm";
 import {
   Table,
   TableBody,
@@ -188,8 +188,8 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
                 editingId === p.id ? (
                   <TableRow key={p.id}>
                     <TableCell colSpan={canEdit ? 7 : 6} className="py-2">
-                      <PenaltyEditForm
-                        penalty={p}
+                      <PenaltyForm
+                        defaultValues={p}
                         onSubmit={(fd) => handleUpdate(p.id, fd)}
                         onCancel={() => setEditingId(null)}
                         isPending={isPending}
@@ -302,69 +302,5 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
         </Table>
       </div>
     </div>
-  );
-}
-
-function PenaltyEditForm({
-  penalty,
-  onSubmit,
-  onCancel,
-  isPending,
-}: {
-  penalty: CompetitionPenaltyRecord;
-  onSubmit: (fd: FormData) => void;
-  onCancel: () => void;
-  isPending: boolean;
-}) {
-  return (
-    <form action={onSubmit} className="flex flex-wrap items-end gap-3">
-      <div className="space-y-1">
-        <Label className="text-xs">Type</Label>
-        <Input
-          name="type"
-          defaultValue={penalty.type}
-          className="h-8 text-sm w-36"
-          disabled={isPending}
-        />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Description</Label>
-        <Input
-          name="description"
-          defaultValue={penalty.description}
-          className="h-8 text-sm w-48"
-          disabled={isPending}
-        />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Score Value</Label>
-        <Input
-          name="scoreValue"
-          type="number"
-          defaultValue={penalty.scoreValue}
-          className="h-8 text-sm w-28"
-          disabled={isPending}
-        />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">MVP Value</Label>
-        <Input
-          name="mvpValue"
-          type="number"
-          step="0.001"
-          defaultValue={penalty.mvpValue}
-          className="h-8 text-sm w-28"
-          disabled={isPending}
-        />
-      </div>
-      <div className="flex gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
-          Cancel
-        </Button>
-        <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </form>
   );
 }
