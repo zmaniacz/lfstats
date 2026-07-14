@@ -51,9 +51,10 @@ function gameSortKey(p: CompetitionPenaltyRecord): string {
 }
 
 export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, actions }: Props) {
+  const [items, setItems] = useState(penalties);
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("game");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<SortKey>("startTime");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -68,14 +69,14 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return penalties.filter(
+    return items.filter(
       (p) =>
         !q ||
         gameLabel(p).toLowerCase().includes(q) ||
         p.callsign.toLowerCase().includes(q) ||
         p.type.toLowerCase().includes(q),
     );
-  }, [penalties, search]);
+  }, [items, search]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -101,8 +102,22 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
     setIsPending(true);
     try {
       await actions.updateAction(competitionId, penaltyId, formData);
+      setItems((prev) =>
+        prev.map((p) =>
+          p.id === penaltyId
+            ? {
+                ...p,
+                type: (formData.get("type") as string) ?? p.type,
+                description: (formData.get("description") as string) ?? p.description,
+                scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
+                mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
+              }
+            : p,
+        ),
+      );
+      setEditingId(null);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -110,8 +125,9 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
     setIsPending(true);
     try {
       await actions.rescindAction(competitionId, penaltyId, rescinded);
+      setItems((prev) => prev.map((p) => (p.id === penaltyId ? { ...p, rescinded } : p)));
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -119,8 +135,9 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
     setIsPending(true);
     try {
       await actions.deleteAction(competitionId, penaltyId);
+      setItems((prev) => prev.filter((p) => p.id !== penaltyId));
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -147,7 +164,7 @@ export function CompetitionPenaltyTable({ competitionId, penalties, canEdit, act
     );
   }
 
-  if (penalties.length === 0) {
+  if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">No penalties recorded.</p>;
   }
 
