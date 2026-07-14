@@ -8,6 +8,7 @@ import {
   getGameCenterId,
   getGameSlugById,
   linkLbMatch,
+  setGameExcluded,
   unlinkLbMatch,
   type LbMatchTeamPairing,
 } from "@lfstats/db";
@@ -34,6 +35,12 @@ async function requireCenterAdmin(gameId: string) {
 async function revalidateLbGame(gameId: string) {
   const slug = await getGameSlugById(gameId);
   if (slug) revalidatePath(`/laserball/games/${slug}`);
+}
+
+export async function toggleExcludeAction(gameId: string, exclude: boolean) {
+  await requireCenterAdmin(gameId);
+  await setGameExcluded(gameId, exclude);
+  await revalidateLbGame(gameId);
 }
 
 export async function linkLbMatchAction(

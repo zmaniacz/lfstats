@@ -2,6 +2,8 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { auth } from "@/auth";
+import { DeleteGameButton } from "@/components/games/DeleteGameButton";
+import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { LbMatchManager } from "@/components/laserball/LbMatchManager";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
 import { LbReplayTab } from "@/components/laserball/LbReplayTab";
@@ -18,7 +20,7 @@ import {
   getLbMatchRosterWarnings,
 } from "@lfstats/db";
 import { notFound } from "next/navigation";
-import { linkLbMatchAction, unlinkLbMatchAction } from "./actions";
+import { linkLbMatchAction, toggleExcludeAction, unlinkLbMatchAction } from "./actions";
 
 export default async function LaserballGameDetailPage({
   params,
@@ -68,6 +70,16 @@ export default async function LaserballGameDetailPage({
           </Badge>
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         </div>
+        {canManage && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <DeleteGameButton gameId={game.id} />
+            <ExcludeToggleButton
+              gameId={game.id}
+              excluded={game.exclude}
+              action={toggleExcludeAction}
+            />
+          </div>
+        )}
         {canManage && (
           <LbMatchManager
             gameId={game.id}
