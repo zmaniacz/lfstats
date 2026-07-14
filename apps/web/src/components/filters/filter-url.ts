@@ -4,6 +4,7 @@
 import {
   ALL_VALUE,
   filterCookieNames,
+  GAME_TYPE_COOKIE,
   type FilterGameType,
   type Scope,
 } from "@/lib/filter-cookies";
@@ -64,4 +65,9 @@ export function writeFilterCookies(
   if (state.competition !== undefined) {
     set(names.competition, state.competition ?? ALL_VALUE);
   }
+}
+
+/** Persists the active game type (1y) so other pages default to it. */
+export function writeGameTypeCookie(gameType: FilterGameType): void {
+  document.cookie = `${GAME_TYPE_COOKIE}=${gameType}; path=/; max-age=31536000; samesite=lax`;
 }

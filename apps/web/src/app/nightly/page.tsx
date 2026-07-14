@@ -4,7 +4,7 @@
 import { Suspense } from "react";
 import { DateFilter } from "@/components/nightly/DateFilter";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { NightlyStateManager } from "@/components/nightly/NightlyStateManager";
+import { ResetFilterCookies } from "@/components/filters/ResetFilterCookies";
 import { NightlyContent } from "@/components/nightly/NightlyContent";
 import { NightlySkeleton } from "@/components/nightly/NightlySkeleton";
 import {
@@ -38,46 +38,52 @@ export default async function NightlyPage({
 
   if (!centerSlug) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3">
-          <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2">
-            <FilterBar
-              basePath="/nightly"
-              mode="social-only"
-              scope="social"
-              activeCenterSlug={null}
-              activeCompetitionSlug={null}
-              centers={centers}
-              competitions={[]}
-            />
+      <>
+        <ResetFilterCookies scope="social" gameType="sm5" />
+        <div className="p-6 space-y-6">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-2xl font-bold">Nightly Stats</h1>
+            <div className="flex items-center gap-2">
+              <FilterBar
+                basePath="/nightly"
+                mode="social-only"
+                scope="social"
+                activeCenterSlug={null}
+                activeCompetitionSlug={null}
+                centers={centers}
+                competitions={[]}
+              />
+            </div>
           </div>
+          <p className="text-muted-foreground">No game data available.</p>
         </div>
-        <p className="text-muted-foreground">No game data available.</p>
-      </div>
+      </>
     );
   }
 
   const center = await getCenterBySlug(centerSlug);
   if (!center) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex flex-col gap-3">
-          <h1 className="text-2xl font-bold">Nightly Stats</h1>
-          <div className="flex items-center gap-2">
-            <FilterBar
-              basePath="/nightly"
-              mode="social-only"
-              scope="social"
-              activeCenterSlug={null}
-              activeCompetitionSlug={null}
-              centers={centers}
-              competitions={[]}
-            />
+      <>
+        <ResetFilterCookies scope="social" gameType="sm5" />
+        <div className="p-6 space-y-6">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-2xl font-bold">Nightly Stats</h1>
+            <div className="flex items-center gap-2">
+              <FilterBar
+                basePath="/nightly"
+                mode="social-only"
+                scope="social"
+                activeCenterSlug={null}
+                activeCompetitionSlug={null}
+                centers={centers}
+                competitions={[]}
+              />
+            </div>
           </div>
+          <p className="text-muted-foreground">Center not found.</p>
         </div>
-        <p className="text-muted-foreground">Center not found.</p>
-      </div>
+      </>
     );
   }
 
@@ -88,7 +94,7 @@ export default async function NightlyPage({
 
   return (
     <>
-      <NightlyStateManager center={centerSlug} date={selectedDate} />
+      <ResetFilterCookies scope="social" gameType="sm5" />
       <div className="p-6 space-y-6">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold">Nightly Stats</h1>

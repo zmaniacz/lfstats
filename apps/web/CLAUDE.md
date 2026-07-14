@@ -222,6 +222,69 @@ export function MyActionButton({ action }: { action: () => Promise<void> }) {
 
 Server actions should still call `revalidatePath` — it clears the server-side cache so the reloaded page returns fresh data.
 
+## Cross-Page Filter State (scope / gameType / center / competition)
+
+Four filter dimensions are shared across the "browse" pages (games, players, leaderboards,
+centers, penalties, standings, all-star, player profile):
+
+- `gameType`: `"sm5" | "lb"` — SM5 vs Laserball. Displayed fully separately.
+- `scope`: `"social" | "competition" | "all"`.
+- `center`: a center slug, or `null` for "all centers" (applies in social scope).
+- `competition`: a competition slug, or `null` for "all competitions" (applies in competition
+  scope; Laserball has no competitions yet).
+
+### Storage: cookies, split by game type
+
+Cookie names live in `lib/filter-cookies.ts` (`filterCookieNames(gameType)`, `GAME_TYPE_COOKIE`).
+SM5 and Laserball keep **independent** scope/center/competition cookies (`lastScope`/
+`lastCenterSlug`/`lastCompetitionSlug` for SM5, `lbLastScope`/`lbLastCenterSlug`/
+`lbLastCompetitionSlug` for Laserball) so switching game type never leaks an SM5-only center
+selection into Laserball or vice versa. `lastGameType` is a single shared cookie (no
+per-game-type split, since it selects _between_ the two namespaces).
+
+### Resolution order (everywhere): URL param > cookie > default
+
+- **Server-side, in every page component:** call `resolveGameType(searchParams.game)` and
+  `resolveFilterContext(searchParams, { gameType, defaultScope?, allowedScopes? })` from
+  `lib/filter-context.ts`. These are the only sanctioned entry points for reading filter
+  cookies server-side. Never call `cookies()` from `next/headers` and hand-parse a
+  scope/center/competition/gameType cookie inline in a page, and never redeclare a cookie
+  name as a local string literal — always source names from `filterCookieNames()` /
+  `CENTER_COOKIE` etc. in `lib/filter-cookies.ts`.
+- **Client-side, anywhere a user changes a filter:** write cookies exclusively via
+  `writeFilterCookies(state, gameType)` and `writeGameTypeCookie(gameType)` from
+  `components/filters/filter-url.ts`. Never write `document.cookie` inline in a component —
+  if you need a new filter-cookie write site, add a helper to `filter-url.ts` instead of
+  duplicating the `document.cookie = ...` string-building logic.
+
+### Shared components
+
+- `components/filters/FilterBar.tsx` — renders the scope toggle / center select / competition
+  select for a page, calls `writeFilterCookies` + `router.push` on change. `mode`:
+  `"generic"` (all 3 scopes) | `"social-only"` | `"competition-only"`.
+- `components/filters/GameTypeToggle.tsx` — SM5/Laserball switcher, calls `writeGameTypeCookie`
+  on click.
+- `components/filters/filter-url.ts` — `buildFilterUrl()`, `writeFilterCookies()`,
+  `writeGameTypeCookie()`. The single source of truth for both URL-building and cookie-writing.
+- `components/filters/ResetFilterCookies.tsx` — mount this (client component, writes cookies in
+  a `useEffect` on mount) on any page that must force a specific scope+gameType every time it's
+  landed on, regardless of what's currently stored (e.g. `/nightly` always resets to
+  `scope="social"`, `gameType="sm5"`; `/nightly-lb` to `scope="social"`, `gameType="lb"`). It
+  intentionally does not touch center/competition cookies — those stay sticky even on a
+  forced-reset landing page. Use this pattern for any future page with the same "always open in
+  a fixed context" requirement rather than inventing a new session-storage or query-param based
+  mechanism.
+
+### Adding a new filter-consuming page
+
+1. Resolve filters server-side with `resolveGameType` + `resolveFilterContext`.
+2. Render `<GameTypeToggle>` (if the page supports both game types) and `<FilterBar>` with the
+   resolved values.
+3. If the page needs to force a specific scope/gameType on landing rather than inherit the
+   sticky cookie values, mount `<ResetFilterCookies>` with the desired fixed values.
+4. Never write `document.cookie` or read `cookies()` directly — always go through
+   `lib/filter-context.ts` (server) and `components/filters/filter-url.ts` (client).
+
 ## What Not to Build
 
 - **No ingestion UI** — ingestion is `apps/chomper`, triggered by S3 events, not the web app
