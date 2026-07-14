@@ -57,21 +57,21 @@ export function TeamStatsTable({
   return (
     <>
       <div className="overflow-x-auto">
-        <Table className="table-fixed min-w-175 w-full">
+        <Table className="table-fixed min-w-[925px] w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-4/24">Callsign</TableHead>
-              <TableHead className="w-1/24">Pos</TableHead>
-              <TableHead className="w-1/24 text-center">Score</TableHead>
-              <TableHead className="w-1/24 text-center">MVP</TableHead>
-              <TableHead className="w-1/24 text-center">HitDiff</TableHead>
-              <TableHead className="w-1/24 text-center">Acc</TableHead>
-              <TableHead className="w-1/24 text-center">Medic Hits</TableHead>
-              <TableHead className="w-1/24 text-center">Lives</TableHead>
-              <TableHead className="w-1/24 text-center">Shots</TableHead>
-              <TableHead className="w-1/24 text-center">Msls</TableHead>
-              <TableHead className="w-1/24 text-center">Msld</TableHead>
-              <TableHead className="w-1/24 text-center">Survived</TableHead>
+              <TableHead className="w-[170px]">Callsign</TableHead>
+              <TableHead className="w-[50px]">Pos</TableHead>
+              <TableHead className="w-[90px] text-center">Score</TableHead>
+              <TableHead className="w-[60px] text-center">MVP</TableHead>
+              <TableHead className="w-[120px] text-center">HitDiff</TableHead>
+              <TableHead className="w-[55px] text-center">Acc</TableHead>
+              <TableHead className="w-[90px] text-center">Medic Hits</TableHead>
+              <TableHead className="w-[55px] text-center">Lives</TableHead>
+              <TableHead className="w-[55px] text-center">Shots</TableHead>
+              <TableHead className="w-[50px] text-center">Msls</TableHead>
+              <TableHead className="w-[50px] text-center">Msld</TableHead>
+              <TableHead className="w-[80px] text-center">Survived</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
