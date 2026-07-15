@@ -22,10 +22,11 @@ import {
   formatScore,
   formatWinRate,
 } from "@/lib/format";
+import { useMinGames } from "@/components/players/MinGamesContext";
 import type { CompetitionCommanderPlayer } from "@lfstats/db";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 10;
 
@@ -106,12 +107,17 @@ function SortableHead({
 }
 
 export function CommanderPlayersTable({ players }: { players: CompetitionCommanderPlayer[] }) {
+  const minGames = useMinGames();
   const [sort, setSort] = useState<SortState>({
     column: "avgMvp",
     dir: "desc",
   });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [minGames]);
 
   function handleSort(col: SortColumn) {
     setSort((prev) =>
@@ -122,11 +128,16 @@ export function CommanderPlayersTable({ players }: { players: CompetitionCommand
     setPage(1);
   }
 
+  const gamesFiltered = useMemo(() => {
+    if (minGames <= 0) return players;
+    return players.filter((p) => p.totalGames >= minGames);
+  }, [players, minGames]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return players;
-    return players.filter((p) => p.callsign.toLowerCase().includes(q));
-  }, [players, search]);
+    if (!q) return gamesFiltered;
+    return gamesFiltered.filter((p) => p.callsign.toLowerCase().includes(q));
+  }, [gamesFiltered, search]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
