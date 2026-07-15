@@ -8,6 +8,7 @@
       "Bash(pnpm db:generate)",
       "Bash(pnpm --filter @lfstats/db db:generate)",
       "Bash(pnpm --filter @lfstats/db db:migrate)",
+      "Bash(pnpm --filter @lfstats/db db:migrate *)",
       "Bash(python -c ' *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
@@ -27,7 +28,9 @@
       "Bash(git rm *)",
       "Bash(pnpm build *)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(cat >> *)"
+      "Bash(cat >> *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Skill(run)"
     ]
   }
 }
