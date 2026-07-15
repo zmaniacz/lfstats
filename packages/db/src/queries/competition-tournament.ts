@@ -2929,7 +2929,7 @@ export async function getCompetitionMissileMalarkey(
       iplId: player.iplId,
       callsign: player.currentCallsign,
       totalMissiles: sql<number>`sum(${sm5Scorecard.missilesHitOpponent} + ${sm5Scorecard.missilesHitTeam})::int`,
-      avgMissiles: sql<number>`avg(${sm5Scorecard.missilesHitOpponent} + ${sm5Scorecard.missilesHitTeam})`,
+      avgMissiles: sql<number>`sum(${sm5Scorecard.missilesHitOpponent} + ${sm5Scorecard.missilesHitTeam})::float / nullif(count(*) filter (where ${sm5Scorecard.position} in (1, 2)), 0)`,
       timesHitByMissile: sql<number>`sum(${sm5Scorecard.timesHitByMissile})::int`,
       teamMissiles: sql<number>`sum(${sm5Scorecard.missilesHitTeam})::int`,
     })
