@@ -3241,8 +3241,6 @@ export async function getCompetitionAllStarRankings(
 // Competition games list (paginated, with computed label)
 // ---------------------------------------------------------------------------
 
-export const COMPETITION_GAMES_PER_PAGE = 10;
-
 export type CompetitionGameListItem = {
   id: string;
   slug: string;
@@ -3251,6 +3249,7 @@ export type CompetitionGameListItem = {
   outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
   centerName: string;
   description: string | null;
+  actualDuration: number;
   prefix: string | null; // e.g. "R1 M1 G1"; null when the game has no match assignment
   team1Label: string;
   team1ColourEnum: number;
@@ -3267,21 +3266,11 @@ export type CompetitionGameListItem = {
   }[];
 };
 
-export async function getCompetitionGamesCount(competitionId: string): Promise<number> {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(competitionMatchGame)
-    .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
-    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
-    .where(and(eq(competitionMatch.competitionId, competitionId), eq(game.exclude, false)));
-  return row?.count ?? 0;
-}
-
 async function queryCompetitionGames(
   competitionId: string,
-  options: { excluded: boolean; limit?: number; offset?: number },
+  options: { excluded: boolean },
 ): Promise<CompetitionGameListItem[]> {
-  let query = db
+  const rows = await db
     .select({
       id: game.id,
       slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
@@ -3290,6 +3279,7 @@ async function queryCompetitionGames(
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
       roundNumber: competitionRound.roundNumber,
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
@@ -3314,13 +3304,7 @@ async function queryCompetitionGames(
       asc(competitionRound.roundNumber),
       asc(competitionMatch.matchNumber),
       asc(competitionMatchGame.gameNumber),
-    )
-    .$dynamic();
-
-  if (options.limit !== undefined) query = query.limit(options.limit);
-  if (options.offset !== undefined) query = query.offset(options.offset);
-
-  const rows = await query;
+    );
 
   if (rows.length === 0) return [];
 
@@ -3374,6 +3358,7 @@ async function queryCompetitionGames(
       outcome: row.outcome,
       centerName: row.centerName,
       description: row.description,
+      actualDuration: row.actualDuration,
       prefix: `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber}`,
       team1Label: t1?.shortName ?? t1?.name ?? "?",
       team1ColourEnum: row.team1ColourEnum,
@@ -3392,16 +3377,10 @@ async function queryCompetitionGames(
   });
 }
 
-export async function getCompetitionGamesPage(
+export async function getCompetitionGamesList(
   competitionId: string,
-  page: number,
 ): Promise<CompetitionGameListItem[]> {
-  const offset = (page - 1) * COMPETITION_GAMES_PER_PAGE;
-  return queryCompetitionGames(competitionId, {
-    excluded: false,
-    limit: COMPETITION_GAMES_PER_PAGE,
-    offset,
-  });
+  return queryCompetitionGames(competitionId, { excluded: false });
 }
 
 // Excluded games are not assigned to a competition match (they were aborted,
@@ -3420,6 +3399,7 @@ export async function getExcludedCompetitionGames(
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(center.id, game.centerId))
@@ -3460,6 +3440,7 @@ export async function getExcludedCompetitionGames(
       outcome: row.outcome,
       centerName: row.centerName,
       description: row.description,
+      actualDuration: row.actualDuration,
       prefix: null,
       team1Label: t1?.name ?? "?",
       team1ColourEnum: t1?.colourEnum ?? 0,

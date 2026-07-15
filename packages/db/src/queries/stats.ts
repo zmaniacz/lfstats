@@ -15,6 +15,7 @@ async function attachTeams(
     outcome: "score" | "elimination" | "draw" | "aborted" | "forfeit" | "replay";
     centerName: string;
     description: string | null;
+    actualDuration: number;
   }[],
 ): Promise<GameListItem[]> {
   if (rows.length === 0) return [];
@@ -50,6 +51,7 @@ async function attachTeams(
     centerName: row.centerName,
     description: row.description,
     competitionName: null,
+    actualDuration: row.actualDuration,
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,
@@ -129,6 +131,7 @@ export async function getNightlyGames(centerId: string, date: string): Promise<G
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -186,6 +189,7 @@ export async function getSocialGames(filter: SocialGamesFilter): Promise<GameLis
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -206,6 +210,7 @@ export async function getCompetitionGames(competitionId: string): Promise<GameLi
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -259,6 +264,7 @@ export async function getAllCompetitiveGames(): Promise<GameListItem[]> {
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))

@@ -46,6 +46,7 @@ export async function NightlyLbContent({
     outcome: g.outcome,
     centerName: g.centerName,
     description: g.description,
+    actualDuration: g.actualDuration,
     teams: g.teams.map((t) => ({ colourEnum: t.colourEnum, score: t.score, result: t.result })),
   }));
 

@@ -19,6 +19,7 @@ export function GamesTableSkeleton() {
           <TableRow>
             <TableHead>Center</TableHead>
             <TableHead>Started</TableHead>
+            <TableHead>Length</TableHead>
             <TableHead>Outcome</TableHead>
             <TableHead>Score</TableHead>
           </TableRow>
@@ -31,6 +32,9 @@ export function GamesTableSkeleton() {
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-40" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-16" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-20" />

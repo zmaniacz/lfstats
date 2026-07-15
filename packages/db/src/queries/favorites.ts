@@ -44,6 +44,7 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
       centerName: center.name,
       description: game.description,
       competitionName: competition.name,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -84,6 +85,7 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
       centerName: row.centerName,
       description: row.description,
       competitionName: row.competitionName,
+      actualDuration: row.actualDuration,
       teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
         colourEnum: t.colourEnum,
         score: t.score,

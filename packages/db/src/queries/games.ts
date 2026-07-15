@@ -20,8 +20,6 @@ import {
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
-export const GAMES_PER_PAGE = 10;
-
 export type GameListFilters = {
   centerId?: string;
   dateSearch?: string;
@@ -45,6 +43,7 @@ export type GameListItem = {
   centerName: string;
   description: string | null;
   competitionName: string | null;
+  actualDuration: number;
   teams: GameTeamSummary[];
 };
 
@@ -65,11 +64,7 @@ function buildGameListConditions(filters: GameListFilters): SQL[] {
   return conditions;
 }
 
-export async function getGamesPage(
-  page: number,
-  filters: GameListFilters = {},
-): Promise<GameListItem[]> {
-  const offset = (page - 1) * GAMES_PER_PAGE;
+export async function getGamesList(filters: GameListFilters = {}): Promise<GameListItem[]> {
   const conditions = buildGameListConditions(filters);
 
   const rows = await db
@@ -82,14 +77,13 @@ export async function getGamesPage(
       centerName: center.name,
       description: game.description,
       competitionName: competition.name,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
     .leftJoin(competition, eq(game.competitionId, competition.id))
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(game.startTime))
-    .limit(GAMES_PER_PAGE)
-    .offset(offset);
+    .orderBy(desc(game.startTime));
 
   if (rows.length === 0) return [];
 
@@ -124,6 +118,7 @@ export async function getGamesPage(
     centerName: row.centerName,
     description: row.description,
     competitionName: row.competitionName,
+    actualDuration: row.actualDuration,
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,
@@ -132,16 +127,6 @@ export async function getGamesPage(
       result: t.result,
     })),
   }));
-}
-
-export async function getGamesCount(filters: GameListFilters = {}): Promise<number> {
-  const conditions = buildGameListConditions(filters);
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(game)
-    .innerJoin(center, eq(game.centerId, center.id))
-    .where(conditions.length ? and(...conditions) : undefined);
-  return row?.count ?? 0;
 }
 
 export type GameExportFilters = {

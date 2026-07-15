@@ -20,8 +20,6 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 // Laserball Game List (read)
 // ---------------------------------------------------------------------------
 
-export const LB_GAMES_PER_PAGE = 10;
-
 export type LbGameListFilters = {
   scopeFilter?: GameScopeFilter;
   dateSearch?: string;
@@ -41,6 +39,7 @@ export type LbGameListItem = {
   outcome: string;
   centerName: string;
   description: string | null;
+  actualDuration: number;
   teams: LbGameTeamSummary[];
 };
 
@@ -55,11 +54,7 @@ function buildLbGameListConditions(filters: LbGameListFilters): SQL[] {
   return conditions;
 }
 
-export async function getLbGamesPage(
-  page: number,
-  filters: LbGameListFilters = {},
-): Promise<LbGameListItem[]> {
-  const offset = (page - 1) * LB_GAMES_PER_PAGE;
+export async function getLbGamesList(filters: LbGameListFilters = {}): Promise<LbGameListItem[]> {
   const conditions = buildLbGameListConditions(filters);
 
   const rows = await db
@@ -71,13 +66,12 @@ export async function getLbGamesPage(
       outcome: game.outcome,
       centerName: center.name,
       description: game.description,
+      actualDuration: game.actualDuration,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
     .where(and(...conditions))
-    .orderBy(desc(game.startTime))
-    .limit(LB_GAMES_PER_PAGE)
-    .offset(offset);
+    .orderBy(desc(game.startTime));
 
   if (rows.length === 0) return [];
 
@@ -108,18 +102,9 @@ export async function getLbGamesPage(
     outcome: row.outcome,
     centerName: row.centerName,
     description: row.description,
+    actualDuration: row.actualDuration,
     teams: teamsByGame.get(row.id) ?? [],
   }));
-}
-
-export async function getLbGamesCount(filters: LbGameListFilters = {}): Promise<number> {
-  const conditions = buildLbGameListConditions(filters);
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(game)
-    .innerJoin(center, eq(game.centerId, center.id))
-    .where(and(...conditions));
-  return row?.count ?? 0;
 }
 
 // ---------------------------------------------------------------------------

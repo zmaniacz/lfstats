@@ -18,13 +18,11 @@ export default async function GamesPage({
     scope?: string;
     center?: string;
     competition?: string;
-    page?: string;
     date?: string;
     game?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const dateSearch = sp.date ?? "";
   const gameType = await resolveGameType(sp.game);
 
@@ -39,14 +37,9 @@ export default async function GamesPage({
   const useCompetitionView =
     gameType === "sm5" && ctx.scope === "competition" && ctx.competition !== null;
 
-  const contentKey = [
-    gameType,
-    ctx.scope,
-    urlState.center,
-    urlState.competition,
-    page,
-    dateSearch,
-  ].join("|");
+  const contentKey = [gameType, ctx.scope, urlState.center, urlState.competition, dateSearch].join(
+    "|",
+  );
 
   return (
     <div className="p-6 space-y-4">
@@ -78,20 +71,9 @@ export default async function GamesPage({
 
       <Suspense key={contentKey} fallback={<GamesTableSkeleton />}>
         {gameType === "lb" ? (
-          <LaserballGamesContent
-            ctx={ctx}
-            urlState={urlState}
-            page={page}
-            dateSearch={dateSearch}
-          />
+          <LaserballGamesContent ctx={ctx} dateSearch={dateSearch} />
         ) : (
-          <GamesContent
-            ctx={ctx}
-            urlState={urlState}
-            page={page}
-            dateSearch={dateSearch}
-            useCompetitionView={useCompetitionView}
-          />
+          <GamesContent ctx={ctx} dateSearch={dateSearch} useCompetitionView={useCompetitionView} />
         )}
       </Suspense>
     </div>
