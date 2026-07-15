@@ -214,7 +214,7 @@ export async function LeaderboardsContent({
               .sort((a, b) => (b.avgNukeActivationTime ?? 0) - (a.avgNukeActivationTime ?? 0))
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.avgNukeActivationTime! }))}
-            format="ms"
+            format="ms-precise"
           />
           <StatLeaderboardCard
             title="Nuke Violence"

@@ -13,12 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { formatScore, formatMsDuration, formatMs } from "@/lib/format";
+import { formatScore, formatMsDuration, formatMs, formatMsPrecise } from "@/lib/format";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
-export type StatFormat = "integer" | "score" | "duration" | "decimal" | "ms";
+export type StatFormat = "integer" | "score" | "duration" | "decimal" | "ms" | "ms-precise";
 
 function applyFormat(v: number, format: StatFormat): string {
   switch (format) {
@@ -32,6 +32,8 @@ function applyFormat(v: number, format: StatFormat): string {
       return v.toFixed(2);
     case "ms":
       return formatMs(v);
+    case "ms-precise":
+      return formatMsPrecise(v);
   }
 }
 
