@@ -4,8 +4,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import {
   Table,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toggle } from "@/components/ui/toggle";
-import { formatMs, formatScore } from "@/lib/format";
+import { formatMs, formatMsPrecise, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { cn } from "@/lib/utils";
 import type { LbReplayData, LbReplayPlayer, LbReplayPlayerState } from "@lfstats/db";
@@ -103,6 +104,7 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
   const [showStateChanges, setShowStateChanges] = useState(false);
+  const [search, setSearch] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -157,10 +159,15 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
     };
   }, [isPlaying, speed, duration]);
 
-  const handleReset = useCallback(() => {
+  const handleJumpToStart = useCallback(() => {
     setIsPlaying(false);
     setCurrentTime(0);
   }, []);
+
+  const handleJumpToEnd = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentTime(duration);
+  }, [duration]);
 
   const computedTeams = useMemo((): LbComputedTeam[] => {
     if (!data) return [];
@@ -282,15 +289,41 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
     };
   }, []);
 
+  // Event stream computation: full history up to currentTime, newest first
   const visibleEvents = useMemo(() => {
     if (!data) return [];
-    const visible = data.events.filter((e) => {
-      if (e.time > currentTime) return false;
-      if (!showStateChanges && isStateChangeEvent(e.eventType)) return false;
-      return true;
-    });
-    return visible.slice(-20).reverse();
-  }, [data, currentTime, showStateChanges]);
+    const query = search.trim().toLowerCase();
+
+    const enriched = data.events
+      .filter((e) => {
+        if (e.time > currentTime) return false;
+        if (!showStateChanges && isStateChangeEvent(e.eventType)) return false;
+        return true;
+      })
+      .map((event) => {
+        const actorPlayer = event.actorScorecardId ? playerMap.get(event.actorScorecardId) : null;
+        const actorName = actorPlayer ? actorPlayer.callsign : null;
+        const actorColor = actorPlayer ? getTeamColor(actorPlayer.teamColour)?.text : undefined;
+
+        const targetPlayer = event.targetScorecardId
+          ? playerMap.get(event.targetScorecardId)
+          : null;
+        const targetName = targetPlayer ? targetPlayer.callsign : null;
+        const targetColor = targetPlayer ? getTeamColor(targetPlayer.teamColour)?.text : undefined;
+
+        return { ...event, actorName, actorColor, targetName, targetColor };
+      });
+
+    const matching = query
+      ? enriched.filter((e) =>
+          `${e.actorName ?? ""} ${e.description} ${e.targetName ?? ""}`
+            .toLowerCase()
+            .includes(query),
+        )
+      : enriched;
+
+    return matching.reverse();
+  }, [data, currentTime, showStateChanges, search, playerMap]);
 
   if (loading) {
     return (
@@ -319,13 +352,21 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
           <Button
             variant="outline"
             size="icon"
+            onClick={handleJumpToStart}
+            aria-label="Jump to start"
+          >
+            <SkipBack className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => setIsPlaying((p) => !p)}
             aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
-          <Button variant="outline" size="icon" onClick={handleReset} aria-label="Reset">
-            <RotateCcw className="h-4 w-4" />
+          <Button variant="outline" size="icon" onClick={handleJumpToEnd} aria-label="Jump to end">
+            <SkipForward className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1">
             {SPEEDS.map((s) => (
@@ -455,6 +496,12 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
             Events
           </h3>
           <div className="flex items-center gap-1">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search events…"
+              className="h-8 w-40"
+            />
             <Toggle
               variant="outline"
               size="sm"
@@ -468,40 +515,26 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
         </div>
         <div className="rounded-md border bg-muted/20 p-3 space-y-1 min-h-[80px] max-h-64 overflow-y-auto">
           {visibleEvents.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No events yet.</p>
+            <p className="text-xs text-muted-foreground">
+              {search.trim() ? "No events match your search." : "No events yet."}
+            </p>
           ) : (
-            visibleEvents.map((event) => {
-              const actorPlayer = event.actorScorecardId
-                ? playerMap.get(event.actorScorecardId)
-                : null;
-              const actorName = actorPlayer ? actorPlayer.callsign : null;
-              const actorColor = actorPlayer
-                ? getTeamColor(actorPlayer.teamColour)?.text
-                : undefined;
-
-              const targetPlayer = event.targetScorecardId
-                ? playerMap.get(event.targetScorecardId)
-                : null;
-              const targetName = targetPlayer ? targetPlayer.callsign : null;
-              const targetColor = targetPlayer
-                ? getTeamColor(targetPlayer.teamColour)?.text
-                : undefined;
-
-              return (
-                <div key={event.id} className="flex items-baseline gap-2 text-sm">
-                  <span className="tabular-nums text-xs text-muted-foreground shrink-0 w-12">
-                    {formatMs(event.time)}
-                  </span>
-                  <span>
-                    {actorName && <span className={actorColor}>{actorName}</span>}
-                    {actorName && " "}
-                    {event.description.trim()}
-                    {targetName && " "}
-                    {targetName && <span className={targetColor}>{targetName}</span>}
-                  </span>
-                </div>
-              );
-            })
+            visibleEvents.map((event) => (
+              <div key={event.id} className="flex items-baseline gap-2 text-sm">
+                <span className="tabular-nums text-xs text-muted-foreground shrink-0 w-16">
+                  {formatMsPrecise(event.time)}
+                </span>
+                <span>
+                  {event.actorName && <span className={event.actorColor}>{event.actorName}</span>}
+                  {event.actorName && " "}
+                  {event.description.trim()}
+                  {event.targetName && " "}
+                  {event.targetName && (
+                    <span className={event.targetColor}>{event.targetName}</span>
+                  )}
+                </span>
+              </div>
+            ))
           )}
         </div>
       </div>
