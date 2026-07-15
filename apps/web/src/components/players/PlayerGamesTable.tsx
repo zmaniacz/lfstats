@@ -5,7 +5,7 @@
 
 import { Fragment, useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowUp, ArrowDown, ArrowUpDown, ChevronDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { PlayerGameListItem } from "@lfstats/db";
 import {
   Table,
@@ -16,16 +16,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { formatDateTime, formatGameName, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { POSITIONS } from "@/lib/positions";
 import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog";
+import { MultiSelectFilter } from "@/components/filters/MultiSelectFilter";
 
 const PAGE_SIZE = 10;
 
@@ -38,14 +33,7 @@ const OUTCOME_ORDER = [
 ];
 
 type SortColumn =
-  | "game"
-  | "center"
-  | "started"
-  | "outcome"
-  | "position"
-  | "teamScore"
-  | "mvp"
-  | "score";
+  "game" | "center" | "started" | "outcome" | "position" | "teamScore" | "mvp" | "score";
 
 type SortState = { column: SortColumn; dir: "asc" | "desc" } | null;
 
@@ -116,52 +104,6 @@ function SortableHead({
         <Icon className={`h-3 w-3 ${isActive ? "" : "opacity-40"}`} />
       </button>
     </TableHead>
-  );
-}
-
-function MultiSelectFilter({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onChange: (values: string[]) => void;
-}) {
-  const triggerLabel =
-    selected.length === 0
-      ? label
-      : selected.length === 1
-        ? (options.find((o) => o.value === selected[0])?.label ?? label)
-        : `${selected.length} selected`;
-
-  function toggle(value: string, checked: boolean) {
-    onChange(checked ? [...selected, value] : selected.filter((v) => v !== value));
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className={selected.length > 0 ? "border-primary" : ""}>
-          {triggerLabel}
-          <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {options.map((option) => (
-          <DropdownMenuCheckboxItem
-            key={option.value}
-            checked={selected.includes(option.value)}
-            onCheckedChange={(checked) => toggle(option.value, checked)}
-            onSelect={(e) => e.preventDefault()}
-          >
-            {option.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

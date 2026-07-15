@@ -262,6 +262,9 @@ export type PlayerGameListItem = {
   position: number;
   mvpPoints: number;
   score: number;
+  accuracy: number;
+  hitDiff: number;
+  medicHits: number;
   teamColourEnum: number;
   callsign: string;
   mvpComponents: MvpComponentRow[];
@@ -391,6 +394,9 @@ export async function getPlayerGames(
       position: sm5Scorecard.position,
       mvpPoints: sm5Scorecard.mvpPoints,
       score: sm5Scorecard.score,
+      accuracy: sm5Scorecard.accuracy,
+      hitDiff: sm5Scorecard.hitDiff,
+      medicHits: sm5Scorecard.medicHits,
       teamColourEnum: sm5GameTeam.colourEnum,
     })
     .from(sm5Scorecard)
@@ -468,6 +474,9 @@ export async function getPlayerGames(
     position: row.position,
     mvpPoints: row.mvpPoints,
     score: row.score,
+    accuracy: row.accuracy,
+    hitDiff: row.hitDiff,
+    medicHits: row.medicHits,
     teamColourEnum: row.teamColourEnum,
     teams: teamsByGame.get(row.id) ?? [],
     mvpComponents: mvpByScorecard.get(row.scorecardId) ?? [],

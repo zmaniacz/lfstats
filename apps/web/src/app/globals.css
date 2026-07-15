@@ -98,6 +98,13 @@
   --chart-3: oklch(0.4568 0.2146 277.0229);
   --chart-4: oklch(0.3984 0.1773 277.3662);
   --chart-5: oklch(0.3588 0.1354 278.6973);
+  /* Fixed (non-theme-aware) position colors — same in light and dark, chosen for
+     distinguishability across up to 6 simultaneous lines in per-game stat charts. */
+  --position-commander: #4bd6fd;
+  --position-heavy: #317cb2;
+  --position-scout: #adb5f0;
+  --position-ammo: #1f9383;
+  --position-medic: #60eea3;
   --radius: 0.5rem;
   --sidebar: oklch(0.967 0.0029 264.5419);
   --sidebar-foreground: oklch(0.2795 0.0368 260.031);
