@@ -177,7 +177,7 @@ export function calculateMvp(
         sm5.nukesDetonated,
         sm5.nukesDetonated * params.commander.nuke_detonated_points,
       );
-      const nukesCanceledByOpponent = sm5.nukesActivated - sm5.nukesDetonated;
+      const nukesCanceledByOpponent = ps.nukeCanceledByOpponent;
       comp(
         "nukes_canceled_by_opponent",
         nukesCanceledByOpponent,

@@ -586,6 +586,7 @@ class Simulator {
     target.teamNukesCanceled += source.teamNukesCanceled;
     target.nukesCanceledByNuke += source.nukesCanceledByNuke;
     target.ownNukesCanceledByNuke += source.ownNukesCanceledByNuke;
+    target.nukeCanceledByOpponent += source.nukeCanceledByOpponent;
     target.rapidFire += source.rapidFire;
     target.totalRapidTime += source.totalRapidTime;
     target.shotsFiredDuringRapid += source.shotsFiredDuringRapid;
@@ -1109,6 +1110,7 @@ class Simulator {
         teamNukesCanceled: 0,
         nukesCanceledByNuke: 0,
         ownNukesCanceledByNuke: 0,
+        nukeCanceledByOpponent: 0,
         rapidFire: 0,
         totalRapidTime: 0,
         shotsFiredDuringRapid: 0,
@@ -1690,6 +1692,7 @@ class Simulator {
       if (this.isOpponent(actor, target)) {
         // Actor cancelled an enemy nuke — good play
         actor.nukesCanceled++;
+        target.nukeCanceledByOpponent++;
       } else if (this.isSameTeam(actor, target)) {
         // Actor accidentally cancelled a friendly nuke — shame
         actor.teamNukesCanceled++;

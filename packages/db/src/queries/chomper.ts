@@ -394,6 +394,7 @@ export async function getScorecardsForRecalc(gameId: string) {
       shotsLeft: sm5Scorecard.shotsLeft,
       penalties: sm5Scorecard.penalties,
       tdfTeamIndex: sm5GameTeam.tdfTeamIndex,
+      isNeutral: sm5GameTeam.isNeutral,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))

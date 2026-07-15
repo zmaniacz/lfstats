@@ -49,6 +49,27 @@ while (true) {
       continue;
     }
 
+    // Reconstruct, per non-neutral team, how many nukes were cancelled by players on
+    // that team. A Commander's own "cancelled by opponent" count is then the sum of
+    // this across every OTHER non-neutral team — exact for the standard 2-team case,
+    // since a cancel recorded by any player on the sole opposing team can only have
+    // targeted this team's one Commander.
+    const nukesCanceledByTeamIndex = new Map<number, number>();
+    for (const sc of scorecards) {
+      if (sc.isNeutral) continue;
+      nukesCanceledByTeamIndex.set(
+        sc.tdfTeamIndex,
+        (nukesCanceledByTeamIndex.get(sc.tdfTeamIndex) ?? 0) + sc.nukesCanceled,
+      );
+    }
+    const nukeCanceledByOpponentForTeam = (teamIndex: number): number => {
+      let total = 0;
+      for (const [idx, sum] of nukesCanceledByTeamIndex) {
+        if (idx !== teamIndex) total += sum;
+      }
+      return total;
+    };
+
     const simResult = {
       actualDuration: gameRow.actualDuration,
       outcome: gameRow.outcome,
@@ -65,6 +86,9 @@ while (true) {
             teamIndex: sc.tdfTeamIndex,
             missilesHitOpponentMedic: sc.missilesHitOpponentMedic,
             missilesHitTeamMedic: sc.missilesHitTeamMedic,
+            nukeCanceledByOpponent: sc.isNeutral
+              ? 0
+              : nukeCanceledByOpponentForTeam(sc.tdfTeamIndex),
           },
         ]),
       ),
