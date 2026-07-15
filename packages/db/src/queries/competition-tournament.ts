@@ -2557,19 +2557,33 @@ export async function getCompetitionMedicPlayers(
 // Scope-aware leaderboard game selection
 // ---------------------------------------------------------------------------
 
+/** Raw `g.start_time` range fragments for the aliased subquery (social/all scope only). */
+function dateRangeSqlForAlias(filter: { dateFrom?: string; dateTo?: string }): SQL[] {
+  const parts: SQL[] = [];
+  if (filter.dateFrom) parts.push(sql`g.start_time >= ${filter.dateFrom}::date`);
+  if (filter.dateTo) parts.push(sql`g.start_time < (${filter.dateTo}::date + interval '1 day')`);
+  return parts;
+}
+
 /** Selects games for an aliased `g` game row matching the scope. */
 function scopeWhereForAlias(scopeFilter: GameScopeFilter): SQL {
   switch (scopeFilter.scope) {
-    case "social":
-      return scopeFilter.centerId
-        ? sql`g.competition_id IS NULL AND g.center_id = ${scopeFilter.centerId}`
-        : sql`g.competition_id IS NULL`;
+    case "social": {
+      const parts: SQL[] = [sql`g.competition_id IS NULL`];
+      if (scopeFilter.centerId) parts.push(sql`g.center_id = ${scopeFilter.centerId}`);
+      parts.push(...dateRangeSqlForAlias(scopeFilter));
+      return sql.join(parts, sql` AND `);
+    }
     case "competition":
       return scopeFilter.competitionId
         ? sql`g.competition_id = ${scopeFilter.competitionId}`
         : sql`g.competition_id IS NOT NULL`;
-    case "all":
-      return scopeFilter.centerId ? sql`g.center_id = ${scopeFilter.centerId}` : sql`TRUE`;
+    case "all": {
+      const parts: SQL[] = [];
+      if (scopeFilter.centerId) parts.push(sql`g.center_id = ${scopeFilter.centerId}`);
+      parts.push(...dateRangeSqlForAlias(scopeFilter));
+      return parts.length ? sql.join(parts, sql` AND `) : sql`TRUE`;
+    }
   }
 }
 

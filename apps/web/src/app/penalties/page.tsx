@@ -13,7 +13,14 @@ import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/
 export default async function PenaltiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string; center?: string; competition?: string; game?: string }>;
+  searchParams: Promise<{
+    scope?: string;
+    center?: string;
+    competition?: string;
+    from?: string;
+    to?: string;
+    game?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const gameType = await resolveGameType(sp.game);
@@ -39,6 +46,8 @@ export default async function PenaltiesPage({
     ctx.scope,
     ctx.center?.slug ?? null,
     ctx.competition?.slug ?? null,
+    ctx.dateFrom,
+    ctx.dateTo,
   ].join("|");
 
   return (
@@ -53,6 +62,8 @@ export default async function PenaltiesPage({
             scope={ctx.scope}
             activeCenterSlug={ctx.center?.slug ?? null}
             activeCompetitionSlug={ctx.competition?.slug ?? null}
+            activeDateFrom={ctx.dateFrom}
+            activeDateTo={ctx.dateTo}
             centers={ctx.centers}
             competitions={ctx.competitions}
             extras={{ game: gameType === "lb" ? "lb" : null }}

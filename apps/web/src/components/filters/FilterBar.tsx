@@ -4,6 +4,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,8 @@ export function FilterBar({
   scope,
   activeCenterSlug,
   activeCompetitionSlug,
+  activeDateFrom = null,
+  activeDateTo = null,
   centers,
   competitions,
   extras,
@@ -38,9 +41,12 @@ export function FilterBar({
   scope: Scope;
   activeCenterSlug: string | null;
   activeCompetitionSlug: string | null;
+  /** Date range (YYYY-MM-DD). Only rendered/applied for social/all scope. */
+  activeDateFrom?: string | null;
+  activeDateTo?: string | null;
   centers: Option[];
   competitions: Option[];
-  /** Page-specific params (e.g. pool/finals/mercs, date) to carry across changes. */
+  /** Page-specific params (e.g. pool/finals/mercs) to carry across changes. */
   extras?: Record<string, string | null | undefined>;
   /**
    * Which game type's cookie set to persist filter choices into. Game types are
@@ -52,20 +58,38 @@ export function FilterBar({
 }) {
   const router = useRouter();
 
-  function navigate(next: { scope: Scope; center: string | null; competition: string | null }) {
+  function navigate(next: {
+    scope: Scope;
+    center: string | null;
+    competition: string | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
+  }) {
     router.push(buildFilterUrl(basePath, next, extras));
   }
 
   function handleScope(value: string) {
     if (value !== "social" && value !== "competition" && value !== "all") return;
     writeFilterCookies({ scope: value }, gameType);
-    navigate({ scope: value, center: activeCenterSlug, competition: activeCompetitionSlug });
+    navigate({
+      scope: value,
+      center: activeCenterSlug,
+      competition: activeCompetitionSlug,
+      dateFrom: activeDateFrom,
+      dateTo: activeDateTo,
+    });
   }
 
   function handleCenter(value: string) {
     const center = value === ALL_VALUE ? null : value;
     writeFilterCookies({ scope, center }, gameType);
-    navigate({ scope, center, competition: activeCompetitionSlug });
+    navigate({
+      scope,
+      center,
+      competition: activeCompetitionSlug,
+      dateFrom: activeDateFrom,
+      dateTo: activeDateTo,
+    });
   }
 
   function handleCompetition(value: string) {
@@ -74,10 +98,35 @@ export function FilterBar({
     navigate({ scope: "competition", center: activeCenterSlug, competition });
   }
 
+  function handleDateFrom(e: React.ChangeEvent<HTMLInputElement>) {
+    const dateFrom = e.target.value || null;
+    writeFilterCookies({ scope, dateFrom }, gameType);
+    navigate({
+      scope,
+      center: activeCenterSlug,
+      competition: activeCompetitionSlug,
+      dateFrom,
+      dateTo: activeDateTo,
+    });
+  }
+
+  function handleDateTo(e: React.ChangeEvent<HTMLInputElement>) {
+    const dateTo = e.target.value || null;
+    writeFilterCookies({ scope, dateTo }, gameType);
+    navigate({
+      scope,
+      center: activeCenterSlug,
+      competition: activeCompetitionSlug,
+      dateFrom: activeDateFrom,
+      dateTo,
+    });
+  }
+
   const showScopeToggle = mode === "generic";
   const showCenterSelect =
     mode === "social-only" || (mode === "generic" && scope !== "competition");
   const showCompetitionSelect = scope === "competition" || mode === "competition-only";
+  const showDateRange = mode === "generic" && scope !== "competition";
   const allowAllOption = mode === "generic";
 
   return (
@@ -132,6 +181,28 @@ export function FilterBar({
             </SelectGroup>
           </SelectContent>
         </Select>
+      )}
+
+      {showDateRange && (
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={activeDateFrom ?? ""}
+            onChange={handleDateFrom}
+            max={activeDateTo ?? undefined}
+            className="w-36"
+            aria-label="From date"
+          />
+          <span className="text-muted-foreground text-xs">to</span>
+          <Input
+            type="date"
+            value={activeDateTo ?? ""}
+            onChange={handleDateTo}
+            min={activeDateFrom ?? undefined}
+            className="w-36"
+            aria-label="To date"
+          />
+        </div>
       )}
 
       {children}

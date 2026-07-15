@@ -16,6 +16,8 @@
 export const SCOPE_COOKIE = "lastScope";
 export const CENTER_COOKIE = "lastCenterSlug";
 export const COMPETITION_COOKIE = "lastCompetitionSlug";
+export const DATE_FROM_COOKIE = "lastDateFrom";
+export const DATE_TO_COOKIE = "lastDateTo";
 export const GAME_TYPE_COOKIE = "lastGameType";
 
 /** Game types display fully separately and keep independent filter cookies. */
@@ -29,15 +31,25 @@ export function filterCookieNames(gameType: FilterGameType): {
   scope: string;
   center: string;
   competition: string;
+  dateFrom: string;
+  dateTo: string;
 } {
   if (gameType === "lb") {
     return {
       scope: "lbLastScope",
       center: "lbLastCenterSlug",
       competition: "lbLastCompetitionSlug",
+      dateFrom: "lbLastDateFrom",
+      dateTo: "lbLastDateTo",
     };
   }
-  return { scope: SCOPE_COOKIE, center: CENTER_COOKIE, competition: COMPETITION_COOKIE };
+  return {
+    scope: SCOPE_COOKIE,
+    center: CENTER_COOKIE,
+    competition: COMPETITION_COOKIE,
+    dateFrom: DATE_FROM_COOKIE,
+    dateTo: DATE_TO_COOKIE,
+  };
 }
 
 export type Scope = "social" | "competition" | "all";

@@ -22,6 +22,8 @@ export type FilterSearchParams = {
   scope?: string;
   center?: string;
   competition?: string;
+  from?: string;
+  to?: string;
 };
 
 /** Resolved filter state plus the option lists the FilterBar needs to render. */
@@ -31,6 +33,9 @@ export type FilterContext = {
   center: CenterListItem | null;
   /** Selected competition, or null for "all competitions". */
   competition: CompetitiveCompetitionSummary | null;
+  /** Date range (YYYY-MM-DD), or null. Only meaningful for social/all scope. */
+  dateFrom: string | null;
+  dateTo: string | null;
   centers: CenterListItem[];
   competitions: CompetitiveCompetitionSummary[];
 };
@@ -126,12 +131,28 @@ export async function resolveFilterContext(
     competitions[0] ?? null,
   );
 
+  // --- date range (YYYY-MM-DD param/cookie; null = no bound; social/all scope only) ---
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const dateFromCookie = cookieStore.get(cookieNames.dateFrom)?.value;
+  const dateToCookie = cookieStore.get(cookieNames.dateTo)?.value;
+  const resolveDate = (raw: string | undefined): string | null | undefined => {
+    if (!raw) return undefined; // not specified at this source
+    if (raw === ALL) return null; // explicitly cleared
+    return DATE_RE.test(raw) ? raw : undefined; // invalid falls through
+  };
+  let dateFrom = pick<string>([resolveDate(searchParams.from), resolveDate(dateFromCookie)], null);
+  let dateTo = pick<string>([resolveDate(searchParams.to), resolveDate(dateToCookie)], null);
+
   // Normalize: clear the dimension(s) that don't apply to the resolved scope.
   if (scope === "social") competition = null;
   if (scope === "competition") center = null;
   if (scope === "all") competition = null;
+  if (scope === "competition") {
+    dateFrom = null;
+    dateTo = null;
+  }
 
-  return { scope, center, competition, centers, competitions };
+  return { scope, center, competition, dateFrom, dateTo, centers, competitions };
 }
 
 /**
@@ -148,12 +169,22 @@ export async function resolveGameType(searchParam: string | undefined): Promise<
 export function toGameScopeFilter(ctx: FilterContext): GameScopeFilter {
   switch (ctx.scope) {
     case "social":
-      return ctx.center ? { scope: "social", centerId: ctx.center.id } : { scope: "social" };
+      return {
+        scope: "social",
+        ...(ctx.center && { centerId: ctx.center.id }),
+        ...(ctx.dateFrom && { dateFrom: ctx.dateFrom }),
+        ...(ctx.dateTo && { dateTo: ctx.dateTo }),
+      };
     case "competition":
       return ctx.competition
         ? { scope: "competition", competitionId: ctx.competition.id }
         : { scope: "competition" };
     case "all":
-      return ctx.center ? { scope: "all", centerId: ctx.center.id } : { scope: "all" };
+      return {
+        scope: "all",
+        ...(ctx.center && { centerId: ctx.center.id }),
+        ...(ctx.dateFrom && { dateFrom: ctx.dateFrom }),
+        ...(ctx.dateTo && { dateTo: ctx.dateTo }),
+      };
   }
 }

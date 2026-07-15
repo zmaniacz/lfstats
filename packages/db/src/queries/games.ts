@@ -22,7 +22,6 @@ import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type GameListFilters = {
   centerId?: string;
-  dateSearch?: string;
   scopeFilter?: GameScopeFilter;
 };
 
@@ -55,11 +54,6 @@ function buildGameListConditions(filters: GameListFilters): SQL[] {
   }
   if (filters.centerId) {
     conditions.push(eq(game.centerId, filters.centerId));
-  }
-  if (filters.dateSearch) {
-    conditions.push(
-      sql`to_char(${game.startTime}, 'YYYY-MM-DD') ILIKE ${"%" + filters.dateSearch + "%"}`,
-    );
   }
   return conditions;
 }

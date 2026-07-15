@@ -8,11 +8,9 @@ import { toGameScopeFilter, type FilterContext } from "@/lib/filter-context";
 
 export async function GamesContent({
   ctx,
-  dateSearch,
   useCompetitionView,
 }: {
   ctx: FilterContext;
-  dateSearch: string;
   useCompetitionView: boolean;
 }) {
   if (useCompetitionView && ctx.competition) {
@@ -39,7 +37,7 @@ export async function GamesContent({
     );
   }
 
-  const filters = { scopeFilter: toGameScopeFilter(ctx), dateSearch: dateSearch || undefined };
+  const filters = { scopeFilter: toGameScopeFilter(ctx) };
   const games = await getGamesList(filters);
 
   return (

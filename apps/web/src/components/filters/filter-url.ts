@@ -15,6 +15,9 @@ export type FilterUrlState = {
   center: string | null;
   /** Competition slug or null for "all competitions". */
   competition: string | null;
+  /** Date range (YYYY-MM-DD), or null. Only meaningful for social/all scope. */
+  dateFrom?: string | null;
+  dateTo?: string | null;
 };
 
 /**
@@ -35,6 +38,10 @@ export function buildFilterUrl(
   }
   if (state.scope === "competition") {
     params.set("competition", state.competition ?? ALL_VALUE);
+  }
+  if (state.scope === "social" || state.scope === "all") {
+    if (state.dateFrom) params.set("from", state.dateFrom);
+    if (state.dateTo) params.set("to", state.dateTo);
   }
 
   if (extras) {
@@ -65,6 +72,8 @@ export function writeFilterCookies(
   if (state.competition !== undefined) {
     set(names.competition, state.competition ?? ALL_VALUE);
   }
+  if (state.dateFrom !== undefined) set(names.dateFrom, state.dateFrom ?? ALL_VALUE);
+  if (state.dateTo !== undefined) set(names.dateTo, state.dateTo ?? ALL_VALUE);
 }
 
 /** Persists the active game type (1y) so other pages default to it. */

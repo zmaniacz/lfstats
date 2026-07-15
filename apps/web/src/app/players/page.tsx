@@ -18,6 +18,8 @@ export default async function PlayersPage({
     scope?: string;
     center?: string;
     competition?: string;
+    from?: string;
+    to?: string;
     pool?: string;
     finals?: string;
     mercs?: string;
@@ -41,6 +43,8 @@ export default async function PlayersPage({
     ctx.scope,
     ctx.center?.slug ?? null,
     ctx.competition?.slug ?? null,
+    ctx.dateFrom,
+    ctx.dateTo,
     showPool,
     showFinals,
     showMercs,
@@ -58,6 +62,8 @@ export default async function PlayersPage({
             scope={ctx.scope}
             activeCenterSlug={ctx.center?.slug ?? null}
             activeCompetitionSlug={ctx.competition?.slug ?? null}
+            activeDateFrom={ctx.dateFrom}
+            activeDateTo={ctx.dateTo}
             centers={ctx.centers}
             competitions={ctx.competitions}
             extras={{

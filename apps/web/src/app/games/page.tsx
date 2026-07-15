@@ -4,12 +4,10 @@
 import { Suspense } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
-import { GamesDateFilter } from "@/components/games/GamesDateFilter";
 import { GamesContent } from "@/components/games/GamesContent";
 import { GamesTableSkeleton } from "@/components/games/GamesTableSkeleton";
 import { LaserballGamesContent } from "@/components/laserball/LaserballGamesContent";
 import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
-import { type FilterUrlState } from "@/components/filters/filter-url";
 
 export default async function GamesPage({
   searchParams,
@@ -18,28 +16,28 @@ export default async function GamesPage({
     scope?: string;
     center?: string;
     competition?: string;
-    date?: string;
+    from?: string;
+    to?: string;
     game?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const dateSearch = sp.date ?? "";
   const gameType = await resolveGameType(sp.game);
 
   const ctx = await resolveFilterContext(sp, { gameType });
-  const urlState: FilterUrlState = {
-    scope: ctx.scope,
-    center: ctx.center?.slug ?? null,
-    competition: ctx.competition?.slug ?? null,
-  };
 
   // Specific competition selected → use the match-aware competition games view (SM5 only).
   const useCompetitionView =
     gameType === "sm5" && ctx.scope === "competition" && ctx.competition !== null;
 
-  const contentKey = [gameType, ctx.scope, urlState.center, urlState.competition, dateSearch].join(
-    "|",
-  );
+  const contentKey = [
+    gameType,
+    ctx.scope,
+    ctx.center?.slug ?? null,
+    ctx.competition?.slug ?? null,
+    ctx.dateFrom,
+    ctx.dateTo,
+  ].join("|");
 
   return (
     <div className="p-6 space-y-4">
@@ -51,29 +49,22 @@ export default async function GamesPage({
             basePath="/games"
             gameType={gameType}
             scope={ctx.scope}
-            activeCenterSlug={urlState.center}
-            activeCompetitionSlug={urlState.competition}
+            activeCenterSlug={ctx.center?.slug ?? null}
+            activeCompetitionSlug={ctx.competition?.slug ?? null}
+            activeDateFrom={ctx.dateFrom}
+            activeDateTo={ctx.dateTo}
             centers={ctx.centers}
             competitions={ctx.competitions}
-            extras={{ date: dateSearch || null, game: gameType === "lb" ? "lb" : null }}
-          >
-            {!useCompetitionView && (
-              <GamesDateFilter
-                basePath="/games"
-                state={urlState}
-                date={dateSearch}
-                extras={{ game: gameType === "lb" ? "lb" : null }}
-              />
-            )}
-          </FilterBar>
+            extras={{ game: gameType === "lb" ? "lb" : null }}
+          />
         </div>
       </div>
 
       <Suspense key={contentKey} fallback={<GamesTableSkeleton />}>
         {gameType === "lb" ? (
-          <LaserballGamesContent ctx={ctx} dateSearch={dateSearch} />
+          <LaserballGamesContent ctx={ctx} />
         ) : (
-          <GamesContent ctx={ctx} dateSearch={dateSearch} useCompetitionView={useCompetitionView} />
+          <GamesContent ctx={ctx} useCompetitionView={useCompetitionView} />
         )}
       </Suspense>
     </div>

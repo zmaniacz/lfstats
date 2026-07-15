@@ -24,6 +24,8 @@ export default async function PlayerDetailPage({
     scope?: string;
     center?: string;
     competition?: string;
+    from?: string;
+    to?: string;
     game?: string;
     tab?: string;
   }>;
@@ -57,6 +59,8 @@ export default async function PlayerDetailPage({
     ctx.scope,
     ctx.center?.slug ?? null,
     ctx.competition?.slug ?? null,
+    ctx.dateFrom,
+    ctx.dateTo,
   ].join("|");
 
   return (
@@ -95,6 +99,8 @@ export default async function PlayerDetailPage({
             scope={ctx.scope}
             activeCenterSlug={ctx.center?.slug ?? null}
             activeCompetitionSlug={ctx.competition?.slug ?? null}
+            activeDateFrom={ctx.dateFrom}
+            activeDateTo={ctx.dateTo}
             centers={ctx.centers}
             competitions={ctx.competitions}
             extras={{ game: gameType === "lb" ? "lb" : null, tab: sp.tab ?? null }}

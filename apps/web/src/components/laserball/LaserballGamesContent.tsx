@@ -5,14 +5,8 @@ import { getLbGamesList } from "@lfstats/db";
 import { LaserballGamesTable } from "@/components/laserball/LaserballGamesTable";
 import { toGameScopeFilter, type FilterContext } from "@/lib/filter-context";
 
-export async function LaserballGamesContent({
-  ctx,
-  dateSearch,
-}: {
-  ctx: FilterContext;
-  dateSearch: string;
-}) {
-  const filters = { scopeFilter: toGameScopeFilter(ctx), dateSearch: dateSearch || undefined };
+export async function LaserballGamesContent({ ctx }: { ctx: FilterContext }) {
+  const filters = { scopeFilter: toGameScopeFilter(ctx) };
   const games = await getLbGamesList(filters);
 
   if (games.length === 0) {
