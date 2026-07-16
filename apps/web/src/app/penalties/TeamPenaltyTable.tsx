@@ -182,6 +182,7 @@ export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }:
               <SortHead col="teamName">Team</SortHead>
               <SortHead col="startTime">Started</SortHead>
               <SortHead col="type">Type</SortHead>
+              <TableHead>Description</TableHead>
               <SortHead col="scoreValue">Score</SortHead>
               {canEdit && <TableHead />}
             </TableRow>
@@ -190,7 +191,7 @@ export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }:
             {sorted.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canEdit ? 6 : 5}
+                  colSpan={canEdit ? 7 : 6}
                   className="text-center text-muted-foreground text-sm py-8"
                 >
                   No results for &ldquo;{search}&rdquo;
@@ -200,7 +201,7 @@ export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }:
               sorted.map((p) =>
                 editingId === p.id ? (
                   <TableRow key={p.id}>
-                    <TableCell colSpan={canEdit ? 6 : 5} className="py-2">
+                    <TableCell colSpan={canEdit ? 7 : 6} className="py-2">
                       <TeamPenaltyForm
                         defaultValues={p}
                         onSubmit={(fd) => handleUpdate(p.id, fd)}
@@ -231,6 +232,9 @@ export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }:
                       {formatDateTime(p.gameStartTime)}
                     </TableCell>
                     <TableCell>{p.type}</TableCell>
+                    <TableCell className="max-w-xs whitespace-normal break-words text-sm text-muted-foreground">
+                      {p.description || "—"}
+                    </TableCell>
                     <TableCell className="tabular-nums text-right">
                       {p.scoreValue !== 0 ? (
                         <span
