@@ -6,7 +6,8 @@ import { auth } from "@/auth";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
-import { PenaltiesContent } from "./PenaltiesContent";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlayerPenaltiesContent, TeamPenaltiesContent } from "./PenaltiesContent";
 import { PenaltiesSkeleton } from "./PenaltiesSkeleton";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
@@ -74,14 +75,32 @@ export default async function PenaltiesPage({
       {gameType === "lb" ? (
         <LaserballStub feature="penalties" />
       ) : (
-        <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
-          <PenaltiesContent
-            scopeFilter={toGameScopeFilter(ctx)}
-            competitionId={ctx.competition?.id ?? ""}
-            canEdit={canEdit}
-            heading={heading}
-          />
-        </Suspense>
+        <Tabs defaultValue="players">
+          <TabsList>
+            <TabsTrigger value="players">Players</TabsTrigger>
+            <TabsTrigger value="teams">Teams</TabsTrigger>
+          </TabsList>
+          <TabsContent value="players" className="mt-4">
+            <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
+              <PlayerPenaltiesContent
+                scopeFilter={toGameScopeFilter(ctx)}
+                competitionId={ctx.competition?.id ?? ""}
+                canEdit={canEdit}
+                heading={heading}
+              />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="teams" className="mt-4">
+            <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
+              <TeamPenaltiesContent
+                scopeFilter={toGameScopeFilter(ctx)}
+                competitionId={ctx.competition?.id ?? ""}
+                canEdit={canEdit}
+                heading={heading}
+              />
+            </Suspense>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

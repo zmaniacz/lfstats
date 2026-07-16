@@ -569,6 +569,34 @@ export const sm5GamePenalty = pgTable(
   ],
 );
 
+export const sm5GameTeamPenalty = pgTable(
+  "sm5_game_team_penalty",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    gameTeamId: uuid("game_team_id")
+      .notNull()
+      .references(() => sm5GameTeam.id, { onDelete: "cascade" }),
+    // set null so gameReferee cascade-delete doesn't conflict with gameId cascade-delete ordering
+    refereeId: uuid("referee_id").references(() => gameReferee.id, {
+      onDelete: "set null",
+    }),
+    scoreValue: integer("score_value").notNull(),
+    description: text("description").notNull(),
+    time: integer("time"),
+    type: text("type").notNull().default("Common Foul"),
+    inGame: boolean("in_game").notNull().default(true),
+    rescinded: boolean("rescinded").notNull().default(false),
+  },
+  (t) => [
+    index("sm5_game_team_penalty_game_team_id_idx").on(t.gameTeamId),
+    index("sm5_game_team_penalty_game_id_idx").on(t.gameId),
+    index("sm5_game_team_penalty_referee_id_idx").on(t.refereeId),
+  ],
+);
+
 export const sm5GamePlayerInteraction = pgTable(
   "sm5_game_player_interaction",
   {

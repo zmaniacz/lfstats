@@ -12,6 +12,7 @@ import {
   game,
   sm5GamePenalty,
   sm5GameTeam,
+  sm5GameTeamPenalty,
   sm5Scorecard,
   sm5ScorecardMvp,
 } from "../schema";
@@ -237,6 +238,193 @@ export async function deletePenalty(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Team Penalties
+// ---------------------------------------------------------------------------
+
+export type TeamPenaltyRecord = {
+  id: string;
+  gameTeamId: string;
+  gameId: string;
+  type: string;
+  description: string;
+  scoreValue: number;
+  inGame: boolean;
+  rescinded: boolean;
+  time: number | null;
+};
+
+export async function getGameTeamPenalties(gameId: string): Promise<TeamPenaltyRecord[]> {
+  const rows = await db
+    .select({
+      id: sm5GameTeamPenalty.id,
+      gameTeamId: sm5GameTeamPenalty.gameTeamId,
+      gameId: sm5GameTeamPenalty.gameId,
+      type: sm5GameTeamPenalty.type,
+      description: sm5GameTeamPenalty.description,
+      scoreValue: sm5GameTeamPenalty.scoreValue,
+      inGame: sm5GameTeamPenalty.inGame,
+      rescinded: sm5GameTeamPenalty.rescinded,
+      time: sm5GameTeamPenalty.time,
+    })
+    .from(sm5GameTeamPenalty)
+    .where(eq(sm5GameTeamPenalty.gameId, gameId))
+    .orderBy(sm5GameTeamPenalty.time);
+  return rows;
+}
+
+export type CompetitionTeamPenaltyRecord = TeamPenaltyRecord & {
+  teamName: string;
+  gameStartTime: Date;
+  centerName: string;
+  gameSlug: string;
+  competitionName: string | null;
+  roundNumber: number | null;
+  matchNumber: number | null;
+  gameNumber: number | null;
+  team1ShortName: string | null;
+  team2ShortName: string | null;
+};
+
+/**
+ * Team penalties across any scope (social / competition / all). Competition match
+ * context comes from left joins, so it is simply null for social games.
+ */
+export async function getTeamPenalties(
+  scopeFilter: GameScopeFilter,
+): Promise<CompetitionTeamPenaltyRecord[]> {
+  const scopeConditions = gameScopeConditions(scopeFilter);
+  return db
+    .select({
+      id: sm5GameTeamPenalty.id,
+      gameTeamId: sm5GameTeamPenalty.gameTeamId,
+      gameId: sm5GameTeamPenalty.gameId,
+      type: sm5GameTeamPenalty.type,
+      description: sm5GameTeamPenalty.description,
+      scoreValue: sm5GameTeamPenalty.scoreValue,
+      inGame: sm5GameTeamPenalty.inGame,
+      rescinded: sm5GameTeamPenalty.rescinded,
+      time: sm5GameTeamPenalty.time,
+      teamName: sm5GameTeam.name,
+      gameStartTime: game.startTime,
+      centerName: center.name,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      competitionName: competition.name,
+      roundNumber: competitionRound.roundNumber,
+      matchNumber: competitionMatch.matchNumber,
+      gameNumber: competitionMatchGame.gameNumber,
+      team1ShortName: sql<
+        string | null
+      >`(select short_name from competition_team where id = ${competitionMatch.team1Id})`,
+      team2ShortName: sql<
+        string | null
+      >`(select short_name from competition_team where id = ${competitionMatch.team2Id})`,
+    })
+    .from(sm5GameTeamPenalty)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5GameTeamPenalty.gameTeamId))
+    .innerJoin(game, eq(game.id, sm5GameTeamPenalty.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .leftJoin(competition, eq(competition.id, game.competitionId))
+    .leftJoin(competitionMatchGame, eq(competitionMatchGame.gameId, game.id))
+    .leftJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
+    .leftJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .where(scopeConditions.length ? and(...scopeConditions) : undefined)
+    .orderBy(
+      asc(competitionRound.roundNumber),
+      asc(competitionMatch.matchNumber),
+      asc(competitionMatchGame.gameNumber),
+      asc(sm5GameTeamPenalty.time),
+    );
+}
+
+export async function addTeamPenalty(data: {
+  gameTeamId: string;
+  gameId: string;
+  type?: string;
+  description?: string;
+  scoreValue?: number;
+  inGame?: boolean;
+}): Promise<string> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(sm5GameTeamPenalty)
+      .values({
+        gameTeamId: data.gameTeamId,
+        gameId: data.gameId,
+        type: data.type ?? "Common Foul",
+        description: data.description ?? "",
+        scoreValue: data.scoreValue ?? 0,
+        inGame: data.inGame ?? false,
+        rescinded: false,
+      })
+      .returning({ id: sm5GameTeamPenalty.id });
+
+    if ((data.scoreValue ?? 0) !== 0) {
+      await recalculateGameResult(data.gameId, tx);
+    }
+
+    return row.id;
+  });
+}
+
+export async function updateTeamPenalty(
+  id: string,
+  data: {
+    type?: string;
+    description?: string;
+    scoreValue?: number;
+    rescinded?: boolean;
+  },
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({
+        gameId: sm5GameTeamPenalty.gameId,
+        scoreValue: sm5GameTeamPenalty.scoreValue,
+        rescinded: sm5GameTeamPenalty.rescinded,
+      })
+      .from(sm5GameTeamPenalty)
+      .where(eq(sm5GameTeamPenalty.id, id));
+
+    if (!existing) return;
+
+    await tx
+      .update(sm5GameTeamPenalty)
+      .set({
+        ...(data.type !== undefined && { type: data.type }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
+        ...(data.scoreValue !== undefined && { scoreValue: data.scoreValue }),
+        ...(data.rescinded !== undefined && { rescinded: data.rescinded }),
+      })
+      .where(eq(sm5GameTeamPenalty.id, id));
+
+    const scoreChanged = data.scoreValue !== undefined && data.scoreValue !== existing.scoreValue;
+    const rescindChanged = data.rescinded !== undefined && data.rescinded !== existing.rescinded;
+
+    if (scoreChanged || rescindChanged) {
+      await recalculateGameResult(existing.gameId, tx);
+    }
+  });
+}
+
+export async function deleteTeamPenalty(id: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({
+        gameId: sm5GameTeamPenalty.gameId,
+      })
+      .from(sm5GameTeamPenalty)
+      .where(eq(sm5GameTeamPenalty.id, id));
+
+    if (!existing) return;
+
+    await tx.delete(sm5GameTeamPenalty).where(eq(sm5GameTeamPenalty.id, id));
+    await recalculateGameResult(existing.gameId, tx);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -323,18 +511,31 @@ export async function recalculateGameResult(gameId: string, tx: Tx): Promise<voi
 
   if (teams.length < 2) return;
 
-  // Get penalty totals per team
-  const penaltyRows = await tx
-    .select({
-      teamId: sm5Scorecard.teamId,
-      total: sql<number>`coalesce(sum(${sm5GamePenalty.scoreValue}), 0)::int`,
-    })
-    .from(sm5GamePenalty)
-    .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
-    .where(and(eq(sm5GamePenalty.gameId, gameId), eq(sm5GamePenalty.rescinded, false)))
-    .groupBy(sm5Scorecard.teamId);
+  // Get penalty totals per team, from both player penalties and team penalties
+  const [penaltyRows, teamPenaltyRows] = await Promise.all([
+    tx
+      .select({
+        teamId: sm5Scorecard.teamId,
+        total: sql<number>`coalesce(sum(${sm5GamePenalty.scoreValue}), 0)::int`,
+      })
+      .from(sm5GamePenalty)
+      .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
+      .where(and(eq(sm5GamePenalty.gameId, gameId), eq(sm5GamePenalty.rescinded, false)))
+      .groupBy(sm5Scorecard.teamId),
+    tx
+      .select({
+        teamId: sm5GameTeamPenalty.gameTeamId,
+        total: sql<number>`coalesce(sum(${sm5GameTeamPenalty.scoreValue}), 0)::int`,
+      })
+      .from(sm5GameTeamPenalty)
+      .where(and(eq(sm5GameTeamPenalty.gameId, gameId), eq(sm5GameTeamPenalty.rescinded, false)))
+      .groupBy(sm5GameTeamPenalty.gameTeamId),
+  ]);
 
   const penaltyMap = new Map(penaltyRows.map((r) => [r.teamId, r.total]));
+  for (const r of teamPenaltyRows) {
+    penaltyMap.set(r.teamId, (penaltyMap.get(r.teamId) ?? 0) + r.total);
+  }
 
   const scores = teams.map((t) => ({
     id: t.id,

@@ -11,6 +11,7 @@ import { GameTagManager } from "@/components/games/GameTagManager";
 import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
 import { MarkReplayButton } from "@/components/games/MarkReplayButton";
 import { ReplayTab } from "@/components/games/ReplayTab";
+import { TeamPenaltyManager } from "@/components/games/TeamPenaltyManager";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   getGameDetailBySlug,
   getGameMatchAssignment,
   getGamePenalties,
+  getGameTeamPenalties,
   getTagsByCenter,
   isFavorite,
 } from "@lfstats/db";
@@ -34,9 +36,11 @@ import {
   addFavoriteAction,
   addGameToCompetitionAction,
   addPenaltyAction,
+  addTeamPenaltyAction,
   assignGameToMatchAction,
   assignTagAction,
   deletePenaltyAction,
+  deleteTeamPenaltyAction,
   markGameAsAbortedAction,
   markGameAsReplayAction,
   removeFavoriteAction,
@@ -44,9 +48,11 @@ import {
   removeGameFromMatchAction,
   removeTagAction,
   rescindPenaltyAction,
+  rescindTeamPenaltyAction,
   setScorecardMercenaryAction,
   toggleExcludeAction,
   updatePenaltyAction,
+  updateTeamPenaltyAction,
 } from "./actions";
 
 export default async function GameDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -71,6 +77,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     matchAssignment,
     gameNav,
     allPenalties,
+    allTeamPenalties,
   ] = await Promise.all([
     canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
@@ -83,6 +90,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
       ? getCompetitionGameNavigation(game.competitionId, game.id)
       : Promise.resolve(null),
     getGamePenalties(game.id),
+    getGameTeamPenalties(game.id),
   ]);
 
   const penaltiesByScorecard = new Map(
@@ -94,11 +102,27 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     }, new Map<string, typeof allPenalties>()),
   );
 
+  const teamPenaltiesByTeam = new Map(
+    allTeamPenalties.reduce((acc, p) => {
+      const list = acc.get(p.gameTeamId) ?? [];
+      list.push(p);
+      acc.set(p.gameTeamId, list);
+      return acc;
+    }, new Map<string, typeof allTeamPenalties>()),
+  );
+
   const penaltyActions = {
     addAction: addPenaltyAction,
     updateAction: updatePenaltyAction,
     rescindAction: rescindPenaltyAction,
     deleteAction: deletePenaltyAction,
+  };
+
+  const teamPenaltyActions = {
+    addAction: addTeamPenaltyAction,
+    updateAction: updateTeamPenaltyAction,
+    rescindAction: rescindTeamPenaltyAction,
+    deleteAction: deleteTeamPenaltyAction,
   };
 
   const mercenaryAction = canDelete ? setScorecardMercenaryAction.bind(null, game.id) : undefined;
@@ -287,6 +311,18 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
                       )}
                     </span>
                   </div>
+
+                  {(canDelete || (teamPenaltiesByTeam.get(team.id)?.length ?? 0) > 0) && (
+                    <div className="px-4 py-2 border-l-4 border-transparent">
+                      <TeamPenaltyManager
+                        gameId={game.id}
+                        gameTeamId={team.id}
+                        penalties={teamPenaltiesByTeam.get(team.id) ?? []}
+                        canEdit={canDelete}
+                        actions={teamPenaltyActions}
+                      />
+                    </div>
+                  )}
 
                   <TeamStatsTable
                     team={team}

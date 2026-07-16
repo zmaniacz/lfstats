@@ -22,6 +22,9 @@ import {
   addPenalty,
   updatePenalty,
   deletePenalty,
+  addTeamPenalty,
+  updateTeamPenalty,
+  deleteTeamPenalty,
   setScorecardMercenary,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
@@ -182,6 +185,53 @@ export async function rescindPenaltyAction(
 export async function deletePenaltyAction(gameId: string, penaltyId: string): Promise<void> {
   await requireCenterAdmin(gameId);
   await deletePenalty(penaltyId);
+  await revalidateGame(gameId);
+}
+
+export async function addTeamPenaltyAction(
+  gameId: string,
+  gameTeamId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await addTeamPenalty({
+    gameTeamId,
+    gameId,
+    type: (formData.get("type") as string) || "Common Foul",
+    description: (formData.get("description") as string) || "",
+    scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
+    inGame: false,
+  });
+  await revalidateGame(gameId);
+}
+
+export async function updateTeamPenaltyAction(
+  gameId: string,
+  penaltyId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await updateTeamPenalty(penaltyId, {
+    type: formData.get("type") as string,
+    description: formData.get("description") as string,
+    scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
+  });
+  await revalidateGame(gameId);
+}
+
+export async function rescindTeamPenaltyAction(
+  gameId: string,
+  penaltyId: string,
+  rescinded: boolean,
+): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await updateTeamPenalty(penaltyId, { rescinded });
+  await revalidateGame(gameId);
+}
+
+export async function deleteTeamPenaltyAction(gameId: string, penaltyId: string): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await deleteTeamPenalty(penaltyId);
   await revalidateGame(gameId);
 }
 

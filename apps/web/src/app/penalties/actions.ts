@@ -5,7 +5,13 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { updatePenalty, deletePenalty, getCompetitionById } from "@lfstats/db";
+import {
+  updatePenalty,
+  deletePenalty,
+  updateTeamPenalty,
+  deleteTeamPenalty,
+  getCompetitionById,
+} from "@lfstats/db";
 
 async function requireAdmin() {
   const session = await auth();
@@ -52,5 +58,38 @@ export async function deleteCompetitionPenaltyAction(
 ): Promise<void> {
   await requireAdmin();
   await deletePenalty(penaltyId);
+  await revalidatePenaltiesPage(competitionId);
+}
+
+export async function updateCompetitionTeamPenaltyAction(
+  competitionId: string,
+  penaltyId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await updateTeamPenalty(penaltyId, {
+    type: formData.get("type") as string,
+    description: formData.get("description") as string,
+    scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
+  });
+  await revalidatePenaltiesPage(competitionId);
+}
+
+export async function rescindCompetitionTeamPenaltyAction(
+  competitionId: string,
+  penaltyId: string,
+  rescinded: boolean,
+): Promise<void> {
+  await requireAdmin();
+  await updateTeamPenalty(penaltyId, { rescinded });
+  await revalidatePenaltiesPage(competitionId);
+}
+
+export async function deleteCompetitionTeamPenaltyAction(
+  competitionId: string,
+  penaltyId: string,
+): Promise<void> {
+  await requireAdmin();
+  await deleteTeamPenalty(penaltyId);
   await revalidatePenaltiesPage(competitionId);
 }
