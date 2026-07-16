@@ -1,0 +1,1 @@
+ALTER TABLE "competition_team_player" ADD COLUMN "picture_version" integer DEFAULT 0 NOT NULL;

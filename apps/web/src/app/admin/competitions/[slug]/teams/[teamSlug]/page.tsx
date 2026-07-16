@@ -198,6 +198,7 @@ export default async function TeamRosterPage({
                         entryId={entry.id}
                         callsign={entry.currentCallsign}
                         hasProfilePicture={entry.hasProfilePicture}
+                        pictureVersion={entry.pictureVersion}
                       />
                     </TableCell>
                     <TableCell className="text-right">
@@ -272,6 +273,7 @@ export default async function TeamRosterPage({
                         entryId={entry.id}
                         callsign={entry.currentCallsign}
                         hasProfilePicture={entry.hasProfilePicture}
+                        pictureVersion={entry.pictureVersion}
                       />
                     </TableCell>
                     <TableCell className="text-right">

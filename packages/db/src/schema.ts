@@ -179,6 +179,7 @@ export const competitionTeamPlayer = pgTable(
       .references(() => player.id, { onDelete: "cascade" }),
     isMercenary: boolean("is_mercenary").notNull().default(false),
     hasProfilePicture: boolean("has_profile_picture").notNull().default(false),
+    pictureVersion: integer("picture_version").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [

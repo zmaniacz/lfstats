@@ -15,12 +15,14 @@ function initials(name: string): string {
 export function PlayerPicture({
   entryId,
   hasProfilePicture,
+  pictureVersion,
   name,
   size = 32,
   className,
 }: {
   entryId: string;
   hasProfilePicture: boolean;
+  pictureVersion?: number;
   name: string;
   size?: number;
   className?: string;
@@ -28,7 +30,7 @@ export function PlayerPicture({
   if (hasProfilePicture) {
     return (
       <Image
-        src={getPlayerPictureUrl(entryId)}
+        src={getPlayerPictureUrl(entryId, pictureVersion ?? 0)}
         alt={name}
         width={size}
         height={size}

@@ -62,6 +62,7 @@ export type CompetitionTeamRosterEntry = {
   currentCallsign: string;
   isMercenary: boolean;
   hasProfilePicture: boolean;
+  pictureVersion: number;
   gamesPlayed: number;
 };
 
@@ -263,7 +264,7 @@ export async function setCompetitionTeamPlayerPicture(
 ): Promise<void> {
   await db
     .update(competitionTeamPlayer)
-    .set({ hasProfilePicture })
+    .set({ hasProfilePicture, pictureVersion: sql`${competitionTeamPlayer.pictureVersion} + 1` })
     .where(eq(competitionTeamPlayer.id, entryId));
 }
 
@@ -278,6 +279,7 @@ export async function getCompetitionTeamRoster(
       currentCallsign: player.currentCallsign,
       isMercenary: competitionTeamPlayer.isMercenary,
       hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
+      pictureVersion: competitionTeamPlayer.pictureVersion,
       gamesPlayed: sql<number>`(
         SELECT count(*)::int FROM sm5_scorecard sc
         WHERE sc.player_id = ${player.id}
@@ -3660,6 +3662,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       teamLogoVersion: competitionTeam.logoVersion,
       rosterEntryId: competitionTeamPlayer.id,
       hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
+      pictureVersion: competitionTeamPlayer.pictureVersion,
     })
     .from(competitionTeam)
     .innerJoin(
@@ -3978,7 +3981,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         compMap.get(p.playerId),
         p.iplId,
         p.callsign,
-        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId) : null,
+        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId, p.pictureVersion) : null,
         p.teamName,
         p.teamHasLogo ? getTeamLogoUrl(p.teamId, p.teamLogoVersion) : null,
       ),
@@ -3988,7 +3991,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         alltimeMap.get(p.playerId),
         p.iplId,
         p.callsign,
-        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId) : null,
+        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId, p.pictureVersion) : null,
         p.teamName,
         p.teamHasLogo ? getTeamLogoUrl(p.teamId, p.teamLogoVersion) : null,
       ),

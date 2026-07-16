@@ -18,6 +18,7 @@ interface PlayerPictureUploadProps {
   entryId: string;
   callsign: string;
   hasProfilePicture: boolean;
+  pictureVersion: number;
 }
 
 export function PlayerPictureUpload({
@@ -26,6 +27,7 @@ export function PlayerPictureUpload({
   entryId,
   callsign,
   hasProfilePicture,
+  pictureVersion,
 }: PlayerPictureUploadProps) {
   const [isPending, setIsPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -73,6 +75,7 @@ export function PlayerPictureUpload({
       <PlayerPicture
         entryId={entryId}
         hasProfilePicture={hasProfilePicture}
+        pictureVersion={pictureVersion}
         name={callsign}
         size={32}
       />
