@@ -2,7 +2,8 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { GameMomentumChart } from "@/components/charts/GameMomentumChart";
-import { buildMomentumSeries } from "@/lib/game-momentum-series";
+import { GameScoreChart } from "@/components/charts/GameScoreChart";
+import { buildMomentumSeries, buildScoreSeries } from "@/lib/game-momentum-series";
 import { getGameMomentumData } from "@lfstats/db";
 
 type Props = {
@@ -21,15 +22,19 @@ export async function GameMomentumTab({ gameId, teamNames }: Props) {
   const teamA = { ...rawTeamA, teamName: teamNames?.get(rawTeamA.teamId) ?? rawTeamA.teamName };
   const teamB = { ...rawTeamB, teamName: teamNames?.get(rawTeamB.teamId) ?? rawTeamB.teamName };
   const { series, markers, yDomain } = buildMomentumSeries(data);
+  const scoreSeries = buildScoreSeries(data);
 
   return (
-    <GameMomentumChart
-      series={series}
-      markers={markers}
-      yDomain={yDomain}
-      duration={data.duration}
-      teamA={teamA}
-      teamB={teamB}
-    />
+    <div className="space-y-6">
+      <GameMomentumChart
+        series={series}
+        markers={markers}
+        yDomain={yDomain}
+        duration={data.duration}
+        teamA={teamA}
+        teamB={teamB}
+      />
+      <GameScoreChart series={scoreSeries} duration={data.duration} teamA={teamA} teamB={teamB} />
+    </div>
   );
 }

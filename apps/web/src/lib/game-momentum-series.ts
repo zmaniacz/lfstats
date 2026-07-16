@@ -116,3 +116,32 @@ export function buildMomentumSeries(
 
   return { series, markers, yDomain: [-yDomainMax, yDomainMax] };
 }
+
+export type ScorePoint = { time: number; teamAScore: number; teamBScore: number };
+
+// Reconstructs each team's cumulative score as a step function over the same
+// game-clock domain as the momentum chart, so the two can be read side by
+// side. One point per score change (plus a t=0 start and a t=duration end),
+// rendered with a "stepAfter" line so the flat holds until the next score.
+export function buildScoreSeries(data: GameMomentumData): ScorePoint[] {
+  const [teamA, teamB] = data.teams;
+  if (!teamA || !teamB) return [];
+
+  const points: ScorePoint[] = [{ time: 0, teamAScore: 0, teamBScore: 0 }];
+  let teamAScore = 0;
+  let teamBScore = 0;
+
+  const sortedScoreEvents = [...data.scoreEvents].sort((a, b) => a.time - b.time);
+  for (const e of sortedScoreEvents) {
+    if (e.teamId === teamA.teamId) teamAScore = e.score;
+    else if (e.teamId === teamB.teamId) teamBScore = e.score;
+    else continue;
+    points.push({ time: e.time, teamAScore, teamBScore });
+  }
+
+  if (points[points.length - 1]?.time !== data.duration) {
+    points.push({ time: data.duration, teamAScore, teamBScore });
+  }
+
+  return points;
+}

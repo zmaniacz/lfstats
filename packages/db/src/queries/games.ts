@@ -1256,10 +1256,19 @@ export type MomentumTeam = {
   eliminated: boolean | null;
 };
 
+// A team's cumulative score immediately after it changed. Only emitted on
+// change, mirroring the sparse event-driven shape of MomentumEvent.
+export type ScoreEvent = {
+  time: number;
+  teamId: string;
+  score: number;
+};
+
 export type GameMomentumData = {
   duration: number;
   teams: MomentumTeam[];
   events: MomentumEvent[];
+  scoreEvents: ScoreEvent[];
 };
 
 export async function getGameMomentumData(gameId: string): Promise<GameMomentumData | null> {
@@ -1273,7 +1282,7 @@ export async function getGameMomentumData(gameId: string): Promise<GameMomentumD
   const actorScorecard = alias(sm5Scorecard, "actor_scorecard");
   const targetScorecard = alias(sm5Scorecard, "target_scorecard");
 
-  const [teamRows, scoringEventRows, eliminationRows] = await Promise.all([
+  const [teamRows, scoringEventRows, eliminationRows, scoreSnapshotRows] = await Promise.all([
     db
       .select({
         teamId: sm5GameTeam.id,
@@ -1319,6 +1328,20 @@ export async function getGameMomentumData(gameId: string): Promise<GameMomentumD
       .innerJoin(sm5Scorecard, eq(sm5GamePlayerState.scorecardId, sm5Scorecard.id))
       .where(and(eq(sm5GamePlayerState.gameId, gameId), eq(sm5GamePlayerState.isEliminated, true)))
       .orderBy(asc(sm5GamePlayerState.time)),
+
+    // Per-player cumulative score snapshots, used to reconstruct each team's
+    // running score total over time (see scoreEvents below).
+    db
+      .select({
+        time: sm5GamePlayerState.time,
+        scorecardId: sm5GamePlayerState.scorecardId,
+        teamId: sm5Scorecard.teamId,
+        score: sm5GamePlayerState.score,
+      })
+      .from(sm5GamePlayerState)
+      .innerJoin(sm5Scorecard, eq(sm5GamePlayerState.scorecardId, sm5Scorecard.id))
+      .where(eq(sm5GamePlayerState.gameId, gameId))
+      .orderBy(asc(sm5GamePlayerState.time)),
   ]);
 
   // Keep only the first (earliest) isEliminated snapshot per scorecard — the
@@ -1345,10 +1368,28 @@ export async function getGameMomentumData(gameId: string): Promise<GameMomentumD
     ...eliminationEvents,
   ].sort((a, b) => a.time - b.time);
 
+  // Reconstruct each team's cumulative score over time from per-player score
+  // snapshots: turn each player's snapshot into a delta against their own
+  // previous score, then accumulate deltas into a running team total.
+  const teamIds = new Set(teamRows.map((t) => t.teamId));
+  const lastPlayerScore = new Map<string, number>();
+  const teamTotal = new Map<string, number>(teamRows.map((t) => [t.teamId, 0]));
+  const scoreEvents: ScoreEvent[] = [];
+  for (const row of scoreSnapshotRows) {
+    if (!teamIds.has(row.teamId)) continue;
+    const delta = row.score - (lastPlayerScore.get(row.scorecardId) ?? 0);
+    if (delta === 0) continue;
+    lastPlayerScore.set(row.scorecardId, row.score);
+    const newTotal = (teamTotal.get(row.teamId) ?? 0) + delta;
+    teamTotal.set(row.teamId, newTotal);
+    scoreEvents.push({ time: row.time, teamId: row.teamId, score: newTotal });
+  }
+
   return {
     duration: gameRow.actualDuration,
     teams: teamRows,
     events,
+    scoreEvents,
   };
 }
 
