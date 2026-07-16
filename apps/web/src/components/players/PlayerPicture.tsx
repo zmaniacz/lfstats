@@ -34,6 +34,7 @@ export function PlayerPicture({
         alt={name}
         width={size}
         height={size}
+        style={{ width: size, height: size }}
         className={cn("shrink-0 rounded-md object-cover", className)}
       />
     );

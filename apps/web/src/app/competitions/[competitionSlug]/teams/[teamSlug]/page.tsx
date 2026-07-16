@@ -114,6 +114,7 @@ export default async function CompetitionTeamPage({
             logoVersion={team.logoVersion}
             name={team.name}
             size={64}
+            expandable
           />
           <h2 className="text-xl font-semibold">
             {team.name}
