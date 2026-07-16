@@ -504,16 +504,25 @@ class Simulator {
         ps.isEliminated = true;
         if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
       } else if (end.exitType === "01" || end.exitType === "17") {
-        // Kicked mid-game. TDF livesLeft records what they had at kick time —
-        // it may be 0 (kicked just as they were eliminated) or positive (kicked
-        // while still alive). Set the final snapshot directly to TDF livesLeft
-        // so the consistency check trivially passes, then mark out-of-game.
+        // Kicked mid-game (or, for a game aborted early with no 0101 Mission
+        // End, every entity gets exitType 01 at the abrupt cutoff). TDF
+        // livesLeft records what they had at kick time — it may be 0 (kicked
+        // just as they were eliminated) or positive (kicked while still
+        // alive). Set the final snapshot directly to TDF livesLeft so the
+        // consistency check trivially passes, then mark out-of-game. Shots
+        // has no such kick-time quirk, so sync it from the live simulated
+        // value like the exitType 04 / no-entity-end paths below — otherwise
+        // a resupply landing after the last recorded snapshot (e.g. right
+        // before an early abort) would be silently dropped from the result.
         const tdfLives = this.tdfFinalLives.get(end.id) ?? 0;
         ps.lives = tdfLives;
         ps.isEliminated = true;
         if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
         const kickSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
-        if (kickSnap) kickSnap.lives = tdfLives;
+        if (kickSnap) {
+          kickSnap.lives = tdfLives;
+          if (ps.shots !== kickSnap.shots) kickSnap.shots = ps.shots;
+        }
         continue;
       }
 
