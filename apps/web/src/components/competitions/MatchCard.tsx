@@ -104,6 +104,7 @@ export function MatchCard({
             <TeamLogo
               teamId={match.team1Id ?? undefined}
               hasLogo={match.team1HasLogo}
+              logoVersion={match.team1LogoVersion}
               name={match.team1Name}
               size={48}
             />
@@ -155,6 +156,7 @@ export function MatchCard({
             <TeamLogo
               teamId={match.team2Id ?? undefined}
               hasLogo={match.team2HasLogo}
+              logoVersion={match.team2LogoVersion}
               name={match.team2Name}
               size={48}
             />

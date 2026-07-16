@@ -267,6 +267,13 @@
       "when": 1784056744575,
       "tag": "0037_striped_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1784224739873,
+      "tag": "0038_greedy_boom_boom",
+      "breakpoints": true
     }
   ]
 }

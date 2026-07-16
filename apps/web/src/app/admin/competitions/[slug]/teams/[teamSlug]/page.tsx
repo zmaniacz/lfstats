@@ -124,6 +124,7 @@ export default async function TeamRosterPage({
             teamId={teamId}
             teamName={team.name}
             hasLogo={team.hasLogo}
+            logoVersion={team.logoVersion}
           />
         </CardContent>
       </Card>

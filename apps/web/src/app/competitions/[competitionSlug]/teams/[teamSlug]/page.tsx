@@ -108,7 +108,13 @@ export default async function CompetitionTeamPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
-          <TeamLogo teamId={team.id} hasLogo={team.hasLogo} name={team.name} size={64} />
+          <TeamLogo
+            teamId={team.id}
+            hasLogo={team.hasLogo}
+            logoVersion={team.logoVersion}
+            name={team.name}
+            size={64}
+          />
           <h2 className="text-xl font-semibold">
             {team.name}
             {team.shortName && (

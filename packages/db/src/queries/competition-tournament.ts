@@ -49,6 +49,7 @@ export type CompetitionTeamListItem = {
   slug: string;
   shortName: string | null;
   hasLogo: boolean;
+  logoVersion: number;
   playerCount: number;
   mercCount: number;
   unassignedCount: number;
@@ -150,6 +151,7 @@ export async function getCompetitionTeams(
       slug: competitionTeam.slug,
       shortName: competitionTeam.shortName,
       hasLogo: competitionTeam.hasLogo,
+      logoVersion: competitionTeam.logoVersion,
       playerCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = false)::int`,
       mercCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = true)::int`,
       unassignedCount: sql<number>`(
@@ -186,6 +188,7 @@ export async function getCompetitionTeamById(id: string): Promise<{
   slug: string;
   shortName: string | null;
   hasLogo: boolean;
+  logoVersion: number;
 } | null> {
   const [row] = await db.select().from(competitionTeam).where(eq(competitionTeam.id, id));
   return row ?? null;
@@ -201,6 +204,7 @@ export async function getCompetitionTeamBySlug(
   slug: string;
   shortName: string | null;
   hasLogo: boolean;
+  logoVersion: number;
 } | null> {
   const [row] = await db
     .select()
@@ -247,7 +251,10 @@ export async function updateCompetitionTeam(
 }
 
 export async function setCompetitionTeamLogo(id: string, hasLogo: boolean): Promise<void> {
-  await db.update(competitionTeam).set({ hasLogo }).where(eq(competitionTeam.id, id));
+  await db
+    .update(competitionTeam)
+    .set({ hasLogo, logoVersion: sql`${competitionTeam.logoVersion} + 1` })
+    .where(eq(competitionTeam.id, id));
 }
 
 export async function setCompetitionTeamPlayerPicture(
@@ -1414,6 +1421,7 @@ export type CompetitionStandingsRow = {
   teamSlug: string;
   teamShortName: string | null;
   teamHasLogo: boolean;
+  teamLogoVersion: number;
   teamLogoUrl: string | null;
   matchPoints: number;
   matchWins: number;
@@ -1609,6 +1617,7 @@ export async function getCompetitionStandings(
           slug: competitionTeam.slug,
           shortName: competitionTeam.shortName,
           hasLogo: competitionTeam.hasLogo,
+          logoVersion: competitionTeam.logoVersion,
         })
         .from(competitionTeam)
         .innerJoin(
@@ -1629,6 +1638,7 @@ export async function getCompetitionStandings(
           slug: competitionTeam.slug,
           shortName: competitionTeam.shortName,
           hasLogo: competitionTeam.hasLogo,
+          logoVersion: competitionTeam.logoVersion,
         })
         .from(competitionTeam)
         .where(eq(competitionTeam.competitionId, competitionId))
@@ -1654,7 +1664,8 @@ export async function getCompetitionStandings(
         teamSlug: team.slug,
         teamShortName: team.shortName,
         teamHasLogo: team.hasLogo,
-        teamLogoUrl: team.hasLogo ? getTeamLogoUrl(team.id) : null,
+        teamLogoVersion: team.logoVersion,
+        teamLogoUrl: team.hasLogo ? getTeamLogoUrl(team.id, team.logoVersion) : null,
         ...s,
       };
     })
@@ -1686,11 +1697,13 @@ export type CompetitionMatchResult = {
   team1Slug: string | null;
   team1ShortName: string | null;
   team1HasLogo: boolean;
+  team1LogoVersion: number;
   team2Id: string | null;
   team2Name: string;
   team2Slug: string | null;
   team2ShortName: string | null;
   team2HasLogo: boolean;
+  team2LogoVersion: number;
   games: {
     gameNumber: number;
     gameId: string;
@@ -1785,6 +1798,7 @@ export async function getCompetitionMatchResults(
             slug: competitionTeam.slug,
             shortName: competitionTeam.shortName,
             hasLogo: competitionTeam.hasLogo,
+            logoVersion: competitionTeam.logoVersion,
           })
           .from(competitionTeam)
           .where(inArray(competitionTeam.id, teamIds))
@@ -1821,11 +1835,13 @@ export async function getCompetitionMatchResults(
         team1Slug: t1?.slug ?? null,
         team1ShortName: t1?.shortName ?? null,
         team1HasLogo: t1?.hasLogo ?? false,
+        team1LogoVersion: t1?.logoVersion ?? 0,
         team2Id: row.team2Id,
         team2Name: row.team2Id ? (t2?.name ?? "Unknown") : "TBD",
         team2Slug: t2?.slug ?? null,
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
+        team2LogoVersion: t2?.logoVersion ?? 0,
         games: [],
         game1ScheduledStartTime: row.game1ScheduledStartTime,
         game2ScheduledStartTime: row.game2ScheduledStartTime,
@@ -3641,6 +3657,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       teamName: competitionTeam.name,
       teamId: competitionTeam.id,
       teamHasLogo: competitionTeam.hasLogo,
+      teamLogoVersion: competitionTeam.logoVersion,
       rosterEntryId: competitionTeamPlayer.id,
       hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
     })
@@ -3963,7 +3980,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         p.callsign,
         p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId) : null,
         p.teamName,
-        p.teamHasLogo ? getTeamLogoUrl(p.teamId) : null,
+        p.teamHasLogo ? getTeamLogoUrl(p.teamId, p.teamLogoVersion) : null,
       ),
     ),
     alltime: rosterRows.map((p) =>
@@ -3973,7 +3990,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         p.callsign,
         p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId) : null,
         p.teamName,
-        p.teamHasLogo ? getTeamLogoUrl(p.teamId) : null,
+        p.teamHasLogo ? getTeamLogoUrl(p.teamId, p.teamLogoVersion) : null,
       ),
     ),
   };
@@ -4038,6 +4055,7 @@ export async function getCompetitionSchedule(
             id: competitionTeam.id,
             name: competitionTeam.name,
             hasLogo: competitionTeam.hasLogo,
+            logoVersion: competitionTeam.logoVersion,
           })
           .from(competitionTeam)
           .where(inArray(competitionTeam.id, teamIds))
@@ -4088,8 +4106,10 @@ export async function getCompetitionSchedule(
     const team2 = m.team2Id ? teamMap.get(m.team2Id) : undefined;
     const team1Name = m.team1Id ? (team1?.name ?? "TBD") : "TBD";
     const team2Name = m.team2Id ? (team2?.name ?? "TBD") : "TBD";
-    const team1LogoUrl = m.team1Id && team1?.hasLogo ? getTeamLogoUrl(m.team1Id) : null;
-    const team2LogoUrl = m.team2Id && team2?.hasLogo ? getTeamLogoUrl(m.team2Id) : null;
+    const team1LogoUrl =
+      m.team1Id && team1?.hasLogo ? getTeamLogoUrl(m.team1Id, team1.logoVersion) : null;
+    const team2LogoUrl =
+      m.team2Id && team2?.hasLogo ? getTeamLogoUrl(m.team2Id, team2.logoVersion) : null;
 
     for (const gameNumber of [1, 2] as const) {
       const scheduled = gameNumber === 1 ? m.game1ScheduledStartTime : m.game2ScheduledStartTime;

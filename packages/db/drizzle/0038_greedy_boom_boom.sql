@@ -1,0 +1,1 @@
+ALTER TABLE "competition_team" ADD COLUMN "logo_version" integer DEFAULT 0 NOT NULL;

@@ -161,6 +161,7 @@ export const competitionTeam = pgTable(
     slug: text("slug").notNull(),
     shortName: text("short_name"),
     hasLogo: boolean("has_logo").notNull().default(false),
+    logoVersion: integer("logo_version").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.competitionId, t.name), unique().on(t.competitionId, t.slug)],

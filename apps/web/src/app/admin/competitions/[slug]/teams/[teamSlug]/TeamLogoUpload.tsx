@@ -17,9 +17,16 @@ interface TeamLogoUploadProps {
   teamId: string;
   teamName: string;
   hasLogo: boolean;
+  logoVersion: number;
 }
 
-export function TeamLogoUpload({ competitionId, teamId, teamName, hasLogo }: TeamLogoUploadProps) {
+export function TeamLogoUpload({
+  competitionId,
+  teamId,
+  teamName,
+  hasLogo,
+  logoVersion,
+}: TeamLogoUploadProps) {
   const [isPending, setIsPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -63,7 +70,13 @@ export function TeamLogoUpload({ competitionId, teamId, teamName, hasLogo }: Tea
 
   return (
     <div className="flex items-center gap-4">
-      <TeamLogo teamId={teamId} hasLogo={hasLogo} name={teamName} size={64} />
+      <TeamLogo
+        teamId={teamId}
+        hasLogo={hasLogo}
+        logoVersion={logoVersion}
+        name={teamName}
+        size={64}
+      />
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <input

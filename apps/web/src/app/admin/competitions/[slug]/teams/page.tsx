@@ -84,6 +84,7 @@ export default async function CompetitionTeamsPage({
                         <TeamLogo
                           teamId={team.id}
                           hasLogo={team.hasLogo}
+                          logoVersion={team.logoVersion}
                           name={team.name}
                           size={24}
                         />

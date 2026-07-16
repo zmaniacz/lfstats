@@ -15,12 +15,14 @@ function initials(name: string): string {
 export function TeamLogo({
   teamId,
   hasLogo,
+  logoVersion,
   name,
   size = 32,
   className,
 }: {
   teamId?: string;
   hasLogo: boolean;
+  logoVersion?: number;
   name: string;
   size?: number;
   className?: string;
@@ -28,7 +30,7 @@ export function TeamLogo({
   if (teamId && hasLogo) {
     return (
       <Image
-        src={getTeamLogoUrl(teamId)}
+        src={getTeamLogoUrl(teamId, logoVersion ?? 0)}
         alt={name}
         width={size}
         height={size}

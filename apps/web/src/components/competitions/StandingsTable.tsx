@@ -43,7 +43,13 @@ export function StandingsTable({
               </TableCell>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
-                  <TeamLogo teamId={team.id} hasLogo={team.hasLogo} name={team.name} size={24} />
+                  <TeamLogo
+                    teamId={team.id}
+                    hasLogo={team.hasLogo}
+                    logoVersion={team.logoVersion}
+                    name={team.name}
+                    size={24}
+                  />
                   <Link
                     href={`/competitions/${competitionSlug}/teams/${team.slug}`}
                     className="hover:underline"
@@ -95,6 +101,7 @@ export function StandingsTable({
                   <TeamLogo
                     teamId={row.teamId}
                     hasLogo={row.teamHasLogo}
+                    logoVersion={row.teamLogoVersion}
                     name={row.teamName}
                     size={24}
                   />

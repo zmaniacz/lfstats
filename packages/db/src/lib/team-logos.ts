@@ -3,6 +3,6 @@
 
 const LOGO_BUCKET = "lfstats-modern-images";
 
-export function getTeamLogoUrl(teamId: string): string {
-  return `https://${LOGO_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${teamId}`;
+export function getTeamLogoUrl(teamId: string, logoVersion: number): string {
+  return `https://${LOGO_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${teamId}?v=${logoVersion}`;
 }
