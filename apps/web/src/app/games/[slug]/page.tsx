@@ -6,6 +6,7 @@ import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
+import { GameMomentumTab } from "@/components/games/GameMomentumTab";
 import { GameTagManager } from "@/components/games/GameTagManager";
 import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
 import { MarkReplayButton } from "@/components/games/MarkReplayButton";
@@ -244,6 +245,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
       <Tabs defaultValue="scoreboard">
         <TabsList>
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
+          <TabsTrigger value="momentum">Momentum</TabsTrigger>
           <TabsTrigger value="replay">Replay</TabsTrigger>
         </TabsList>
         <TabsContent value="scoreboard" className="mt-6">
@@ -300,6 +302,12 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
               );
             })}
           </>
+        </TabsContent>
+        <TabsContent value="momentum" className="mt-6">
+          <GameMomentumTab
+            gameId={game.id}
+            teamNames={new Map(displayTeams.map((t) => [t.id, t.name]))}
+          />
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
           <ReplayTab gameId={game.id} duration={game.actualDuration} />

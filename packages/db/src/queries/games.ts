@@ -18,6 +18,7 @@ import {
   gameTagAssignment,
 } from "../schema";
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type GameListFilters = {
@@ -1210,6 +1211,144 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
       hitDiff: s.hitDiff,
     })),
     nonPlayerActors: nonPlayerActorRows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Game Momentum
+// ---------------------------------------------------------------------------
+
+// Scoring event types that feed the momentum chart. Referee penalties and
+// non-scoring events (misses, locks, mission start/end, state changes) are
+// intentionally excluded.
+export const MOMENTUM_EVENT_TYPES = [
+  "0205", // opponent hit (tag)
+  "0206", // opponent deactivate
+  "0306", // missile hit opponent
+  "0204", // target destroyed (shot)
+  "0303", // target destroyed (missile)
+  "0B03", // base award
+  "0405", // nuke detonate
+] as const;
+
+export type MomentumEvent = {
+  time: number;
+  eventType: string;
+  actorTeamId: string;
+  targetTeamId: string | null;
+  // Text shown on the marker when hovered. For scoring events this is the
+  // acting player; for eliminations (synthetic "ELIM" eventType) it's the
+  // eliminated player, even though the momentum credit goes to their opponent.
+  markerLabel: string | null;
+  // Position (1-5) of the player named in markerLabel. Only populated for
+  // eliminations, where the tooltip shows what role was taken out.
+  markerPosition: number | null;
+};
+
+export type MomentumTeam = {
+  teamId: string;
+  teamName: string;
+  colourEnum: number;
+  score: number | null;
+  eliminationBonus: number | null;
+  penaltyScore: number | null;
+  result: "win" | "loss" | "draw" | null;
+  eliminated: boolean | null;
+};
+
+export type GameMomentumData = {
+  duration: number;
+  teams: MomentumTeam[];
+  events: MomentumEvent[];
+};
+
+export async function getGameMomentumData(gameId: string): Promise<GameMomentumData | null> {
+  const [gameRow] = await db
+    .select({ actualDuration: game.actualDuration })
+    .from(game)
+    .where(eq(game.id, gameId));
+
+  if (!gameRow) return null;
+
+  const actorScorecard = alias(sm5Scorecard, "actor_scorecard");
+  const targetScorecard = alias(sm5Scorecard, "target_scorecard");
+
+  const [teamRows, scoringEventRows, eliminationRows] = await Promise.all([
+    db
+      .select({
+        teamId: sm5GameTeam.id,
+        teamName: sm5GameTeam.name,
+        colourEnum: sm5GameTeam.colourEnum,
+        score: sm5GameTeam.score,
+        eliminationBonus: sm5GameTeam.eliminationBonus,
+        penaltyScore: sm5GameTeam.penaltyScore,
+        result: sm5GameTeam.result,
+        eliminated: sm5GameTeam.eliminated,
+      })
+      .from(sm5GameTeam)
+      .where(and(eq(sm5GameTeam.gameId, gameId), eq(sm5GameTeam.isNeutral, false)))
+      .orderBy(asc(sm5GameTeam.id)),
+
+    db
+      .select({
+        time: sm5GameEvent.time,
+        eventType: sm5GameEvent.eventType,
+        actorTeamId: actorScorecard.teamId,
+        markerLabel: actorScorecard.callsign,
+        targetTeamId: targetScorecard.teamId,
+      })
+      .from(sm5GameEvent)
+      .innerJoin(actorScorecard, eq(sm5GameEvent.actorScorecardId, actorScorecard.id))
+      .leftJoin(targetScorecard, eq(sm5GameEvent.targetScorecardId, targetScorecard.id))
+      .where(
+        and(eq(sm5GameEvent.gameId, gameId), inArray(sm5GameEvent.eventType, MOMENTUM_EVENT_TYPES)),
+      )
+      .orderBy(asc(sm5GameEvent.time)),
+
+    // Elimination timing isn't a discrete TDF event — it's derived from the
+    // player-state snapshot recorded at the moment isEliminated flips true.
+    db
+      .select({
+        time: sm5GamePlayerState.time,
+        scorecardId: sm5GamePlayerState.scorecardId,
+        teamId: sm5Scorecard.teamId,
+        callsign: sm5Scorecard.callsign,
+        position: sm5Scorecard.position,
+      })
+      .from(sm5GamePlayerState)
+      .innerJoin(sm5Scorecard, eq(sm5GamePlayerState.scorecardId, sm5Scorecard.id))
+      .where(and(eq(sm5GamePlayerState.gameId, gameId), eq(sm5GamePlayerState.isEliminated, true)))
+      .orderBy(asc(sm5GamePlayerState.time)),
+  ]);
+
+  // Keep only the first (earliest) isEliminated snapshot per scorecard — the
+  // moment they actually went down.
+  const seenScorecards = new Set<string>();
+  const eliminationEvents: MomentumEvent[] = [];
+  for (const row of eliminationRows) {
+    if (seenScorecards.has(row.scorecardId)) continue;
+    seenScorecards.add(row.scorecardId);
+    const opposingTeam = teamRows.find((t) => t.teamId !== row.teamId);
+    if (!opposingTeam) continue;
+    eliminationEvents.push({
+      time: row.time,
+      eventType: "ELIM",
+      actorTeamId: opposingTeam.teamId,
+      targetTeamId: row.teamId,
+      markerLabel: row.callsign,
+      markerPosition: row.position,
+    });
+  }
+
+  const events = [
+    ...scoringEventRows.map((r) => ({ ...r, markerPosition: null })),
+    ...eliminationEvents,
+  ].sort((a, b) => a.time - b.time);
+
+  return {
+    duration: gameRow.actualDuration,
+    teams: teamRows,
+    events,
   };
 }
 
