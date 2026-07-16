@@ -4,5 +4,6 @@
 const PICTURE_BUCKET = "lfstats-modern-images";
 
 export function getPlayerPictureUrl(entryId: string, pictureVersion: number): string {
-  return `https://${PICTURE_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${entryId}?v=${pictureVersion}`;
+  const base = `https://${PICTURE_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${entryId}`;
+  return pictureVersion > 0 ? `${base}?v=${pictureVersion}` : base;
 }

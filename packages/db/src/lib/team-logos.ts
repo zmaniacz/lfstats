@@ -4,5 +4,6 @@
 const LOGO_BUCKET = "lfstats-modern-images";
 
 export function getTeamLogoUrl(teamId: string, logoVersion: number): string {
-  return `https://${LOGO_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${teamId}?v=${logoVersion}`;
+  const base = `https://${LOGO_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${teamId}`;
+  return logoVersion > 0 ? `${base}?v=${logoVersion}` : base;
 }
