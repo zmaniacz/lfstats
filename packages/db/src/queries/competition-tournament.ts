@@ -3169,6 +3169,9 @@ export type AllStarPlayer = {
   positionGames: number;
   totalGames: number;
   avgMvp: number;
+  avgAccuracy: number;
+  avgHitDiff: number;
+  avgMedicHits: number;
 };
 
 export type AllStarRankings = {
@@ -3216,22 +3219,67 @@ export async function getCompetitionAllStarRankings(
       p1AvgMvp: sql<
         number | null
       >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgHitDiff: sql<
+        number | null
+      >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 1)`,
+      p1AvgMedicHits: sql<
+        number | null
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 1)`,
       p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
       p2AvgMvp: sql<
         number | null
       >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgHitDiff: sql<
+        number | null
+      >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 2)`,
+      p2AvgMedicHits: sql<
+        number | null
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 2)`,
       p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
       p3AvgMvp: sql<
         number | null
       >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgHitDiff: sql<
+        number | null
+      >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 3)`,
+      p3AvgMedicHits: sql<
+        number | null
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 3)`,
       p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
       p4AvgMvp: sql<
         number | null
       >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgHitDiff: sql<
+        number | null
+      >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 4)`,
+      p4AvgMedicHits: sql<
+        number | null
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 4)`,
       p5Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5)::int`,
       p5AvgMvp: sql<
         number | null
       >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgAccuracy: sql<
+        number | null
+      >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgHitDiff: sql<
+        number | null
+      >`avg(${sm5Scorecard.hitDiff}) filter (where ${sm5Scorecard.position} = 5)`,
+      p5AvgMedicHits: sql<
+        number | null
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 5)`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -3243,14 +3291,51 @@ export async function getCompetitionAllStarRankings(
 
   for (const r of rows) {
     const total = Number(r.totalGames);
-    const posData: [keyof AllStarRankings, number, number | null][] = [
-      [1, Number(r.p1Games), r.p1AvgMvp !== null ? Number(r.p1AvgMvp) : null],
-      [2, Number(r.p2Games), r.p2AvgMvp !== null ? Number(r.p2AvgMvp) : null],
-      [3, Number(r.p3Games), r.p3AvgMvp !== null ? Number(r.p3AvgMvp) : null],
-      [4, Number(r.p4Games), r.p4AvgMvp !== null ? Number(r.p4AvgMvp) : null],
-      [5, Number(r.p5Games), r.p5AvgMvp !== null ? Number(r.p5AvgMvp) : null],
+    // accuracy/hitDiff/medicHits are NOT NULL columns, so once posGames > 0 (guaranteed
+    // by the posGames > total / 2 check below) their averages can never be null.
+    const posData: [keyof AllStarRankings, number, number | null, number, number, number][] = [
+      [
+        1,
+        Number(r.p1Games),
+        r.p1AvgMvp !== null ? Number(r.p1AvgMvp) : null,
+        Number(r.p1AvgAccuracy),
+        Number(r.p1AvgHitDiff),
+        Number(r.p1AvgMedicHits),
+      ],
+      [
+        2,
+        Number(r.p2Games),
+        r.p2AvgMvp !== null ? Number(r.p2AvgMvp) : null,
+        Number(r.p2AvgAccuracy),
+        Number(r.p2AvgHitDiff),
+        Number(r.p2AvgMedicHits),
+      ],
+      [
+        3,
+        Number(r.p3Games),
+        r.p3AvgMvp !== null ? Number(r.p3AvgMvp) : null,
+        Number(r.p3AvgAccuracy),
+        Number(r.p3AvgHitDiff),
+        Number(r.p3AvgMedicHits),
+      ],
+      [
+        4,
+        Number(r.p4Games),
+        r.p4AvgMvp !== null ? Number(r.p4AvgMvp) : null,
+        Number(r.p4AvgAccuracy),
+        Number(r.p4AvgHitDiff),
+        Number(r.p4AvgMedicHits),
+      ],
+      [
+        5,
+        Number(r.p5Games),
+        r.p5AvgMvp !== null ? Number(r.p5AvgMvp) : null,
+        Number(r.p5AvgAccuracy),
+        Number(r.p5AvgHitDiff),
+        Number(r.p5AvgMedicHits),
+      ],
     ];
-    for (const [pos, posGames, avgMvp] of posData) {
+    for (const [pos, posGames, avgMvp, avgAccuracy, avgHitDiff, avgMedicHits] of posData) {
       if (posGames > total / 2 && avgMvp !== null) {
         result[pos].push({
           playerId: r.playerId,
@@ -3259,6 +3344,9 @@ export async function getCompetitionAllStarRankings(
           positionGames: posGames,
           totalGames: total,
           avgMvp,
+          avgAccuracy,
+          avgHitDiff,
+          avgMedicHits,
         });
       }
     }

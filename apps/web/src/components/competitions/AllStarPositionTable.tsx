@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatMVP } from "@/lib/format";
+import { formatMVP, formatPct, formatHitDiff } from "@/lib/format";
 import type { AllStarPlayer } from "@lfstats/db";
 import Link from "next/link";
 
@@ -35,6 +35,9 @@ export function AllStarPositionTable({
                 <TableHead>Callsign</TableHead>
                 <TableHead>Games</TableHead>
                 <TableHead>Avg MVP</TableHead>
+                <TableHead>Avg Accuracy</TableHead>
+                <TableHead>Avg Hit Diff</TableHead>
+                <TableHead>Avg Medic Hits</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -52,12 +55,15 @@ export function AllStarPositionTable({
                       {p.positionGames}/{p.totalGames}
                     </TableCell>
                     <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
+                    <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
+                    <TableCell className="tabular-nums">{p.avgMedicHits.toFixed(2)}</TableCell>
                   </TableRow>
                 );
               })}
               {players.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No qualifying players for this competition.
                   </TableCell>
                 </TableRow>
