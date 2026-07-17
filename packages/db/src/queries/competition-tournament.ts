@@ -4247,14 +4247,17 @@ export async function getCompetitionSchedule(
 // Competition standings (API)
 // ---------------------------------------------------------------------------
 
+export type CompetitionStandingsApiRow = Omit<CompetitionStandingsRow, "teamLogoVersion">;
+
 export async function getCompetitionStandingsData(
   slug: string,
-): Promise<CompetitionStandingsRow[] | null> {
+): Promise<CompetitionStandingsApiRow[] | null> {
   const [comp] = await db
     .select({ id: competition.id })
     .from(competition)
     .where(eq(competition.slug, slug));
   if (!comp) return null;
 
-  return getCompetitionStandings(comp.id);
+  const rows = await getCompetitionStandings(comp.id);
+  return rows.map(({ teamLogoVersion, ...rest }) => rest);
 }
