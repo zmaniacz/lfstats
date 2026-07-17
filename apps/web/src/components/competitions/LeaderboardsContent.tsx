@@ -273,13 +273,23 @@ export async function LeaderboardsContent({
             format="integer"
           />
           <StatLeaderboardCard
-            title="Easy Targets"
+            title="Gumby Shooter"
             colLabel="Resets"
             rows={[...miscMischief]
               .filter((r) => r.totalResets > 0)
               .sort((a, b) => b.totalResets - a.totalResets)
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.totalResets }))}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="Easy Targets"
+            colLabel="Times Reset"
+            rows={[...miscMischief]
+              .filter((r) => r.totalTimesReset > 0)
+              .sort((a, b) => b.totalTimesReset - a.totalTimesReset)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.totalTimesReset }))}
             format="integer"
           />
           <StatLeaderboardCard

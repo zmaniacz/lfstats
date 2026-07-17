@@ -2818,6 +2818,7 @@ export type CompetitionMiscMischiefItem = {
   totalEliminations: number;
   totalResets: number;
   totalTeamResets: number;
+  totalTimesReset: number;
   unusedSp: number | null;
   totalResupplyDowntimeMs: number;
   totalDoubleResuppliesGiven: number | null;
@@ -2841,6 +2842,7 @@ export async function getCompetitionMiscMischief(
       totalEliminations: sql<number>`sum(${sm5Scorecard.eliminatedOpponent})::int`,
       totalResets: sql<number>`sum(${sm5Scorecard.resetOpponent} + ${sm5Scorecard.missileResetOpponent})::int`,
       totalTeamResets: sql<number>`sum(${sm5Scorecard.resetTeam} + ${sm5Scorecard.missileResetTeam})::int`,
+      totalTimesReset: sql<number>`sum(${sm5Scorecard.timesReset} + ${sm5Scorecard.timesResetByMissile})::int`,
       unusedSp: sql<
         number | null
       >`sum(${sm5Scorecard.spEarned} - ${sm5Scorecard.spSpent}) filter (where ${sm5Scorecard.spEarned} is not null and ${sm5Scorecard.spSpent} is not null)`,
@@ -2865,6 +2867,7 @@ export async function getCompetitionMiscMischief(
     totalEliminations: Number(r.totalEliminations),
     totalResets: Number(r.totalResets),
     totalTeamResets: Number(r.totalTeamResets),
+    totalTimesReset: Number(r.totalTimesReset),
     unusedSp: r.unusedSp !== null ? Number(r.unusedSp) : null,
     totalResupplyDowntimeMs: Number(r.totalResupplyDowntimeMs),
     totalDoubleResuppliesGiven:
