@@ -174,6 +174,10 @@ export type PlayerHitData = {
   missilesDealt: number;
   hitsReceived: number;
   missilesReceived: number;
+  resetsDealt: number;
+  resetsReceived: number;
+  missileResetsDealt: number;
+  missileResetsReceived: number;
 };
 
 export type GameDetailPlayer = {
@@ -200,6 +204,7 @@ export type GameDetailPlayer = {
   medicHits: number;
   teamMedicHits: number;
   timesHit: number;
+  timesReset: number;
   // Missile stats
   missileHits: number;
   missilesHitOpponent: number;
@@ -207,6 +212,7 @@ export type GameDetailPlayer = {
   missilesHitOpponentMedic: number;
   missilesHitTeamMedic: number;
   timesHitByMissile: number;
+  timesResetByMissile: number;
   // Nuke stats (Commander only, nullable)
   nukesActivated: number | null;
   nukesDetonated: number | null;
@@ -416,6 +422,8 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         resetTeam: sm5Scorecard.resetTeam,
         missileResetOpponent: sm5Scorecard.missileResetOpponent,
         missileResetTeam: sm5Scorecard.missileResetTeam,
+        timesReset: sm5Scorecard.timesReset,
+        timesResetByMissile: sm5Scorecard.timesResetByMissile,
         spEarned: sm5Scorecard.spEarned,
         spSpent: sm5Scorecard.spSpent,
         targetsDestroyed: sm5Scorecard.targetsDestroyed,
@@ -447,6 +455,8 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         targetScorecardId: sm5GamePlayerInteraction.targetScorecardId,
         shotsHit: sm5GamePlayerInteraction.shotsHit,
         missileHits: sm5GamePlayerInteraction.missileHits,
+        resets: sm5GamePlayerInteraction.resets,
+        missileResets: sm5GamePlayerInteraction.missileResets,
       })
       .from(sm5GamePlayerInteraction)
       .where(inArray(sm5GamePlayerInteraction.gameId, gameIds)),
@@ -484,19 +494,30 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
     });
   }
 
-  type RawHit = { shotsHit: number; missileHits: number };
+  type RawHit = {
+    shotsHit: number;
+    missileHits: number;
+    resets: number;
+    missileResets: number;
+  };
   const interactionDealt = new Map<string, Map<string, RawHit>>();
   const interactionReceived = new Map<string, Map<string, RawHit>>();
   for (const row of interactionRows) {
     if (!interactionDealt.has(row.scorecardId)) interactionDealt.set(row.scorecardId, new Map());
-    interactionDealt
-      .get(row.scorecardId)!
-      .set(row.targetScorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
+    interactionDealt.get(row.scorecardId)!.set(row.targetScorecardId, {
+      shotsHit: row.shotsHit,
+      missileHits: row.missileHits,
+      resets: row.resets,
+      missileResets: row.missileResets,
+    });
     if (!interactionReceived.has(row.targetScorecardId))
       interactionReceived.set(row.targetScorecardId, new Map());
-    interactionReceived
-      .get(row.targetScorecardId)!
-      .set(row.scorecardId, { shotsHit: row.shotsHit, missileHits: row.missileHits });
+    interactionReceived.get(row.targetScorecardId)!.set(row.scorecardId, {
+      shotsHit: row.shotsHit,
+      missileHits: row.missileHits,
+      resets: row.resets,
+      missileResets: row.missileResets,
+    });
   }
 
   const teamsByGame = new Map<string, typeof teamRows>();
@@ -544,12 +565,14 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       medicHits: sc.medicHits,
       teamMedicHits: sc.teamMedicHits,
       timesHit: sc.timesHit,
+      timesReset: sc.timesReset,
       missileHits: sc.missileHits,
       missilesHitOpponent: sc.missilesHitOpponent,
       missilesHitTeam: sc.missilesHitTeam,
       missilesHitOpponentMedic: sc.missilesHitOpponentMedic,
       missilesHitTeamMedic: sc.missilesHitTeamMedic,
       timesHitByMissile: sc.timesHitByMissile,
+      timesResetByMissile: sc.timesResetByMissile,
       nukesActivated: sc.nukesActivated,
       nukesDetonated: sc.nukesDetonated,
       nukesHitMedic: sc.nukesHitMedic,
@@ -602,8 +625,18 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
         for (const otherId of otherIds) {
           const meta = scorecardMeta.get(otherId);
           if (!meta) continue;
-          const d = dealt.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
-          const r = received.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
+          const d = dealt.get(otherId) ?? {
+            shotsHit: 0,
+            missileHits: 0,
+            resets: 0,
+            missileResets: 0,
+          };
+          const r = received.get(otherId) ?? {
+            shotsHit: 0,
+            missileHits: 0,
+            resets: 0,
+            missileResets: 0,
+          };
           interactions.push({
             callsign: meta.callsign,
             position: meta.position,
@@ -612,6 +645,10 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
             missilesDealt: d.missileHits,
             hitsReceived: r.shotsHit,
             missilesReceived: r.missileHits,
+            resetsDealt: d.resets,
+            resetsReceived: r.resets,
+            missileResetsDealt: d.missileResets,
+            missileResetsReceived: r.missileResets,
             score: meta.score,
           });
         }
@@ -778,6 +815,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         resetTeam: sm5Scorecard.resetTeam,
         missileResetOpponent: sm5Scorecard.missileResetOpponent,
         missileResetTeam: sm5Scorecard.missileResetTeam,
+        timesReset: sm5Scorecard.timesReset,
+        timesResetByMissile: sm5Scorecard.timesResetByMissile,
         // SP tracking
         spEarned: sm5Scorecard.spEarned,
         spSpent: sm5Scorecard.spSpent,
@@ -812,6 +851,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         targetScorecardId: sm5GamePlayerInteraction.targetScorecardId,
         shotsHit: sm5GamePlayerInteraction.shotsHit,
         missileHits: sm5GamePlayerInteraction.missileHits,
+        resets: sm5GamePlayerInteraction.resets,
+        missileResets: sm5GamePlayerInteraction.missileResets,
       })
       .from(sm5GamePlayerInteraction)
       .where(eq(sm5GamePlayerInteraction.gameId, id)),
@@ -856,7 +897,12 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   // Build bidirectional interaction data keyed by player scorecardId
   // interactionDealt[actorId][targetId] = {shotsHit, missileHits}
   // interactionReceived[targetId][actorId] = {shotsHit, missileHits}
-  type RawHit = { shotsHit: number; missileHits: number };
+  type RawHit = {
+    shotsHit: number;
+    missileHits: number;
+    resets: number;
+    missileResets: number;
+  };
   const interactionDealt = new Map<string, Map<string, RawHit>>();
   const interactionReceived = new Map<string, Map<string, RawHit>>();
 
@@ -865,12 +911,16 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
     interactionDealt.get(row.scorecardId)!.set(row.targetScorecardId, {
       shotsHit: row.shotsHit,
       missileHits: row.missileHits,
+      resets: row.resets,
+      missileResets: row.missileResets,
     });
     if (!interactionReceived.has(row.targetScorecardId))
       interactionReceived.set(row.targetScorecardId, new Map());
     interactionReceived.get(row.targetScorecardId)!.set(row.scorecardId, {
       shotsHit: row.shotsHit,
       missileHits: row.missileHits,
+      resets: row.resets,
+      missileResets: row.missileResets,
     });
   }
 
@@ -915,12 +965,14 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         medicHits: sc.medicHits,
         teamMedicHits: sc.teamMedicHits,
         timesHit: sc.timesHit,
+        timesReset: sc.timesReset,
         missileHits: sc.missileHits,
         missilesHitOpponent: sc.missilesHitOpponent,
         missilesHitTeam: sc.missilesHitTeam,
         missilesHitOpponentMedic: sc.missilesHitOpponentMedic,
         missilesHitTeamMedic: sc.missilesHitTeamMedic,
         timesHitByMissile: sc.timesHitByMissile,
+        timesResetByMissile: sc.timesResetByMissile,
         nukesActivated: sc.nukesActivated,
         nukesDetonated: sc.nukesDetonated,
         nukesHitMedic: sc.nukesHitMedic,
@@ -973,8 +1025,18 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
           for (const otherId of otherIds) {
             const meta = scorecardMeta.get(otherId);
             if (!meta) continue;
-            const d = dealt.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
-            const r = received.get(otherId) ?? { shotsHit: 0, missileHits: 0 };
+            const d = dealt.get(otherId) ?? {
+              shotsHit: 0,
+              missileHits: 0,
+              resets: 0,
+              missileResets: 0,
+            };
+            const r = received.get(otherId) ?? {
+              shotsHit: 0,
+              missileHits: 0,
+              resets: 0,
+              missileResets: 0,
+            };
             interactions.push({
               callsign: meta.callsign,
               position: meta.position,
@@ -983,6 +1045,10 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
               missilesDealt: d.missileHits,
               hitsReceived: r.shotsHit,
               missilesReceived: r.missileHits,
+              resetsDealt: d.resets,
+              resetsReceived: r.resets,
+              missileResetsDealt: d.missileResets,
+              missileResetsReceived: r.missileResets,
               score: meta.score,
             });
           }

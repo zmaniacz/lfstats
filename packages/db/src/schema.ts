@@ -413,6 +413,7 @@ export const sm5Scorecard = pgTable(
     shotsHitOpponentMedic: integer("shots_hit_opponent_medic").notNull(),
     shotsHitTeamMedic: integer("shots_hit_team_medic").notNull(),
     timesHit: integer("times_hit").notNull(),
+    timesReset: integer("times_reset").notNull().default(0),
 
     // Missile Stats
     missileHits: integer("missile_hits").notNull(),
@@ -421,6 +422,7 @@ export const sm5Scorecard = pgTable(
     missilesHitOpponentMedic: integer("missiles_hit_opponent_medic").notNull(),
     missilesHitTeamMedic: integer("missiles_hit_team_medic").notNull(),
     timesHitByMissile: integer("times_hit_by_missile").notNull(),
+    timesResetByMissile: integer("times_reset_by_missile").notNull().default(0),
     medicHits: integer("medic_hits").notNull().default(0),
     teamMedicHits: integer("team_medic_hits").notNull().default(0),
 
@@ -611,6 +613,8 @@ export const sm5GamePlayerInteraction = pgTable(
     shotsHit: integer("shots_hit").notNull(),
     shotDeactivations: integer("shot_deactivations").notNull(),
     missileHits: integer("missile_hits").notNull(),
+    resets: integer("resets").notNull().default(0),
+    missileResets: integer("missile_resets").notNull().default(0),
   },
   (t) => [
     unique("sm5_game_player_interaction_unique").on(t.gameId, t.scorecardId, t.targetScorecardId),

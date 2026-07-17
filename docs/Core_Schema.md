@@ -356,27 +356,29 @@ All stat columns that are position-specific are stored as `null` for positions w
 
 #### Shot Stats
 
-| Column                     | Type    | Null  | Source      | Description                                                                                                  |
-| -------------------------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------ |
-| `shots_fired`              | integer | never | line type 7 | Total shots fired including misses.                                                                          |
-| `shots_hit`                | integer | never | line type 7 | Total shots that hit any target, player or non-player.                                                       |
-| `shots_hit_opponent`       | integer | never | line type 7 | Shots that hit an opposing team player (`0205` and `0206` where target is an opponent).                      |
-| `shots_hit_team`           | integer | never | line type 7 | Shots that hit a friendly team player (`0205` and `0206` where target is a teammate).                        |
-| `shots_hit_opponent_3hit`  | integer | never | line type 7 | Shots that hit an opposing Commander or Heavy Weapons player — the two 3-hit-point positions.                |
-| `shots_hit_opponent_medic` | integer | never | derived     | Shots that hit the opposing team's Medic. Since the Medic has 1 hit point, every hit is also a deactivation. |
-| `shots_hit_team_medic`     | integer | never | derived     | Shots that hit the friendly team's Medic. Shame stat.                                                        |
-| `times_hit`                | integer | never | line type 7 | Number of times this player was hit by any shot.                                                             |
+| Column                     | Type    | Null  | Source      | Description                                                                                                                                                                     |
+| -------------------------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shots_fired`              | integer | never | line type 7 | Total shots fired including misses.                                                                                                                                             |
+| `shots_hit`                | integer | never | line type 7 | Total shots that hit any target, player or non-player.                                                                                                                          |
+| `shots_hit_opponent`       | integer | never | line type 7 | Shots that hit an opposing team player (`0205` and `0206` where target is an opponent).                                                                                         |
+| `shots_hit_team`           | integer | never | line type 7 | Shots that hit a friendly team player (`0205` and `0206` where target is a teammate).                                                                                           |
+| `shots_hit_opponent_3hit`  | integer | never | line type 7 | Shots that hit an opposing Commander or Heavy Weapons player — the two 3-hit-point positions.                                                                                   |
+| `shots_hit_opponent_medic` | integer | never | derived     | Shots that hit the opposing team's Medic. Since the Medic has 1 hit point, every hit is also a deactivation.                                                                    |
+| `shots_hit_team_medic`     | integer | never | derived     | Shots that hit the friendly team's Medic. Shame stat.                                                                                                                           |
+| `times_hit`                | integer | never | line type 7 | Number of times this player was hit by any shot.                                                                                                                                |
+| `times_reset`              | integer | never | derived     | Subset of `times_hit` where this player was already in state 2 (vulnerable) when hit, restarting their respawn cycle. Victim-side counterpart to `reset_opponent`/`reset_team`. |
 
 #### Missile Stats
 
-| Column                        | Type    | Null  | Source      | Description                                                                                        |
-| ----------------------------- | ------- | ----- | ----------- | -------------------------------------------------------------------------------------------------- |
-| `missile_hits`                | integer | never | line type 7 | Total missiles fired by this player that hit any target, player or non-player.                     |
-| `missiles_hit_opponent`       | integer | never | line type 7 | Missiles that hit an opposing team player.                                                         |
-| `missiles_hit_team`           | integer | never | line type 7 | Missiles that hit a friendly team player. Shame stat.                                              |
-| `missiles_hit_opponent_medic` | integer | never | derived     | Missiles that hit the opposing team's Medic. High value — a missile always deactivates in one hit. |
-| `missiles_hit_team_medic`     | integer | never | derived     | Missiles that hit the friendly team's Medic. Shame stat.                                           |
-| `times_hit_by_missile`        | integer | never | line type 7 | Number of times this player was hit by a missile.                                                  |
+| Column                        | Type    | Null  | Source      | Description                                                                                                                                                   |
+| ----------------------------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `missile_hits`                | integer | never | line type 7 | Total missiles fired by this player that hit any target, player or non-player.                                                                                |
+| `missiles_hit_opponent`       | integer | never | line type 7 | Missiles that hit an opposing team player.                                                                                                                    |
+| `missiles_hit_team`           | integer | never | line type 7 | Missiles that hit a friendly team player. Shame stat.                                                                                                         |
+| `missiles_hit_opponent_medic` | integer | never | derived     | Missiles that hit the opposing team's Medic. High value — a missile always deactivates in one hit.                                                            |
+| `missiles_hit_team_medic`     | integer | never | derived     | Missiles that hit the friendly team's Medic. Shame stat.                                                                                                      |
+| `times_hit_by_missile`        | integer | never | line type 7 | Number of times this player was hit by a missile.                                                                                                             |
+| `times_reset_by_missile`      | integer | never | derived     | Subset of `times_hit_by_missile` where this player was already in state 2 when hit. Victim-side counterpart to `missile_reset_opponent`/`missile_reset_team`. |
 
 #### Nuke Stats — Commander only, null for all other positions
 
@@ -525,6 +527,8 @@ Friendly and opponent interactions are both recorded — team relationship is de
 | `shots_hit`           | integer | never | Total shots that hit the target player (`0205` and `0206` events). Includes both damaging and deactivating hits.                                                                                                                                      |
 | `shot_deactivations`  | integer | never | Subset of `shots_hit` — times this player's shot deactivated the target (`0206` events only). For 1-HP positions (Scout, Ammo Carrier, Medic) this will always equal `shots_hit`. Only meaningfully distinct for Commander and Heavy Weapons targets. |
 | `missile_hits`        | integer | never | Total missiles that hit the target player (`0306` events). Missiles always deactivate in one hit regardless of position.                                                                                                                              |
+| `resets`              | integer | never | Subset of `shots_hit` — times this player's shot landed while the target was already in state 2 (vulnerable respawn window), restarting the target's respawn cycle.                                                                                   |
+| `missile_resets`      | integer | never | Subset of `missile_hits` — times this player's missile landed while the target was already in state 2.                                                                                                                                                |
 
 **Constraints:**
 

@@ -351,6 +351,7 @@ export async function reingest(
         shotsHitOpponentMedic: ps?.shotsHitOpponentMedic ?? 0,
         shotsHitTeamMedic: ps?.shotsHitTeamMedic ?? 0,
         timesHit: sm5?.timesZapped ?? 0,
+        timesReset: ps?.timesReset ?? 0,
         missileHits: sm5?.missileHits ?? 0,
         missilesHitOpponent: sm5?.missiledOpponent ?? 0,
         missilesHitTeam: sm5?.missiledTeam ?? 0,
@@ -359,6 +360,7 @@ export async function reingest(
         medicHits: (ps?.shotsHitOpponentMedic ?? 0) + (ps?.missilesHitOpponentMedicLives ?? 0),
         teamMedicHits: (ps?.shotsHitTeamMedic ?? 0) + (ps?.missilesHitTeamMedicLives ?? 0),
         timesHitByMissile: sm5?.timesMissiled ?? 0,
+        timesResetByMissile: ps?.timesResetByMissile ?? 0,
         nukesActivated: isCommander ? (sm5?.nukesActivated ?? 0) : null,
         nukesDetonated: isCommander ? (sm5?.nukesDetonated ?? 0) : null,
         nukesHitMedic: isCommander ? (sm5?.medicNukes ?? 0) : null,
@@ -450,6 +452,8 @@ export async function reingest(
         shotsHit: counts.shotsHit,
         shotDeactivations: counts.shotDeactivations,
         missileHits: counts.missileHits,
+        resets: counts.resets,
+        missileResets: counts.missileResets,
       });
     }
     await insertGamePlayerInteractions(tx, interactionRows);

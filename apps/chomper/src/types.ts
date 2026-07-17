@@ -158,6 +158,7 @@ export interface PlayerSimState {
   shotsHitOpponentMedic: number;
   shotsHitTeamMedic: number;
   timesHit: number;
+  timesReset: number;
   missileHits: number;
   missilesHitOpponent: number;
   missilesHitTeam: number;
@@ -168,6 +169,7 @@ export interface PlayerSimState {
   missilesHitOpponentMedicLives: number;
   missilesHitTeamMedicLives: number;
   timesHitByMissile: number;
+  timesResetByMissile: number;
   nukesActivated: number;
   nukesDetonated: number;
   nukesHitMedic: number;
@@ -247,7 +249,16 @@ export interface SimulatedGame {
   events: SimEvent[]; // all GameEvent rows (real + synthetic state transitions)
   targetDestructions: SimTargetDestruction[];
   penalties: SimPenalty[];
-  interactions: Map<string, { shotsHit: number; shotDeactivations: number; missileHits: number }>; // key: "${actorId}->${targetId}"
+  interactions: Map<
+    string,
+    {
+      shotsHit: number;
+      shotDeactivations: number;
+      missileHits: number;
+      resets: number;
+      missileResets: number;
+    }
+  >; // key: "${actorId}->${targetId}"
 }
 
 export interface SimTeam {

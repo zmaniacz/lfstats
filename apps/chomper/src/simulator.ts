@@ -47,7 +47,13 @@ class Simulator {
   // Interaction tracking
   private interactions = new Map<
     string,
-    { shotsHit: number; shotDeactivations: number; missileHits: number }
+    {
+      shotsHit: number;
+      shotDeactivations: number;
+      missileHits: number;
+      resets: number;
+      missileResets: number;
+    }
   >();
 
   // Pending boosts for state-3 and state-2 players (radio lag — applied during
@@ -622,6 +628,8 @@ class Simulator {
     target.resetTeam += source.resetTeam;
     target.missileResetOpponent += source.missileResetOpponent;
     target.missileResetTeam += source.missileResetTeam;
+    target.timesReset += source.timesReset;
+    target.timesResetByMissile += source.timesResetByMissile;
     target.spEarned += source.spEarned;
     target.spSpent += source.spSpent;
     target.targetsDestroyed += source.targetsDestroyed;
@@ -770,6 +778,8 @@ class Simulator {
         existing.shotsHit += counts.shotsHit;
         existing.shotDeactivations += counts.shotDeactivations;
         existing.missileHits += counts.missileHits;
+        existing.resets += counts.resets;
+        existing.missileResets += counts.missileResets;
       } else {
         this.interactions.set(newKey, counts);
       }
@@ -1102,6 +1112,7 @@ class Simulator {
         shotsHitOpponentMedic: 0,
         shotsHitTeamMedic: 0,
         timesHit: 0,
+        timesReset: 0,
         missileHits: 0,
         missilesHitOpponent: 0,
         missilesHitTeam: 0,
@@ -1110,6 +1121,7 @@ class Simulator {
         missilesHitOpponentMedicLives: 0,
         missilesHitTeamMedicLives: 0,
         timesHitByMissile: 0,
+        timesResetByMissile: 0,
         nukesActivated: 0,
         nukesDetonated: 0,
         nukesHitMedic: 0,
@@ -1169,6 +1181,8 @@ class Simulator {
             shotsHit: 0,
             shotDeactivations: 0,
             missileHits: 0,
+            resets: 0,
+            missileResets: 0,
           });
         }
       }
@@ -1671,7 +1685,7 @@ class Simulator {
   private incrInteraction(
     actorId: string,
     targetId: string,
-    field: "shotsHit" | "shotDeactivations" | "missileHits",
+    field: "shotsHit" | "shotDeactivations" | "missileHits" | "resets" | "missileResets",
   ): void {
     const key = `${actorId}->${targetId}`;
     const entry = this.interactions.get(key);
@@ -1958,6 +1972,8 @@ class Simulator {
     if (target.state === 2) {
       if (isOpponent) actor.resetOpponent++;
       else if (isFriendly) actor.resetTeam++;
+      target.timesReset++;
+      this.incrInteraction(actor.entityId, target.entityId, "resets");
     }
 
     // Rapid fire tracking
@@ -2076,6 +2092,8 @@ class Simulator {
     if (target.state === 2) {
       if (isOpponent) actor.missileResetOpponent++;
       else if (isFriendly) actor.missileResetTeam++;
+      target.timesResetByMissile++;
+      this.incrInteraction(actor.entityId, target.entityId, "missileResets");
     }
 
     this.handleNukeCancel(actor, target);

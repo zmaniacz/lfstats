@@ -69,10 +69,14 @@ export function HitDiffDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg" aria-describedby={undefined}>
+        <DialogContent className="sm:max-w-xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{callsign} — Hit Breakdown</DialogTitle>
           </DialogHeader>
+
+          <p className="text-xs text-muted-foreground -mt-2">
+            Numbers in parentheses indicate resets.
+          </p>
 
           <Table>
             <TableHeader>
@@ -93,10 +97,32 @@ export function HitDiffDialog({
                     </span>
                     {row.callsign}
                   </TableCell>
-                  <TableCell className="text-center tabular-nums">{row.hitsDealt}</TableCell>
-                  <TableCell className="text-center tabular-nums">{row.hitsReceived}</TableCell>
-                  <TableCell className="text-center tabular-nums">{row.missilesDealt}</TableCell>
-                  <TableCell className="text-center tabular-nums">{row.missilesReceived}</TableCell>
+                  <TableCell className="text-center tabular-nums">
+                    {row.hitsDealt}
+                    {row.resetsDealt > 0 && (
+                      <span className="text-muted-foreground ml-1">({row.resetsDealt})</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums">
+                    {row.hitsReceived}
+                    {row.resetsReceived > 0 && (
+                      <span className="text-muted-foreground ml-1">({row.resetsReceived})</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums">
+                    {row.missilesDealt}
+                    {row.missileResetsDealt > 0 && (
+                      <span className="text-muted-foreground ml-1">({row.missileResetsDealt})</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums">
+                    {row.missilesReceived}
+                    {row.missileResetsReceived > 0 && (
+                      <span className="text-muted-foreground ml-1">
+                        ({row.missileResetsReceived})
+                      </span>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               <TableRow className="font-medium border-t-2">
@@ -132,13 +158,33 @@ export function HitDiffDialog({
                         </span>
                         {row.callsign}
                       </TableCell>
-                      <TableCell className="text-center tabular-nums">{row.hitsDealt}</TableCell>
-                      <TableCell className="text-center tabular-nums">{row.hitsReceived}</TableCell>
+                      <TableCell className="text-center tabular-nums">
+                        {row.hitsDealt}
+                        {row.resetsDealt > 0 && (
+                          <span className="text-muted-foreground ml-1">({row.resetsDealt})</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center tabular-nums">
+                        {row.hitsReceived}
+                        {row.resetsReceived > 0 && (
+                          <span className="text-muted-foreground ml-1">({row.resetsReceived})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center tabular-nums">
                         {row.missilesDealt}
+                        {row.missileResetsDealt > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({row.missileResetsDealt})
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-center tabular-nums">
                         {row.missilesReceived}
+                        {row.missileResetsReceived > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({row.missileResetsReceived})
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

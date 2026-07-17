@@ -297,6 +297,7 @@ export async function ingest(
         shotsHitOpponentMedic: ps?.shotsHitOpponentMedic ?? 0,
         shotsHitTeamMedic: ps?.shotsHitTeamMedic ?? 0,
         timesHit: sm5?.timesZapped ?? 0,
+        timesReset: ps?.timesReset ?? 0,
 
         // Missile stats — from sm5Stats
         missileHits: sm5?.missileHits ?? 0,
@@ -308,6 +309,7 @@ export async function ingest(
         medicHits: (ps?.shotsHitOpponentMedic ?? 0) + (ps?.missilesHitOpponentMedicLives ?? 0),
         teamMedicHits: (ps?.shotsHitTeamMedic ?? 0) + (ps?.missilesHitTeamMedicLives ?? 0),
         timesHitByMissile: sm5?.timesMissiled ?? 0,
+        timesResetByMissile: ps?.timesResetByMissile ?? 0,
 
         // Nuke stats — Commander only
         nukesActivated: isCommander ? (sm5?.nukesActivated ?? 0) : null,
@@ -413,6 +415,8 @@ export async function ingest(
         shotsHit: counts.shotsHit,
         shotDeactivations: counts.shotDeactivations,
         missileHits: counts.missileHits,
+        resets: counts.resets,
+        missileResets: counts.missileResets,
       });
     }
     await insertGamePlayerInteractions(tx, interactionRows);

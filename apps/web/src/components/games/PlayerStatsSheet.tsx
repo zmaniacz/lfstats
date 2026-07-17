@@ -124,6 +124,7 @@ export function PlayerStatsSheet({
                 <StatRow label="vs Team" value={fmt(player.shotsHitTeam)} />
                 <StatRow label="vs Team Medic" value={fmt(player.shotsHitTeamMedic)} />
                 <StatRow label="Times Hit" value={fmt(player.timesHit)} />
+                <StatRow label="Times Reset" value={fmt(player.timesReset)} />
               </StatSection>
 
               <StatSection title="Missiles">
@@ -133,6 +134,7 @@ export function PlayerStatsSheet({
                 <StatRow label="vs Team" value={fmt(player.missilesHitTeam)} />
                 <StatRow label="vs Team Medic" value={fmt(player.missilesHitTeamMedic)} />
                 <StatRow label="Times Missiled" value={fmt(player.timesHitByMissile)} />
+                <StatRow label="Times Reset by Missile" value={fmt(player.timesResetByMissile)} />
               </StatSection>
 
               <StatSection title="Combat">
