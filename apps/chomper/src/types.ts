@@ -134,6 +134,12 @@ export interface PlayerSimState {
   isNuking: boolean; // Commander only
   nukeActivatedAt: number | null;
   isEliminated: boolean;
+  // True only when lives were genuinely exhausted (exitType "04" or the live
+  // combat-elimination path) — false for an administrative kick ("01"/"17"),
+  // including the "everyone gets kicked" signature of an aborted game.
+  // isEliminated blocks further simulation for both cases; this flag is the
+  // one that should feed team/game win-condition logic.
+  eliminatedInGame: boolean;
   eliminatedAt: number | null;
   deactivationCause: "resupply" | "other" | null;
   receivedAmmoResupplyThisCycle: boolean;

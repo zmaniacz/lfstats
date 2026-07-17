@@ -508,6 +508,7 @@ class Simulator {
         }
         ps.lives = 0;
         ps.isEliminated = true;
+        ps.eliminatedInGame = true;
         if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
       } else if (end.exitType === "01" || end.exitType === "17") {
         // Kicked mid-game (or, for a game aborted early with no 0101 Mission
@@ -672,6 +673,7 @@ class Simulator {
     target.isNuking = source.isNuking;
     target.nukeActivatedAt = source.nukeActivatedAt;
     target.isEliminated = source.isEliminated;
+    target.eliminatedInGame = source.eliminatedInGame;
     target.eliminatedAt = source.eliminatedAt;
     target.deactivationCause = source.deactivationCause;
     target.receivedAmmoResupplyThisCycle = source.receivedAmmoResupplyThisCycle;
@@ -1107,6 +1109,7 @@ class Simulator {
         isNuking: false,
         nukeActivatedAt: null,
         isEliminated: false,
+        eliminatedInGame: false,
         eliminatedAt: null,
         deactivationCause: null,
         receivedAmmoResupplyThisCycle: false,
@@ -1252,6 +1255,7 @@ class Simulator {
       }
       ps.lives = 0;
       ps.isEliminated = true;
+      ps.eliminatedInGame = true;
       if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
     } else if (end.exitType === "01" || end.exitType === "17") {
       // Kicked mid-game — mark out-of-game but do NOT zero lives. The TDF
@@ -1633,6 +1637,7 @@ class Simulator {
     }
 
     target.isEliminated = true;
+    target.eliminatedInGame = true;
     target.eliminatedAt = time;
 
     // Record a final state snapshot so the replay scoreboard can show lives=0 and
@@ -2491,11 +2496,20 @@ class Simulator {
       teamScores.set(ps.teamIndex, (teamScores.get(ps.teamIndex) ?? 0) + ps.score);
     }
 
-    // Determine which teams are eliminated
+    // Only player entity-ends carry a genuine abort signature — non-player
+    // entities (targets, referees, beacons) always report exit code "02" per
+    // spec even when the mission was cut short, so they must be excluded here
+    // or an abort would never be detected in any file that has arena targets.
+    const playerEntityEnds = this.parsed.entityEnds.filter((e) => this.playerStates.has(e.id));
+
+    // Determine which teams are eliminated. Only a genuine lives-exhausted
+    // elimination counts toward the win condition — a kicked player ("01"/"17",
+    // including the "everyone gets kicked" signature of an aborted game) is out
+    // of the simulation but was never actually defeated.
     const teamEliminated = new Map<number, boolean>();
     for (const [teamIndex] of teamScores) {
       const players = [...this.playerStates.values()].filter((p) => p.teamIndex === teamIndex);
-      const allEliminated = players.length > 0 && players.every((p) => p.isEliminated);
+      const allEliminated = players.length > 0 && players.every((p) => p.eliminatedInGame);
       teamEliminated.set(teamIndex, allEliminated);
     }
 
@@ -2505,7 +2519,7 @@ class Simulator {
       if (eliminated) {
         // Find the timestamp of the last elimination in this team
         for (const ps of this.playerStates.values()) {
-          if (ps.isEliminated && ps.eliminatedAt !== null) {
+          if (ps.eliminatedInGame && ps.eliminatedAt !== null) {
             if (eliminationTime === null || ps.eliminatedAt > eliminationTime) {
               eliminationTime = ps.eliminatedAt;
             }
@@ -2515,16 +2529,22 @@ class Simulator {
     }
 
     // Game outcome
-    // An aborted game has no mission-end event (0101) and every entity was
-    // kicked mid-game (exitType "01" or "17") rather than completing normally.
-    const isAborted =
-      this.missionEndTime === 0 &&
-      this.parsed.entityEnds.length > 0 &&
-      this.parsed.entityEnds.every((e) => e.exitType === "01" || e.exitType === "17");
+    // The 0101 Mission End event is the authoritative signal that a mission
+    // ran to a proper conclusion (whether by clock expiry or elimination
+    // victory). Its absence means the session was cut short (server crash,
+    // referee stop) before that could happen — regardless of whether some
+    // entity-ends happen to show "04" (a player who was already genuinely out
+    // of lives before the cutoff) alongside the "01"/"17" kicks used to close
+    // out everyone else's record.
+    const isAborted = this.missionEndTime === 0 && playerEntityEnds.length > 0;
 
     const anyEliminated = [...teamEliminated.entries()].some(
       ([ti, e]) => e && !this.isNeutralTeam(ti),
     );
+
+    const scores = [...teamScores.values()];
+    const allScoresEqual = scores.length > 1 && scores.every((s) => s === scores[0]);
+
     let outcome: "score" | "elimination" | "draw" | "aborted";
 
     if (isAborted) {
@@ -2532,9 +2552,7 @@ class Simulator {
     } else if (anyEliminated) {
       outcome = "elimination";
     } else {
-      const scores = [...teamScores.values()];
-      const allEqual = scores.every((s) => s === scores[0]);
-      outcome = allEqual && scores.length > 1 ? "draw" : "score";
+      outcome = allScoresEqual ? "draw" : "score";
     }
 
     // Find winning team(s)
@@ -2561,10 +2579,13 @@ class Simulator {
       const score = teamScores.get(team.index) ?? 0;
       const eliminated = teamEliminated.get(team.index) ?? false;
 
+      // A tied score is a draw regardless of whether the outcome label ends up
+      // "draw" (normal completion) or "aborted" (cut short with equal scores)
+      // — only elimination overrides a tie.
       let result: "win" | "loss" | "draw";
       if (eliminated) {
         result = "loss";
-      } else if (outcome === "draw") {
+      } else if (!anyEliminated && allScoresEqual) {
         result = "draw";
       } else {
         result = score === maxScore ? "win" : "loss";
@@ -2582,8 +2603,16 @@ class Simulator {
       };
     });
 
+    // When no 0101 Mission End event fired (abort), fall back to the latest
+    // point at which any player's game ended — the abrupt cutoff time —
+    // instead of missionEndTime's default of 0.
+    const actualDuration =
+      this.missionEndTime !== 0
+        ? this.missionEndTime - this.missionStartTime
+        : Math.max(0, ...playerEntityEnds.map((e) => e.time)) - this.missionStartTime;
+
     return {
-      actualDuration: this.missionEndTime - this.missionStartTime,
+      actualDuration,
       outcome,
       eliminationTime,
       teams,
