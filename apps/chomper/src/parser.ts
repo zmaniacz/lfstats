@@ -238,7 +238,21 @@ function buildEntityRouting(
       const ends = endsByEntity.get(externalId) ?? [];
       const hasRestart =
         ends.some((e) => e.exitType === "01" || e.exitType === "17") || ends.length >= group.length;
-      if (!hasRestart) continue; // no restart → hardware glitch, leave for mergeDuplicateSm5Stats
+      if (!hasRestart) {
+        // Hardware double-print glitch, not a real restart. mergeDuplicateSm5Stats
+        // folds the extra section 7 scorecard's counters together, but the extra
+        // section 3 registration(s) are still separate ParsedEntity objects. Left
+        // in place, every downstream consumer that builds a player/scorecard list
+        // from `entities` (ingester.ts, reingester.ts) would emit one row per
+        // registration instead of one per participant, silently double-counting
+        // every stat for this player. Drop all but the last (most authoritative,
+        // matching mergeDuplicateSm5Stats' "last entry wins" residuals) registration.
+        for (let i = 0; i < group.length - 1; i++) {
+          const idx = entities.indexOf(group[i]!);
+          if (idx !== -1) entities.splice(idx, 1);
+        }
+        continue;
+      }
     }
 
     const generations: { internalId: string; startTime: number }[] = [];

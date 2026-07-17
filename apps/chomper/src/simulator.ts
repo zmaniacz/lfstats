@@ -550,16 +550,29 @@ class Simulator {
   // Scorecard. Mid-game position changes (Case 1, different category per
   // generation) genuinely represent different roles and remain separate
   // scorecards.
+  //
+  // A route can contain both in sequence (e.g. a same-position restart early
+  // on, then a genuine position change later), so the merge decision is made
+  // per consecutive pair rather than once for the whole route — otherwise a
+  // single differing category anywhere in the chain would suppress merging
+  // for restart pairs that clearly share a category.
   private mergeRestartGenerations(): void {
     for (const route of this.parsed.entityRouting) {
       if (route.generations.length < 2) continue;
 
-      const categories = route.generations.map((g) => this.entityById.get(g.internalId)?.category);
-      if (new Set(categories).size > 1) continue; // position change — keep separate
+      let runStart = 0;
+      for (let i = 1; i <= route.generations.length; i++) {
+        const sameAsPrev =
+          i < route.generations.length &&
+          this.entityById.get(route.generations[i]!.internalId)?.category ===
+            this.entityById.get(route.generations[i - 1]!.internalId)?.category;
+        if (sameAsPrev) continue; // still within a same-position run
 
-      const targetId = route.generations[0]!.internalId;
-      for (let i = 1; i < route.generations.length; i++) {
-        this.mergeGenerationInto(targetId, route.generations[i]!.internalId);
+        const targetId = route.generations[runStart]!.internalId;
+        for (let j = runStart + 1; j < i; j++) {
+          this.mergeGenerationInto(targetId, route.generations[j]!.internalId);
+        }
+        runStart = i;
       }
     }
   }
