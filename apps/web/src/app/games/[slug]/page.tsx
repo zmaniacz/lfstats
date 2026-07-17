@@ -3,6 +3,7 @@
 
 import { auth } from "@/auth";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
+import { EditModeToggle } from "@/components/games/EditModeToggle";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
@@ -16,6 +17,7 @@ import { TeamStatsTable } from "@/components/games/TeamStatsTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EDIT_MODE_COOKIE } from "@/lib/edit-mode";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { getTdfArchiveUrl } from "@/lib/tdf";
@@ -30,6 +32,7 @@ import {
   getTagsByCenter,
   isFavorite,
 } from "@lfstats/db";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -57,7 +60,11 @@ import {
 
 export default async function GameDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [game, session] = await Promise.all([getGameDetailBySlug(slug), auth()]);
+  const [game, session, cookieStore] = await Promise.all([
+    getGameDetailBySlug(slug),
+    auth(),
+    cookies(),
+  ]);
 
   if (!game) notFound();
 
@@ -68,6 +75,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
       r.role === "admin" ||
       (r.role === "centerAdmin" && r.centerId === game.centerId),
   );
+  const editMode = cookieStore.get(EDIT_MODE_COOKIE)?.value === "true";
+  const canEdit = canDelete && editMode;
 
   const [
     centerTags,
@@ -79,10 +88,10 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     allPenalties,
     allTeamPenalties,
   ] = await Promise.all([
-    canDelete ? getTagsByCenter(game.centerId) : Promise.resolve([]),
+    canEdit ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
-    canDelete ? getCompetitionsByState(["active"]) : Promise.resolve([]),
-    canDelete && game.competitionId
+    canEdit ? getCompetitionsByState(["active"]) : Promise.resolve([]),
+    canEdit && game.competitionId
       ? getAvailableMatchesForGame(game.competitionId)
       : Promise.resolve([]),
     getGameMatchAssignment(game.id),
@@ -125,7 +134,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     deleteAction: deleteTeamPenaltyAction,
   };
 
-  const mercenaryAction = canDelete ? setScorecardMercenaryAction.bind(null, game.id) : undefined;
+  const mercenaryAction = canEdit ? setScorecardMercenaryAction.bind(null, game.id) : undefined;
 
   const displayTeams = matchAssignment
     ? game.teams.map((t) => ({
@@ -190,8 +199,9 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
         {game.outcome === "aborted" && <Badge variant="destructive">Aborted</Badge>}
         {game.outcome === "replay" && <Badge variant="destructive">Replay</Badge>}
         {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
+        {canDelete && <EditModeToggle editMode={editMode} />}
         <div className="flex items-center gap-2 flex-wrap">
-          {canDelete && (
+          {canEdit && (
             <>
               <DeleteGameButton gameId={game.id} />
               <ExcludeToggleButton
@@ -212,7 +222,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
             </>
           )}
         </div>
-        {canDelete && (
+        {canEdit && (
           <GameCompetitionManager
             gameId={game.id}
             gameTeams={displayTeams.map((t) => ({
@@ -256,7 +266,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
             )}
           </div>
         )}
-        {canDelete && (
+        {canEdit && (
           <GameTagManager
             gameId={game.id}
             tags={game.tags}
@@ -312,13 +322,13 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
                     </span>
                   </div>
 
-                  {(canDelete || (teamPenaltiesByTeam.get(team.id)?.length ?? 0) > 0) && (
+                  {(canEdit || (teamPenaltiesByTeam.get(team.id)?.length ?? 0) > 0) && (
                     <div className="px-4 py-2 border-l-4 border-transparent">
                       <TeamPenaltyManager
                         gameId={game.id}
                         gameTeamId={team.id}
                         penalties={teamPenaltiesByTeam.get(team.id) ?? []}
-                        canEdit={canDelete}
+                        canEdit={canEdit}
                         actions={teamPenaltyActions}
                       />
                     </div>
@@ -330,7 +340,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
                     gameStartTime={game.startTime}
                     gameDuration={game.actualDuration}
                     penaltiesByScorecard={penaltiesByScorecard}
-                    canEdit={canDelete}
+                    canEdit={canEdit}
                     penaltyActions={penaltyActions}
                     mercenaryAction={mercenaryAction}
                   />

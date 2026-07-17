@@ -3,6 +3,7 @@
 
 import { auth } from "@/auth";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
+import { EditModeToggle } from "@/components/games/EditModeToggle";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { LbMatchManager } from "@/components/laserball/LbMatchManager";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
@@ -10,6 +11,7 @@ import { LbReplayTab } from "@/components/laserball/LbReplayTab";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EDIT_MODE_COOKIE } from "@/lib/edit-mode";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import {
@@ -19,6 +21,7 @@ import {
   getLbMatchIdForGame,
   getLbMatchRosterWarnings,
 } from "@lfstats/db";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { linkLbMatchAction, toggleExcludeAction, unlinkLbMatchAction } from "./actions";
 
@@ -28,7 +31,11 @@ export default async function LaserballGameDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [game, session] = await Promise.all([getLbGameDetailBySlug(slug), auth()]);
+  const [game, session, cookieStore] = await Promise.all([
+    getLbGameDetailBySlug(slug),
+    auth(),
+    cookies(),
+  ]);
   if (!game) notFound();
 
   const roles = session?.user.roles ?? [];
@@ -38,12 +45,14 @@ export default async function LaserballGameDetailPage({
       r.role === "admin" ||
       (r.role === "centerAdmin" && r.centerId === game.centerId),
   );
+  const editMode = cookieStore.get(EDIT_MODE_COOKIE)?.value === "true";
+  const canEdit = canManage && editMode;
 
   const matchId = await getLbMatchIdForGame(game.id);
   const [matchDetail, rosterWarnings, candidateGames] = await Promise.all([
     matchId ? getLbMatchDetail(matchId) : Promise.resolve(null),
     matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
-    !matchId && canManage ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
+    !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
   ]);
 
   // Winning team first; draws keep tdf order.
@@ -70,7 +79,8 @@ export default async function LaserballGameDetailPage({
           </Badge>
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         </div>
-        {canManage && (
+        {canManage && <EditModeToggle editMode={editMode} />}
+        {canEdit && (
           <div className="flex items-center gap-2 flex-wrap">
             <DeleteGameButton gameId={game.id} />
             <ExcludeToggleButton
@@ -80,7 +90,7 @@ export default async function LaserballGameDetailPage({
             />
           </div>
         )}
-        {canManage && (
+        {canEdit && (
           <LbMatchManager
             gameId={game.id}
             gameTeams={teams.map((t) => ({ id: t.id, name: t.name, colourEnum: t.colourEnum }))}
