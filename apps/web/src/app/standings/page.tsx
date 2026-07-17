@@ -11,14 +11,14 @@ import { StandingsContent } from "@/components/competitions/StandingsContent";
 import { FinalsContent } from "@/components/competitions/FinalsContent";
 import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
 import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesBlock";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { StandingsTabs } from "./StandingsTabs";
 import { resolveFilterContext } from "@/lib/filter-context";
 import { auth } from "@/auth";
 
 export default async function StandingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string; competition?: string; round?: string }>;
+  searchParams: Promise<{ scope?: string; competition?: string; round?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const roundIdParam = sp.round;
@@ -62,6 +62,7 @@ export default async function StandingsPage({
   const activeRoundType = activeRound?.type ?? null;
 
   const contentKey = [activeComp.slug, activeRoundId].join("|");
+  const activeTab = sp.tab === "finals" && finalsRounds.length > 0 ? "finals" : "standings";
 
   return (
     <div className="p-6 space-y-6">
@@ -90,43 +91,41 @@ export default async function StandingsPage({
         />
       </div>
 
-      <Tabs defaultValue="standings">
-        <TabsList>
-          <TabsTrigger value="standings">Standings</TabsTrigger>
-          {finalsRounds.length > 0 && <TabsTrigger value="finals">Finals</TabsTrigger>}
-        </TabsList>
-        <TabsContent value="standings" className="space-y-6">
-          {standingsRounds.length > 1 && (
-            <RoundFilter
-              competitionSlug={activeComp.slug}
-              rounds={standingsRounds.map((r) => ({ id: r.id, name: r.name }))}
-              activeRoundId={activeRoundId}
-            />
-          )}
-
-          <Suspense key={contentKey} fallback={<StandingsSkeleton />}>
-            <StandingsContent
-              activeId={activeId}
-              activeRoundId={activeRoundId}
-              activeRoundType={activeRoundType}
-              competitionSlug={activeComp.slug}
-              competitionName={activeComp.name}
-            />
-          </Suspense>
-        </TabsContent>
-        {finalsRounds.length > 0 && (
-          <TabsContent value="finals" className="space-y-6">
-            <Suspense fallback={<StandingsSkeleton />}>
-              <FinalsContent
-                activeId={activeId}
+      <StandingsTabs
+        defaultTab={activeTab}
+        hasFinals={finalsRounds.length > 0}
+        standingsContent={
+          <>
+            {standingsRounds.length > 1 && (
+              <RoundFilter
                 competitionSlug={activeComp.slug}
-                challongeLink={activeComp.challongeLink}
-                challongeBracketHeight={activeComp.challongeBracketHeight}
+                rounds={standingsRounds.map((r) => ({ id: r.id, name: r.name }))}
+                activeRoundId={activeRoundId}
+              />
+            )}
+
+            <Suspense key={contentKey} fallback={<StandingsSkeleton />}>
+              <StandingsContent
+                activeId={activeId}
+                activeRoundId={activeRoundId}
+                activeRoundType={activeRoundType}
+                competitionSlug={activeComp.slug}
+                competitionName={activeComp.name}
               />
             </Suspense>
-          </TabsContent>
-        )}
-      </Tabs>
+          </>
+        }
+        finalsContent={
+          <Suspense fallback={<StandingsSkeleton />}>
+            <FinalsContent
+              activeId={activeId}
+              competitionSlug={activeComp.slug}
+              challongeLink={activeComp.challongeLink}
+              challongeBracketHeight={activeComp.challongeBracketHeight}
+            />
+          </Suspense>
+        }
+      />
     </div>
   );
 }
