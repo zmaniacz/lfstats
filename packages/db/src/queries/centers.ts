@@ -152,11 +152,15 @@ export async function getMostRecentSocialCenterSlug(): Promise<string | null> {
   return row?.slug ?? null;
 }
 
-export async function getCenterGameCount(id: string): Promise<number> {
+export async function getCenterGameCount(
+  id: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<number> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const [row] = await db
     .select({ count: count(game.id) })
     .from(game)
-    .where(and(eq(game.type, "sm5"), eq(game.centerId, id)));
+    .where(and(eq(game.type, "sm5"), eq(game.centerId, id), ...conditions));
 
   return row?.count ?? 0;
 }
@@ -167,7 +171,11 @@ export type WinsByColorItem = {
   count: number;
 };
 
-export async function getCenterWinsByColor(id: string): Promise<WinsByColorItem[]> {
+export async function getCenterWinsByColor(
+  id: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<WinsByColorItem[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       colourEnum: sm5GameTeam.colourEnum,
@@ -177,7 +185,12 @@ export async function getCenterWinsByColor(id: string): Promise<WinsByColorItem[
     .from(sm5GameTeam)
     .innerJoin(game, eq(sm5GameTeam.gameId, game.id))
     .where(
-      and(eq(sm5GameTeam.result, "win"), eq(sm5GameTeam.isNeutral, false), eq(game.centerId, id)),
+      and(
+        eq(sm5GameTeam.result, "win"),
+        eq(sm5GameTeam.isNeutral, false),
+        eq(game.centerId, id),
+        ...conditions,
+      ),
     )
     .groupBy(sm5GameTeam.colourEnum, game.outcome)
     .orderBy(asc(sm5GameTeam.colourEnum), desc(game.outcome));
@@ -229,7 +242,11 @@ export async function getGlobalMvpBoxPlot(
   }));
 }
 
-export async function getCenterMvpBoxPlot(id: string): Promise<MvpBoxPlotItem[]> {
+export async function getCenterMvpBoxPlot(
+  id: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<MvpBoxPlotItem[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -241,7 +258,7 @@ export async function getCenterMvpBoxPlot(id: string): Promise<MvpBoxPlotItem[]>
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(eq(game.centerId, id))
+    .where(and(eq(game.centerId, id), ...conditions))
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -285,7 +302,11 @@ export async function getGlobalMvpComponents(
   }));
 }
 
-export async function getCenterMvpComponents(id: string): Promise<MvpComponentItem[]> {
+export async function getCenterMvpComponents(
+  id: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<MvpComponentItem[]> {
+  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -295,7 +316,7 @@ export async function getCenterMvpComponents(id: string): Promise<MvpComponentIt
     .from(sm5ScorecardMvp)
     .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(eq(game.centerId, id))
+    .where(and(eq(game.centerId, id), ...conditions))
     .groupBy(sm5Scorecard.position, sm5ScorecardMvp.component)
     .orderBy(sm5Scorecard.position);
 

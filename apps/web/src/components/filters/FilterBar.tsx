@@ -20,7 +20,7 @@ import { buildFilterUrl, writeFilterCookies } from "./filter-url";
 
 type Option = { slug: string; name: string };
 
-export type FilterBarMode = "generic" | "competition-only" | "social-only";
+export type FilterBarMode = "generic" | "competition-only" | "social-only" | "center-detail";
 
 export function FilterBar({
   basePath,
@@ -122,12 +122,12 @@ export function FilterBar({
     });
   }
 
-  const showScopeToggle = mode === "generic";
+  const showScopeToggle = mode === "generic" || mode === "center-detail";
   const showCenterSelect =
     mode === "social-only" || (mode === "generic" && scope !== "competition");
   const showCompetitionSelect = scope === "competition" || mode === "competition-only";
-  const showDateRange = mode === "generic" && scope !== "competition";
-  const allowAllOption = mode === "generic";
+  const showDateRange = (mode === "generic" || mode === "center-detail") && scope !== "competition";
+  const allowAllOption = mode === "generic" || mode === "center-detail";
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
