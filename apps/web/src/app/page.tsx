@@ -77,13 +77,7 @@ export default async function Home() {
         <Card>
           <CardContent>
             <p className="mb-4">
-              Welcome to the new LFstats. Faster, Moderner, Statier. All games are loaded from the
-              TDF era (~2020-present), however I'll slowly be reconstructing the various
-              competitions. Legacy PDF stats will be migrated over as well, but that will take some
-              time. Feedback welcome!
-            </p>
-            <p className="mb-4">
-              Need access to upload stats? Login with a Google account and let me know on{" "}
+              <b>Need access to upload stats?</b> Login with a Google account and let me know on{" "}
               <a
                 href="https://discord.com/channels/1345551651238576189/1378169370144149504"
                 className="underline"
@@ -92,12 +86,24 @@ export default async function Home() {
               </a>
               , Facebook Messenger, Text, or pigeon.
             </p>
-            <p>
+            <p className="mb-4">
+              <b>Interested in automated uploads?</b> Now available via Google Drive - requires
+              installing on the local LaserForce computer at your site.
+            </p>
+            <p className="mb-4">
               You can find the old stats at{" "}
               <a href="https://legacy.lfstats.com" className="underline">
                 legacy.lfstats.com
               </a>
               . That site is now read-only.
+            </p>
+            <p className="mb-4">
+              <b>To-Do</b>
+              <ul>
+                <li>Migrate legacy (pre-2020) stats to new website</li>
+                <li>Rebuild recent competitions to match legacy</li>
+                <li>Implement Laserball competition tracking</li>
+              </ul>
             </p>
           </CardContent>
         </Card>
