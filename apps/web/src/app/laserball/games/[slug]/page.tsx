@@ -5,6 +5,8 @@ import { auth } from "@/auth";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { EditModeToggle } from "@/components/games/EditModeToggle";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
+import { LbMatchCombinedScoreboard } from "@/components/laserball/LbMatchCombinedScoreboard";
+import { LbMatchDetailsDisclosure } from "@/components/laserball/LbMatchDetailsDisclosure";
 import { LbMatchManager } from "@/components/laserball/LbMatchManager";
 import { LbMatchScorecards } from "@/components/laserball/LbMatchScorecards";
 import { LbMatchSideSummary } from "@/components/laserball/LbMatchSideSummary";
@@ -135,7 +137,10 @@ export default async function LaserballGameDetailPage({
           {matchDetail ? (
             <>
               <LbMatchSideSummary matchDetail={matchDetail} />
-              <LbMatchScorecards matchDetail={matchDetail} gamesById={matchGamesDetail} />
+              <LbMatchCombinedScoreboard matchDetail={matchDetail} gamesById={matchGamesDetail} />
+              <LbMatchDetailsDisclosure>
+                <LbMatchScorecards matchDetail={matchDetail} gamesById={matchGamesDetail} />
+              </LbMatchDetailsDisclosure>
             </>
           ) : (
             <>
@@ -162,14 +167,14 @@ export default async function LaserballGameDetailPage({
                   </section>
                 );
               })}
+              <section className="space-y-1.5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Possession
+                </h2>
+                <LbPossessionBar teams={possessionTeams} />
+              </section>
             </>
           )}
-          <section className="space-y-1.5">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Possession
-            </h2>
-            <LbPossessionBar teams={possessionTeams} />
-          </section>
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
           <LbReplayTab gameId={game.id} duration={game.actualDuration} />

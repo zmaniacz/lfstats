@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
 import { haltCaveat, halfLabel } from "@/components/laserball/lb-match-shared";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,19 @@ export function LbMatchScorecards({ matchDetail, gamesById }: Props) {
                 </section>
               );
             })}
+
+            <section className="space-y-1.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Possession
+              </h3>
+              <LbPossessionBar
+                teams={sides.map(({ label, side, team }) => ({
+                  name: label,
+                  colourEnum: side.colourEnum,
+                  possessionMs: team?.players.reduce((sum, p) => sum + p.possessionTimeMs, 0) ?? 0,
+                }))}
+              />
+            </section>
           </section>
         );
       })}

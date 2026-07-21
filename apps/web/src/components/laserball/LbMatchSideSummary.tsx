@@ -12,20 +12,22 @@ export function LbMatchSideSummary({ matchDetail }: { matchDetail: LbMatchDetail
   ];
 
   return (
-    <div className="space-y-1.5">
+    <div className="rounded-lg border divide-y overflow-hidden">
       {sides.map(({ side, total, label }) => {
         const isWinner = matchDetail.winnerSide === side;
         return (
           <div
             key={side}
-            className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md bg-muted/40"
+            className={`flex items-center gap-4 px-5 py-4 border-l-4 ${
+              isWinner ? "border-l-primary bg-primary/5" : "border-l-transparent"
+            }`}
           >
-            <div className="flex items-center gap-2 flex-wrap text-sm">
-              <span className="font-medium">{label}</span>
-              {isWinner && <Badge variant="default">Winner</Badge>}
-              {matchDetail.winnerSide === "draw" && <Badge variant="secondary">Draw</Badge>}
-            </div>
-            <span className="tabular-nums font-semibold">{formatScore(total)}</span>
+            <span className="text-xl font-semibold">{label}</span>
+            <span className="text-3xl font-extrabold tabular-nums leading-none">
+              {formatScore(total)}
+            </span>
+            {isWinner && <Badge variant="default">Winner</Badge>}
+            {matchDetail.winnerSide === "draw" && <Badge variant="secondary">Draw</Badge>}
           </div>
         );
       })}
