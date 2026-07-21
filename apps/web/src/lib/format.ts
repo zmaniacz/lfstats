@@ -64,6 +64,12 @@ export function formatGameName(description: string | null, startTime: Date): str
   return `Game @ ${h}:${m}`;
 }
 
+export function formatMatchName(startTime: Date): string {
+  const h = String(startTime.getUTCHours()).padStart(2, "0");
+  const m = String(startTime.getUTCMinutes()).padStart(2, "0");
+  return `Match @ ${h}:${m}`;
+}
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function formatDateTime(d: Date | null): string {

@@ -8,6 +8,7 @@ import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { LbMatchCombinedScoreboard } from "@/components/laserball/LbMatchCombinedScoreboard";
 import { LbMatchDetailsDisclosure } from "@/components/laserball/LbMatchDetailsDisclosure";
 import { LbMatchManager } from "@/components/laserball/LbMatchManager";
+import { haltCaveat, halfLabel } from "@/components/laserball/lb-match-shared";
 import { LbMatchScorecards } from "@/components/laserball/LbMatchScorecards";
 import { LbMatchSideSummary } from "@/components/laserball/LbMatchSideSummary";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
@@ -16,7 +17,13 @@ import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EDIT_MODE_COOKIE } from "@/lib/edit-mode";
-import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
+import {
+  formatDateTime,
+  formatGameName,
+  formatMatchName,
+  formatMs,
+  formatScore,
+} from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import {
   getLbGameDetailBySlug,
@@ -95,14 +102,34 @@ export default async function LaserballGameDetailPage({
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">{formatGameName(game.description, game.startTime)}</h1>
-        <p className="text-muted-foreground text-sm">
-          {game.centerName} · {formatDateTime(game.startTime)} · {formatMs(game.actualDuration)}
-        </p>
+        <h1 className="text-2xl font-bold">
+          {matchDetail
+            ? formatMatchName(matchDetail.halves[0]!.gameStartTime)
+            : formatGameName(game.description, game.startTime)}
+        </h1>
+        {matchDetail ? (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+            <span>{game.centerName}</span>
+            {matchDetail.halves.map((h) => {
+              const caveat = haltCaveat(h.gameOutcome, h.gameExcluded);
+              return (
+                <span key={h.gameId} className="flex items-center gap-1.5">
+                  {halfLabel(h.half)}: {formatDateTime(h.gameStartTime)}
+                  {caveat && (
+                    <Badge variant="destructive" className="text-xs px-1 py-0">
+                      {caveat}
+                    </Badge>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            {game.centerName} · {formatDateTime(game.startTime)} · {formatMs(game.actualDuration)}
+          </p>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary" className="capitalize">
-            {game.outcome}
-          </Badge>
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         </div>
         {canManage && <EditModeToggle editMode={editMode} />}

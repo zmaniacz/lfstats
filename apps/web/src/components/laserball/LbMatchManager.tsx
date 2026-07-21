@@ -4,7 +4,6 @@
 "use client";
 
 import { useState } from "react";
-import { haltCaveat, halfLabel } from "@/components/laserball/lb-match-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,7 +22,6 @@ import type {
   LbMatchOvertimePairing,
   LbMatchRosterWarning,
 } from "@lfstats/db";
-import Link from "next/link";
 
 type GameTeam = {
   id: string;
@@ -254,25 +252,6 @@ export function LbMatchManager({
   // ── Linked ───────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-        {matchDetail.halves.map((h) => {
-          const caveat = haltCaveat(h.gameOutcome, h.gameExcluded);
-          return (
-            <span key={h.gameId} className="flex items-center gap-1.5">
-              {halfLabel(h.half)}:{" "}
-              <Link href={`/laserball/games/${h.gameSlug}`} className="hover:underline">
-                {formatDateTime(h.gameStartTime)}
-              </Link>
-              {caveat && (
-                <Badge variant="destructive" className="text-xs px-1 py-0">
-                  {caveat}
-                </Badge>
-              )}
-            </span>
-          );
-        })}
-      </div>
-
       {rosterWarnings.length > 0 && (
         <details className="text-sm border border-amber-400/50 bg-amber-500/10 rounded-md p-2">
           <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">
