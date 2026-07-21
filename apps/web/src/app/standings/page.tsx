@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Settings } from "lucide-react";
@@ -14,6 +15,8 @@ import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesB
 import { StandingsTabs } from "./StandingsTabs";
 import { resolveFilterContext } from "@/lib/filter-context";
 import { auth } from "@/auth";
+
+export const metadata: Metadata = { title: "Standings" };
 
 export default async function StandingsPage({
   searchParams,

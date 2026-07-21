@@ -22,8 +22,10 @@ import {
   getTeamGameParticipants,
 } from "@lfstats/db";
 import { ExternalLink } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import {
   addParticipantToRosterAction,
   addPlayerAction,
@@ -36,16 +38,34 @@ import { ParticipantActions } from "./ParticipantActions";
 import { PlayerPictureUpload } from "./PlayerPictureUpload";
 import { TeamLogoUpload } from "./TeamLogoUpload";
 
+const getCompetition = cache(getCompetitionBySlug);
+const getCompetitionTeam = cache(getCompetitionTeamBySlug);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; teamSlug: string }>;
+}): Promise<Metadata> {
+  const { slug, teamSlug } = await params;
+  const comp = await getCompetition(slug);
+  if (!comp) return { title: "Admin: Competition Not Found" };
+
+  const team = await getCompetitionTeam(comp.id, teamSlug);
+  if (!team) return { title: "Admin: Team Not Found" };
+
+  return { title: `Admin: ${team.name} Roster` };
+}
+
 export default async function TeamRosterPage({
   params,
 }: {
   params: Promise<{ slug: string; teamSlug: string }>;
 }) {
   const { slug, teamSlug } = await params;
-  const comp = await getCompetitionBySlug(slug);
+  const comp = await getCompetition(slug);
   if (!comp) notFound();
 
-  const team = await getCompetitionTeamBySlug(comp.id, teamSlug);
+  const team = await getCompetitionTeam(comp.id, teamSlug);
   if (!team) notFound();
 
   const [roster, unassigned] = await Promise.all([

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { AllStarContent } from "@/components/competitions/AllStarContent";
 import { AllStarSkeleton } from "@/components/competitions/AllStarSkeleton";
 import { resolveFilterContext } from "@/lib/filter-context";
+
+export const metadata: Metadata = { title: "All-Star Rankings" };
 
 export default async function AllStarPage({
   searchParams,

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { auth } from "@/auth";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { EditModeToggle } from "@/components/games/EditModeToggle";
@@ -44,17 +46,35 @@ import {
   unlinkLbMatchAction,
 } from "./actions";
 
+const getGame = cache(getLbGameDetailBySlug);
+const getMatchId = cache(getLbMatchIdForGame);
+const getMatchDetail = cache(getLbMatchDetail);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const game = await getGame(slug);
+  if (!game) return { title: "Game Not Found" };
+
+  const matchId = await getMatchId(game.id);
+  const matchDetail = matchId ? await getMatchDetail(matchId) : null;
+  const title = matchDetail
+    ? `${matchDetail.halves[0]!.side1.name} vs ${matchDetail.halves[0]!.side2.name} – Match`
+    : `${formatGameName(game.description, game.startTime)} – ${game.centerName}`;
+
+  return { title };
+}
+
 export default async function LaserballGameDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [game, session, cookieStore] = await Promise.all([
-    getLbGameDetailBySlug(slug),
-    auth(),
-    cookies(),
-  ]);
+  const [game, session, cookieStore] = await Promise.all([getGame(slug), auth(), cookies()]);
   if (!game) notFound();
 
   const roles = session?.user.roles ?? [];
@@ -67,9 +87,9 @@ export default async function LaserballGameDetailPage({
   const editMode = cookieStore.get(EDIT_MODE_COOKIE)?.value === "true";
   const canEdit = canManage && editMode;
 
-  const matchId = await getLbMatchIdForGame(game.id);
+  const matchId = await getMatchId(game.id);
   const [matchDetail, rosterWarnings, candidateGames] = await Promise.all([
-    matchId ? getLbMatchDetail(matchId) : Promise.resolve(null),
+    matchId ? getMatchDetail(matchId) : Promise.resolve(null),
     matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
     !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
   ]);

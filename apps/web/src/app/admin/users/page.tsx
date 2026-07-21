@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import {
   listAllUsersWithRoles,
@@ -12,6 +13,8 @@ import { getCenterList } from "@lfstats/db";
 import { redirect } from "next/navigation";
 import { UsersTableClient } from "./_components/UsersTableClient";
 import type { GrantableRole } from "./_components/GrantRoleDialog";
+
+export const metadata: Metadata = { title: "Admin: Users" };
 
 function dedupeUsers(users: UserWithRoles[]): UserWithRoles[] {
   const map = new Map<string, UserWithRoles>();

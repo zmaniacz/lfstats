@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCompetitionBySlug, getCompetitionTeams } from "@lfstats/db";
@@ -19,13 +21,27 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createCompetitionTeamAction, deleteCompetitionTeamAction } from "./actions";
 
+const getCompetition = cache(getCompetitionBySlug);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const comp = await getCompetition(slug);
+  if (!comp) return { title: "Admin: Competition Not Found" };
+
+  return { title: `Admin: ${comp.name} Teams` };
+}
+
 export default async function CompetitionTeamsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const comp = await getCompetitionBySlug(slug);
+  const comp = await getCompetition(slug);
   if (!comp) notFound();
 
   const teams = await getCompetitionTeams(comp.id);

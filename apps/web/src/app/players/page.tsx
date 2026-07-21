@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
@@ -10,6 +11,8 @@ import { PlayersContent } from "@/components/players/PlayersContent";
 import { PlayersSkeleton } from "@/components/players/PlayersSkeleton";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
+
+export const metadata: Metadata = { title: "Players" };
 
 export default async function PlayersPage({
   searchParams,

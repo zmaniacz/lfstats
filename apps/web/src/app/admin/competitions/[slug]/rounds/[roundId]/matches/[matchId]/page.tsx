@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -28,17 +30,35 @@ import {
 } from "./actions";
 import { ForfeitButtons } from "./ForfeitButtons";
 
+const getCompetition = cache(getCompetitionBySlug);
+const getMatch = cache(getCompetitionMatchById);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; roundId: string; matchId: string }>;
+}): Promise<Metadata> {
+  const { slug, matchId } = await params;
+  const comp = await getCompetition(slug);
+  if (!comp) return { title: "Admin: Competition Not Found" };
+
+  const match = await getMatch(matchId);
+  if (!match) return { title: "Admin: Match Not Found" };
+
+  return { title: `Admin: ${match.team1Name} vs ${match.team2Name}` };
+}
+
 export default async function MatchDetailPage({
   params,
 }: {
   params: Promise<{ slug: string; roundId: string; matchId: string }>;
 }) {
   const { slug, roundId, matchId } = await params;
-  const comp = await getCompetitionBySlug(slug);
+  const comp = await getCompetition(slug);
   if (!comp) notFound();
 
   const [match, assignments, unassignedGames, teams] = await Promise.all([
-    getCompetitionMatchById(matchId),
+    getMatch(matchId),
     getMatchGameAssignments(matchId),
     getUnassignedCompetitionGames(comp.id),
     getCompetitionTeams(comp.id),

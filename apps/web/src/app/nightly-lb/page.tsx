@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateFilter } from "@/components/nightly/DateFilter";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -17,6 +18,8 @@ import { filterCookieNames } from "@/lib/filter-cookies";
 import { cookies } from "next/headers";
 
 const { center: CENTER_COOKIE } = filterCookieNames("lb");
+
+export const metadata: Metadata = { title: "Nightly Laserball" };
 
 export default async function NightlyLbPage({
   searchParams,

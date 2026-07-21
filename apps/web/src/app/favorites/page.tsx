@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Fragment } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatGameName, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
+
+export const metadata: Metadata = { title: "Favorites" };
 
 export default async function FavoritesPage() {
   const session = await auth();

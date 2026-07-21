@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { getFailedChomperJobs } from "@lfstats/db";
 import { redirect } from "next/navigation";
@@ -13,6 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ArchiveAllButton, ArchiveButton } from "./archive-buttons";
+
+export const metadata: Metadata = { title: "Admin: Chomper Errors" };
 
 export default async function ChomperErrorsPage() {
   const session = await auth();

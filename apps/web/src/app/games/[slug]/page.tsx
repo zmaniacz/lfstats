@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { auth } from "@/auth";
 import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { EditModeToggle } from "@/components/games/EditModeToggle";
@@ -58,13 +60,29 @@ import {
   updateTeamPenaltyAction,
 } from "./actions";
 
+const getGame = cache(getGameDetailBySlug);
+const getMatchAssignment = cache(getGameMatchAssignment);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const game = await getGame(slug);
+  if (!game) return { title: "Game Not Found" };
+
+  const matchAssignment = await getMatchAssignment(game.id);
+  const title = matchAssignment
+    ? `${matchAssignment.team1Name} vs ${matchAssignment.team2Name} – Game ${matchAssignment.gameNumber}`
+    : `${formatGameName(game.description, game.startTime)} – ${game.centerName}`;
+
+  return { title };
+}
+
 export default async function GameDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [game, session, cookieStore] = await Promise.all([
-    getGameDetailBySlug(slug),
-    auth(),
-    cookies(),
-  ]);
+  const [game, session, cookieStore] = await Promise.all([getGame(slug), auth(), cookies()]);
 
   if (!game) notFound();
 
@@ -94,7 +112,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     canEdit && game.competitionId
       ? getAvailableMatchesForGame(game.competitionId)
       : Promise.resolve([]),
-    getGameMatchAssignment(game.id),
+    getMatchAssignment(game.id),
     game.competitionId
       ? getCompetitionGameNavigation(game.competitionId, game.id)
       : Promise.resolve(null),

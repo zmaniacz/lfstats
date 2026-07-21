@@ -21,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "LFstats",
+  title: { template: "%s | LFstats", default: "LFstats" },
   description: "Space Marines 5 laser tag statistics",
 };
 

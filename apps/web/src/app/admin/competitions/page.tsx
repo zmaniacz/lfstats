@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCompetitions } from "@lfstats/db";
 import {
@@ -14,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { COMPETITION_STATE_LABELS, competitionStateBadgeVariant } from "@/lib/competition-state";
+
+export const metadata: Metadata = { title: "Admin: Competitions" };
 
 export default async function CompetitionsPage() {
   const competitions = await getCompetitions();

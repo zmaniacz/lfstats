@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LeaderboardsContent } from "@/components/competitions/LeaderboardsContent";
 import { LeaderboardsSkeleton } from "@/components/competitions/LeaderboardsSkeleton";
@@ -9,6 +10,8 @@ import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
+
+export const metadata: Metadata = { title: "Leaderboards" };
 
 export default async function LeaderboardsPage({
   searchParams,

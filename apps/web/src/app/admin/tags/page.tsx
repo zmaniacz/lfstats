@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCenterList } from "@lfstats/db";
 import {
@@ -11,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+export const metadata: Metadata = { title: "Admin: Tags" };
 
 export default async function TagsPage() {
   const centers = await getCenterList();

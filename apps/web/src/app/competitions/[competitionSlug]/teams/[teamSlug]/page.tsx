@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -32,6 +34,25 @@ import { auth } from "@/auth";
 
 const POSITION_IDS = [1, 2, 3, 4, 5];
 
+const getCompetition = cache(getCompetitionBySlug);
+const getCompetitionTeam = cache(getCompetitionTeamBySlug);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ competitionSlug: string; teamSlug: string }>;
+}): Promise<Metadata> {
+  const { competitionSlug, teamSlug } = await params;
+
+  const competition = await getCompetition(competitionSlug);
+  if (!competition) return { title: "Team Not Found" };
+
+  const team = await getCompetitionTeam(competition.id, teamSlug);
+  if (!team) return { title: "Team Not Found" };
+
+  return { title: `${team.name} – ${competition.name}` };
+}
+
 export default async function CompetitionTeamPage({
   params,
 }: {
@@ -39,10 +60,10 @@ export default async function CompetitionTeamPage({
 }) {
   const { competitionSlug, teamSlug } = await params;
 
-  const competition = await getCompetitionBySlug(competitionSlug);
+  const competition = await getCompetition(competitionSlug);
   if (!competition) notFound();
 
-  const team = await getCompetitionTeamBySlug(competition.id, teamSlug);
+  const team = await getCompetitionTeam(competition.id, teamSlug);
   if (!team) notFound();
 
   const session = await auth();

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { Suspense } from "react";
+import type { Metadata } from "next";
+import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { getPlayerByIplId, getPlayerCallsignHistory, isPlayerFavorite } from "@lfstats/db";
@@ -14,6 +15,20 @@ import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
+
+const getPlayer = cache(getPlayerByIplId);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ iplId: string }>;
+}): Promise<Metadata> {
+  const { iplId } = await params;
+  const playerDetail = await getPlayer(iplId);
+  if (!playerDetail) return { title: "Player Not Found" };
+
+  return { title: playerDetail.currentCallsign };
+}
 
 export default async function PlayerDetailPage({
   params,
@@ -35,7 +50,7 @@ export default async function PlayerDetailPage({
   const gameType = await resolveGameType(sp.game);
 
   const [playerDetail, session, ctx] = await Promise.all([
-    getPlayerByIplId(iplId),
+    getPlayer(iplId),
     auth(),
     resolveFilterContext(sp, { gameType }),
   ]);

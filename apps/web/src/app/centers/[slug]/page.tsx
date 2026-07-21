@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
   getCenterBySlug,
@@ -19,6 +21,20 @@ import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
 import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
 
+const getCenter = cache(getCenterBySlug);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const centerDetail = await getCenter(slug);
+  if (!centerDetail) return { title: "Center Not Found" };
+
+  return { title: centerDetail.name };
+}
+
 export default async function CenterDetailPage({
   params,
   searchParams,
@@ -36,7 +52,7 @@ export default async function CenterDetailPage({
   const sp = await searchParams;
   const gameType = await resolveGameType(sp.game);
 
-  const centerDetail = await getCenterBySlug(slug);
+  const centerDetail = await getCenter(slug);
   if (!centerDetail) notFound();
 
   const ctx = await resolveFilterContext(sp, { gameType });

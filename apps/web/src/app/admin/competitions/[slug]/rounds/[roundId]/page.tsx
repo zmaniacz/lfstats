@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -32,16 +34,34 @@ import {
   assignTeamToPoolAction,
 } from "../actions";
 
+const getCompetition = cache(getCompetitionBySlug);
+const getRound = cache(getCompetitionRoundById);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; roundId: string }>;
+}): Promise<Metadata> {
+  const { slug, roundId } = await params;
+  const comp = await getCompetition(slug);
+  if (!comp) return { title: "Admin: Competition Not Found" };
+
+  const round = await getRound(roundId);
+  if (!round || round.competitionId !== comp.id) return { title: "Admin: Round Not Found" };
+
+  return { title: `Admin: ${round.name}` };
+}
+
 export default async function RoundMatchesPage({
   params,
 }: {
   params: Promise<{ slug: string; roundId: string }>;
 }) {
   const { slug, roundId } = await params;
-  const comp = await getCompetitionBySlug(slug);
+  const comp = await getCompetition(slug);
   if (!comp) notFound();
 
-  const round = await getCompetitionRoundById(roundId);
+  const round = await getRound(roundId);
   if (!round || round.competitionId !== comp.id) notFound();
 
   const [teams, matches] = await Promise.all([

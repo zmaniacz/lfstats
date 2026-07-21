@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -10,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerPenaltiesContent, TeamPenaltiesContent } from "./PenaltiesContent";
 import { PenaltiesSkeleton } from "./PenaltiesSkeleton";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
+
+export const metadata: Metadata = { title: "Penalties" };
 
 export default async function PenaltiesPage({
   searchParams,

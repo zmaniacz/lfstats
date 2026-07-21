@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateFilter } from "@/components/nightly/DateFilter";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -15,6 +16,8 @@ import {
 } from "@lfstats/db";
 import { CENTER_COOKIE } from "@/lib/filter-cookies";
 import { cookies } from "next/headers";
+
+export const metadata: Metadata = { title: "Nightly Stats" };
 
 export default async function NightlyPage({
   searchParams,

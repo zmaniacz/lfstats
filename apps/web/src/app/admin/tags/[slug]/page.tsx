@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTagsByCenter, getCenterBySlug } from "@lfstats/db";
@@ -14,10 +16,24 @@ import {
   mergeTagAction,
 } from "../actions";
 
+const getCenter = cache(getCenterBySlug);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const centerRow = await getCenter(slug);
+  if (!centerRow) return { title: "Admin: Center Not Found" };
+
+  return { title: `Admin: ${centerRow.name} Tags` };
+}
+
 export default async function CenterTagsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  const centerRow = await getCenterBySlug(slug);
+  const centerRow = await getCenter(slug);
   if (!centerRow) notFound();
 
   const tags = await getTagsByCenter(centerRow.id, true);
