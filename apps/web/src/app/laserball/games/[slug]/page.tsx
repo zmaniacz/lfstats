@@ -88,6 +88,10 @@ export default async function LaserballGameDetailPage({
     possessionMs: t.players.reduce((sum, p) => sum + p.possessionTimeMs, 0),
   }));
 
+  const replayDuration = matchDetail
+    ? matchDetail.halves.reduce((sum, h) => sum + h.actualDuration, 0)
+    : game.actualDuration;
+
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
@@ -177,7 +181,11 @@ export default async function LaserballGameDetailPage({
           )}
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
-          <LbReplayTab gameId={game.id} duration={game.actualDuration} />
+          {matchDetail ? (
+            <LbReplayTab mode="match" matchId={matchDetail.id} duration={replayDuration} />
+          ) : (
+            <LbReplayTab mode="game" gameId={game.id} duration={replayDuration} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

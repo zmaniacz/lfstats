@@ -21,7 +21,13 @@ import { Toggle } from "@/components/ui/toggle";
 import { formatMs, formatMsPrecise, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { cn } from "@/lib/utils";
-import type { LbReplayData, LbReplayPlayer, LbReplayPlayerState } from "@lfstats/db";
+import type {
+  LbMatchReplayData,
+  LbMatchReplayPlayer,
+  LbReplayData,
+  LbReplayPlayer,
+  LbReplayPlayerState,
+} from "@lfstats/db";
 
 const TICK_MS = 100;
 const SPEEDS = [1, 2, 4, 8] as const;
@@ -97,8 +103,18 @@ type LbComputedTeam = {
   players: LbComputedPlayer[];
 };
 
-export function LbReplayTab({ gameId, duration }: { gameId: string; duration: number }) {
-  const [data, setData] = useState<LbReplayData | null>(null);
+type Props =
+  | { mode: "game"; gameId: string; duration: number }
+  | { mode: "match"; matchId: string; duration: number };
+
+export function LbReplayTab(props: Props) {
+  const { duration } = props;
+  const isMatch = props.mode === "match";
+  const fetchUrl = isMatch
+    ? `/api/laserball/matches/${props.matchId}/replay`
+    : `/api/laserball/games/${props.gameId}/replay`;
+
+  const [data, setData] = useState<LbReplayData | LbMatchReplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -108,14 +124,15 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    fetch(`/api/laserball/games/${gameId}/replay`)
+    setLoading(true);
+    fetch(fetchUrl)
       .then((r) => r.json())
-      .then((d: LbReplayData) => {
+      .then((d: LbReplayData | LbMatchReplayData) => {
         setData(d);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [gameId]);
+  }, [fetchUrl]);
 
   const statesByPlayer = useMemo(() => {
     if (!data) return new Map<string, LbReplayPlayerState[]>();
@@ -169,27 +186,58 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
     setCurrentTime(duration);
   }, [duration]);
 
+  // Which half/OT game currentTime currently falls in — drives which side's
+  // roster is shown and which of that half's (possibly swapped) vest colours
+  // to display, so the header flips colour exactly at the half boundary.
+  const activeHalf = useMemo(() => {
+    if (!isMatch || !data) return null;
+    const halves = (data as LbMatchReplayData).halves;
+    return halves.find((h) => currentTime < h.endOffset) ?? halves[halves.length - 1] ?? null;
+  }, [isMatch, data, currentTime]);
+
+  const activePlayers = useMemo(() => {
+    if (!data) return [];
+    if (!isMatch) return data.players;
+    if (!activeHalf) return [];
+    return (data as LbMatchReplayData).players.filter((p) => p.half === activeHalf.half);
+  }, [data, isMatch, activeHalf]);
+
   const computedTeams = useMemo((): LbComputedTeam[] => {
     if (!data) return [];
 
+    const sideOf = (player: LbReplayPlayer) => (player as LbMatchReplayPlayer).side as 1 | 2;
+    const groupKey = (player: LbReplayPlayer) =>
+      isMatch ? `side${sideOf(player)}` : player.teamId;
+
     const teamMap = new Map<string, LbComputedTeam>();
-    for (const player of data.players) {
-      if (!teamMap.has(player.teamId)) {
-        teamMap.set(player.teamId, {
-          teamId: player.teamId,
-          teamName: player.teamName,
-          teamColour: player.teamColour,
-          totalGoals: 0,
+    for (const player of activePlayers) {
+      const key = groupKey(player);
+      if (!teamMap.has(key)) {
+        const colourEnum = isMatch
+          ? sideOf(player) === 1
+            ? activeHalf!.side1ColourEnum
+            : activeHalf!.side2ColourEnum
+          : player.teamColour;
+        const priorTotal = isMatch
+          ? sideOf(player) === 1
+            ? activeHalf!.side1PriorTotal
+            : activeHalf!.side2PriorTotal
+          : 0;
+        teamMap.set(key, {
+          teamId: key,
+          teamName: isMatch ? `Side ${sideOf(player)}` : player.teamName,
+          teamColour: colourEnum,
+          totalGoals: priorTotal,
           players: [],
         });
       }
     }
 
-    for (const player of data.players) {
+    for (const player of activePlayers) {
       const states = statesByPlayer.get(player.scorecardId) ?? [];
       const state = binarySearchLatestState(states, currentTime);
       const goals = state?.score ?? 0;
-      const team = teamMap.get(player.teamId)!;
+      const team = teamMap.get(groupKey(player))!;
       team.totalGoals += goals;
 
       let respawnProgress: number | null = null;
@@ -227,7 +275,7 @@ export function LbReplayTab({ gameId, duration }: { gameId: string; duration: nu
     }
     teams.sort((a, b) => b.totalGoals - a.totalGoals);
     return teams;
-  }, [data, statesByPlayer, currentTime]);
+  }, [data, statesByPlayer, currentTime, activePlayers, isMatch, activeHalf]);
 
   // Detect rank changes and team-order swaps for animations
   const prevRanksRef = useRef<Map<string, number>>(new Map());

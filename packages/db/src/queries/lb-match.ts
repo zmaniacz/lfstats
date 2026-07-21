@@ -4,7 +4,13 @@
 import { and, asc, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
 import { db } from "../client";
 import { center, game, lbGameTeam, lbMatch, lbMatchGame, lbScorecard } from "../schema";
-import type { LbGameDetailTeam } from "./laserball";
+import { getLbGameReplayData } from "./laserball";
+import type {
+  LbGameDetailTeam,
+  LbReplayEvent,
+  LbReplayPlayer,
+  LbReplayPlayerState,
+} from "./laserball";
 
 // Guests (null playerId) have no stable identity across games and are
 // excluded from roster comparison. Players under this threshold are noise
@@ -26,6 +32,7 @@ export type LbMatchHalf = {
   gameStartTime: Date;
   gameOutcome: string;
   gameExcluded: boolean;
+  actualDuration: number;
   side1: LbMatchHalfSide;
   side2: LbMatchHalfSide;
 };
@@ -82,6 +89,7 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
       gameStartTime: game.startTime,
       gameOutcome: game.outcome,
       gameExcluded: game.exclude,
+      actualDuration: game.actualDuration,
       side1GameTeamId: lbMatchGame.side1GameTeamId,
       side2GameTeamId: lbMatchGame.side2GameTeamId,
     })
@@ -116,6 +124,7 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
       gameStartTime: r.gameStartTime,
       gameOutcome: r.gameOutcome,
       gameExcluded: r.gameExcluded,
+      actualDuration: r.actualDuration,
       side1: {
         gameTeamId: r.side1GameTeamId,
         name: side1?.name ?? "",
@@ -481,4 +490,82 @@ export async function getLbMatchGamesDetail(
   }
 
   return teamsByGame;
+}
+
+// ---------------------------------------------------------------------------
+// Combined replay data (halves stitched into one continuous timeline)
+// ---------------------------------------------------------------------------
+
+export type LbMatchReplayHalf = {
+  half: number;
+  gameId: string;
+  startOffset: number;
+  endOffset: number;
+  side1ColourEnum: number;
+  side2ColourEnum: number;
+  // Cumulative side score from every earlier half — this half's own live
+  // score is added on top, client-side, to get the running match total.
+  side1PriorTotal: number;
+  side2PriorTotal: number;
+};
+
+export type LbMatchReplayPlayer = LbReplayPlayer & { half: number; side: 1 | 2 };
+
+export type LbMatchReplayData = {
+  duration: number;
+  halves: LbMatchReplayHalf[];
+  players: LbMatchReplayPlayer[];
+  events: LbReplayEvent[];
+  playerStates: LbReplayPlayerState[];
+};
+
+export async function getLbMatchReplayData(matchId: string): Promise<LbMatchReplayData | null> {
+  const matchDetail = await getLbMatchDetail(matchId);
+  if (!matchDetail) return null;
+
+  const perHalfData = await Promise.all(
+    matchDetail.halves.map((h) => getLbGameReplayData(h.gameId)),
+  );
+  if (perHalfData.some((d) => d === null)) return null;
+
+  let offset = 0;
+  let side1Prior = 0;
+  let side2Prior = 0;
+  const halves: LbMatchReplayHalf[] = [];
+  const players: LbMatchReplayPlayer[] = [];
+  const events: LbReplayEvent[] = [];
+  const playerStates: LbReplayPlayerState[] = [];
+
+  matchDetail.halves.forEach((h, i) => {
+    const data = perHalfData[i]!;
+    const startOffset = offset;
+    const endOffset = offset + data.duration;
+
+    halves.push({
+      half: h.half,
+      gameId: h.gameId,
+      startOffset,
+      endOffset,
+      side1ColourEnum: h.side1.colourEnum,
+      side2ColourEnum: h.side2.colourEnum,
+      side1PriorTotal: side1Prior,
+      side2PriorTotal: side2Prior,
+    });
+
+    for (const p of data.players) {
+      players.push({ ...p, half: h.half, side: p.teamId === h.side1.gameTeamId ? 1 : 2 });
+    }
+    for (const e of data.events) {
+      events.push({ ...e, time: e.time + startOffset });
+    }
+    for (const s of data.playerStates) {
+      playerStates.push({ ...s, time: s.time + startOffset });
+    }
+
+    side1Prior += h.side1.score ?? 0;
+    side2Prior += h.side2.score ?? 0;
+    offset = endOffset;
+  });
+
+  return { duration: offset, halves, players, events, playerStates };
 }
