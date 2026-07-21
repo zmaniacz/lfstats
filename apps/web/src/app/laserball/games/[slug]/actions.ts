@@ -5,11 +5,15 @@
 
 import { auth } from "@/auth";
 import {
+  addLbMatchOvertimeGame,
   getGameCenterId,
   getGameSlugById,
+  getLbMatchDetail,
   linkLbMatch,
+  removeLbMatchOvertimeGame,
   setGameExcluded,
   unlinkLbMatch,
+  type LbMatchOvertimePairing,
   type LbMatchTeamPairing,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
@@ -37,6 +41,12 @@ async function revalidateLbGame(gameId: string) {
   if (slug) revalidatePath(`/laserball/games/${slug}`);
 }
 
+async function revalidateLbMatchGames(matchId: string) {
+  const matchDetail = await getLbMatchDetail(matchId);
+  if (!matchDetail) return;
+  await Promise.all(matchDetail.halves.map((h) => revalidateLbGame(h.gameId)));
+}
+
 export async function toggleExcludeAction(gameId: string, exclude: boolean) {
   await requireCenterAdmin(gameId);
   await setGameExcluded(gameId, exclude);
@@ -60,7 +70,29 @@ export async function unlinkLbMatchAction(
   otherGameId: string,
 ): Promise<void> {
   await requireCenterAdmin(gameId);
+  const matchDetail = await getLbMatchDetail(matchId);
   await unlinkLbMatch(matchId);
-  await revalidateLbGame(gameId);
-  await revalidateLbGame(otherGameId);
+  if (matchDetail) {
+    await Promise.all(matchDetail.halves.map((h) => revalidateLbGame(h.gameId)));
+  } else {
+    await revalidateLbGame(gameId);
+    await revalidateLbGame(otherGameId);
+  }
+}
+
+export async function addLbMatchOvertimeAction(
+  gameId: string,
+  matchId: string,
+  otGameId: string,
+  pairing: LbMatchOvertimePairing,
+): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await addLbMatchOvertimeGame(matchId, otGameId, pairing);
+  await revalidateLbMatchGames(matchId);
+}
+
+export async function removeLbMatchOvertimeAction(gameId: string, matchId: string): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await removeLbMatchOvertimeGame(matchId);
+  await revalidateLbMatchGames(matchId);
 }

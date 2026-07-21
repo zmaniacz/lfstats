@@ -6,6 +6,8 @@ import { DeleteGameButton } from "@/components/games/DeleteGameButton";
 import { EditModeToggle } from "@/components/games/EditModeToggle";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { LbMatchManager } from "@/components/laserball/LbMatchManager";
+import { LbMatchScorecards } from "@/components/laserball/LbMatchScorecards";
+import { LbMatchSideSummary } from "@/components/laserball/LbMatchSideSummary";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
 import { LbReplayTab } from "@/components/laserball/LbReplayTab";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
@@ -18,12 +20,20 @@ import {
   getLbGameDetailBySlug,
   getLbMatchCandidateGames,
   getLbMatchDetail,
+  getLbMatchGamesDetail,
   getLbMatchIdForGame,
   getLbMatchRosterWarnings,
+  type LbGameDetailTeam,
 } from "@lfstats/db";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { linkLbMatchAction, toggleExcludeAction, unlinkLbMatchAction } from "./actions";
+import {
+  addLbMatchOvertimeAction,
+  linkLbMatchAction,
+  removeLbMatchOvertimeAction,
+  toggleExcludeAction,
+  unlinkLbMatchAction,
+} from "./actions";
 
 export default async function LaserballGameDetailPage({
   params,
@@ -53,6 +63,16 @@ export default async function LaserballGameDetailPage({
     matchId ? getLbMatchDetail(matchId) : Promise.resolve(null),
     matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
     !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
+  ]);
+
+  const half2GameId = matchDetail?.halves.find((h) => h.half === 2)?.gameId;
+  const [otCandidateGames, matchGamesDetail] = await Promise.all([
+    canEdit && matchDetail?.halves.length === 2 && half2GameId
+      ? getLbMatchCandidateGames(half2GameId)
+      : Promise.resolve([]),
+    matchId
+      ? getLbMatchGamesDetail(matchId)
+      : Promise.resolve(new Map<string, LbGameDetailTeam[]>()),
   ]);
 
   // Winning team first; draws keep tdf order.
@@ -97,8 +117,11 @@ export default async function LaserballGameDetailPage({
             matchDetail={matchDetail}
             rosterWarnings={rosterWarnings}
             candidateGames={candidateGames}
+            otCandidateGames={otCandidateGames}
             linkAction={linkLbMatchAction}
             unlinkAction={unlinkLbMatchAction}
+            addOvertimeAction={addLbMatchOvertimeAction}
+            removeOvertimeAction={removeLbMatchOvertimeAction}
           />
         )}
       </div>
@@ -108,36 +131,45 @@ export default async function LaserballGameDetailPage({
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
           <TabsTrigger value="replay">Replay</TabsTrigger>
         </TabsList>
-        <TabsContent value="scoreboard" className="mt-6">
-          <>
-            {teams.map((team) => {
-              const color = getTeamColor(team.colourEnum);
-              return (
-                <section key={team.id} className="space-y-0">
-                  <div
-                    className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold text-lg ${color?.text ?? ""}`}>{team.name}</span>
-                      {team.result === "win" && <Badge variant="default">Win</Badge>}
-                      {team.result === "loss" && <Badge variant="secondary">Loss</Badge>}
-                      {team.result === "draw" && <Badge variant="secondary">Draw</Badge>}
+        <TabsContent value="scoreboard" className="mt-6 space-y-8">
+          {matchDetail ? (
+            <>
+              <LbMatchSideSummary matchDetail={matchDetail} />
+              <LbMatchScorecards matchDetail={matchDetail} gamesById={matchGamesDetail} />
+            </>
+          ) : (
+            <>
+              {teams.map((team) => {
+                const color = getTeamColor(team.colourEnum);
+                return (
+                  <section key={team.id} className="space-y-0">
+                    <div
+                      className={`flex items-center justify-between px-4 py-2 border-l-4 ${color?.border ?? "border-border"} bg-muted/40 rounded-tr-md`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold text-lg ${color?.text ?? ""}`}>
+                          {team.name}
+                        </span>
+                        {team.result === "win" && <Badge variant="default">Win</Badge>}
+                        {team.result === "loss" && <Badge variant="secondary">Loss</Badge>}
+                        {team.result === "draw" && <Badge variant="secondary">Draw</Badge>}
+                      </div>
+                      <span className="tabular-nums font-semibold">
+                        {formatScore(team.score ?? 0)}
+                      </span>
                     </div>
-                    <span className="tabular-nums font-semibold">
-                      {formatScore(team.score ?? 0)}
-                    </span>
-                  </div>
-                  <LbTeamScoreboard team={team} />
-                </section>
-              );
-            })}
-            <section className="space-y-1.5">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Possession
-              </h2>
-              <LbPossessionBar teams={possessionTeams} />
-            </section>
-          </>
+                    <LbTeamScoreboard team={team} />
+                  </section>
+                );
+              })}
+            </>
+          )}
+          <section className="space-y-1.5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Possession
+            </h2>
+            <LbPossessionBar teams={possessionTeams} />
+          </section>
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
           <LbReplayTab gameId={game.id} duration={game.actualDuration} />

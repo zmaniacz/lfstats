@@ -4,6 +4,7 @@
 "use client";
 
 import { useState } from "react";
+import { haltCaveat, halfLabel } from "@/components/laserball/lb-match-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,9 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDateTime, formatScore } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
-import type { LbMatchCandidateGame, LbMatchDetail, LbMatchRosterWarning } from "@lfstats/db";
+import type {
+  LbMatchCandidateGame,
+  LbMatchDetail,
+  LbMatchOvertimePairing,
+  LbMatchRosterWarning,
+} from "@lfstats/db";
 import Link from "next/link";
 
 type GameTeam = {
@@ -38,8 +44,16 @@ type Props = {
   matchDetail: LbMatchDetail | null;
   rosterWarnings: LbMatchRosterWarning[];
   candidateGames: LbMatchCandidateGame[];
+  otCandidateGames: LbMatchCandidateGame[];
   linkAction: (gameId: string, otherGameId: string, pairing: Pairing) => Promise<void>;
   unlinkAction: (gameId: string, matchId: string, otherGameId: string) => Promise<void>;
+  addOvertimeAction: (
+    gameId: string,
+    matchId: string,
+    otGameId: string,
+    pairing: LbMatchOvertimePairing,
+  ) => Promise<void>;
+  removeOvertimeAction: (gameId: string, matchId: string) => Promise<void>;
 };
 
 const WARNING_LABEL: Record<LbMatchRosterWarning["kind"], string> = {
@@ -48,34 +62,37 @@ const WARNING_LABEL: Record<LbMatchRosterWarning["kind"], string> = {
   played_opposite_side: "switched sides unexpectedly",
 };
 
-function haltCaveat(outcome: string, excluded: boolean): string | null {
-  if (excluded) return "Excluded from Stats";
-  if (outcome === "replay") return "Replay";
-  if (outcome === "aborted") return "Aborted";
-  if (outcome === "forfeit") return "Forfeit";
-  return null;
-}
-
 export function LbMatchManager({
   gameId,
   gameTeams,
   matchDetail,
   rosterWarnings,
   candidateGames,
+  otCandidateGames,
   linkAction,
   unlinkAction,
+  addOvertimeAction,
+  removeOvertimeAction,
 }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [gameSide1TeamId, setGameSide1TeamId] = useState("");
   const [otherSide1TeamId, setOtherSide1TeamId] = useState("");
+  const [selectedOtCandidateId, setSelectedOtCandidateId] = useState("");
+  const [otSide1TeamId, setOtSide1TeamId] = useState("");
 
   const selectedCandidate = candidateGames.find((c) => c.id === selectedCandidateId);
+  const selectedOtCandidate = otCandidateGames.find((c) => c.id === selectedOtCandidateId);
 
   function handleCandidateChange(id: string) {
     setSelectedCandidateId(id);
     setGameSide1TeamId("");
     setOtherSide1TeamId("");
+  }
+
+  function handleOtCandidateChange(id: string) {
+    setSelectedOtCandidateId(id);
+    setOtSide1TeamId("");
   }
 
   async function handleLink() {
@@ -103,6 +120,32 @@ export function LbMatchManager({
     setIsPending(true);
     try {
       await unlinkAction(gameId, matchDetail.id, otherGameId);
+    } finally {
+      window.location.reload();
+    }
+  }
+
+  async function handleAddOvertime() {
+    if (!matchDetail || !selectedOtCandidate || !otSide1TeamId) return;
+    const otSide2 = selectedOtCandidate.teams.find((t) => t.id !== otSide1TeamId);
+    if (!otSide2) return;
+
+    setIsPending(true);
+    try {
+      await addOvertimeAction(gameId, matchDetail.id, selectedOtCandidate.id, {
+        side1TeamId: otSide1TeamId,
+        side2TeamId: otSide2.id,
+      });
+    } finally {
+      window.location.reload();
+    }
+  }
+
+  async function handleRemoveOvertime() {
+    if (!matchDetail) return;
+    setIsPending(true);
+    try {
+      await removeOvertimeAction(gameId, matchDetail.id);
     } finally {
       window.location.reload();
     }
@@ -188,7 +231,10 @@ export function LbMatchManager({
   }
 
   // ── Defensive fallback ───────────────────────────────────────────────────
-  if (matchDetail.halves.length !== 2) {
+  const half1 = matchDetail.halves.find((h) => h.half === 1);
+  const half2 = matchDetail.halves.find((h) => h.half === 2);
+  const overtime = matchDetail.halves.find((h) => h.half === 3);
+  if (!half1 || !half2 || matchDetail.halves.length > 3) {
     return (
       <div className="flex items-center gap-3">
         <Badge variant="destructive">Match data incomplete</Badge>
@@ -206,45 +252,14 @@ export function LbMatchManager({
   }
 
   // ── Linked ───────────────────────────────────────────────────────────────
-  const [half1, half2] = matchDetail.halves;
-  const sides = [
-    { side: 1 as const, total: matchDetail.side1TotalScore, h1: half1!.side1, h2: half2!.side1 },
-    { side: 2 as const, total: matchDetail.side2TotalScore, h1: half1!.side2, h2: half2!.side2 },
-  ];
-
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        {sides.map(({ side, total, h1, h2 }) => {
-          const isWinner = matchDetail.winnerSide === side;
-          return (
-            <div
-              key={side}
-              className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md bg-muted/40"
-            >
-              <div className="flex items-center gap-2 flex-wrap text-sm">
-                <span className={`font-medium ${getTeamColor(h1.colourEnum)?.text ?? ""}`}>
-                  {h1.name}
-                </span>
-                <span className="text-muted-foreground">→</span>
-                <span className={`font-medium ${getTeamColor(h2.colourEnum)?.text ?? ""}`}>
-                  {h2.name}
-                </span>
-                {isWinner && <Badge variant="default">Winner</Badge>}
-                {matchDetail.winnerSide === "draw" && <Badge variant="secondary">Draw</Badge>}
-              </div>
-              <span className="tabular-nums font-semibold">{formatScore(total)}</span>
-            </div>
-          );
-        })}
-      </div>
-
       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
         {matchDetail.halves.map((h) => {
           const caveat = haltCaveat(h.gameOutcome, h.gameExcluded);
           return (
             <span key={h.gameId} className="flex items-center gap-1.5">
-              Half {h.half}:{" "}
+              {halfLabel(h.half)}:{" "}
               <Link href={`/laserball/games/${h.gameSlug}`} className="hover:underline">
                 {formatDateTime(h.gameStartTime)}
               </Link>
@@ -273,15 +288,82 @@ export function LbMatchManager({
         </details>
       )}
 
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-destructive hover:text-destructive"
-        disabled={isPending}
-        onClick={handleUnlink}
-      >
-        Unlink Match
-      </Button>
+      {!overtime && (
+        <div className="space-y-3 border-t pt-3">
+          <p className="text-sm text-muted-foreground">Add an overtime tiebreaker game</p>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="space-y-1">
+              <Label className="text-xs">Overtime game</Label>
+              <Select value={selectedOtCandidateId} onValueChange={handleOtCandidateChange}>
+                <SelectTrigger className="w-72">
+                  <SelectValue placeholder="Select the overtime game…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {otCandidateGames.length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      No eligible Laserball games at this center
+                    </SelectItem>
+                  ) : (
+                    otCandidateGames.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {formatDateTime(c.startTime)}
+                        {c.description ? ` — ${c.description}` : ""}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedOtCandidate && (
+              <div className="space-y-1">
+                <Label className="text-xs">Overtime game&apos;s Side 1 team</Label>
+                <Select value={otSide1TeamId} onValueChange={setOtSide1TeamId}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select team…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedOtCandidate.teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {selectedOtCandidate && (
+              <Button size="sm" disabled={isPending || !otSide1TeamId} onClick={handleAddOvertime}>
+                {isPending ? "Adding…" : "Add Overtime"}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        {overtime && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            disabled={isPending}
+            onClick={handleRemoveOvertime}
+          >
+            Remove Overtime
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          disabled={isPending}
+          onClick={handleUnlink}
+        >
+          Unlink Match
+        </Button>
+      </div>
     </div>
   );
 }

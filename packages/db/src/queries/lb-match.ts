@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, asc, eq, inArray, ne, not, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
 import { db } from "../client";
 import { center, game, lbGameTeam, lbMatch, lbMatchGame, lbScorecard } from "../schema";
+import type { LbGameDetailTeam } from "./laserball";
 
 // Guests (null playerId) have no stable identity across games and are
 // excluded from roster comparison. Players under this threshold are noise
@@ -132,14 +133,19 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
 
   const side1TotalScore = halves.reduce((sum, h) => sum + (h.side1.score ?? 0), 0);
   const side2TotalScore = halves.reduce((sum, h) => sum + (h.side2.score ?? 0), 0);
-  const winnerSide: LbMatchDetail["winnerSide"] =
-    halves.length === 2
-      ? side1TotalScore === side2TotalScore
-        ? "draw"
-        : side1TotalScore > side2TotalScore
-          ? 1
-          : 2
-      : null;
+  const overtime = halves.find((h) => h.half === 3);
+
+  let winnerSide: LbMatchDetail["winnerSide"] = null;
+  if (halves.length === 2) {
+    winnerSide =
+      side1TotalScore === side2TotalScore ? "draw" : side1TotalScore > side2TotalScore ? 1 : 2;
+  } else if (halves.length === 3 && overtime) {
+    // Overtime is only played to break a half 1+2 tie — its own result alone
+    // decides the match, not the (still tied) cumulative total.
+    const otSide1 = overtime.side1.score ?? 0;
+    const otSide2 = overtime.side2.score ?? 0;
+    winnerSide = otSide1 === otSide2 ? "draw" : otSide1 > otSide2 ? 1 : 2;
+  }
 
   return {
     id: matchRow.id,
@@ -369,4 +375,110 @@ export async function linkLbMatch(
 
 export async function unlinkLbMatch(matchId: string): Promise<void> {
   await db.delete(lbMatch).where(eq(lbMatch.id, matchId));
+}
+
+export type LbMatchOvertimePairing = {
+  side1TeamId: string;
+  side2TeamId: string;
+};
+
+export async function addLbMatchOvertimeGame(
+  matchId: string,
+  gameId: string,
+  pairing: LbMatchOvertimePairing,
+): Promise<void> {
+  const existing = await db
+    .select({ half: lbMatchGame.half })
+    .from(lbMatchGame)
+    .where(eq(lbMatchGame.matchId, matchId));
+  const half1 = existing.find((h) => h.half === 1);
+  const half2 = existing.find((h) => h.half === 2);
+  if (!half1 || !half2)
+    throw new Error("Match must have both halves linked before adding overtime");
+  if (existing.some((h) => h.half === 3))
+    throw new Error("Overtime is already linked to this match");
+
+  const [halfGame] = await db
+    .select({ centerId: game.centerId })
+    .from(game)
+    .innerJoin(lbMatchGame, eq(lbMatchGame.gameId, game.id))
+    .where(eq(lbMatchGame.matchId, matchId))
+    .limit(1);
+  const [otGame] = await db
+    .select({ centerId: game.centerId, type: game.type })
+    .from(game)
+    .where(eq(game.id, gameId));
+  if (!halfGame || !otGame) throw new Error("Game not found");
+  if (otGame.type !== "lb") throw new Error("Overtime game must be a Laserball game");
+  if (otGame.centerId !== halfGame.centerId)
+    throw new Error("Cannot link games from different centers");
+
+  const alreadyLinked = await getLbMatchIdForGame(gameId);
+  if (alreadyLinked) throw new Error("This game is already linked to a match");
+
+  await db.insert(lbMatchGame).values({
+    matchId,
+    gameId,
+    half: 3,
+    side1GameTeamId: pairing.side1TeamId,
+    side2GameTeamId: pairing.side2TeamId,
+  });
+}
+
+export async function removeLbMatchOvertimeGame(matchId: string): Promise<void> {
+  await db
+    .delete(lbMatchGame)
+    .where(and(eq(lbMatchGame.matchId, matchId), eq(lbMatchGame.half, 3)));
+}
+
+// ---------------------------------------------------------------------------
+// Batched player rosters for every game linked to a match (public detail page)
+// ---------------------------------------------------------------------------
+
+export async function getLbMatchGamesDetail(
+  matchId: string,
+): Promise<Map<string, LbGameDetailTeam[]>> {
+  const matchGames = await db
+    .select({ gameId: lbMatchGame.gameId })
+    .from(lbMatchGame)
+    .where(eq(lbMatchGame.matchId, matchId));
+  const gameIds = matchGames.map((g) => g.gameId);
+  if (gameIds.length === 0) return new Map();
+
+  const [teamRows, scorecardRows] = await Promise.all([
+    db
+      .select()
+      .from(lbGameTeam)
+      .where(and(inArray(lbGameTeam.gameId, gameIds), eq(lbGameTeam.isNeutral, false)))
+      .orderBy(lbGameTeam.tdfTeamIndex),
+    db
+      .select()
+      .from(lbScorecard)
+      .where(inArray(lbScorecard.gameId, gameIds))
+      .orderBy(desc(lbScorecard.goals)),
+  ]);
+
+  const playersByTeam = new Map<string, LbGameDetailTeam["players"]>();
+  for (const s of scorecardRows) {
+    const list = playersByTeam.get(s.teamId) ?? [];
+    list.push(s);
+    playersByTeam.set(s.teamId, list);
+  }
+
+  const teamsByGame = new Map<string, LbGameDetailTeam[]>();
+  for (const t of teamRows) {
+    const list = teamsByGame.get(t.gameId) ?? [];
+    list.push({
+      id: t.id,
+      tdfTeamIndex: t.tdfTeamIndex,
+      name: t.name,
+      colourEnum: t.colourEnum,
+      score: t.score,
+      result: t.result,
+      players: playersByTeam.get(t.id) ?? [],
+    });
+    teamsByGame.set(t.gameId, list);
+  }
+
+  return teamsByGame;
 }
