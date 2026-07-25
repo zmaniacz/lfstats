@@ -41,7 +41,7 @@ export async function getCenterList(): Promise<CenterListItem[]> {
       gameCount: count(game.id),
     })
     .from(center)
-    .innerJoin(game, eq(game.centerId, center.id))
+    .leftJoin(game, eq(game.centerId, center.id))
     .groupBy(center.id)
     .orderBy(desc(count(game.id)));
 
