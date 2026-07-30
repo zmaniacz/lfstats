@@ -48,6 +48,18 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </Link>
+        <Link href="/admin/centers">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardHeader>
+              <CardTitle>Centers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Edit center details such as name, short name, city, country, and timezone.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href="/admin/chomperErrors">
           <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
             <CardHeader>

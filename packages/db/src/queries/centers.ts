@@ -302,6 +302,19 @@ export async function getGlobalMvpComponents(
   }));
 }
 
+export async function updateCenter(
+  id: string,
+  data: {
+    name: string;
+    shortName: string | null;
+    city: string | null;
+    countryName: string | null;
+    timezone: string | null;
+  },
+): Promise<void> {
+  await db.update(center).set(data).where(eq(center.id, id));
+}
+
 export async function getCenterMvpComponents(
   id: string,
   scopeFilter?: GameScopeFilter,
