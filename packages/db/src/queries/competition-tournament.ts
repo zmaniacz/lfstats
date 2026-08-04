@@ -2989,6 +2989,7 @@ export type CompetitionMedicTomfooleryItem = {
   ownMedicHits: number;
   medicOnMedicHits: number;
   medicKills: number;
+  medicMissiles: number;
 };
 
 export async function getCompetitionMedicTomfoolery(
@@ -3007,6 +3008,7 @@ export async function getCompetitionMedicTomfoolery(
       ownMedicHits: sql<number>`sum(${sm5Scorecard.teamMedicHits})::int`,
       medicOnMedicHits: sql<number>`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} = 5)::int`,
       medicKills: sql<number>`sum(${sm5Scorecard.eliminatedOpponentMedic})::int`,
+      medicMissiles: sql<number>`sum(${sm5Scorecard.missilesHitOpponentMedic})::int`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -3022,6 +3024,7 @@ export async function getCompetitionMedicTomfoolery(
     ownMedicHits: Number(r.ownMedicHits),
     medicOnMedicHits: r.medicOnMedicHits !== null ? Number(r.medicOnMedicHits) : 0,
     medicKills: Number(r.medicKills),
+    medicMissiles: Number(r.medicMissiles),
   }));
 }
 

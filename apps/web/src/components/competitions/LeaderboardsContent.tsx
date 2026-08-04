@@ -132,6 +132,16 @@ export async function LeaderboardsContent({
               .map((r) => ({ ...r, value: r.medicKills }))}
             format="integer"
           />
+          <StatLeaderboardCard
+            title="Medic Missiles (guided malpractice)"
+            colLabel="Medic Missiles"
+            rows={[...medicTomfoolery]
+              .filter((r) => r.medicMissiles > 0)
+              .sort((a, b) => b.medicMissiles - a.medicMissiles)
+              .slice(0, 100)
+              .map((r) => ({ ...r, value: r.medicMissiles }))}
+            format="integer"
+          />
         </div>
       </div>
 

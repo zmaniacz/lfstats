@@ -38,7 +38,7 @@ export function LeaderboardsSkeleton() {
 
       <div className="space-y-4">
         <Skeleton className="h-6 w-44" />
-        <CardGridSkeleton count={4} />
+        <CardGridSkeleton count={5} />
       </div>
 
       <div className="space-y-4">
