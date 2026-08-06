@@ -14,6 +14,9 @@ import {
   target,
   center,
   competition,
+  competitionRound,
+  competitionMatch,
+  competitionMatchGame,
   gameTag,
   gameTagAssignment,
 } from "../schema";
@@ -129,6 +132,7 @@ export type GameExportFilters = {
   endDate: string;
   gameType?: "sm5" | "lb";
   centerId?: string;
+  competitionId?: string;
 };
 
 export type GameExportItem = {
@@ -136,6 +140,12 @@ export type GameExportItem = {
   startTime: Date;
   gameType: string;
   tdfFilename: string;
+  // Null for social games. Round/match/game numbers are additionally null for a
+  // competition game that has not been assigned to a match.
+  competitionSlug: string | null;
+  roundNumber: number | null;
+  matchNumber: number | null;
+  gameNumber: number | null;
 };
 
 export async function getGamesForExport(filters: GameExportFilters): Promise<GameExportItem[]> {
@@ -145,6 +155,7 @@ export async function getGamesForExport(filters: GameExportFilters): Promise<Gam
   ];
   if (filters.gameType) conditions.push(eq(game.type, filters.gameType));
   if (filters.centerId) conditions.push(eq(game.centerId, filters.centerId));
+  if (filters.competitionId) conditions.push(eq(game.competitionId, filters.competitionId));
 
   return db
     .select({
@@ -152,9 +163,17 @@ export async function getGamesForExport(filters: GameExportFilters): Promise<Gam
       startTime: game.startTime,
       gameType: game.type,
       tdfFilename: game.tdfFilename,
+      competitionSlug: competition.slug,
+      roundNumber: competitionRound.roundNumber,
+      matchNumber: competitionMatch.matchNumber,
+      gameNumber: competitionMatchGame.gameNumber,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
+    .leftJoin(competition, eq(game.competitionId, competition.id))
+    .leftJoin(competitionMatchGame, eq(competitionMatchGame.gameId, game.id))
+    .leftJoin(competitionMatch, eq(competitionMatchGame.matchId, competitionMatch.id))
+    .leftJoin(competitionRound, eq(competitionMatch.roundId, competitionRound.id))
     .where(and(...conditions))
     .orderBy(desc(game.startTime));
 }

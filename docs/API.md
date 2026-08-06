@@ -19,12 +19,13 @@ Defined in `apps/web/src/app/api/games/route.ts`, backed by `getGamesForExport` 
 
 ### Query parameters
 
-| Param        | Required | Format                   | Default              | Description                                    |
-| ------------ | -------- | ------------------------ | -------------------- | ---------------------------------------------- |
-| `start_date` | no       | `YYYY-MM-DD`             | 10 days before today | Inclusive start of the date range (local time) |
-| `end_date`   | no       | `YYYY-MM-DD`             | today                | Inclusive end of the date range (local time)   |
-| `game_type`  | no       | `sm5` \| `lb`            | both                 | Filter to one game type                        |
-| `center`     | no       | center slug, e.g. `4-23` | all centers          | Filter to one center                           |
+| Param         | Required | Format                             | Default              | Description                                    |
+| ------------- | -------- | ---------------------------------- | -------------------- | ---------------------------------------------- |
+| `start_date`  | no       | `YYYY-MM-DD`                       | 10 days before today | Inclusive start of the date range (local time) |
+| `end_date`    | no       | `YYYY-MM-DD`                       | today                | Inclusive end of the date range (local time)   |
+| `game_type`   | no       | `sm5` \| `lb`                      | both                 | Filter to one game type                        |
+| `center`      | no       | center slug, e.g. `4-23`           | all centers          | Filter to one center                           |
+| `competition` | no       | competition slug, e.g. `2026-mlaa` | all games            | Filter to one competition's games              |
 
 Games with `exclude = true` are always omitted. Competition games are included.
 
@@ -37,7 +38,11 @@ Games with `exclude = true` are always omitted. Competition games are included.
       "center_slug": "4-23",
       "timestamp": "2026-07-12T15:50:24.000Z",
       "game_type": "sm5",
-      "tdf_url": "https://lfstats-modern-archive.s3.us-west-1.amazonaws.com/4-23-20260712155024.tdf"
+      "tdf_url": "https://lfstats-modern-archive.s3.us-west-1.amazonaws.com/4-23-20260712155024.tdf",
+      "competition_slug": "2026-mlaa",
+      "round_number": 2,
+      "match_number": 7,
+      "game_number": 1
     }
   ]
 }
@@ -47,10 +52,16 @@ Sorted by `timestamp` descending. `timestamp` is the game's stored local start t
 conversion is applied (see root `CLAUDE.md`'s "no UTC conversion" convention), but note that
 `NextResponse.json` serializes JS `Date` values with a `Z` suffix regardless.
 
+`competition_slug` is `null` for social games. `round_number`, `match_number` and `game_number`
+come from the competition's match schedule (`competition_match_game` → `competition_match` →
+`competition_round`) and are `null` both for social games and for competition games that haven't
+been assigned to a match.
+
 ### Errors
 
 `400` with `{ "error": "..." }` for an unparseable `start_date`/`end_date`, an invalid
-`game_type`, or a `center` slug that doesn't match any center.
+`game_type`, a `center` slug that doesn't match any center, or a `competition` slug that doesn't
+match any competition.
 
 ### Example — all filters combined
 

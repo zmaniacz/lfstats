@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { NextResponse } from "next/server";
-import { getGamesForExport, getCenterBySlug } from "@lfstats/db";
+import { getGamesForExport, getCenterBySlug, getCompetitionBySlug } from "@lfstats/db";
 import { getTdfArchiveUrl } from "@/lib/tdf";
 
 function defaultDateRange() {
@@ -39,11 +39,22 @@ export async function GET(request: Request) {
     centerId = center.id;
   }
 
+  let competitionId: string | undefined;
+  const competitionSlug = searchParams.get("competition");
+  if (competitionSlug) {
+    const competition = await getCompetitionBySlug(competitionSlug);
+    if (!competition) {
+      return NextResponse.json({ error: "Unknown competition slug" }, { status: 400 });
+    }
+    competitionId = competition.id;
+  }
+
   const games = await getGamesForExport({
     startDate,
     endDate,
     gameType,
     centerId,
+    competitionId,
   });
 
   const data = games.map((g) => ({
@@ -51,6 +62,10 @@ export async function GET(request: Request) {
     timestamp: g.startTime,
     game_type: g.gameType,
     tdf_url: getTdfArchiveUrl(g.tdfFilename),
+    competition_slug: g.competitionSlug,
+    round_number: g.roundNumber,
+    match_number: g.matchNumber,
+    game_number: g.gameNumber,
   }));
 
   return NextResponse.json({ data });
