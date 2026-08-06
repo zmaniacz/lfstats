@@ -1,7 +1,10 @@
 # Public API Reference
 
-All routes are unauthenticated GET endpoints under `https://lfstats.com/api/`. They live in
-`apps/web/src/app/api/**/route.ts` and are backed by query functions in `packages/db/src/queries/`.
+Routes live under `https://lfstats.com/api/` in `apps/web/src/app/api/**/route.ts` and are backed
+by query functions in `packages/db/src/queries/`.
+
+Everything here is an unauthenticated GET **except `POST /api/videos`**, which requires an API key
+— see [Video routes](#post-apivideos) below.
 
 ---
 
@@ -102,9 +105,120 @@ Competition standings/leaderboard, keyed by competition slug. Backed by
 
 ---
 
+## Game canonical ids
+
+The video routes identify a game by its **canonical id**, which matches the TDF filename prefix:
+
+```
+{countryCode}-{siteCode}_{YYYYMMDDHHmmss}
+```
+
+For example `4-23_20260809214345` — center `4-23`, game starting `2026-08-09 21:43:45` local
+center time. Note the **underscore** before the timestamp; this differs from the all-dash slug
+used in page URLs (`/games/4-23-20260809214345`). Resolution is via `getGameByCanonicalId` in
+`packages/db/src/queries/videos.ts` and covers both SM5 and Laserball games.
+
+## `POST /api/videos`
+
+Attaches a YouTube link to a game (scoreboard/arena cam) or to one player's performance in that
+game (POV footage). Intended for external capture tooling.
+
+**This is the only authenticated, mutating route in the API.** It requires a key issued at
+`/admin/api-keys` by a superAdmin:
+
+```
+Authorization: Bearer lfs_xxxxxxxxxxxxxxxxxxxx
+```
+
+The value is the entire `lfs_…` string shown once at creation — there is no separate id to pair
+with it. The `Bearer` prefix is matched **case-sensitively**, so send it capitalised exactly as
+above; a lowercase `bearer` is rejected with `401 Missing API key`. (The header _name_ is
+case-insensitive, as usual.)
+
+Keys are global — a valid key may post for any center. Keys can be revoked, after which they are
+rejected immediately.
+
+### Request body
+
+| Field               | Required | Description                                                       |
+| ------------------- | -------- | ----------------------------------------------------------------- |
+| `game_canonical_id` | yes      | Canonical id, e.g. `4-23_20260809214345`                          |
+| `youtube_url`       | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…` |
+| `ipl_id`            | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.   |
+| `label`             | no       | Free text, e.g. `Arena Cam 2`                                     |
+
+```json
+{
+  "game_canonical_id": "4-23_20260809214345",
+  "youtube_url": "https://youtu.be/dQw4w9WgXcQ",
+  "ipl_id": "#1234567",
+  "label": "Red Commander POV"
+}
+```
+
+### Idempotency
+
+Re-posting the same video for the same game and player is a no-op: the existing row is returned
+with `201` → `200` and `"created": false`. This is enforced by a
+`UNIQUE NULLS NOT DISTINCT (game_id, player_id, youtube_video_id)` constraint, so retries and
+re-runs are safe and won't clutter the game page with duplicates.
+
+### Responses
+
+| Status | Meaning                                                                        |
+| ------ | ------------------------------------------------------------------------------ |
+| `201`  | Video created                                                                  |
+| `200`  | Video already existed (`"created": false`)                                     |
+| `400`  | Missing/invalid field, unparseable YouTube URL, or malformed JSON body         |
+| `401`  | Missing, unknown, or revoked API key                                           |
+| `404`  | Game not found, or `ipl_id` belongs to a player with no scorecard in that game |
+
+Note the `404` on `ipl_id`: a POV video may only be attached to someone who actually played the
+game, so a mistyped id belonging to a real player elsewhere is rejected rather than silently
+mis-attributed.
+
+## `GET /api/videos`
+
+Unauthenticated. Lists the videos attached to a game, so a tool can check what it already
+uploaded.
+
+### Query parameters
+
+| Param               | Required | Description                              |
+| ------------------- | -------- | ---------------------------------------- |
+| `game_canonical_id` | yes      | Canonical id, e.g. `4-23_20260809214345` |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "819a5295-f52d-4000-97db-1ed841d3cb83",
+      "ipl_id": null,
+      "callsign": null,
+      "youtube_url": "https://youtu.be/dQw4w9WgXcQ",
+      "youtube_video_id": "dQw4w9WgXcQ",
+      "label": "Scoreboard Cam",
+      "source": "api",
+      "created_at": "2026-08-06T20:47:22.688Z"
+    }
+  ]
+}
+```
+
+`ipl_id`/`callsign` are `null` for game-level videos and populated for player POV videos.
+`source` is `admin` (added through the game page UI) or `api` (posted through this endpoint).
+
+`400` if `game_canonical_id` is absent, `404` if it doesn't resolve to a game.
+
+---
+
 ## Conventions for new routes
 
-- No auth — all routes here are intentionally public.
+- Default to no auth — every route here is public except `POST /api/videos`, which needs a
+  Bearer API key because it writes. Follow that precedent for any future mutating route.
+- Request and response bodies use `snake_case` field names, not the `camelCase` used internally.
 - Query logic belongs in `packages/db/src/queries/`, never inline in `app/api/**/route.ts`.
 - Prefer `NextResponse.json({ data })` for list endpoints; a 404 with `{ "error": "Not found" }`
   for single-resource lookups that can miss.

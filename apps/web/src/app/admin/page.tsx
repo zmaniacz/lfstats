@@ -3,11 +3,16 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { auth } from "@/auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { isSuperAdmin } from "@/lib/auth-guards";
 
 export const metadata: Metadata = { title: "Admin" };
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const session = await auth();
+  const showApiKeys = isSuperAdmin(session?.user?.roles);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-2xl">
@@ -73,6 +78,21 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </Link>
+        {showApiKeys && (
+          <Link href="/admin/api-keys">
+            <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+              <CardHeader>
+                <CardTitle>API Keys</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Issue and revoke keys that let external tools post game and player POV video
+                  links.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
       </div>
     </div>
   );

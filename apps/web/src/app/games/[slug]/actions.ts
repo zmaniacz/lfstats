@@ -4,13 +4,16 @@
 "use server";
 
 import { auth } from "@/auth";
+import { parseYoutubeVideoId } from "@/lib/youtube";
 import {
   addFavorite,
+  addGameVideo,
   assignTagToGame,
   deleteGame,
   getGameCenterId,
   getGameSlugById,
   removeFavorite,
+  removeGameVideo,
   removeTagFromGame,
   setGameExcluded,
   markGameAsReplay,
@@ -242,6 +245,31 @@ export async function setScorecardMercenaryAction(
 ): Promise<void> {
   await requireCenterAdmin(gameId);
   await setScorecardMercenary(scorecardId, isMercenary);
+  await revalidateGame(gameId);
+}
+
+export async function addGameVideoAction(gameId: string, formData: FormData): Promise<void> {
+  const { session } = await requireCenterAdmin(gameId);
+
+  const youtubeUrl = ((formData.get("youtubeUrl") as string) || "").trim();
+  const youtubeVideoId = parseYoutubeVideoId(youtubeUrl);
+  if (!youtubeVideoId) throw new Error("Invalid YouTube URL");
+
+  await addGameVideo({
+    gameId,
+    playerId: (formData.get("playerId") as string) || null,
+    youtubeUrl,
+    youtubeVideoId,
+    label: (formData.get("label") as string) || null,
+    source: "admin",
+    createdByUserId: session.user.id,
+  });
+  await revalidateGame(gameId);
+}
+
+export async function removeGameVideoAction(gameId: string, videoId: string): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await removeGameVideo(videoId);
   await revalidateGame(gameId);
 }
 

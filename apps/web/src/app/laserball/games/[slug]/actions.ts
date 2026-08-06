@@ -4,12 +4,16 @@
 "use server";
 
 import { auth } from "@/auth";
+import { parseYoutubeVideoId } from "@/lib/youtube";
 import {
+  addGameVideo,
   addLbMatchOvertimeGame,
   getGameCenterId,
   getGameSlugById,
   getLbMatchDetail,
+  getLbMatchIdForGame,
   linkLbMatch,
+  removeGameVideo,
   removeLbMatchOvertimeGame,
   setGameExcluded,
   unlinkLbMatch,
@@ -95,4 +99,40 @@ export async function removeLbMatchOvertimeAction(gameId: string, matchId: strin
   await requireCenterAdmin(gameId);
   await removeLbMatchOvertimeGame(matchId);
   await revalidateLbMatchGames(matchId);
+}
+
+// The Videos tab unions videos across every game in a match, so a change to one
+// game invalidates all the halves' pages, not just the one that was edited.
+async function revalidateLbGameAndMatch(gameId: string) {
+  const matchId = await getLbMatchIdForGame(gameId);
+  if (matchId) {
+    await revalidateLbMatchGames(matchId);
+  } else {
+    await revalidateLbGame(gameId);
+  }
+}
+
+export async function addLbGameVideoAction(gameId: string, formData: FormData): Promise<void> {
+  const { session } = await requireCenterAdmin(gameId);
+
+  const youtubeUrl = ((formData.get("youtubeUrl") as string) || "").trim();
+  const youtubeVideoId = parseYoutubeVideoId(youtubeUrl);
+  if (!youtubeVideoId) throw new Error("Invalid YouTube URL");
+
+  await addGameVideo({
+    gameId,
+    playerId: (formData.get("playerId") as string) || null,
+    youtubeUrl,
+    youtubeVideoId,
+    label: (formData.get("label") as string) || null,
+    source: "admin",
+    createdByUserId: session.user.id,
+  });
+  await revalidateLbGameAndMatch(gameId);
+}
+
+export async function removeLbGameVideoAction(gameId: string, videoId: string): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await removeGameVideo(videoId);
+  await revalidateLbGameAndMatch(gameId);
 }

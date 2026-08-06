@@ -51,6 +51,8 @@ export const competitionStateEnum = pgEnum("competition_state", [
   "completed",
 ]);
 
+export const videoSourceEnum = pgEnum("video_source", ["admin", "api"]);
+
 // ---------------------------------------------------------------------------
 // Reference & Identity Tables
 // ---------------------------------------------------------------------------
@@ -1154,4 +1156,55 @@ export const userFavoritePlayer = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.userId, t.playerId)],
+);
+
+// ---------------------------------------------------------------------------
+// API Access (service credentials for external tools)
+// ---------------------------------------------------------------------------
+
+// Global keys — not center-scoped. Any valid key may write for any center.
+export const apiKey = pgTable("api_key", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  // SHA-256 hex digest. The plaintext key is shown once at creation and never stored.
+  keyHash: text("key_hash").notNull().unique(),
+  // First 8 chars of the plaintext, so a key is identifiable in the admin list.
+  keyPrefix: text("key_prefix").notNull(),
+  createdByUserId: text("created_by_user_id")
+    .notNull()
+    .references(() => authUser.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  lastUsedAt: timestamp("last_used_at"),
+});
+
+// ---------------------------------------------------------------------------
+// Game Videos (YouTube links, game-level or player POV)
+// ---------------------------------------------------------------------------
+
+export const gameVideo = pgTable(
+  "game_video",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    // null = game-level video (scoreboard / arena cam), set = that player's POV
+    playerId: uuid("player_id").references(() => player.id, { onDelete: "cascade" }),
+    youtubeVideoId: text("youtube_video_id").notNull(),
+    youtubeUrl: text("youtube_url").notNull(),
+    label: text("label"),
+    source: videoSourceEnum("source").notNull(),
+    createdByUserId: text("created_by_user_id").references(() => authUser.id),
+    createdByApiKeyId: uuid("created_by_api_key_id").references(() => apiKey.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // nullsNotDistinct is required: Postgres treats NULLs as distinct in unique
+    // indexes by default, so game-level videos (player_id IS NULL) would not
+    // dedupe and the API's idempotent re-POST would insert duplicates.
+    unique().on(t.gameId, t.playerId, t.youtubeVideoId).nullsNotDistinct(),
+    index("game_video_game_id_idx").on(t.gameId),
+    index("game_video_player_id_idx").on(t.playerId),
+  ],
 );

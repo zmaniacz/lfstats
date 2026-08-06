@@ -16,6 +16,7 @@ import { MarkReplayButton } from "@/components/games/MarkReplayButton";
 import { ReplayTab } from "@/components/games/ReplayTab";
 import { TeamPenaltyManager } from "@/components/games/TeamPenaltyManager";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
+import { VideoManager } from "@/components/games/VideoManager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +32,7 @@ import {
   getGameMatchAssignment,
   getGamePenalties,
   getGameTeamPenalties,
+  getGameVideos,
   getTagsByCenter,
   isFavorite,
 } from "@lfstats/db";
@@ -40,6 +42,7 @@ import { notFound } from "next/navigation";
 import {
   addFavoriteAction,
   addGameToCompetitionAction,
+  addGameVideoAction,
   addPenaltyAction,
   addTeamPenaltyAction,
   assignGameToMatchAction,
@@ -51,6 +54,7 @@ import {
   removeFavoriteAction,
   removeGameFromCompetitionAction,
   removeGameFromMatchAction,
+  removeGameVideoAction,
   removeTagAction,
   rescindPenaltyAction,
   rescindTeamPenaltyAction,
@@ -105,6 +109,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     gameNav,
     allPenalties,
     allTeamPenalties,
+    videos,
   ] = await Promise.all([
     canEdit ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
@@ -118,6 +123,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
       : Promise.resolve(null),
     getGamePenalties(game.id),
     getGameTeamPenalties(game.id),
+    getGameVideos(game.id),
   ]);
 
   const penaltiesByScorecard = new Map(
@@ -153,6 +159,14 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
   };
 
   const mercenaryAction = canEdit ? setScorecardMercenaryAction.bind(null, game.id) : undefined;
+
+  // Guests have no player row, so they can't be the subject of a POV video.
+  const videoRoster = game.teams
+    .flatMap((t) => t.players)
+    .filter((p) => p.playerId !== null)
+    .map((p) => ({ playerId: p.playerId!, callsign: p.callsign }));
+
+  const showVideosTab = videos.length > 0 || canDelete;
 
   const displayTeams = matchAssignment
     ? game.teams.map((t) => ({
@@ -299,6 +313,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
           <TabsTrigger value="momentum">Momentum</TabsTrigger>
           <TabsTrigger value="replay">Replay</TabsTrigger>
+          {showVideosTab && <TabsTrigger value="videos">Videos</TabsTrigger>}
         </TabsList>
         <TabsContent value="scoreboard" className="mt-6">
           <>
@@ -376,6 +391,18 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
         <TabsContent value="replay" className="mt-6">
           <ReplayTab gameId={game.id} duration={game.actualDuration} />
         </TabsContent>
+        {showVideosTab && (
+          <TabsContent value="videos" className="mt-6">
+            <VideoManager
+              gameId={game.id}
+              videos={videos}
+              roster={videoRoster}
+              canEdit={canEdit}
+              addAction={addGameVideoAction}
+              removeAction={removeGameVideoAction}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

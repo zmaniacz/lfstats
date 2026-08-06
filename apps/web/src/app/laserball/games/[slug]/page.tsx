@@ -16,6 +16,7 @@ import { LbMatchSideSummary } from "@/components/laserball/LbMatchSideSummary";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
 import { LbReplayTab } from "@/components/laserball/LbReplayTab";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
+import { VideoManager } from "@/components/games/VideoManager";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EDIT_MODE_COOKIE } from "@/lib/edit-mode";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import {
+  getGameVideosForGames,
   getLbGameDetailBySlug,
   getLbMatchCandidateGames,
   getLbMatchDetail,
@@ -39,8 +41,10 @@ import {
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import {
+  addLbGameVideoAction,
   addLbMatchOvertimeAction,
   linkLbMatchAction,
+  removeLbGameVideoAction,
   removeLbMatchOvertimeAction,
   toggleExcludeAction,
   unlinkLbMatchAction,
@@ -95,13 +99,19 @@ export default async function LaserballGameDetailPage({
   ]);
 
   const half2GameId = matchDetail?.halves.find((h) => h.half === 2)?.gameId;
-  const [otCandidateGames, matchGamesDetail] = await Promise.all([
+
+  // A match renders as one page regardless of which half's slug was loaded, so
+  // the Videos tab unions every game in the match (halves plus overtime).
+  const matchGameIds = matchDetail?.halves.map((h) => h.gameId) ?? [game.id];
+
+  const [otCandidateGames, matchGamesDetail, videos] = await Promise.all([
     canEdit && matchDetail?.halves.length === 2 && half2GameId
       ? getLbMatchCandidateGames(half2GameId)
       : Promise.resolve([]),
     matchId
       ? getLbMatchGamesDetail(matchId)
       : Promise.resolve(new Map<string, LbGameDetailTeam[]>()),
+    getGameVideosForGames(matchGameIds),
   ]);
 
   // Winning team first; draws keep tdf order.
@@ -118,6 +128,20 @@ export default async function LaserballGameDetailPage({
   const replayDuration = matchDetail
     ? matchDetail.halves.reduce((sum, h) => sum + h.actualDuration, 0)
     : game.actualDuration;
+
+  // Labels each video with the half it belongs to when viewing a linked match.
+  const gameLabels = matchDetail
+    ? new Map(matchDetail.halves.map((h) => [h.gameId, halfLabel(h.half)]))
+    : undefined;
+
+  // New videos attach to the half currently being viewed, so the POV picker
+  // offers that game's roster. Guests have no player row and are excluded.
+  const videoRoster = teams
+    .flatMap((t) => t.players)
+    .filter((p) => p.playerId !== null)
+    .map((p) => ({ playerId: p.playerId!, callsign: p.callsign }));
+
+  const showVideosTab = videos.length > 0 || canManage;
 
   return (
     <div className="p-6 space-y-8">
@@ -183,6 +207,7 @@ export default async function LaserballGameDetailPage({
         <TabsList>
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
           <TabsTrigger value="replay">Replay</TabsTrigger>
+          {showVideosTab && <TabsTrigger value="videos">Videos</TabsTrigger>}
         </TabsList>
         <TabsContent value="scoreboard" className="mt-6 space-y-8">
           {matchDetail ? (
@@ -234,6 +259,19 @@ export default async function LaserballGameDetailPage({
             <LbReplayTab mode="game" gameId={game.id} duration={replayDuration} />
           )}
         </TabsContent>
+        {showVideosTab && (
+          <TabsContent value="videos" className="mt-6">
+            <VideoManager
+              gameId={game.id}
+              videos={videos}
+              roster={videoRoster}
+              canEdit={canEdit}
+              addAction={addLbGameVideoAction}
+              removeAction={removeLbGameVideoAction}
+              gameLabels={gameLabels}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

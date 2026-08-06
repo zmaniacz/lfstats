@@ -742,3 +742,61 @@ A single event can produce multiple rows — a nuke detonation affecting 5 oppos
 - `time` is denormalized from `GameEvent` to avoid a join on every state lookup. It must be kept consistent with `GameEvent.time` at ingest.
 - `hit_points` carries over from state 2 into state 0 if the player was damaged but not fully deactivated during the vulnerable window. It resets to the position maximum on every transition to state 3.
 - `accuracy` and `hit_diff` are live in-game running values and will differ from `Scorecard.accuracy` and `Scorecard.hit_diff` until the final event — the Scorecard values are authoritative for end-of-game stats. These columns exist solely for replay scoreboard display.
+
+---
+
+## Video & API Access Tables
+
+### `GameVideo`
+
+One row per YouTube link attached to a game. A row is either a **game-level video** (scoreboard or arena cam footage of the whole game) or a **player POV video** (footage from one player's perspective), distinguished solely by whether `player_id` is set.
+
+Videos are added two ways: by an admin or center admin through the Videos tab on the game page, or by an external tool through `POST /api/videos` (see `API.md`).
+
+| Column                  | Type      | Null      | Description                                                                                                                                                     |
+| ----------------------- | --------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                    | uuid      | never     | Primary key.                                                                                                                                                    |
+| `game_id`               | uuid FK   | never     | References `Game`. Cascades on delete — removing a game removes its videos.                                                                                     |
+| `player_id`             | uuid FK   | sometimes | References `Player`. **Null means a game-level video**; set means this is that player's POV footage. Cascades on delete.                                        |
+| `youtube_video_id`      | string    | never     | The 11-character YouTube video id, parsed from the submitted URL at write time. Used to build watch and thumbnail URLs, and to dedupe.                          |
+| `youtube_url`           | string    | never     | The URL exactly as submitted. Retained for display and debugging — the canonical identity is `youtube_video_id`, since the same video has many valid URL forms. |
+| `label`                 | string    | sometimes | Free-text caption, e.g. `Arena Cam 2` or `Red Commander POV`. Null renders as "Untitled video".                                                                 |
+| `source`                | enum      | never     | `admin` (added through the game page UI) or `api` (posted by an external tool). Surfaced in the UI as an "Auto" badge for `api` rows.                           |
+| `created_by_user_id`    | text FK   | sometimes | References `AuthUser`. Set when `source = 'admin'`, null otherwise.                                                                                             |
+| `created_by_api_key_id` | uuid FK   | sometimes | References `ApiKey`. Set when `source = 'api'`, null otherwise. Gives an audit trail of which tool posted a video.                                              |
+| `created_at`            | timestamp | never     | Insert time.                                                                                                                                                    |
+
+**Constraints:**
+
+- `(game_id, player_id, youtube_video_id)` is unique **with `NULLS NOT DISTINCT`**. The clause is required, not incidental: Postgres treats NULLs as distinct in unique indexes by default, so without it game-level videos (`player_id IS NULL`) would not dedupe at all and only POV rows would be protected. This constraint is what makes `POST /api/videos` idempotent under retries.
+- Indexes on `game_id` and `player_id` back the game-page and player-profile reads respectively.
+
+**Notes:**
+
+- Exactly one of `created_by_user_id` / `created_by_api_key_id` is set in practice, matching `source`. This is a convention, not a database constraint.
+- A POV video may only be attached to a player with a scorecard in that game — enforced in the API path by `getScorecardPlayerIdByIplId`, not by the schema. Guest players have no `Player` row and therefore cannot be the subject of a POV video.
+- The Laserball game page renders a whole match (both halves plus overtime) on one page, so it reads videos across every game in the match, while a newly added video attaches to the half currently being viewed.
+
+---
+
+### `ApiKey`
+
+Service credentials that let external tools write through the public API. Currently used only by `POST /api/videos`.
+
+Keys are **global** — a valid key may post for any center. There is no per-center scoping; if that becomes necessary, add a nullable `center_id` mirroring the `UserRole` convention where null means "all centers".
+
+| Column               | Type      | Null      | Description                                                                                                                                                 |
+| -------------------- | --------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                 | uuid      | never     | Primary key.                                                                                                                                                |
+| `name`               | string    | never     | Human label identifying the tool the key was issued to, e.g. `OBS Capture Tool`.                                                                            |
+| `key_hash`           | string    | never     | SHA-256 hex digest of the secret. Unique. **The plaintext key is never stored** — it is shown once at creation and is not recoverable.                      |
+| `key_prefix`         | string    | never     | First 8 characters of the plaintext (e.g. `lfs_ab12`), so a key is identifiable in the admin list without revealing it.                                     |
+| `created_by_user_id` | text FK   | never     | References `AuthUser` — the superAdmin who issued the key.                                                                                                  |
+| `created_at`         | timestamp | never     | Issue time.                                                                                                                                                 |
+| `revoked_at`         | timestamp | sometimes | Set when revoked. A revoked key is rejected immediately; rows are retained rather than deleted so `GameVideo.created_by_api_key_id` references stay intact. |
+| `last_used_at`       | timestamp | sometimes | Updated on every successful authentication. Null means the key has never been used — useful for confirming a key is unused before revoking it.              |
+
+**Notes:**
+
+- All key crypto lives in `packages/db/src/queries/apiKeys.ts`. Callers pass plaintext in and never handle a hash; `authenticateApiKey` hashes, checks `revoked_at`, and touches `last_used_at` in one call.
+- Key management lives at `/admin/api-keys` and is restricted to `superAdmin`. This is stricter than the rest of `/admin`, which also admits `admin` and `centerAdmin` at both the `src/proxy.ts` and `app/admin/layout.tsx` layers — so the restriction is enforced by a dedicated `app/admin/api-keys/layout.tsx` plus a `requireSuperAdmin()` call in every Server Action (`apps/web/src/lib/auth-guards.ts`). The action-level checks are the real boundary; Server Actions are invocable independently of the page that renders them.

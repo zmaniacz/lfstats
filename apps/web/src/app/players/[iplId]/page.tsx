@@ -5,7 +5,12 @@ import type { Metadata } from "next";
 import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
-import { getPlayerByIplId, getPlayerCallsignHistory, isPlayerFavorite } from "@lfstats/db";
+import {
+  getPlayerByIplId,
+  getPlayerCallsignHistory,
+  getPlayerVideos,
+  isPlayerFavorite,
+} from "@lfstats/db";
 import { auth } from "@/auth";
 import { FavoriteButton } from "@/components/players/FavoriteButton";
 import { addFavoritePlayerAction, removeFavoritePlayerAction } from "./actions";
@@ -14,6 +19,7 @@ import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/
 import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
+import { PlayerVideos } from "@/components/players/PlayerVideos";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 
 const getPlayer = cache(getPlayerByIplId);
@@ -56,9 +62,10 @@ export default async function PlayerDetailPage({
   ]);
   if (!playerDetail) notFound();
 
-  const [callsignHistory, favorited] = await Promise.all([
+  const [callsignHistory, favorited, videos] = await Promise.all([
     getPlayerCallsignHistory(playerDetail.id),
     session?.user?.id ? isPlayerFavorite(session.user.id, playerDetail.id) : Promise.resolve(false),
+    getPlayerVideos(playerDetail.id),
   ]);
 
   const otherCallsigns = callsignHistory.filter((h) => h.callsign !== playerDetail.currentCallsign);
@@ -123,6 +130,10 @@ export default async function PlayerDetailPage({
           />
         </div>
       </div>
+
+      {/* Videos are not scope/game-type filtered — a player's POV footage is
+          listed across all their games. */}
+      {videos.length > 0 && <PlayerVideos videos={videos} />}
 
       <Suspense key={contentKey} fallback={<PlayerDetailSkeleton />}>
         {gameType === "lb" ? (
