@@ -32,7 +32,7 @@ import {
   deleteTeamPenalty,
   setScorecardMercenary,
 } from "@lfstats/db";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 async function requireCenterAdmin(gameId: string) {
@@ -100,12 +100,14 @@ export async function assignTagAction(gameId: string, tagId: string) {
 
   await assignTagToGame(gameId, tagId, session.user.email ?? undefined);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function removeTagAction(gameId: string, tagId: string) {
   await requireCenterAdmin(gameId);
   await removeTagFromGame(gameId, tagId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function addGameToCompetitionAction(

@@ -38,7 +38,7 @@ export function GameTagManager({ gameId, tags, availableTags, assignAction, remo
             try {
               await removeAction(gameId, tag.id);
             } finally {
-              window.location.reload();
+              setIsPending(false);
             }
           }}
           disabled={isPending}
@@ -66,7 +66,7 @@ export function GameTagManager({ gameId, tags, availableTags, assignAction, remo
                   try {
                     await assignAction(gameId, tag.id);
                   } finally {
-                    window.location.reload();
+                    setIsPending(false);
                   }
                 }}
               >

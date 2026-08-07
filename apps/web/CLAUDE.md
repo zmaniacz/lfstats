@@ -222,6 +222,28 @@ export function MyActionButton({ action }: { action: () => Promise<void> }) {
 
 Server actions should still call `revalidatePath` — it clears the server-side cache so the reloaded page returns fresh data.
 
+**Trial: `refresh()` in place of `window.location.reload()`.** Next.js 16 added `refresh()`
+(`next/cache`), a Server-Actions-only API called from inside the action itself rather than
+from client code — architecturally distinct from `router.refresh()`, so it may not hit the
+same scheduler bug. `GameTagManager.tsx` (`src/app/games/[slug]/actions.ts`'s
+`assignTagAction`/`removeTagAction`) was migrated from full-reload to
+`revalidatePath(...)` + `refresh()`, manually verified in the browser (repeated add/remove
+clicks, no stuck-pending state), and is now being watched in production. If it holds up, this
+becomes the preferred Pattern B implementation and the other ~32 `window.location.reload()`
+sites are candidates to migrate; if it regresses, revert this one site back to
+`window.location.reload()` and treat the hypothesis as disproven.
+
+```tsx
+"use server";
+import { refresh, revalidatePath } from "next/cache";
+
+export async function myAction(id: string) {
+  await mutate(id);
+  revalidatePath(`/things/${id}`);
+  refresh();
+}
+```
+
 ## Cross-Page Filter State (scope / gameType / center / competition)
 
 Four filter dimensions are shared across the "browse" pages (games, players, leaderboards,
@@ -293,3 +315,13 @@ per-game-type split, since it selects _between_ the two namespaces).
 - **No stat computation at render time** — all derived stats are pre-calculated at ingest;
   display them, don't recompute them
 - **No UTC conversion** — all timestamps are stored as local center time; display as-is
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
