@@ -3,7 +3,7 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   createCompetitionTeam,
   deleteCompetitionTeam,
@@ -33,6 +33,7 @@ export async function createCompetitionTeamAction(
   await createCompetitionTeam({ competitionId, name, shortName });
   const comp = await getCompetitionById(competitionId);
   if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`);
+  refresh();
 }
 
 export async function deleteCompetitionTeamAction(

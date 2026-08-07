@@ -60,7 +60,7 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
     try {
       await revokeAction(id);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -159,7 +159,6 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
           if (!open) {
             setNewKey(null);
             setCopied(false);
-            window.location.reload();
           }
         }}
       >
@@ -190,7 +189,6 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
               onClick={() => {
                 setNewKey(null);
                 setCopied(false);
-                window.location.reload();
               }}
             >
               Done

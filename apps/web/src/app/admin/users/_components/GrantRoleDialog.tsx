@@ -87,8 +87,9 @@ export function GrantRoleDialog({
     setIsPending(true);
     try {
       await grantRoleAction(userId, role as GrantableRole, resolvedCenterId);
+      onOpenChange(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

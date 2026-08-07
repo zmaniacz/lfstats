@@ -15,7 +15,7 @@ export function ArchiveButton({ id }: { id: string }) {
     try {
       await archiveChomperJobAction(id);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -34,7 +34,7 @@ export function ArchiveAllButton() {
     try {
       await archiveAllChomperJobsAction();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
