@@ -56,8 +56,12 @@ export function MatchGameAssignForm({
     setIsPending(true);
     try {
       await action(formData);
+      setGameNumber("");
+      setGameId("");
+      setTeam1GameTeamId("");
+      setTeam2GameTeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

@@ -21,7 +21,7 @@ export function ForfeitButtons({ team1Name, team2Name, gameNumber, action }: Pro
     try {
       await action(team, gameNumber);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
