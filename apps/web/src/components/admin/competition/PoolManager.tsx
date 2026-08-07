@@ -37,12 +37,14 @@ function AddPoolForm({ action }: { action: (formData: FormData) => Promise<void>
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     setIsPending(true);
     try {
       await action(formData);
+      form.reset();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -76,8 +78,9 @@ function RenamePoolForm({
     setIsPending(true);
     try {
       await action(pool.id, formData);
+      onCancel();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

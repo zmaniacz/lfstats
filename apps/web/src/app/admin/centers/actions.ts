@@ -5,7 +5,7 @@
 
 import { auth } from "@/auth";
 import { updateCenter } from "@lfstats/db";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 async function requireCenterAdmin(centerId: string) {
   const session = await auth();
@@ -30,4 +30,5 @@ export async function updateCenterAction(id: string, formData: FormData) {
 
   await updateCenter(id, { name, shortName, city, countryName, timezone });
   revalidatePath("/admin/centers", "layout");
+  refresh();
 }

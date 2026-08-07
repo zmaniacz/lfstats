@@ -81,8 +81,9 @@ export function GameCompetitionManager({
     setIsPending(true);
     try {
       await addToCompetitionAction(gameId, selectedCompetitionId);
+      setSelectedCompetitionId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -90,8 +91,13 @@ export function GameCompetitionManager({
     setIsPending(true);
     try {
       await removeFromCompetitionAction(gameId);
+      setSelectedCompetitionId("");
+      setSelectedMatchId("");
+      setSelectedGameNumber("");
+      setTeam1GameTeamId("");
+      setTeam2GameTeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -106,8 +112,12 @@ export function GameCompetitionManager({
         team1GameTeamId,
         team2GameTeamId,
       );
+      setSelectedMatchId("");
+      setSelectedGameNumber("");
+      setTeam1GameTeamId("");
+      setTeam2GameTeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -116,8 +126,12 @@ export function GameCompetitionManager({
     setIsPending(true);
     try {
       await removeFromMatchAction(gameId, matchAssignment.matchGameId);
+      setSelectedMatchId("");
+      setSelectedGameNumber("");
+      setTeam1GameTeamId("");
+      setTeam2GameTeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

@@ -100,7 +100,7 @@ export function PlayerStatsSheet({
                         try {
                           await mercenaryAction(player.id, !player.isMercenary);
                         } finally {
-                          window.location.reload();
+                          setIsMercPending(false);
                         }
                       }}
                     >

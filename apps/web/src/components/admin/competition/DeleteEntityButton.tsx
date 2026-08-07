@@ -63,7 +63,8 @@ export function DeleteEntityButton({
       setIsPending(false);
       return;
     }
-    window.location.reload();
+    setIsPending(false);
+    setOpen(false);
   }
 
   return (

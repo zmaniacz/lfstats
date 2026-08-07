@@ -3,7 +3,7 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   assignGameToMatch,
   removeGameFromMatch,
@@ -50,6 +50,7 @@ export async function assignGameAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
+  refresh();
 }
 
 export async function removeGameAction(
@@ -65,6 +66,7 @@ export async function removeGameAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
+  refresh();
 }
 
 export async function updateMatchTeamsAction(
@@ -83,6 +85,7 @@ export async function updateMatchTeamsAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
+  refresh();
 }
 
 export async function updateMatchScheduleAction(
@@ -115,6 +118,7 @@ export async function updateMatchScheduleAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
+  refresh();
 }
 
 export async function createForfeitAction(
@@ -154,4 +158,5 @@ export async function createForfeitAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
+  refresh();
 }

@@ -34,7 +34,7 @@ export function EditRoundForm({ initialName, initialRoundNumber, initialType, ac
     try {
       await action(formData);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
