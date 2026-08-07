@@ -18,7 +18,7 @@ export function GeneratePoolMatchesButton({ action }: Props) {
     try {
       await action();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

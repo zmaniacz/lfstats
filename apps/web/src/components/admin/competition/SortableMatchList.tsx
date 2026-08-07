@@ -78,8 +78,9 @@ function EditMatchTeamsForm({
     setIsPending(true);
     try {
       await updateTeamsAction(match.id, formData);
+      onCancel();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

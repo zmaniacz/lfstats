@@ -3,7 +3,7 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   createCompetitionRound,
   updateCompetitionRound,
@@ -51,6 +51,7 @@ export async function createRoundAction(competitionId: string, formData: FormDat
   const type = formData.get("type") as "pool" | "finals" | "split-pool" | "wildcard";
   await createCompetitionRound({ competitionId, name, roundNumber, type });
   await revalidateRoundsPage(competitionId);
+  refresh();
 }
 
 export async function updateRoundAction(
@@ -64,6 +65,7 @@ export async function updateRoundAction(
   const type = formData.get("type") as "pool" | "finals" | "split-pool" | "wildcard";
   await updateCompetitionRound(roundId, { name, roundNumber, type });
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function deleteRoundAction(competitionId: string, roundId: string): Promise<void> {
@@ -86,6 +88,7 @@ export async function createMatchAction(
   const matchNumber = existing.length > 0 ? Math.max(...existing.map((m) => m.matchNumber)) + 1 : 1;
   await createCompetitionMatch({ competitionId, roundId, matchNumber, team1Id, team2Id, poolId });
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function deleteMatchAction(
@@ -96,6 +99,7 @@ export async function deleteMatchAction(
   await requireAdmin();
   await deleteCompetitionMatch(matchId);
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function generatePoolMatchesAction(
@@ -120,6 +124,7 @@ export async function generatePoolMatchesAction(
     }
   }
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function updateMatchTeamsAction(
@@ -140,6 +145,7 @@ export async function updateMatchTeamsAction(
   }
   await updateCompetitionMatchTeams(matchId, data);
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function reorderMatchesAction(
@@ -177,6 +183,7 @@ export async function generateSplitPoolMatchesAction(
     }
   }
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function createPoolAction(
@@ -188,6 +195,7 @@ export async function createPoolAction(
   const name = formData.get("name") as string;
   await createCompetitionPool({ roundId, name });
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function renamePoolAction(
@@ -200,6 +208,7 @@ export async function renamePoolAction(
   const name = formData.get("name") as string;
   await renameCompetitionPool(poolId, name);
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function deletePoolAction(
@@ -210,6 +219,7 @@ export async function deletePoolAction(
   await requireAdmin();
   await deleteCompetitionPool(poolId);
   await revalidateRoundPage(competitionId, roundId);
+  refresh();
 }
 
 export async function assignTeamToPoolAction(
