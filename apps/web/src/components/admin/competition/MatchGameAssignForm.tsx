@@ -22,7 +22,7 @@ type Props = {
   team2Name: string;
   availableGameNumbers: number[]; // e.g. [1] or [2] or [1,2]
   unassignedGames: UnassignedCompetitionGame[];
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<{ ok: true } | { ok: false; error: string }>;
 };
 
 export function MatchGameAssignForm({
@@ -37,6 +37,7 @@ export function MatchGameAssignForm({
   const [team1GameTeamId, setTeam1GameTeamId] = useState("");
   const [team2GameTeamId, setTeam2GameTeamId] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedGame = unassignedGames.find((g) => g.id === gameId);
 
@@ -54,8 +55,14 @@ export function MatchGameAssignForm({
     formData.set("team1GameTeamId", team1GameTeamId);
     formData.set("team2GameTeamId", team2GameTeamId);
     setIsPending(true);
+    setError(null);
     try {
-      await action(formData);
+      const result = await action(formData);
+      if (!result.ok) {
+        // Keep the selections so the admin can retry without re-picking.
+        setError(result.error);
+        return;
+      }
       setGameNumber("");
       setGameId("");
       setTeam1GameTeamId("");
@@ -152,6 +159,8 @@ export function MatchGameAssignForm({
           </div>
         </div>
       )}
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <Button type="submit" disabled={isPending || !canSubmit}>
         {isPending ? "Assigning…" : "Assign Game"}

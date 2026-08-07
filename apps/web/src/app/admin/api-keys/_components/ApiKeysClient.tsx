@@ -28,7 +28,9 @@ import type { ApiKeyListing } from "@lfstats/db";
 
 type Props = {
   keys: ApiKeyListing[];
-  createAction: (formData: FormData) => Promise<{ plaintext: string }>;
+  createAction: (
+    formData: FormData,
+  ) => Promise<{ ok: true; plaintext: string } | { ok: false; error: string }>;
   revokeAction: (id: string) => Promise<void>;
 };
 
@@ -38,18 +40,25 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCreate() {
     if (!name.trim()) return;
     setIsPending(true);
+    setError(null);
     try {
       const formData = new FormData();
       formData.set("name", name.trim());
-      const { plaintext } = await createAction(formData);
+      const result = await createAction(formData);
+      if (!result.ok) {
+        // Keep the dialog open so the reason stays visible.
+        setError(result.error);
+        return;
+      }
       setCreateOpen(false);
       setName("");
       // Shown once — the plaintext is not recoverable after this dialog closes.
-      setNewKey(plaintext);
+      setNewKey(result.plaintext);
     } finally {
       setIsPending(false);
     }
@@ -128,7 +137,13 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
         </Table>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (open) setError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create API Key</DialogTitle>
@@ -146,6 +161,7 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
                 placeholder="e.g. OBS Capture Tool"
               />
             </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button onClick={handleCreate} disabled={isPending || !name.trim()} className="w-full">
               {isPending ? "Creating…" : "Create Key"}
             </Button>

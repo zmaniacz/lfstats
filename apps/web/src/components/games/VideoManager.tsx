@@ -56,7 +56,10 @@ type Props = {
   /** Roster for the POV player picker; guests (no playerId) are excluded upstream. */
   roster: VideoRosterEntry[];
   canEdit: boolean;
-  addAction: (gameId: string, formData: FormData) => Promise<void>;
+  addAction: (
+    gameId: string,
+    formData: FormData,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
   removeAction: (gameId: string, videoId: string) => Promise<void>;
   updateAction: (
     gameId: string,
@@ -133,36 +136,27 @@ export function VideoManager({
 
     setIsPending(true);
 
-    // Editing can fail on a recoverable conflict, so it keeps the dialog open
-    // and shows why instead of resetting past the error.
-    if (dialogMode === "edit" && editing) {
-      const result = await updateAction(gameId, editing.id, formData);
-      if (!result.ok) {
-        setError(result.error);
-        setIsPending(false);
-        return;
-      }
-      setDialogMode(null);
-      setEditing(null);
-      setUrl("");
-      setLabel("");
-      setPlayerId("");
-      setError(null);
+    // Both add and edit can fail on a recoverable problem (a bad link, or a
+    // duplicate), so they keep the dialog open and show why instead of
+    // resetting past the error.
+    const result =
+      dialogMode === "edit" && editing
+        ? await updateAction(gameId, editing.id, formData)
+        : await addAction(gameId, formData);
+
+    if (!result.ok) {
+      setError(result.error);
       setIsPending(false);
       return;
     }
 
-    try {
-      await addAction(gameId, formData);
-      setDialogMode(null);
-      setEditing(null);
-      setUrl("");
-      setLabel("");
-      setPlayerId("");
-      setError(null);
-    } finally {
-      setIsPending(false);
-    }
+    setDialogMode(null);
+    setEditing(null);
+    setUrl("");
+    setLabel("");
+    setPlayerId("");
+    setError(null);
+    setIsPending(false);
   }
 
   async function handleRemove(videoId: string) {

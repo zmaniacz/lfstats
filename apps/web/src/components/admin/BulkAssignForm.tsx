@@ -19,23 +19,32 @@ import { useState } from "react";
 type Props = {
   competitionId: string;
   centers: CenterListItem[];
-  action: (competitionId: string, formData: FormData) => Promise<number>;
+  action: (
+    competitionId: string,
+    formData: FormData,
+  ) => Promise<{ ok: true; count: number } | { ok: false; error: string }>;
 };
 
 export function BulkAssignForm({ competitionId, centers, action }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [centerId, setCenterId] = useState("");
   const [result, setResult] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("centerId", centerId);
     setResult(null);
+    setError(null);
     setIsPending(true);
     try {
-      const count = await action(competitionId, formData);
-      setResult(count);
+      const outcome = await action(competitionId, formData);
+      if (outcome.ok) {
+        setResult(outcome.count);
+      } else {
+        setError(outcome.error);
+      }
     } finally {
       setIsPending(false);
     }
@@ -78,6 +87,7 @@ export function BulkAssignForm({ competitionId, centers, action }: Props) {
           </span>
         )}
       </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </form>
   );
 }

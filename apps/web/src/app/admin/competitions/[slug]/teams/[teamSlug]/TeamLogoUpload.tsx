@@ -39,8 +39,12 @@ export function TeamLogoUpload({
     setIsPending(true);
     setError(null);
     try {
-      const url = await getTeamLogoUploadUrlAction(competitionId, teamId, file.type);
-      const res = await fetch(url, {
+      const signed = await getTeamLogoUploadUrlAction(competitionId, teamId, file.type);
+      if (!signed.ok) {
+        setError(signed.error);
+        return;
+      }
+      const res = await fetch(signed.url, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type },

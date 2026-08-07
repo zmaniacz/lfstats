@@ -12,16 +12,23 @@ import { requireSuperAdmin } from "@/lib/auth-guards";
 // independently invocable POST endpoint, reachable whether or not the caller
 // can render the page that normally triggers it.
 
-export async function createApiKeyAction(formData: FormData): Promise<{ plaintext: string }> {
+/**
+ * Reports validation failure instead of throwing: a thrown server action is
+ * redacted to a bare digest in production, so the dialog would close with no
+ * key and no explanation.
+ */
+export type CreateApiKeyResult = { ok: true; plaintext: string } | { ok: false; error: string };
+
+export async function createApiKeyAction(formData: FormData): Promise<CreateApiKeyResult> {
   const session = await requireSuperAdmin();
 
   const name = ((formData.get("name") as string) || "").trim();
-  if (!name) throw new Error("Name is required");
+  if (!name) return { ok: false, error: "Name is required" };
 
   const { plaintext } = await createApiKey(name, session.user.id);
   revalidatePath("/admin/api-keys");
   refresh();
-  return { plaintext };
+  return { ok: true, plaintext };
 }
 
 export async function revokeApiKeyAction(id: string): Promise<void> {

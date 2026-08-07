@@ -10,39 +10,48 @@ type Props = {
   team1Name: string;
   team2Name: string;
   gameNumber: number;
-  action: (forfeitingTeam: "team1" | "team2", gameNumber: number) => Promise<void>;
+  action: (
+    forfeitingTeam: "team1" | "team2",
+    gameNumber: number,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 };
 
 export function ForfeitButtons({ team1Name, team2Name, gameNumber, action }: Props) {
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleForfeit(team: "team1" | "team2") {
     setIsPending(true);
+    setError(null);
     try {
-      await action(team, gameNumber);
+      const result = await action(team, gameNumber);
+      if (!result.ok) setError(result.error);
     } finally {
       setIsPending(false);
     }
   }
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={isPending}
-        onClick={() => handleForfeit("team1")}
-      >
-        {team1Name} forfeits
-      </Button>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={isPending}
-        onClick={() => handleForfeit("team2")}
-      >
-        {team2Name} forfeits
-      </Button>
+    <div className="space-y-2">
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isPending}
+          onClick={() => handleForfeit("team1")}
+        >
+          {team1Name} forfeits
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isPending}
+          onClick={() => handleForfeit("team2")}
+        >
+          {team2Name} forfeits
+        </Button>
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

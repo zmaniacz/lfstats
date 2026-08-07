@@ -238,6 +238,51 @@ new Pattern B sites in production for a stuck `isPending` the same way. `DeleteE
 `window.location.reload()`: it's shared across 7+ admin pages and accepts either calling
 convention, so it can be migrated independently later without another cross-cutting change.
 
+### Never throw a user-facing error from a Server Action
+
+In production builds Next.js strips thrown `Error` messages from `"use server"` actions down
+to a bare digest — the client receives no message and renders a generic "Minified React
+error #441" placeholder. This does **not** reproduce in `pnpm dev`, so it only shows up after
+deploying.
+
+Any failure whose message is meant for the user (validation, business-rule conflicts,
+"that's not an active competition") must come back as a **return value**:
+
+```ts
+// actions.ts — "use server"
+export type MyActionResult = { ok: true } | { ok: false; error: string };
+
+export async function myAction(id: string): Promise<MyActionResult> {
+  if (!valid) return { ok: false, error: "Explain what's wrong." };
+  await mutate(id);
+  revalidatePath(`/things/${id}`);
+  refresh();
+  return { ok: true };
+}
+```
+
+```tsx
+const result = await action(id);
+if (!result.ok) {
+  setError(result.error); // and keep the dialog/form open
+  return;
+}
+```
+
+Keep `throw` only for cases a legitimate user should never reach through the UI, where a
+generic fallback is acceptable: `requireAdmin()`-style "Forbidden"/"Unauthorized", "not
+found" against stale UI, and missing-env config errors.
+
+**The client half is not optional.** The original bug here was not only redaction: every
+caller wrapped its action in `try { … } finally { … }` with no `catch`, so a thrown message
+became an unhandled rejection and the user saw _nothing_ — a button that silently did
+nothing. Whenever an action can fail, the caller needs somewhere to render `result.error`.
+
+Worked examples: `VideoManager.tsx`, `BulkAssignForm.tsx`, `ForfeitButtons.tsx`,
+`ApiKeysClient.tsx`, `UploadZone.tsx`. `DeleteEntityButton.tsx` shows the widened
+`void | {ok:true} | {ok:false,error:string}` prop type for a component shared across call
+sites that haven't all migrated.
+
 ## Cross-Page Filter State (scope / gameType / center / competition)
 
 Four filter dimensions are shared across the "browse" pages (games, players, leaderboards,

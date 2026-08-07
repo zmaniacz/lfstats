@@ -119,12 +119,15 @@ async function revalidateLbGameAndMatch(gameId: string) {
   }
 }
 
-export async function addLbGameVideoAction(gameId: string, formData: FormData): Promise<void> {
+export async function addLbGameVideoAction(
+  gameId: string,
+  formData: FormData,
+): Promise<GameVideoActionResult> {
   const { session } = await requireCenterAdmin(gameId);
 
   const youtubeUrl = ((formData.get("youtubeUrl") as string) || "").trim();
   const link = parseYoutubeLink(youtubeUrl);
-  if (!link) throw new Error("Invalid YouTube URL");
+  if (!link) return { ok: false, error: "That doesn't look like a YouTube video URL." };
 
   // overwrite: re-adding a video already on this game means correcting it (a
   // fixed start offset or label), not asking for a second copy of the same link.
@@ -143,11 +146,13 @@ export async function addLbGameVideoAction(gameId: string, formData: FormData): 
   );
   await revalidateLbGameAndMatch(gameId);
   refresh();
+  return { ok: true };
 }
 
 /**
- * Video edits report failure instead of throwing: a thrown server action is
- * redacted in production, and the caller needs to show which field was wrong.
+ * Video adds and edits report failure instead of throwing: a thrown server
+ * action is redacted in production, and the caller needs to show which field
+ * was wrong.
  */
 export type GameVideoActionResult = { ok: true } | { ok: false; error: string };
 

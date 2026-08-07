@@ -28,16 +28,23 @@ async function competitionSlug(competitionId: string): Promise<string | null> {
   return comp?.slug ?? null;
 }
 
+/**
+ * Assignment and forfeit refusals come back as a value instead of a throw: a
+ * thrown server action is redacted to a bare digest in production, so the
+ * admin would see the button simply do nothing.
+ */
+export type MatchActionResult = { ok: true } | { ok: false; error: string };
+
 export async function assignGameAction(
   competitionId: string,
   matchId: string,
   formData: FormData,
-): Promise<void> {
+): Promise<MatchActionResult> {
   await requireAdmin();
   const competition = await getCompetitionById(competitionId);
   if (!competition) throw new Error("Competition not found");
   if (competition.state !== "active") {
-    throw new Error("Games can only be assigned while the competition is active.");
+    return { ok: false, error: "Games can only be assigned while the competition is active." };
   }
   const gameNumber = parseInt(formData.get("gameNumber") as string, 10);
   const gameId = formData.get("gameId") as string;
@@ -51,6 +58,7 @@ export async function assignGameAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
   refresh();
+  return { ok: true };
 }
 
 export async function removeGameAction(
@@ -126,7 +134,7 @@ export async function createForfeitAction(
   matchId: string,
   forfeitingTeam: "team1" | "team2",
   gameNumber: number,
-): Promise<void> {
+): Promise<MatchActionResult> {
   await requireAdmin();
 
   const [competition, match] = await Promise.all([
@@ -135,12 +143,14 @@ export async function createForfeitAction(
   ]);
 
   if (!competition || !match) throw new Error("Competition or match not found");
-  if (!competition.hostCenterId) throw new Error("Competition has no host center");
+  if (!competition.hostCenterId) {
+    return { ok: false, error: "This competition has no host center, so it cannot record games." };
+  }
   if (competition.state !== "active") {
-    throw new Error("Games can only be assigned while the competition is active.");
+    return { ok: false, error: "Games can only be assigned while the competition is active." };
   }
   if (!match.team1Id || !match.team2Id) {
-    throw new Error("Cannot record a forfeit until both teams are determined");
+    return { ok: false, error: "Cannot record a forfeit until both teams are determined." };
   }
 
   await createForfeitGame({
@@ -159,4 +169,5 @@ export async function createForfeitAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
   refresh();
+  return { ok: true };
 }

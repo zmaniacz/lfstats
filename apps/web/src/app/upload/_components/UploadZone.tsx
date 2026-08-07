@@ -85,10 +85,15 @@ export function UploadZone({ competitionSlug, canUpload, onUploadComplete }: Upl
         }
       }
 
-      const presigned = await getPresignedUrlsAction(
+      const result = await getPresignedUrlsAction(
         files.map((f) => f.name),
         competitionSlug,
       );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const presigned = result.uploads;
 
       await Promise.all(
         presigned.map(({ filename, url }) => {

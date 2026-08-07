@@ -133,13 +133,23 @@ export async function unassignGameFromMatchAction(
   revalidatePath(`/admin/competitions/${competition.slug}`);
 }
 
-export async function bulkAssignGamesAction(competitionId: string, formData: FormData) {
+/**
+ * Reports the competition-state refusal instead of throwing: a thrown server
+ * action is redacted to a bare digest in production, so the admin would see
+ * nothing at all explaining why the assign did nothing.
+ */
+export type BulkAssignResult = { ok: true; count: number } | { ok: false; error: string };
+
+export async function bulkAssignGamesAction(
+  competitionId: string,
+  formData: FormData,
+): Promise<BulkAssignResult> {
   const competition = await getCompetitionById(competitionId);
   if (!competition) throw new Error("Not found");
   await requireCompetitionAccess(competition.hostCenterId ?? null);
 
   if (competition.state !== "active") {
-    throw new Error("Games can only be assigned while the competition is active.");
+    return { ok: false, error: "Games can only be assigned while the competition is active." };
   }
 
   const centerId = formData.get("centerId") as string;
@@ -147,5 +157,5 @@ export async function bulkAssignGamesAction(competitionId: string, formData: For
   const dateTo = formData.get("dateTo") as string;
 
   const count = await bulkAssignGamesToCompetition(competitionId, centerId, dateFrom, dateTo);
-  return count;
+  return { ok: true, count };
 }

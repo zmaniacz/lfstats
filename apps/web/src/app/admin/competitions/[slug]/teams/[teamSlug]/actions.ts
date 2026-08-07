@@ -126,11 +126,18 @@ export async function searchPlayersAction(query: string): Promise<PlayerSearchRe
   return searchPlayersForRoster(query.trim());
 }
 
+/**
+ * Rejected image types come back as a value instead of a throw: a thrown
+ * server action is redacted to a bare digest in production, and the file
+ * picker's `accept` filter is bypassable, so this is genuinely reachable.
+ */
+export type UploadUrlResult = { ok: true; url: string } | { ok: false; error: string };
+
 export async function getTeamLogoUploadUrlAction(
   competitionId: string,
   teamId: string,
   contentType: string,
-): Promise<string> {
+): Promise<UploadUrlResult> {
   await requireAdmin();
 
   if (
@@ -138,7 +145,7 @@ export async function getTeamLogoUploadUrlAction(
       contentType as (typeof ALLOWED_IMAGE_CONTENT_TYPES)[number],
     )
   ) {
-    throw new Error(`Unsupported image type: ${contentType}`);
+    return { ok: false, error: `Unsupported image type: ${contentType}` };
   }
 
   const command = new PutObjectCommand({
@@ -147,7 +154,8 @@ export async function getTeamLogoUploadUrlAction(
     ContentType: contentType,
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return getSignedUrl(getS3Client() as any, command, { expiresIn: 300 });
+  const url = await getSignedUrl(getS3Client() as any, command, { expiresIn: 300 });
+  return { ok: true, url };
 }
 
 export async function confirmTeamLogoUploadAction(
@@ -176,7 +184,7 @@ export async function getPlayerPictureUploadUrlAction(
   teamId: string,
   entryId: string,
   contentType: string,
-): Promise<string> {
+): Promise<UploadUrlResult> {
   await requireAdmin();
 
   if (
@@ -184,7 +192,7 @@ export async function getPlayerPictureUploadUrlAction(
       contentType as (typeof ALLOWED_IMAGE_CONTENT_TYPES)[number],
     )
   ) {
-    throw new Error(`Unsupported image type: ${contentType}`);
+    return { ok: false, error: `Unsupported image type: ${contentType}` };
   }
 
   const command = new PutObjectCommand({
@@ -193,7 +201,8 @@ export async function getPlayerPictureUploadUrlAction(
     ContentType: contentType,
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return getSignedUrl(getS3Client() as any, command, { expiresIn: 300 });
+  const url = await getSignedUrl(getS3Client() as any, command, { expiresIn: 300 });
+  return { ok: true, url };
 }
 
 export async function confirmPlayerPictureUploadAction(

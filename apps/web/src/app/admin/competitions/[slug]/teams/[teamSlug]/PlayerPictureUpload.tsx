@@ -41,8 +41,17 @@ export function PlayerPictureUpload({
     setIsPending(true);
     setError(null);
     try {
-      const url = await getPlayerPictureUploadUrlAction(competitionId, teamId, entryId, file.type);
-      const res = await fetch(url, {
+      const signed = await getPlayerPictureUploadUrlAction(
+        competitionId,
+        teamId,
+        entryId,
+        file.type,
+      );
+      if (!signed.ok) {
+        setError(signed.error);
+        return;
+      }
+      const res = await fetch(signed.url, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type },

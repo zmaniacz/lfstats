@@ -29,28 +29,38 @@ function getS3Client() {
   });
 }
 
+export type PresignedUpload = { filename: string; key: string; url: string };
+
+/**
+ * Reports rejected uploads instead of throwing: a thrown server action is
+ * redacted to a bare digest in production, and the upload zone needs to name
+ * the files it turned away.
+ */
+export type PresignedUrlsResult =
+  { ok: true; uploads: PresignedUpload[] } | { ok: false; error: string };
+
 export async function getPresignedUrlsAction(
   filenames: string[],
   competitionSlug: string | null,
-): Promise<{ filename: string; key: string; url: string }[]> {
+): Promise<PresignedUrlsResult> {
   const session = await requireUploadRole();
 
   const bucket = process.env.INCOMING_BUCKET;
   if (!bucket) throw new Error("INCOMING_BUCKET is not configured");
 
-  if (filenames.length === 0) throw new Error("No files provided");
+  if (filenames.length === 0) return { ok: false, error: "No files provided" };
 
   const invalid = filenames.filter((n) => !n.toLowerCase().endsWith(".tdf"));
   if (invalid.length > 0) {
-    throw new Error(`Only .tdf files are allowed: ${invalid.join(", ")}`);
+    return { ok: false, error: `Only .tdf files are allowed: ${invalid.join(", ")}` };
   }
 
   let prefix = "";
   if (competitionSlug) {
     const competition = await getCompetitionBySlug(competitionSlug);
-    if (!competition) throw new Error("Competition not found");
+    if (!competition) return { ok: false, error: "That competition no longer exists." };
     if (competition.state !== "active") {
-      throw new Error("Competition is not currently active");
+      return { ok: false, error: "Competition is not currently active" };
     }
 
     const roles = session.user?.roles ?? [];
@@ -69,7 +79,7 @@ export async function getPresignedUrlsAction(
 
   const s3 = getS3Client();
 
-  return Promise.all(
+  const uploads = await Promise.all(
     filenames.map(async (filename) => {
       const key = `${prefix}${filename}`;
       const command = new PutObjectCommand({
@@ -82,6 +92,8 @@ export async function getPresignedUrlsAction(
       return { filename, key, url };
     }),
   );
+
+  return { ok: true, uploads };
 }
 
 export async function getJobStatusesAction(s3Keys: string[]) {
