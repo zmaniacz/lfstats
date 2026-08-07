@@ -4,16 +4,7 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
-import {
-  createCompetitionTeam,
-  deleteCompetitionTeam,
-  addPlayerToCompetitionTeam,
-  removePlayerFromCompetitionTeam,
-  searchPlayersForRoster,
-  getCompetitionById,
-  getCompetitionTeamById,
-  type PlayerSearchResult,
-} from "@lfstats/db";
+import { createCompetitionTeam, deleteCompetitionTeam, getCompetitionById } from "@lfstats/db";
 import { auth } from "@/auth";
 
 async function requireAdmin() {
@@ -47,36 +38,9 @@ export async function deleteCompetitionTeamAction(
   refresh();
 }
 
-export async function addPlayerToTeamAction(
-  competitionId: string,
-  teamId: string,
-  playerId: string,
-): Promise<void> {
-  await requireAdmin();
-  await addPlayerToCompetitionTeam(teamId, playerId);
-  const [comp, team] = await Promise.all([
-    getCompetitionById(competitionId),
-    getCompetitionTeamById(teamId),
-  ]);
-  if (comp && team) revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`);
-}
-
-export async function removePlayerFromTeamAction(
-  competitionId: string,
-  teamId: string,
-  entryId: string,
-): Promise<void> {
-  await requireAdmin();
-  await removePlayerFromCompetitionTeam(entryId);
-  const [comp, team] = await Promise.all([
-    getCompetitionById(competitionId),
-    getCompetitionTeamById(teamId),
-  ]);
-  if (comp && team) revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`);
-  refresh();
-}
-
-export async function searchPlayersAction(query: string): Promise<PlayerSearchResult[]> {
-  if (!query.trim()) return [];
-  return searchPlayersForRoster(query.trim());
-}
+// Roster mutation and player search live on the per-team route
+// (`[teamSlug]/actions.ts`), which is where the roster UI moved to. Duplicates
+// here were left behind unused; they were removed because an exported
+// "use server" function stays a live POST endpoint whether or not a page calls
+// it, and these dropped the RosterMutationResult they got back, so a roster
+// conflict would have failed silently.

@@ -56,17 +56,28 @@ async function revalidateTeamPaths(competitionId: string, teamId: string): Promi
   revalidatePath(`/admin/competitions/${comp.slug}/teams`);
 }
 
+/**
+ * Reports the empty-name refusal instead of throwing: a thrown server action
+ * is redacted to a bare digest in production. The HTML `required` attribute
+ * catches a blank field, but not one holding only whitespace.
+ */
+export type UpdateTeamResult = { ok: true } | { ok: false; error: string };
+
 export async function updateTeamAction(
   competitionId: string,
   teamId: string,
   formData: FormData,
-): Promise<void> {
+): Promise<UpdateTeamResult> {
   await requireAdmin();
-  const name = (formData.get("name") as string).trim();
-  const shortName = (formData.get("shortName") as string).trim() || null;
-  if (!name) throw new Error("Team name is required");
+  const name = ((formData.get("name") as string) || "").trim();
+  const shortName = ((formData.get("shortName") as string) || "").trim() || null;
+  if (!name) return { ok: false, error: "Team name is required." };
   await updateCompetitionTeam(teamId, { competitionId, name, shortName });
   await revalidateTeamPaths(competitionId, teamId);
+  // The team name is shown outside this form (page heading, teams list), so the
+  // page has to re-render now that submitting no longer navigates. Pattern B.
+  refresh();
+  return { ok: true };
 }
 
 export async function addPlayerAction(

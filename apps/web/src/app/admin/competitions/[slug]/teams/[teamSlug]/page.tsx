@@ -3,10 +3,7 @@
 
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
 import { PlayerRosterSearch } from "@/components/admin/competition/PlayerRosterSearch";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -34,6 +31,7 @@ import {
   setMercenaryAction,
   updateTeamAction,
 } from "./actions";
+import { EditTeamForm } from "./EditTeamForm";
 import { ParticipantActions } from "./ParticipantActions";
 import { PlayerPictureUpload } from "./PlayerPictureUpload";
 import { TeamLogoUpload } from "./TeamLogoUpload";
@@ -102,35 +100,7 @@ export default async function TeamRosterPage({
           <CardTitle>Edit Team</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={boundUpdate} className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="team-name" className="text-xs">
-                Name
-              </Label>
-              <Input
-                id="team-name"
-                name="name"
-                defaultValue={team.name}
-                className="h-8 text-sm w-64"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="team-short-name" className="text-xs">
-                Short Name
-              </Label>
-              <Input
-                id="team-short-name"
-                name="shortName"
-                defaultValue={team.shortName ?? ""}
-                placeholder="e.g. ALPH"
-                className="h-8 text-sm w-28"
-              />
-            </div>
-            <Button type="submit" size="sm">
-              Save
-            </Button>
-          </form>
+          <EditTeamForm name={team.name} shortName={team.shortName} action={boundUpdate} />
         </CardContent>
       </Card>
 

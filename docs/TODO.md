@@ -75,16 +75,24 @@ config errors (`INCOMING_BUCKET`, `IMAGES_BUCKET`); and throws in client compone
 (`UploadZone`, the two upload widgets, `components/ui/*`), which never cross the server
 action boundary and so are never redacted.
 
-### Follow-ups found during the audit (not fixed here)
+### Follow-ups found during the audit (both now done)
 
-1. `updateTeamAction` (`admin/competitions/[slug]/teams/[teamSlug]/actions.ts`) still throws
-   "Team name is required". It is wired as a bare `<form action={boundUpdate}>`, so consuming
-   a return value needs a `useActionState` restructure or a client wrapper. The input carries
-   the HTML `required` attribute, so only a whitespace-only name reaches the throw. Worth
-   doing when that form is next touched.
-2. `addPlayerToTeamAction` and `removePlayerFromTeamAction` in
-   `admin/competitions/[slug]/teams/actions.ts` have **zero callers** and discard the
-   `RosterMutationResult` they get back, so a roster conflict there would fail silently. They
-   look like leftovers from the roster page moving to `[teamSlug]/actions.ts`. Confirm and
-   delete — an exported `"use server"` function is a live POST endpoint whether or not any
-   page calls it.
+1. **`updateTeamAction` converted.** It was the last user-facing throw ("Team name is
+   required"), left over because it was wired as a bare `<form action={boundUpdate}>`, which
+   cannot read a return value. The form markup moved into a new client component
+   `[teamSlug]/EditTeamForm.tsx`, which renders `result.error` and a "Saved." confirmation.
+   Deliberately plain `useState` rather than `useActionState`, since the latter is
+   transition-based and this app has repeatedly hit the stuck-`isPending` scheduler bug
+   documented under "Server Actions and UI Updates" in `apps/web/CLAUDE.md`. Because
+   submitting no longer navigates, the action gained a `refresh()` (Pattern B) so the page
+   heading and teams list pick the rename up. Also hardened the two `formData.get(...)`
+   reads, which would have thrown a `TypeError` on a missing field.
+2. **Three dead actions deleted** from `admin/competitions/[slug]/teams/actions.ts`:
+   `addPlayerToTeamAction`, `removePlayerFromTeamAction` and — found while confirming those
+   two — `searchPlayersAction`. All were leftovers from the roster UI moving to the
+   `[teamSlug]/` route, which has its own copies; `teams/page.tsx` only ever imported
+   `createCompetitionTeamAction` and `deleteCompetitionTeamAction`. The two roster mutations
+   also discarded the `RosterMutationResult` they got back, so a roster conflict there would
+   have failed silently. Worth noting the reason this mattered: the pre-deletion build
+   emitted both into `.next/server/server-reference-manifest.json`, confirming that an
+   exported `"use server"` function ships as a callable POST endpoint even with no caller.
