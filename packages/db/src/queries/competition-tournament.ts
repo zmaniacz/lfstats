@@ -538,6 +538,31 @@ export async function addPlayerToCompetitionTeam(
 }
 
 export async function removePlayerFromCompetitionTeam(entryId: string): Promise<void> {
+  const [entry] = await db
+    .select({
+      competitionTeamId: competitionTeamPlayer.competitionTeamId,
+      playerId: competitionTeamPlayer.playerId,
+      isMercenary: competitionTeamPlayer.isMercenary,
+    })
+    .from(competitionTeamPlayer)
+    .where(eq(competitionTeamPlayer.id, entryId));
+  if (!entry) return;
+
+  // A mercenary entry is the only valid state for a player who is genuinely
+  // rostered on another team in the same competition: removing it would drop
+  // them into "unassigned," where they can neither be promoted to this team's
+  // roster nor meaningfully un-attached, since they already have games played
+  // here. They can only be removed from this team once no longer rostered
+  // elsewhere in the competition.
+  if (entry.isMercenary) {
+    const conflict = await findConflictingRosterTeam(entry.competitionTeamId, entry.playerId);
+    if (conflict) {
+      throw new Error(
+        `Cannot remove: this player is on the roster of "${conflict.name}" for this competition and must remain a mercenary here.`,
+      );
+    }
+  }
+
   await db.delete(competitionTeamPlayer).where(eq(competitionTeamPlayer.id, entryId));
 }
 

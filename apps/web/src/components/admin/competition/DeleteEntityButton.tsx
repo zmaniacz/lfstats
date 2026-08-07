@@ -36,18 +36,33 @@ export function DeleteEntityButton({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleConfirm() {
+  async function handleConfirm(e: React.MouseEvent) {
+    // Keep the dialog open so a failure's error message stays visible —
+    // AlertDialogAction closes on click by default (radix-ui's DialogClose),
+    // which would otherwise hide the error before this async work resolves.
+    e.preventDefault();
     setIsPending(true);
+    setError(null);
     try {
       await action(id);
-    } finally {
-      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+      setIsPending(false);
+      return;
     }
+    window.location.reload();
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setError(null);
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
@@ -63,6 +78,7 @@ export function DeleteEntityButton({
           <AlertDialogTitle>Delete {label}?</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
