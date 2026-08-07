@@ -12,8 +12,10 @@ import {
   deleteGame,
   getGameCenterId,
   getGameSlugById,
+  getGameVideoById,
   removeFavorite,
   removeGameVideo,
+  updateGameVideo,
   removeTagFromGame,
   setGameExcluded,
   markGameAsReplay,
@@ -273,10 +275,61 @@ export async function addGameVideoAction(gameId: string, formData: FormData): Pr
   await revalidateGame(gameId);
 }
 
+/**
+ * Video edits report failure instead of throwing: a thrown server action is
+ * redacted in production, and the caller needs to show which field was wrong.
+ */
+export type GameVideoActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Authorization is against the video's own game, not the `gameId` the caller
+ * passes: those are independent inputs, so checking the caller-supplied one
+ * would let a center admin edit another center's video by naming a game of
+ * their own. `gameId` is used only to revalidate the page they're viewing.
+ */
+async function requireVideoAdmin(videoId: string) {
+  const video = await getGameVideoById(videoId);
+  if (!video) throw new Error("Video not found");
+  await requireCenterAdmin(video.gameId);
+  return video;
+}
+
 export async function removeGameVideoAction(gameId: string, videoId: string): Promise<void> {
-  await requireCenterAdmin(gameId);
+  await requireVideoAdmin(videoId);
   await removeGameVideo(videoId);
   await revalidateGame(gameId);
+}
+
+export async function updateGameVideoAction(
+  gameId: string,
+  videoId: string,
+  formData: FormData,
+): Promise<GameVideoActionResult> {
+  await requireVideoAdmin(videoId);
+
+  const youtubeUrl = ((formData.get("youtubeUrl") as string) || "").trim();
+  const link = parseYoutubeLink(youtubeUrl);
+  if (!link) return { ok: false, error: "That doesn't look like a YouTube video URL." };
+
+  const result = await updateGameVideo(videoId, {
+    youtubeUrl,
+    youtubeVideoId: link.videoId,
+    startSeconds: link.startSeconds,
+    label: ((formData.get("label") as string) || "").trim() || null,
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      error:
+        result.reason === "duplicate"
+          ? "That video is already linked here. Edit that entry instead."
+          : "That video no longer exists.",
+    };
+  }
+
+  await revalidateGame(gameId);
+  return { ok: true };
 }
 
 export async function addFavoriteAction(gameId: string, note?: string) {

@@ -45,6 +45,7 @@ import {
   addLbMatchOvertimeAction,
   linkLbMatchAction,
   removeLbGameVideoAction,
+  updateLbGameVideoAction,
   removeLbMatchOvertimeAction,
   toggleExcludeAction,
   unlinkLbMatchAction,
@@ -268,6 +269,7 @@ export default async function LaserballGameDetailPage({
               canEdit={canEdit}
               addAction={addLbGameVideoAction}
               removeAction={removeLbGameVideoAction}
+              updateAction={updateLbGameVideoAction}
               gameLabels={gameLabels}
             />
           </TabsContent>

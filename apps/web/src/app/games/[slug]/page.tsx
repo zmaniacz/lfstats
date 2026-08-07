@@ -55,6 +55,7 @@ import {
   removeGameFromCompetitionAction,
   removeGameFromMatchAction,
   removeGameVideoAction,
+  updateGameVideoAction,
   removeTagAction,
   rescindPenaltyAction,
   rescindTeamPenaltyAction,
@@ -400,6 +401,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
               canEdit={canEdit}
               addAction={addGameVideoAction}
               removeAction={removeGameVideoAction}
+              updateAction={updateGameVideoAction}
             />
           </TabsContent>
         )}

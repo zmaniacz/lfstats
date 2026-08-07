@@ -118,6 +118,64 @@ export async function removeGameVideo(videoId: string): Promise<void> {
   await db.delete(gameVideo).where(eq(gameVideo.id, videoId));
 }
 
+/**
+ * The raw row, used by the admin actions to authorize against the video's *own*
+ * game — a video id and the game the caller claims to be editing are separate
+ * inputs, and on a Laserball match view they legitimately differ (a video on
+ * half 1 is editable from half 2's URL).
+ */
+export async function getGameVideoById(videoId: string): Promise<GameVideoRow | null> {
+  const [row] = await db.select().from(gameVideo).where(eq(gameVideo.id, videoId));
+  return row ?? null;
+}
+
+export type UpdateGameVideoFields = {
+  youtubeUrl: string;
+  youtubeVideoId: string;
+  startSeconds: number | null;
+  label: string | null;
+};
+
+/**
+ * Edits an existing link in place. The game and player it belongs to are fixed
+ * — re-pointing a video at a different player is a delete plus an add.
+ *
+ * Repointing at a video already attached to the same game/player would violate
+ * the unique constraint, so that is detected and reported rather than surfacing
+ * as a raw 23505 the UI can't explain.
+ */
+export async function updateGameVideo(
+  videoId: string,
+  fields: UpdateGameVideoFields,
+): Promise<{ ok: true; video: GameVideoRow } | { ok: false; reason: "not_found" | "duplicate" }> {
+  const existing = await getGameVideoById(videoId);
+  if (!existing) return { ok: false, reason: "not_found" };
+
+  if (fields.youtubeVideoId !== existing.youtubeVideoId) {
+    const [clash] = await db
+      .select({ id: gameVideo.id })
+      .from(gameVideo)
+      .where(
+        and(
+          eq(gameVideo.gameId, existing.gameId),
+          existing.playerId === null
+            ? sql`${gameVideo.playerId} is null`
+            : eq(gameVideo.playerId, existing.playerId),
+          eq(gameVideo.youtubeVideoId, fields.youtubeVideoId),
+        ),
+      );
+    if (clash) return { ok: false, reason: "duplicate" };
+  }
+
+  const [updated] = await db
+    .update(gameVideo)
+    .set(fields)
+    .where(eq(gameVideo.id, videoId))
+    .returning();
+
+  return { ok: true, video: updated! };
+}
+
 export async function getGameVideos(gameId: string): Promise<GameVideo[]> {
   return getGameVideosForGames([gameId]);
 }

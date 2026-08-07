@@ -14,6 +14,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -45,6 +62,11 @@ type Props = {
   canEdit: boolean;
   addAction: (gameId: string, formData: FormData) => Promise<void>;
   removeAction: (gameId: string, videoId: string) => Promise<void>;
+  updateAction: (
+    gameId: string,
+    videoId: string,
+    formData: FormData,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Laserball only: gameId → "Half 1" / "Overtime", for match views spanning games. */
   gameLabels?: Map<string, string>;
 };
@@ -56,9 +78,12 @@ export function VideoManager({
   canEdit,
   addAction,
   removeAction,
+  updateAction,
   gameLabels,
 }: Props) {
-  const [dialogMode, setDialogMode] = useState<"game" | "pov" | null>(null);
+  const [dialogMode, setDialogMode] = useState<"game" | "pov" | "edit" | null>(null);
+  const [editing, setEditing] = useState<GameVideo | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GameVideo | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState("");
@@ -81,8 +106,18 @@ export function VideoManager({
     setUrl("");
     setLabel("");
     setPlayerId("");
+    setEditing(null);
     setError(null);
     setDialogMode(mode);
+  }
+
+  function openEditDialog(video: GameVideo) {
+    setUrl(video.youtubeUrl);
+    setLabel(video.label ?? "");
+    setPlayerId("");
+    setEditing(video);
+    setError(null);
+    setDialogMode("edit");
   }
 
   async function handleSubmit() {
@@ -101,6 +136,20 @@ export function VideoManager({
     if (dialogMode === "pov") formData.set("playerId", playerId);
 
     setIsPending(true);
+
+    // Editing can fail on a recoverable conflict, so it keeps the dialog open
+    // and shows why instead of reloading past the error.
+    if (dialogMode === "edit" && editing) {
+      const result = await updateAction(gameId, editing.id, formData);
+      if (!result.ok) {
+        setError(result.error);
+        setIsPending(false);
+        return;
+      }
+      window.location.reload();
+      return;
+    }
+
     try {
       await addAction(gameId, formData);
     } finally {
@@ -141,7 +190,8 @@ export function VideoManager({
                   video={v}
                   canEdit={canEdit}
                   isPending={isPending}
-                  onRemove={handleRemove}
+                  onEdit={openEditDialog}
+                  onRequestDelete={setDeleteTarget}
                   halfLabel={gameLabels?.get(v.gameId)}
                 />
               ))}
@@ -177,7 +227,8 @@ export function VideoManager({
                         video={v}
                         canEdit={canEdit}
                         isPending={isPending}
-                        onRemove={handleRemove}
+                        onEdit={openEditDialog}
+                        onRequestDelete={setDeleteTarget}
                         halfLabel={gameLabels?.get(v.gameId)}
                       />
                     ))}
@@ -193,12 +244,20 @@ export function VideoManager({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === "pov" ? "Add Player POV Video" : "Add Game Video"}
+              {dialogMode === "edit"
+                ? "Edit Video"
+                : dialogMode === "pov"
+                  ? "Add Player POV Video"
+                  : "Add Game Video"}
             </DialogTitle>
             <DialogDescription>
-              {dialogMode === "pov"
-                ? "Link a YouTube recording from one player's perspective."
-                : "Link a YouTube recording of the game, such as a scoreboard or arena cam."}
+              {dialogMode === "edit"
+                ? editing?.callsign
+                  ? `POV footage for ${editing.callsign}. Change the link or label — to move it to another player, remove it and add it again.`
+                  : "Change the link or label for this game video."
+                : dialogMode === "pov"
+                  ? "Link a YouTube recording from one player's perspective."
+                  : "Link a YouTube recording of the game, such as a scoreboard or arena cam."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -247,11 +306,43 @@ export function VideoManager({
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button onClick={handleSubmit} disabled={isPending || !url} className="w-full">
-              {isPending ? "Saving…" : "Add Video"}
+              {isPending ? "Saving…" : dialogMode === "edit" ? "Save Changes" : "Add Video"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {deleteTarget && (
+        <AlertDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Remove &ldquo;{deleteTarget.label ?? "Untitled video"}&rdquo;?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget.callsign
+                  ? `This removes the POV video linked to ${deleteTarget.callsign} from this game. The video stays on YouTube.`
+                  : "This removes the video link from this game. The video stays on YouTube."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleRemove(deleteTarget.id)}
+                disabled={isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
@@ -260,13 +351,15 @@ function VideoCard({
   video,
   canEdit,
   isPending,
-  onRemove,
+  onEdit,
+  onRequestDelete,
   halfLabel,
 }: {
   video: GameVideo;
   canEdit: boolean;
   isPending: boolean;
-  onRemove: (videoId: string) => void;
+  onEdit: (video: GameVideo) => void;
+  onRequestDelete: (video: GameVideo) => void;
   halfLabel?: string;
 }) {
   return (
@@ -307,15 +400,20 @@ function VideoCard({
           </div>
         </div>
         {canEdit && (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={isPending}
-            onClick={() => onRemove(video.id)}
-            title="Remove video"
-          >
-            ×
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={isPending} title="Video options">
+                ⋯
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(video)}>Edit</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onClick={() => onRequestDelete(video)}>
+                Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>
