@@ -5,13 +5,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { PlayerSearchResult } from "@lfstats/db";
+import type { PlayerSearchResult, RosterMutationResult } from "@lfstats/db";
 import { useState } from "react";
 
 type Props = {
   teamId: string;
   searchAction: (query: string) => Promise<PlayerSearchResult[]>;
-  addAction: (playerId: string) => Promise<void>;
+  addAction: (playerId: string) => Promise<RosterMutationResult>;
 };
 
 export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
@@ -40,15 +40,14 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
     setAddingId(playerId);
     setIsPendingAdd(true);
     setAddError(null);
-    try {
-      await addAction(playerId);
+    const result = await addAction(playerId);
+    if (result.ok) {
       setResults((prev) => prev.filter((p) => p.id !== playerId));
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add player");
-    } finally {
-      setIsPendingAdd(false);
-      setAddingId(null);
+    } else {
+      setAddError(result.error);
     }
+    setIsPendingAdd(false);
+    setAddingId(null);
   }
 
   return (

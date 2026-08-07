@@ -15,6 +15,7 @@ import {
   getCompetitionById,
   getCompetitionTeamById,
   type PlayerSearchResult,
+  type RosterMutationResult,
 } from "@lfstats/db";
 import { auth } from "@/auth";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
@@ -72,21 +73,25 @@ export async function addPlayerAction(
   competitionId: string,
   teamId: string,
   playerId: string,
-): Promise<void> {
+): Promise<RosterMutationResult> {
   await requireAdmin();
-  await addPlayerToCompetitionTeam(teamId, playerId);
+  const result = await addPlayerToCompetitionTeam(teamId, playerId);
+  if (!result.ok) return result;
   await revalidateTeamPaths(competitionId, teamId);
   refresh();
+  return result;
 }
 
 export async function removePlayerAction(
   competitionId: string,
   teamId: string,
   entryId: string,
-): Promise<void> {
+): Promise<RosterMutationResult> {
   await requireAdmin();
-  await removePlayerFromCompetitionTeam(entryId);
+  const result = await removePlayerFromCompetitionTeam(entryId);
+  if (!result.ok) return result;
   await revalidateTeamPaths(competitionId, teamId);
+  return result;
 }
 
 export async function setMercenaryAction(
@@ -94,22 +99,26 @@ export async function setMercenaryAction(
   teamId: string,
   playerId: string,
   isMercenary: boolean,
-): Promise<void> {
+): Promise<RosterMutationResult> {
   await requireAdmin();
-  await setPlayerMercenary(teamId, playerId, isMercenary);
+  const result = await setPlayerMercenary(teamId, playerId, isMercenary);
+  if (!result.ok) return result;
   await revalidateTeamPaths(competitionId, teamId);
   refresh();
+  return result;
 }
 
 export async function addParticipantToRosterAction(
   competitionId: string,
   teamId: string,
   playerId: string,
-): Promise<void> {
+): Promise<RosterMutationResult> {
   await requireAdmin();
-  await addPlayerToCompetitionTeam(teamId, playerId);
+  const result = await addPlayerToCompetitionTeam(teamId, playerId);
+  if (!result.ok) return result;
   await revalidateTeamPaths(competitionId, teamId);
   refresh();
+  return result;
 }
 
 export async function searchPlayersAction(query: string): Promise<PlayerSearchResult[]> {

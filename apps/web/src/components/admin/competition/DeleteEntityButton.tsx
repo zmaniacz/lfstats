@@ -17,11 +17,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// Thrown Server Action errors are redacted to a bare digest in production
+// (Next.js strips the message), so a validation failure needs to come back
+// as a return value to be shown to the user. Actions that still throw for
+// errors (returning void on success) keep working unchanged.
+type ActionResult = void | { ok: true } | { ok: false; error: string };
+
 type Props = {
   id: string;
   label: string;
   description?: string;
-  action: (id: string) => Promise<void>;
+  action: (id: string) => Promise<ActionResult>;
   size?: "sm" | "default" | "lg" | "icon";
   confirmLabel?: string;
 };
@@ -46,7 +52,12 @@ export function DeleteEntityButton({
     setIsPending(true);
     setError(null);
     try {
-      await action(id);
+      const result = await action(id);
+      if (result && !result.ok) {
+        setError(result.error);
+        setIsPending(false);
+        return;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
       setIsPending(false);

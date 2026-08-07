@@ -440,6 +440,13 @@ export async function getCompetitionTeamResultsByColor(
     }));
 }
 
+/**
+ * Thrown Server Action errors are redacted to a bare digest in production
+ * builds (Next.js strips the message), so roster-conflict validation must be
+ * reported as a return value the caller can display, not a throw.
+ */
+export type RosterMutationResult = { ok: true } | { ok: false; error: string };
+
 // A player may only be a non-mercenary roster member of one team per
 // competition (mercenary appearances on other teams are unrestricted).
 async function findConflictingRosterTeam(
@@ -471,11 +478,14 @@ export async function setPlayerMercenary(
   competitionTeamId: string,
   playerId: string,
   isMercenary: boolean,
-): Promise<void> {
+): Promise<RosterMutationResult> {
   if (!isMercenary) {
     const conflict = await findConflictingRosterTeam(competitionTeamId, playerId);
     if (conflict) {
-      throw new Error(`Player is already on the roster of "${conflict.name}" for this competition`);
+      return {
+        ok: false,
+        error: `Player is already on the roster of "${conflict.name}" for this competition`,
+      };
     }
   }
   await db
@@ -504,6 +514,7 @@ export async function setPlayerMercenary(
         )`,
       ),
     );
+  return { ok: true };
 }
 
 export async function createCompetitionTeam(data: {
@@ -526,18 +537,24 @@ export async function deleteCompetitionTeam(id: string): Promise<void> {
 export async function addPlayerToCompetitionTeam(
   competitionTeamId: string,
   playerId: string,
-): Promise<void> {
+): Promise<RosterMutationResult> {
   const conflict = await findConflictingRosterTeam(competitionTeamId, playerId);
   if (conflict) {
-    throw new Error(`Player is already on the roster of "${conflict.name}" for this competition`);
+    return {
+      ok: false,
+      error: `Player is already on the roster of "${conflict.name}" for this competition`,
+    };
   }
   await db
     .insert(competitionTeamPlayer)
     .values({ competitionTeamId, playerId })
     .onConflictDoNothing();
+  return { ok: true };
 }
 
-export async function removePlayerFromCompetitionTeam(entryId: string): Promise<void> {
+export async function removePlayerFromCompetitionTeam(
+  entryId: string,
+): Promise<RosterMutationResult> {
   const [entry] = await db
     .select({
       competitionTeamId: competitionTeamPlayer.competitionTeamId,
@@ -546,7 +563,7 @@ export async function removePlayerFromCompetitionTeam(entryId: string): Promise<
     })
     .from(competitionTeamPlayer)
     .where(eq(competitionTeamPlayer.id, entryId));
-  if (!entry) return;
+  if (!entry) return { ok: true };
 
   // A mercenary entry is the only valid state for a player who is genuinely
   // rostered on another team in the same competition: removing it would drop
@@ -557,13 +574,15 @@ export async function removePlayerFromCompetitionTeam(entryId: string): Promise<
   if (entry.isMercenary) {
     const conflict = await findConflictingRosterTeam(entry.competitionTeamId, entry.playerId);
     if (conflict) {
-      throw new Error(
-        `Cannot remove: this player is on the roster of "${conflict.name}" for this competition and must remain a mercenary here.`,
-      );
+      return {
+        ok: false,
+        error: `Cannot remove: this player is on the roster of "${conflict.name}" for this competition and must remain a mercenary here.`,
+      };
     }
   }
 
   await db.delete(competitionTeamPlayer).where(eq(competitionTeamPlayer.id, entryId));
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

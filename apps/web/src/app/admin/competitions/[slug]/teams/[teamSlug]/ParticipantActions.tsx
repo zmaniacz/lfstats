@@ -5,12 +5,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { RosterMutationResult } from "@lfstats/db";
 
 type Props = {
   playerId: string;
   isMercenary: boolean;
-  addAction: (playerId: string) => Promise<void>;
-  mercAction: (playerId: string, isMercenary: boolean) => Promise<void>;
+  addAction: (playerId: string) => Promise<RosterMutationResult>;
+  mercAction: (playerId: string, isMercenary: boolean) => Promise<RosterMutationResult>;
 };
 
 export function ParticipantActions({ playerId, isMercenary, addAction, mercAction }: Props) {
@@ -20,25 +21,17 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
   async function handleAddToRoster() {
     setIsPending(true);
     setError(null);
-    try {
-      await addAction(playerId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add player");
-    } finally {
-      setIsPending(false);
-    }
+    const result = await addAction(playerId);
+    if (!result.ok) setError(result.error);
+    setIsPending(false);
   }
 
   async function handleMercAction() {
     setIsPending(true);
     setError(null);
-    try {
-      await mercAction(playerId, !isMercenary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update mercenary status");
-    } finally {
-      setIsPending(false);
-    }
+    const result = await mercAction(playerId, !isMercenary);
+    if (!result.ok) setError(result.error);
+    setIsPending(false);
   }
 
   return (
