@@ -194,7 +194,18 @@ export function MyToggleButton({
 
 **Pattern B — mutation affects other UI on the page (e.g. tags, exclusion status, competition assignment):**
 
-Track only the pending flag with `useState`, then call `window.location.reload()` once the action resolves. A full reload is heavier (loses scroll position / tab selection) but is unconditionally correct and avoids the RSC-cache/scheduler issue entirely. These are infrequent, deliberate actions, not high-frequency interactions.
+Call `refresh()` (`next/cache`) from inside the server action itself, after `revalidatePath(...)`. `refresh()` is architecturally distinct from `router.refresh()` — it doesn't hit the `isPending`-stuck scheduler bug described above. Track only the pending flag with `useState` on the client; the component stays mounted, so explicitly reset whatever local state a full reload used to clear for free (close dialogs, clear create-form fields, reset selects) — see the components under `components/games/`, `components/admin/`, and `components/laserball/` for worked examples.
+
+```tsx
+// actions.ts — "use server"
+import { refresh, revalidatePath } from "next/cache";
+
+export async function myAction(id: string) {
+  await mutate(id);
+  revalidatePath(`/things/${id}`);
+  refresh();
+}
+```
 
 ```tsx
 "use client";
@@ -208,7 +219,7 @@ export function MyActionButton({ action }: { action: () => Promise<void> }) {
     try {
       await action();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -220,29 +231,12 @@ export function MyActionButton({ action }: { action: () => Promise<void> }) {
 }
 ```
 
-Server actions should still call `revalidatePath` — it clears the server-side cache so the reloaded page returns fresh data.
-
-**Trial: `refresh()` in place of `window.location.reload()`.** Next.js 16 added `refresh()`
-(`next/cache`), a Server-Actions-only API called from inside the action itself rather than
-from client code — architecturally distinct from `router.refresh()`, so it may not hit the
-same scheduler bug. `GameTagManager.tsx` (`src/app/games/[slug]/actions.ts`'s
-`assignTagAction`/`removeTagAction`) was migrated from full-reload to
-`revalidatePath(...)` + `refresh()`, manually verified in the browser (repeated add/remove
-clicks, no stuck-pending state), and is now being watched in production. If it holds up, this
-becomes the preferred Pattern B implementation and the other ~32 `window.location.reload()`
-sites are candidates to migrate; if it regresses, revert this one site back to
-`window.location.reload()` and treat the hypothesis as disproven.
-
-```tsx
-"use server";
-import { refresh, revalidatePath } from "next/cache";
-
-export async function myAction(id: string) {
-  await mutate(id);
-  revalidatePath(`/things/${id}`);
-  refresh();
-}
-```
+This was trialed on `GameTagManager.tsx` and the team roster admin page before being rolled
+out across the rest of the app (see `docs/TODO.md` git history for the migration list) — watch
+new Pattern B sites in production for a stuck `isPending` the same way. `DeleteEntityButton.tsx`
+(`components/admin/competition/`) is the one deliberate holdout still on
+`window.location.reload()`: it's shared across 7+ admin pages and accepts either calling
+convention, so it can be migrated independently later without another cross-cutting change.
 
 ## Cross-Page Filter State (scope / gameType / center / competition)
 
