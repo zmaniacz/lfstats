@@ -1,0 +1,1 @@
+ALTER TABLE "game_video" ADD COLUMN "start_seconds" integer;

@@ -11,7 +11,7 @@ import {
   getScorecardPlayerIdByIplId,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
-import { parseYoutubeVideoId } from "@/lib/youtube";
+import { parseYoutubeLink } from "@/lib/youtube";
 
 // Unlike the rest of /api (unauthenticated GETs), POST here requires an API key.
 // Keys are global: any valid key may write for any center.
@@ -21,6 +21,8 @@ type PostBody = {
   youtube_url?: unknown;
   ipl_id?: unknown;
   label?: unknown;
+  start_seconds?: unknown;
+  overwrite?: unknown;
 };
 
 function bearerToken(request: Request): string | null {
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
   const youtubeUrl = typeof body.youtube_url === "string" ? body.youtube_url.trim() : null;
   const iplId = typeof body.ipl_id === "string" && body.ipl_id ? body.ipl_id : null;
   const label = typeof body.label === "string" && body.label ? body.label : null;
+  const overwrite = body.overwrite === true;
 
   if (!slug) {
     return NextResponse.json({ error: "game_slug is required" }, { status: 400 });
@@ -65,10 +68,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "youtube_url is required" }, { status: 400 });
   }
 
-  const youtubeVideoId = parseYoutubeVideoId(youtubeUrl);
-  if (!youtubeVideoId) {
+  if (
+    body.start_seconds !== undefined &&
+    body.start_seconds !== null &&
+    (typeof body.start_seconds !== "number" ||
+      !Number.isInteger(body.start_seconds) ||
+      body.start_seconds < 0)
+  ) {
+    return NextResponse.json(
+      { error: "start_seconds must be a non-negative integer" },
+      { status: 400 },
+    );
+  }
+
+  const link = parseYoutubeLink(youtubeUrl);
+  if (!link) {
     return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 });
   }
+
+  // An explicit start_seconds wins over the URL's own t/start param, so a tool
+  // that computes offsets into a long recording doesn't have to build the URL.
+  const startSeconds =
+    typeof body.start_seconds === "number" ? body.start_seconds || null : link.startSeconds;
 
   const game = await getGameBySlug(slug);
   if (!game) {
@@ -85,17 +106,21 @@ export async function POST(request: Request) {
     }
   }
 
-  const { video, created } = await addGameVideo({
-    gameId: game.id,
-    playerId,
-    youtubeUrl,
-    youtubeVideoId,
-    label,
-    source: "api",
-    createdByApiKeyId: key.id,
-  });
+  const { video, created, updated } = await addGameVideo(
+    {
+      gameId: game.id,
+      playerId,
+      youtubeUrl,
+      youtubeVideoId: link.videoId,
+      startSeconds,
+      label,
+      source: "api",
+      createdByApiKeyId: key.id,
+    },
+    { overwrite },
+  );
 
-  if (created) await revalidateGamePage(game.id, game.type);
+  if (created || updated) await revalidateGamePage(game.id, game.type);
 
   return NextResponse.json(
     {
@@ -103,8 +128,10 @@ export async function POST(request: Request) {
       game_slug: slug,
       ipl_id: iplId,
       youtube_url: video.youtubeUrl,
+      start_seconds: video.startSeconds,
       label: video.label,
       created,
+      updated,
     },
     { status: created ? 201 : 200 },
   );
@@ -131,6 +158,7 @@ export async function GET(request: Request) {
       callsign: v.callsign,
       youtube_url: v.youtubeUrl,
       youtube_video_id: v.youtubeVideoId,
+      start_seconds: v.startSeconds,
       label: v.label,
       source: v.source,
       created_at: v.createdAt,

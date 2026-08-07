@@ -170,38 +170,81 @@ rejected immediately.
 
 ### Request body
 
-| Field         | Required | Description                                                       |
-| ------------- | -------- | ----------------------------------------------------------------- |
-| `game_slug`   | yes      | Game slug, e.g. `4-23-20260808212334`                             |
-| `youtube_url` | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…` |
-| `ipl_id`      | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.   |
-| `label`       | no       | Free text, e.g. `Arena Cam 2`                                     |
+| Field           | Required | Description                                                                    |
+| --------------- | -------- | ------------------------------------------------------------------------------ |
+| `game_slug`     | yes      | Game slug, e.g. `4-23-20260808212334`                                          |
+| `youtube_url`   | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…`              |
+| `ipl_id`        | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.                |
+| `label`         | no       | Free text, e.g. `Arena Cam 2`                                                  |
+| `start_seconds` | no       | Non-negative integer offset; overrides any offset in the URL. See below.       |
+| `overwrite`     | no       | `true` rewrites an already-linked video instead of no-opping. Default `false`. |
 
 ```json
 {
   "game_slug": "4-23-20260808212334",
-  "youtube_url": "https://youtu.be/dQw4w9WgXcQ",
+  "youtube_url": "https://youtu.be/dQw4w9WgXcQ?t=1h2m3s",
   "ipl_id": "#1234567",
-  "label": "Red Commander POV"
+  "label": "Red Commander POV",
+  "overwrite": true
 }
 ```
 
-### Idempotency
+### Start offsets
 
-Re-posting the same video for the same game and player is a no-op: the existing row is returned
-with `201` → `200` and `"created": false`. This is enforced by a
+A center often publishes one multi-hour recording covering a whole night rather than a clip per
+game, so a link is only useful if it jumps to where the game starts.
+
+Any start time in `youtube_url` is parsed and stored, and every link LFstats renders is rebuilt
+with it. Both of YouTube's forms are accepted, on `?t=`, `?start=`, or a legacy `#t=` fragment:
+bare seconds (`3675`, `3675s`) and durations (`1h2m3s`, `2m30s`, `1h30m`).
+
+`start_seconds` sets the offset directly and wins over whatever the URL carries — for a tool that
+computes offsets into a long recording, it's simpler than rewriting the URL. An unparseable offset
+in the URL is ignored rather than failing the request; an invalid `start_seconds` is a `400`.
+
+The offset is deliberately **not** part of the uniqueness key, so a corrected offset for a video
+already linked to a game is an update (see below), never a second copy of the same link.
+
+### Idempotency and `overwrite`
+
+Re-posting the same video for the same game and player is a no-op by default: the stored row is
+returned untouched with `200` and `"created": false`. This is enforced by a
 `UNIQUE NULLS NOT DISTINCT (game_id, player_id, youtube_video_id)` constraint, so retries and
 re-runs are safe and won't clutter the game page with duplicates.
+
+`"overwrite": true` makes that conflict an update instead: `youtube_url`, `start_seconds` and
+`label` are rewritten from the request. Use it when re-running a tool with corrected data — a
+resynced start offset, a fixed label. `created_at` and the original creator are preserved, since
+this is the same link being corrected rather than a new one.
+
+`"updated"` in the response distinguishes a real change from a no-op — re-posting identical data
+with `overwrite: true` still reports `"updated": false`.
+
+Overwrite is scoped to the matching `(game, player, video)` row. It never touches _other_ videos
+on the game, so it can't clobber a second arena cam or another player's POV footage.
 
 ### Responses
 
 | Status | Meaning                                                                        |
 | ------ | ------------------------------------------------------------------------------ |
-| `201`  | Video created                                                                  |
-| `200`  | Video already existed (`"created": false`)                                     |
+| `201`  | Video created (`"created": true`)                                              |
+| `200`  | Video already existed — updated (`"updated": true`) or unchanged               |
 | `400`  | Missing/invalid field, unparseable YouTube URL, or malformed JSON body         |
 | `401`  | Missing, unknown, or revoked API key                                           |
 | `404`  | Game not found, or `ipl_id` belongs to a player with no scorecard in that game |
+
+```json
+{
+  "id": "2c77bbbf-0ade-4e67-afbb-092a46ae80cc",
+  "game_slug": "4-23-20260808212334",
+  "ipl_id": null,
+  "youtube_url": "https://youtu.be/dQw4w9WgXcQ?t=1h2m3s",
+  "start_seconds": 3723,
+  "label": "Arena Cam",
+  "created": true,
+  "updated": false
+}
+```
 
 Note the `404` on `ipl_id`: a POV video may only be attached to someone who actually played the
 game, so a mistyped id belonging to a real player elsewhere is rejected rather than silently
@@ -227,8 +270,9 @@ uploaded.
       "id": "819a5295-f52d-4000-97db-1ed841d3cb83",
       "ipl_id": null,
       "callsign": null,
-      "youtube_url": "https://youtu.be/dQw4w9WgXcQ",
+      "youtube_url": "https://youtu.be/dQw4w9WgXcQ?t=3675",
       "youtube_video_id": "dQw4w9WgXcQ",
+      "start_seconds": 3675,
       "label": "Scoreboard Cam",
       "source": "api",
       "created_at": "2026-08-06T20:47:22.688Z"
@@ -239,6 +283,8 @@ uploaded.
 
 `ipl_id`/`callsign` are `null` for game-level videos and populated for player POV videos.
 `source` is `admin` (added through the game page UI) or `api` (posted through this endpoint).
+`start_seconds` is the normalized offset (see [Start offsets](#start-offsets)) and is `null` when
+the video has none; `youtube_url` is the URL exactly as submitted.
 
 `400` if `game_slug` is absent, `404` if it doesn't resolve to a game.
 

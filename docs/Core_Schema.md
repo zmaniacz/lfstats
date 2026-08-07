@@ -760,6 +760,7 @@ Videos are added two ways: by an admin or center admin through the Videos tab on
 | `player_id`             | uuid FK   | sometimes | References `Player`. **Null means a game-level video**; set means this is that player's POV footage. Cascades on delete.                                        |
 | `youtube_video_id`      | string    | never     | The 11-character YouTube video id, parsed from the submitted URL at write time. Used to build watch and thumbnail URLs, and to dedupe.                          |
 | `youtube_url`           | string    | never     | The URL exactly as submitted. Retained for display and debugging — the canonical identity is `youtube_video_id`, since the same video has many valid URL forms. |
+| `start_seconds`         | integer   | sometimes | Offset into the video where this game starts, normalized to whole seconds. Null means the link starts at the beginning.                                         |
 | `label`                 | string    | sometimes | Free-text caption, e.g. `Arena Cam 2` or `Red Commander POV`. Null renders as "Untitled video".                                                                 |
 | `source`                | enum      | never     | `admin` (added through the game page UI) or `api` (posted by an external tool). Surfaced in the UI as an "Auto" badge for `api` rows.                           |
 | `created_by_user_id`    | text FK   | sometimes | References `AuthUser`. Set when `source = 'admin'`, null otherwise.                                                                                             |
@@ -769,11 +770,14 @@ Videos are added two ways: by an admin or center admin through the Videos tab on
 **Constraints:**
 
 - `(game_id, player_id, youtube_video_id)` is unique **with `NULLS NOT DISTINCT`**. The clause is required, not incidental: Postgres treats NULLs as distinct in unique indexes by default, so without it game-level videos (`player_id IS NULL`) would not dedupe at all and only POV rows would be protected. This constraint is what makes `POST /api/videos` idempotent under retries.
+- `start_seconds` is deliberately **excluded** from that constraint. Centers commonly publish one multi-hour recording covering a whole night, so a re-post with a corrected offset must update the existing row rather than insert a near-duplicate. Including the offset in the key would make every resync add another copy of the same link.
 - Indexes on `game_id` and `player_id` back the game-page and player-profile reads respectively.
 
 **Notes:**
 
 - Exactly one of `created_by_user_id` / `created_by_api_key_id` is set in practice, matching `source`. This is a convention, not a database constraint.
+- `start_seconds` is parsed from the submitted URL's `t`/`start` parameter (`parseYoutubeLink` in `apps/web/src/lib/youtube.ts`), or set explicitly via the API's `start_seconds` field, which takes precedence. Every link the site renders is rebuilt from `youtube_video_id` + `start_seconds`, so the stored offset — not `youtube_url` — is what determines where a viewer lands.
+- A conflicting write updates `youtube_url`, `start_seconds` and `label` only when the caller opts in (`overwrite` on the API, always on for the admin UI, where re-adding a listed video means correcting it). `created_at` and the original creator are preserved.
 - A POV video may only be attached to a player with a scorecard in that game — enforced in the API path by `getScorecardPlayerIdByIplId`, not by the schema. Guest players have no `Player` row and therefore cannot be the subject of a POV video.
 - The Laserball game page renders a whole match (both halves plus overtime) on one page, so it reads videos across every game in the match, while a newly added video attaches to the half currently being viewed.
 

@@ -302,6 +302,13 @@
       "when": 1786048705231,
       "tag": "0042_bored_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1786075047756,
+      "tag": "0043_orange_king_cobra",
+      "breakpoints": true
     }
   ]
 }

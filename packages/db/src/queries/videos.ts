@@ -16,6 +16,7 @@ export type GameVideo = {
   iplId: string | null;
   youtubeVideoId: string;
   youtubeUrl: string;
+  startSeconds: number | null;
   label: string | null;
   source: "admin" | "api";
   createdAt: Date;
@@ -30,6 +31,7 @@ export type PlayerVideo = {
   centerName: string;
   youtubeVideoId: string;
   youtubeUrl: string;
+  startSeconds: number | null;
   label: string | null;
   createdAt: Date;
 };
@@ -39,43 +41,77 @@ export type NewGameVideo = {
   playerId: string | null;
   youtubeVideoId: string;
   youtubeUrl: string;
+  startSeconds: number | null;
   label: string | null;
   source: "admin" | "api";
   createdByUserId?: string | null;
   createdByApiKeyId?: string | null;
 };
 
+export type AddGameVideoResult = {
+  video: GameVideoRow;
+  /** A new row was inserted. */
+  created: boolean;
+  /** An existing row's contents changed (only possible with `overwrite`). */
+  updated: boolean;
+};
+
 const gameSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`;
 
 /**
- * Inserts a video, or returns the existing row when the same video has already
- * been attached to this game/player. Backed by the (game_id, player_id,
+ * Inserts a video, or reconciles with the existing row when the same video has
+ * already been attached to this game/player. Backed by the (game_id, player_id,
  * youtube_video_id) NULLS NOT DISTINCT unique constraint, which makes repeat
  * POSTs from the external tool idempotent rather than duplicating rows.
  *
- * `created` distinguishes a fresh insert (201) from a no-op (200).
+ * Without `overwrite` a conflict is a no-op and the stored row is returned
+ * untouched. With it, the row is rewritten from `input` — the way a capture
+ * tool corrects a start offset or label on a link it already published. The
+ * offset is not part of the unique key precisely so that this is an update.
+ *
+ * `created` marks a fresh insert (201); `updated` marks a conflict whose
+ * contents actually changed, so callers can skip revalidation on a true no-op.
  */
 export async function addGameVideo(
   input: NewGameVideo,
-): Promise<{ video: GameVideoRow; created: boolean }> {
+  options: { overwrite?: boolean } = {},
+): Promise<AddGameVideoResult> {
   const [inserted] = await db.insert(gameVideo).values(input).onConflictDoNothing().returning();
 
-  if (inserted) return { video: inserted, created: true };
+  if (inserted) return { video: inserted, created: true, updated: false };
 
-  const [existing] = await db
-    .select()
-    .from(gameVideo)
-    .where(
-      and(
-        eq(gameVideo.gameId, input.gameId),
-        input.playerId === null
-          ? sql`${gameVideo.playerId} is null`
-          : eq(gameVideo.playerId, input.playerId),
-        eq(gameVideo.youtubeVideoId, input.youtubeVideoId),
-      ),
-    );
+  const conflict = and(
+    eq(gameVideo.gameId, input.gameId),
+    input.playerId === null
+      ? sql`${gameVideo.playerId} is null`
+      : eq(gameVideo.playerId, input.playerId),
+    eq(gameVideo.youtubeVideoId, input.youtubeVideoId),
+  );
 
-  return { video: existing!, created: false };
+  const [existing] = await db.select().from(gameVideo).where(conflict);
+
+  const changed =
+    existing!.youtubeUrl !== input.youtubeUrl ||
+    existing!.startSeconds !== input.startSeconds ||
+    existing!.label !== input.label;
+
+  if (!options.overwrite || !changed) {
+    return { video: existing!, created: false, updated: false };
+  }
+
+  // createdAt and the original creator are left alone — this is the same video
+  // link being corrected, not a new one.
+  const [updated] = await db
+    .update(gameVideo)
+    .set({
+      youtubeUrl: input.youtubeUrl,
+      startSeconds: input.startSeconds,
+      label: input.label,
+    })
+    .where(conflict)
+    .returning();
+
+  return { video: updated!, created: false, updated: true };
 }
 
 export async function removeGameVideo(videoId: string): Promise<void> {
@@ -102,6 +138,7 @@ export async function getGameVideosForGames(gameIds: string[]): Promise<GameVide
       iplId: player.iplId,
       youtubeVideoId: gameVideo.youtubeVideoId,
       youtubeUrl: gameVideo.youtubeUrl,
+      startSeconds: gameVideo.startSeconds,
       label: gameVideo.label,
       source: gameVideo.source,
       createdAt: gameVideo.createdAt,
@@ -123,6 +160,7 @@ export async function getPlayerVideos(playerId: string): Promise<PlayerVideo[]> 
       centerName: center.name,
       youtubeVideoId: gameVideo.youtubeVideoId,
       youtubeUrl: gameVideo.youtubeUrl,
+      startSeconds: gameVideo.startSeconds,
       label: gameVideo.label,
       createdAt: gameVideo.createdAt,
     })

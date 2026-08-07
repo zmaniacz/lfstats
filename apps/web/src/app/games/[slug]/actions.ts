@@ -4,7 +4,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { parseYoutubeVideoId } from "@/lib/youtube";
+import { parseYoutubeLink } from "@/lib/youtube";
 import {
   addFavorite,
   addGameVideo,
@@ -252,18 +252,24 @@ export async function addGameVideoAction(gameId: string, formData: FormData): Pr
   const { session } = await requireCenterAdmin(gameId);
 
   const youtubeUrl = ((formData.get("youtubeUrl") as string) || "").trim();
-  const youtubeVideoId = parseYoutubeVideoId(youtubeUrl);
-  if (!youtubeVideoId) throw new Error("Invalid YouTube URL");
+  const link = parseYoutubeLink(youtubeUrl);
+  if (!link) throw new Error("Invalid YouTube URL");
 
-  await addGameVideo({
-    gameId,
-    playerId: (formData.get("playerId") as string) || null,
-    youtubeUrl,
-    youtubeVideoId,
-    label: (formData.get("label") as string) || null,
-    source: "admin",
-    createdByUserId: session.user.id,
-  });
+  // overwrite: re-adding a video already on this game means correcting it (a
+  // fixed start offset or label), not asking for a second copy of the same link.
+  await addGameVideo(
+    {
+      gameId,
+      playerId: (formData.get("playerId") as string) || null,
+      youtubeUrl,
+      youtubeVideoId: link.videoId,
+      startSeconds: link.startSeconds,
+      label: (formData.get("label") as string) || null,
+      source: "admin",
+      createdByUserId: session.user.id,
+    },
+    { overwrite: true },
+  );
   await revalidateGame(gameId);
 }
 

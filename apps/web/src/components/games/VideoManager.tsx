@@ -23,7 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { parseYoutubeVideoId, youtubeThumbnailUrl, youtubeWatchUrl } from "@/lib/youtube";
+import {
+  formatVideoOffset,
+  parseYoutubeVideoId,
+  youtubeThumbnailUrl,
+  youtubeWatchUrl,
+} from "@/lib/youtube";
 import type { GameVideo } from "@lfstats/db";
 
 export type VideoRosterEntry = {
@@ -225,6 +230,11 @@ export function VideoManager({
                 }}
                 placeholder="https://youtu.be/..."
               />
+              <p className="text-xs text-muted-foreground">
+                A start time in the URL (YouTube&apos;s &ldquo;Share at current time&rdquo;) is
+                kept, so links into a long recording land on this game. Re-adding a video already
+                listed here updates it.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="label">Label (optional)</Label>
@@ -262,10 +272,10 @@ function VideoCard({
   return (
     <div className="space-y-2">
       <a
-        href={youtubeWatchUrl(video.youtubeVideoId)}
+        href={youtubeWatchUrl(video.youtubeVideoId, video.startSeconds)}
         target="_blank"
         rel="noopener noreferrer"
-        className="block overflow-hidden rounded-md border hover:opacity-90 transition-opacity"
+        className="relative block overflow-hidden rounded-md border hover:opacity-90 transition-opacity"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -274,6 +284,11 @@ function VideoCard({
           className="w-full aspect-video object-cover"
           loading="lazy"
         />
+        {video.startSeconds !== null && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
+            @ {formatVideoOffset(video.startSeconds)}
+          </span>
+        )}
       </a>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">

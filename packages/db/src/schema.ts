@@ -1193,6 +1193,12 @@ export const gameVideo = pgTable(
     playerId: uuid("player_id").references(() => player.id, { onDelete: "cascade" }),
     youtubeVideoId: text("youtube_video_id").notNull(),
     youtubeUrl: text("youtube_url").notNull(),
+    // Offset into the video where this game starts, parsed from the submitted
+    // URL's t/start param. Centers often publish one multi-hour recording
+    // covering a whole night, so the offset is what makes the link useful.
+    // Deliberately NOT part of the unique constraint below: a corrected offset
+    // for an already-linked video must update that row, not add a second one.
+    startSeconds: integer("start_seconds"),
     label: text("label"),
     source: videoSourceEnum("source").notNull(),
     createdByUserId: text("created_by_user_id").references(() => authUser.id),
