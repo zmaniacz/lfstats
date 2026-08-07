@@ -38,8 +38,9 @@ export function TagForm({ centerId, tag, open, onOpenChange, createAction, updat
       } else {
         await createAction(centerId, formData);
       }
+      onOpenChange(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

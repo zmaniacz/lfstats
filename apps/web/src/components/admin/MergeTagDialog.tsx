@@ -50,8 +50,10 @@ export function MergeTagDialog({
     setIsPending(true);
     try {
       await action(sourceTag.id, targetId, centerId);
+      setTargetId("");
+      onOpenChange(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
