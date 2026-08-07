@@ -51,10 +51,10 @@ export function PlayerPictureUpload({
       await confirmPlayerPictureUploadAction(competitionId, teamId, entryId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-      setIsPending(false);
       return;
+    } finally {
+      setIsPending(false);
     }
-    window.location.reload();
   }
 
   async function handleRemove() {
@@ -64,10 +64,9 @@ export function PlayerPictureUpload({
       await removePlayerPictureAction(competitionId, teamId, entryId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove picture");
+    } finally {
       setIsPending(false);
-      return;
     }
-    window.location.reload();
   }
 
   return (

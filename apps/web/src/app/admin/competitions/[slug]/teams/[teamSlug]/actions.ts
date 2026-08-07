@@ -3,7 +3,7 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   addPlayerToCompetitionTeam,
   removePlayerFromCompetitionTeam,
@@ -76,6 +76,7 @@ export async function addPlayerAction(
   await requireAdmin();
   await addPlayerToCompetitionTeam(teamId, playerId);
   await revalidateTeamPaths(competitionId, teamId);
+  refresh();
 }
 
 export async function removePlayerAction(
@@ -97,6 +98,7 @@ export async function setMercenaryAction(
   await requireAdmin();
   await setPlayerMercenary(teamId, playerId, isMercenary);
   await revalidateTeamPaths(competitionId, teamId);
+  refresh();
 }
 
 export async function addParticipantToRosterAction(
@@ -107,6 +109,7 @@ export async function addParticipantToRosterAction(
   await requireAdmin();
   await addPlayerToCompetitionTeam(teamId, playerId);
   await revalidateTeamPaths(competitionId, teamId);
+  refresh();
 }
 
 export async function searchPlayersAction(query: string): Promise<PlayerSearchResult[]> {
@@ -146,6 +149,7 @@ export async function confirmTeamLogoUploadAction(
   await setCompetitionTeamLogo(teamId, true);
   await revalidateTeamPaths(competitionId, teamId);
   revalidatePath(`/competitions/standings`);
+  refresh();
 }
 
 export async function removeTeamLogoAction(competitionId: string, teamId: string): Promise<void> {
@@ -155,6 +159,7 @@ export async function removeTeamLogoAction(competitionId: string, teamId: string
   await setCompetitionTeamLogo(teamId, false);
   await revalidateTeamPaths(competitionId, teamId);
   revalidatePath(`/competitions/standings`);
+  refresh();
 }
 
 export async function getPlayerPictureUploadUrlAction(
@@ -190,6 +195,7 @@ export async function confirmPlayerPictureUploadAction(
   await requireAdmin();
   await setCompetitionTeamPlayerPicture(entryId, true);
   await revalidateTeamPaths(competitionId, teamId);
+  refresh();
 }
 
 export async function removePlayerPictureAction(
@@ -202,4 +208,5 @@ export async function removePlayerPictureAction(
   await s3.send(new DeleteObjectCommand({ Bucket: getImagesBucket(), Key: entryId }));
   await setCompetitionTeamPlayerPicture(entryId, false);
   await revalidateTeamPaths(competitionId, teamId);
+  refresh();
 }

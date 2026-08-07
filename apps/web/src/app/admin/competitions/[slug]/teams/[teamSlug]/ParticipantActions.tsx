@@ -24,10 +24,9 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
       await addAction(playerId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add player");
+    } finally {
       setIsPending(false);
-      return;
     }
-    window.location.reload();
   }
 
   async function handleMercAction() {
@@ -37,10 +36,9 @@ export function ParticipantActions({ playerId, isMercenary, addAction, mercActio
       await mercAction(playerId, !isMercenary);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update mercenary status");
+    } finally {
       setIsPending(false);
-      return;
     }
-    window.location.reload();
   }
 
   return (

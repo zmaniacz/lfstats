@@ -49,10 +49,10 @@ export function TeamLogoUpload({
       await confirmTeamLogoUploadAction(competitionId, teamId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-      setIsPending(false);
       return;
+    } finally {
+      setIsPending(false);
     }
-    window.location.reload();
   }
 
   async function handleRemove() {
@@ -62,10 +62,9 @@ export function TeamLogoUpload({
       await removeTeamLogoAction(competitionId, teamId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove logo");
+    } finally {
       setIsPending(false);
-      return;
     }
-    window.location.reload();
   }
 
   return (

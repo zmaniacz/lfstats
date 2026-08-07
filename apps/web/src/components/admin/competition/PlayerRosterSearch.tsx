@@ -42,13 +42,13 @@ export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
     setAddError(null);
     try {
       await addAction(playerId);
+      setResults((prev) => prev.filter((p) => p.id !== playerId));
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add player");
+    } finally {
       setIsPendingAdd(false);
       setAddingId(null);
-      return;
     }
-    window.location.reload();
   }
 
   return (
