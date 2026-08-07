@@ -72,6 +72,7 @@ export async function deleteRoundAction(competitionId: string, roundId: string):
   await requireAdmin();
   await deleteCompetitionRound(roundId);
   await revalidateRoundsPage(competitionId);
+  refresh();
 }
 
 export async function createMatchAction(

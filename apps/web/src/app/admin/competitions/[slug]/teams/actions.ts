@@ -44,6 +44,7 @@ export async function deleteCompetitionTeamAction(
   await deleteCompetitionTeam(teamId);
   const comp = await getCompetitionById(competitionId);
   if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`);
+  refresh();
 }
 
 export async function addPlayerToTeamAction(
@@ -72,6 +73,7 @@ export async function removePlayerFromTeamAction(
     getCompetitionTeamById(teamId),
   ]);
   if (comp && team) revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`);
+  refresh();
 }
 
 export async function searchPlayersAction(query: string): Promise<PlayerSearchResult[]> {

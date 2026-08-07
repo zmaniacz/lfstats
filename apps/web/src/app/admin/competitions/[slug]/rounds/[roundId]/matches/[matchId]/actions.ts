@@ -66,6 +66,7 @@ export async function removeGameAction(
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
     revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
   }
+  refresh();
 }
 
 export async function updateMatchTeamsAction(
