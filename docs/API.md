@@ -46,6 +46,7 @@ one.
 {
   "data": [
     {
+      "game_canonical_id": "4-23_20260712155024",
       "center_slug": "4-23",
       "timestamp": "2026-07-12T15:50:24.000Z",
       "game_type": "sm5",
@@ -62,6 +63,10 @@ one.
 Sorted by `timestamp` descending. `timestamp` is the game's stored local start time — no timezone
 conversion is applied (see root `CLAUDE.md`'s "no UTC conversion" convention), but note that
 `NextResponse.json` serializes JS `Date` values with a `Z` suffix regardless.
+
+`game_canonical_id` is the game's [canonical id](#game-canonical-ids) and is the same value
+`POST /api/videos` expects in its `game_canonical_id` field, so a consumer can feed this route's
+output straight back into the video routes.
 
 `competition_slug` is `null` for social games. `round_number`, `match_number` and `game_number`
 come from the competition's match schedule (`competition_match_game` → `competition_match` →

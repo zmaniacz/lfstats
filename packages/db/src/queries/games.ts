@@ -139,6 +139,10 @@ export type GameExportFilters = {
 
 export type GameExportItem = {
   centerSlug: string;
+  // `{countryCode}-{siteCode}_{YYYYMMDDHHmmss}` — the id accepted by
+  // getGameByCanonicalId / POST /api/videos. Note the underscore before the
+  // timestamp, unlike the all-dash slug used in page URLs.
+  canonicalId: string;
   startTime: Date;
   gameType: string;
   tdfFilename: string;
@@ -165,6 +169,7 @@ export async function getGamesForExport(filters: GameExportFilters): Promise<Gam
   return db
     .select({
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      canonicalId: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '_', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       startTime: game.startTime,
       gameType: game.type,
       tdfFilename: game.tdfFilename,

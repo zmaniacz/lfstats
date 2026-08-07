@@ -64,6 +64,7 @@ export async function GET(request: Request) {
   });
 
   const data = games.map((g) => ({
+    game_canonical_id: g.canonicalId,
     center_slug: g.centerSlug,
     timestamp: g.startTime,
     game_type: g.gameType,
