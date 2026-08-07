@@ -107,8 +107,11 @@ export function LbMatchManager({
         otherSide1TeamId,
         otherSide2TeamId: otherSide2.id,
       });
+      setSelectedCandidateId("");
+      setGameSide1TeamId("");
+      setOtherSide1TeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -118,8 +121,13 @@ export function LbMatchManager({
     setIsPending(true);
     try {
       await unlinkAction(gameId, matchDetail.id, otherGameId);
+      setSelectedCandidateId("");
+      setGameSide1TeamId("");
+      setOtherSide1TeamId("");
+      setSelectedOtCandidateId("");
+      setOtSide1TeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -134,8 +142,10 @@ export function LbMatchManager({
         side1TeamId: otSide1TeamId,
         side2TeamId: otSide2.id,
       });
+      setSelectedOtCandidateId("");
+      setOtSide1TeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -144,8 +154,10 @@ export function LbMatchManager({
     setIsPending(true);
     try {
       await removeOvertimeAction(gameId, matchDetail.id);
+      setSelectedOtCandidateId("");
+      setOtSide1TeamId("");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
