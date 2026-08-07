@@ -15,13 +15,6 @@ function defaultDateRange() {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const defaults = defaultDateRange();
-
-  const startDate = searchParams.get("start_date") ?? defaults.start;
-  const endDate = searchParams.get("end_date") ?? defaults.end;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-    return NextResponse.json({ error: "Invalid start_date or end_date" }, { status: 400 });
-  }
 
   const gameTypeRaw = searchParams.get("game_type");
   if (gameTypeRaw && gameTypeRaw !== "sm5" && gameTypeRaw !== "lb") {
@@ -47,6 +40,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unknown competition slug" }, { status: 400 });
     }
     competitionId = competition.id;
+  }
+
+  // The rolling 10-day window only exists to keep the unfiltered feed small. A
+  // competition is already a tight bound on its own games, so filtering by one
+  // opts out of the default window — otherwise `?competition=x` alone returns
+  // nothing for any competition that finished more than 10 days ago.
+  const defaults = competitionId ? { start: undefined, end: undefined } : defaultDateRange();
+
+  const startDate = searchParams.get("start_date") ?? defaults.start;
+  const endDate = searchParams.get("end_date") ?? defaults.end;
+  const isValidDate = (d: string | undefined) => d === undefined || /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!isValidDate(startDate) || !isValidDate(endDate)) {
+    return NextResponse.json({ error: "Invalid start_date or end_date" }, { status: 400 });
   }
 
   const games = await getGamesForExport({

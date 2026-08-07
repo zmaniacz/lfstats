@@ -19,15 +19,26 @@ Defined in `apps/web/src/app/api/games/route.ts`, backed by `getGamesForExport` 
 
 ### Query parameters
 
-| Param         | Required | Format                             | Default              | Description                                    |
-| ------------- | -------- | ---------------------------------- | -------------------- | ---------------------------------------------- |
-| `start_date`  | no       | `YYYY-MM-DD`                       | 10 days before today | Inclusive start of the date range (local time) |
-| `end_date`    | no       | `YYYY-MM-DD`                       | today                | Inclusive end of the date range (local time)   |
-| `game_type`   | no       | `sm5` \| `lb`                      | both                 | Filter to one game type                        |
-| `center`      | no       | center slug, e.g. `4-23`           | all centers          | Filter to one center                           |
-| `competition` | no       | competition slug, e.g. `2026-mlaa` | all games            | Filter to one competition's games              |
+| Param         | Required | Format                                       | Default           | Description                                    |
+| ------------- | -------- | -------------------------------------------- | ----------------- | ---------------------------------------------- |
+| `start_date`  | no       | `YYYY-MM-DD`                                 | see date defaults | Inclusive start of the date range (local time) |
+| `end_date`    | no       | `YYYY-MM-DD`                                 | see date defaults | Inclusive end of the date range (local time)   |
+| `game_type`   | no       | `sm5` \| `lb`                                | both              | Filter to one game type                        |
+| `center`      | no       | center slug, e.g. `4-23`                     | all centers       | Filter to one center                           |
+| `competition` | no       | competition slug, e.g. `internationals_2026` | all games         | Filter to one competition's games              |
 
 Games with `exclude = true` are always omitted. Competition games are included.
+
+### Date defaults
+
+Without `competition`, an omitted `start_date` defaults to 10 days before today and an omitted
+`end_date` defaults to today. This rolling window keeps the unfiltered feed small.
+
+**`competition` opts out of that window**: when `competition` is supplied and a date bound is
+omitted, that bound is left unbounded, so `?competition=<slug>` alone returns every game in the
+competition regardless of how long ago it was played. Explicit `start_date`/`end_date` values
+still apply on top of the competition filter, and each bound is independent — you can pass just
+one.
 
 ### Response
 

@@ -128,8 +128,10 @@ export async function getGamesList(filters: GameListFilters = {}): Promise<GameL
 }
 
 export type GameExportFilters = {
-  startDate: string;
-  endDate: string;
+  // Both bounds are inclusive and independently optional — omitting one leaves
+  // that end of the range unbounded.
+  startDate?: string;
+  endDate?: string;
   gameType?: "sm5" | "lb";
   centerId?: string;
   competitionId?: string;
@@ -149,10 +151,13 @@ export type GameExportItem = {
 };
 
 export async function getGamesForExport(filters: GameExportFilters): Promise<GameExportItem[]> {
-  const conditions: SQL[] = [
-    eq(game.exclude, false),
-    sql`date(${game.startTime}) between ${filters.startDate}::date and ${filters.endDate}::date`,
-  ];
+  const conditions: SQL[] = [eq(game.exclude, false)];
+  if (filters.startDate) {
+    conditions.push(sql`date(${game.startTime}) >= ${filters.startDate}::date`);
+  }
+  if (filters.endDate) {
+    conditions.push(sql`date(${game.startTime}) <= ${filters.endDate}::date`);
+  }
   if (filters.gameType) conditions.push(eq(game.type, filters.gameType));
   if (filters.centerId) conditions.push(eq(game.centerId, filters.centerId));
   if (filters.competitionId) conditions.push(eq(game.competitionId, filters.competitionId));
