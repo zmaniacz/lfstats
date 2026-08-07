@@ -31,8 +31,9 @@ export function ExcludeToggleButton({ gameId, excluded, action }: Props) {
     setIsPending(true);
     try {
       await action(gameId, !excluded);
+      setOpen(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

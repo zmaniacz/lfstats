@@ -134,7 +134,7 @@ export function VideoManager({
     setIsPending(true);
 
     // Editing can fail on a recoverable conflict, so it keeps the dialog open
-    // and shows why instead of reloading past the error.
+    // and shows why instead of resetting past the error.
     if (dialogMode === "edit" && editing) {
       const result = await updateAction(gameId, editing.id, formData);
       if (!result.ok) {
@@ -142,14 +142,26 @@ export function VideoManager({
         setIsPending(false);
         return;
       }
-      window.location.reload();
+      setDialogMode(null);
+      setEditing(null);
+      setUrl("");
+      setLabel("");
+      setPlayerId("");
+      setError(null);
+      setIsPending(false);
       return;
     }
 
     try {
       await addAction(gameId, formData);
+      setDialogMode(null);
+      setEditing(null);
+      setUrl("");
+      setLabel("");
+      setPlayerId("");
+      setError(null);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -157,8 +169,9 @@ export function VideoManager({
     setIsPending(true);
     try {
       await removeAction(gameId, videoId);
+      setDeleteTarget(null);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
