@@ -55,8 +55,11 @@ export function CompetitionMatchForm({
     setIsPending(true);
     try {
       await action(roundId, formData);
+      setTeam1Id("tbd");
+      setTeam2Id("tbd");
+      setPoolId(pools && pools.length > 0 ? pools[0].id : "none");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

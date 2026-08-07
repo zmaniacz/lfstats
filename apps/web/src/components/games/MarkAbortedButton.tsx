@@ -39,8 +39,9 @@ export function MarkAbortedButton({ gameId, isAborted, action }: Props) {
     setIsPending(true);
     try {
       await action(gameId);
+      setOpen(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

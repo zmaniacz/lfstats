@@ -4,7 +4,7 @@
 "use server";
 
 import { createApiKey, revokeApiKey } from "@lfstats/db";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { requireSuperAdmin } from "@/lib/auth-guards";
 
 // API keys grant write access across every center, so both actions below are
@@ -20,6 +20,7 @@ export async function createApiKeyAction(formData: FormData): Promise<{ plaintex
 
   const { plaintext } = await createApiKey(name, session.user.id);
   revalidatePath("/admin/api-keys");
+  refresh();
   return { plaintext };
 }
 
@@ -27,4 +28,5 @@ export async function revokeApiKeyAction(id: string): Promise<void> {
   await requireSuperAdmin();
   await revokeApiKey(id);
   revalidatePath("/admin/api-keys");
+  refresh();
 }

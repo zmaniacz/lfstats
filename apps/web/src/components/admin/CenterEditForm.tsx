@@ -24,7 +24,7 @@ export function CenterEditForm({ center, updateAction }: Props) {
     try {
       await updateAction(center.id, formData);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

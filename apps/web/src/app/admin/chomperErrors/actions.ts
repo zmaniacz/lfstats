@@ -5,7 +5,7 @@
 
 import { auth } from "@/auth";
 import { archiveChomperJob, archiveAllChomperJobs } from "@lfstats/db";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 async function requireAdmin() {
   const session = await auth();
@@ -18,10 +18,12 @@ export async function archiveChomperJobAction(id: string) {
   await requireAdmin();
   await archiveChomperJob(id);
   revalidatePath("/admin/chomperErrors");
+  refresh();
 }
 
 export async function archiveAllChomperJobsAction() {
   await requireAdmin();
   await archiveAllChomperJobs();
   revalidatePath("/admin/chomperErrors");
+  refresh();
 }

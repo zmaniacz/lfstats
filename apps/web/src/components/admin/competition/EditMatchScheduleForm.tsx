@@ -58,7 +58,7 @@ export function EditMatchScheduleForm({
     try {
       await action(formData);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

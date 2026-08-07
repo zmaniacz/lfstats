@@ -33,8 +33,9 @@ export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, action
     setIsPending(true);
     try {
       await actions.addAction(gameId, scorecardId, formData);
+      setShowAdd(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -42,8 +43,9 @@ export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, action
     setIsPending(true);
     try {
       await actions.updateAction(gameId, penaltyId, formData);
+      setEditingId(null);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -52,7 +54,7 @@ export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, action
     try {
       await actions.rescindAction(gameId, penaltyId, rescinded);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
@@ -61,7 +63,7 @@ export function PenaltyManager({ gameId, scorecardId, penalties, canEdit, action
     try {
       await actions.deleteAction(gameId, penaltyId);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

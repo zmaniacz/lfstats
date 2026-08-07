@@ -39,8 +39,9 @@ export function MarkReplayButton({ gameId, isReplay, action }: Props) {
     setIsPending(true);
     try {
       await action(gameId);
+      setOpen(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
