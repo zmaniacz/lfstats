@@ -3,7 +3,7 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   createCompetitionTeam,
   deleteCompetitionTeam,
@@ -33,6 +33,7 @@ export async function createCompetitionTeamAction(
   await createCompetitionTeam({ competitionId, name, shortName });
   const comp = await getCompetitionById(competitionId);
   if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`);
+  refresh();
 }
 
 export async function deleteCompetitionTeamAction(
@@ -43,6 +44,7 @@ export async function deleteCompetitionTeamAction(
   await deleteCompetitionTeam(teamId);
   const comp = await getCompetitionById(competitionId);
   if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`);
+  refresh();
 }
 
 export async function addPlayerToTeamAction(
@@ -71,6 +73,7 @@ export async function removePlayerFromTeamAction(
     getCompetitionTeamById(teamId),
   ]);
   if (comp && team) revalidatePath(`/admin/competitions/${comp.slug}/teams/${team.slug}`);
+  refresh();
 }
 
 export async function searchPlayersAction(query: string): Promise<PlayerSearchResult[]> {

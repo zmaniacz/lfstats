@@ -68,18 +68,21 @@ export async function toggleExcludeAction(gameId: string, exclude: boolean) {
   await requireCenterAdmin(gameId);
   await setGameExcluded(gameId, exclude);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function markGameAsReplayAction(gameId: string) {
   await requireCenterAdmin(gameId);
   await markGameAsReplay(gameId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function markGameAsAbortedAction(gameId: string) {
   await requireCenterAdmin(gameId);
   await markGameAsAborted(gameId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function assignTagAction(gameId: string, tagId: string) {
@@ -117,12 +120,14 @@ export async function addGameToCompetitionAction(
   await requireCenterAdmin(gameId);
   await setGameCompetition(gameId, competitionId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function removeGameFromCompetitionAction(gameId: string): Promise<void> {
   await requireCenterAdmin(gameId);
   await removeGameFromCompetition(gameId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function assignGameToMatchAction(
@@ -135,6 +140,7 @@ export async function assignGameToMatchAction(
   await requireCenterAdmin(gameId);
   await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function removeGameFromMatchAction(
@@ -144,6 +150,7 @@ export async function removeGameFromMatchAction(
   await requireCenterAdmin(gameId);
   await removeGameFromMatch(matchGameId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function addPenaltyAction(
@@ -162,6 +169,7 @@ export async function addPenaltyAction(
     inGame: false,
   });
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function updatePenaltyAction(
@@ -177,6 +185,7 @@ export async function updatePenaltyAction(
     mvpValue: parseFloat((formData.get("mvpValue") as string) || "0"),
   });
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function rescindPenaltyAction(
@@ -187,12 +196,14 @@ export async function rescindPenaltyAction(
   await requireCenterAdmin(gameId);
   await updatePenalty(penaltyId, { rescinded });
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function deletePenaltyAction(gameId: string, penaltyId: string): Promise<void> {
   await requireCenterAdmin(gameId);
   await deletePenalty(penaltyId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function addTeamPenaltyAction(
@@ -210,6 +221,7 @@ export async function addTeamPenaltyAction(
     inGame: false,
   });
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function updateTeamPenaltyAction(
@@ -224,6 +236,7 @@ export async function updateTeamPenaltyAction(
     scoreValue: parseInt((formData.get("scoreValue") as string) || "0", 10),
   });
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function rescindTeamPenaltyAction(
@@ -234,12 +247,14 @@ export async function rescindTeamPenaltyAction(
   await requireCenterAdmin(gameId);
   await updateTeamPenalty(penaltyId, { rescinded });
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function deleteTeamPenaltyAction(gameId: string, penaltyId: string): Promise<void> {
   await requireCenterAdmin(gameId);
   await deleteTeamPenalty(penaltyId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function setScorecardMercenaryAction(
@@ -250,6 +265,7 @@ export async function setScorecardMercenaryAction(
   await requireCenterAdmin(gameId);
   await setScorecardMercenary(scorecardId, isMercenary);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function addGameVideoAction(gameId: string, formData: FormData): Promise<void> {
@@ -275,6 +291,7 @@ export async function addGameVideoAction(gameId: string, formData: FormData): Pr
     { overwrite: true },
   );
   await revalidateGame(gameId);
+  refresh();
 }
 
 /**
@@ -300,6 +317,7 @@ export async function removeGameVideoAction(gameId: string, videoId: string): Pr
   await requireVideoAdmin(videoId);
   await removeGameVideo(videoId);
   await revalidateGame(gameId);
+  refresh();
 }
 
 export async function updateGameVideoAction(
@@ -331,6 +349,7 @@ export async function updateGameVideoAction(
   }
 
   await revalidateGame(gameId);
+  refresh();
   return { ok: true };
 }
 

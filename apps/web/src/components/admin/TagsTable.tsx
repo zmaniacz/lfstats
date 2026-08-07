@@ -146,7 +146,7 @@ export function TagsTable({
                               await archiveAction(tag.id, centerId);
                             }
                           } finally {
-                            window.location.reload();
+                            setIsPending(false);
                           }
                         }}
                         disabled={isPending}
@@ -217,8 +217,9 @@ export function TagsTable({
                   setIsPending(true);
                   try {
                     await deleteAction(deleteTarget.id, centerId);
+                    setDeleteTarget(undefined);
                   } finally {
-                    window.location.reload();
+                    setIsPending(false);
                   }
                 }}
                 disabled={isPending}

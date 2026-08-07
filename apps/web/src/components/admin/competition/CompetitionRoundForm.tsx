@@ -26,13 +26,16 @@ export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     formData.set("type", type);
     setIsPending(true);
     try {
       await action(formData);
+      form.reset();
+      setType("pool");
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

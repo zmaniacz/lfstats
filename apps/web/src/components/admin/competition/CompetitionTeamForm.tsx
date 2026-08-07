@@ -6,7 +6,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
@@ -14,6 +14,7 @@ type Props = {
 
 export function CompetitionTeamForm({ action }: Props) {
   const [isPending, setIsPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,13 +22,14 @@ export function CompetitionTeamForm({ action }: Props) {
     setIsPending(true);
     try {
       await action(formData);
+      formRef.current?.reset();
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-3">
+    <form ref={formRef} onSubmit={handleSubmit} className="flex items-end gap-3">
       <div className="space-y-1">
         <Label htmlFor="name">Team Name</Label>
         <Input id="name" name="name" required placeholder="e.g. Team Alpha" className="w-48" />

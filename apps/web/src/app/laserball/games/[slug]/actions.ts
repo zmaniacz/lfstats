@@ -22,7 +22,7 @@ import {
   type LbMatchOvertimePairing,
   type LbMatchTeamPairing,
 } from "@lfstats/db";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 async function requireCenterAdmin(gameId: string) {
   const session = await auth();
@@ -57,6 +57,7 @@ export async function toggleExcludeAction(gameId: string, exclude: boolean) {
   await requireCenterAdmin(gameId);
   await setGameExcluded(gameId, exclude);
   await revalidateLbGame(gameId);
+  refresh();
 }
 
 export async function linkLbMatchAction(
@@ -68,6 +69,7 @@ export async function linkLbMatchAction(
   await linkLbMatch(gameId, otherGameId, pairing, session.user.email ?? undefined);
   await revalidateLbGame(gameId);
   await revalidateLbGame(otherGameId);
+  refresh();
 }
 
 export async function unlinkLbMatchAction(
@@ -84,6 +86,7 @@ export async function unlinkLbMatchAction(
     await revalidateLbGame(gameId);
     await revalidateLbGame(otherGameId);
   }
+  refresh();
 }
 
 export async function addLbMatchOvertimeAction(
@@ -95,12 +98,14 @@ export async function addLbMatchOvertimeAction(
   await requireCenterAdmin(gameId);
   await addLbMatchOvertimeGame(matchId, otGameId, pairing);
   await revalidateLbMatchGames(matchId);
+  refresh();
 }
 
 export async function removeLbMatchOvertimeAction(gameId: string, matchId: string): Promise<void> {
   await requireCenterAdmin(gameId);
   await removeLbMatchOvertimeGame(matchId);
   await revalidateLbMatchGames(matchId);
+  refresh();
 }
 
 // The Videos tab unions videos across every game in a match, so a change to one
@@ -137,6 +142,7 @@ export async function addLbGameVideoAction(gameId: string, formData: FormData): 
     { overwrite: true },
   );
   await revalidateLbGameAndMatch(gameId);
+  refresh();
 }
 
 /**
@@ -163,6 +169,7 @@ export async function removeLbGameVideoAction(gameId: string, videoId: string): 
   await requireVideoAdmin(videoId);
   await removeGameVideo(videoId);
   await revalidateLbGameAndMatch(gameId);
+  refresh();
 }
 
 export async function updateLbGameVideoAction(
@@ -194,5 +201,6 @@ export async function updateLbGameVideoAction(
   }
 
   await revalidateLbGameAndMatch(gameId);
+  refresh();
   return { ok: true };
 }

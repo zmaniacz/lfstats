@@ -36,7 +36,7 @@ export function EditMatchTeamsForm({ teams, initialTeam1Id, initialTeam2Id, acti
     try {
       await action(formData);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 

@@ -5,7 +5,7 @@
 
 import { auth } from "@/auth";
 import { grantRole, revokeRole, getRoleById } from "@lfstats/db";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 type GrantableRole = "superAdmin" | "admin" | "centerAdmin" | "uploader";
 
@@ -52,6 +52,7 @@ export async function grantRoleAction(
 
   await grantRole(userId, role, centerId);
   revalidatePath("/admin/users");
+  refresh();
 }
 
 export async function revokeRoleAction(roleId: string): Promise<void> {
@@ -85,4 +86,5 @@ export async function revokeRoleAction(roleId: string): Promise<void> {
 
   await revokeRole(roleId);
   revalidatePath("/admin/users");
+  refresh();
 }

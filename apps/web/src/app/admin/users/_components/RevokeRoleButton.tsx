@@ -31,8 +31,9 @@ export function RevokeRoleButton({ roleId, label }: Props) {
     setIsPending(true);
     try {
       await revokeRoleAction(roleId);
+      setOpen(false);
     } finally {
-      window.location.reload();
+      setIsPending(false);
     }
   }
 
