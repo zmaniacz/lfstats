@@ -40,12 +40,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  formatVideoOffset,
-  parseYoutubeVideoId,
-  youtubeThumbnailUrl,
-  youtubeWatchUrl,
-} from "@/lib/youtube";
+import { YoutubeEmbed } from "@/components/video/YoutubeEmbed";
+import { parseYoutubeVideoId, youtubeWatchUrl } from "@/lib/youtube";
 import type { GameVideo } from "@lfstats/db";
 
 export type VideoRosterEntry = {
@@ -364,29 +360,23 @@ function VideoCard({
 }) {
   return (
     <div className="space-y-2">
-      <a
-        href={youtubeWatchUrl(video.youtubeVideoId, video.startSeconds)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="relative block overflow-hidden rounded-md border hover:opacity-90 transition-opacity"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={youtubeThumbnailUrl(video.youtubeVideoId)}
-          alt={video.label ?? "Game video thumbnail"}
-          className="w-full aspect-video object-cover"
-          loading="lazy"
-        />
-        {video.startSeconds !== null && (
-          <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
-            @ {formatVideoOffset(video.startSeconds)}
-          </span>
-        )}
-      </a>
+      <YoutubeEmbed
+        videoId={video.youtubeVideoId}
+        startSeconds={video.startSeconds}
+        label={video.label}
+      />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <p className="text-sm truncate">{video.label ?? "Untitled video"}</p>
           <div className="flex items-center gap-1.5 flex-wrap">
+            <a
+              href={youtubeWatchUrl(video.youtubeVideoId, video.startSeconds)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              YouTube ↗
+            </a>
             {halfLabel && (
               <Badge variant="secondary" className="text-xs px-1 py-0">
                 {halfLabel}

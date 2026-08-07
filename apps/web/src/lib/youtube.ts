@@ -105,3 +105,20 @@ export function formatVideoOffset(startSeconds: number): string {
 export function youtubeThumbnailUrl(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
+
+/**
+ * Player URL for an inline embed. Uses the nocookie host so viewers who never
+ * press play aren't tracked, and `start` rather than `t` — the embed player
+ * ignores `t`.
+ */
+export function youtubeEmbedUrl(
+  videoId: string,
+  startSeconds?: number | null,
+  options: { autoplay?: boolean } = {},
+): string {
+  const params = new URLSearchParams();
+  if (startSeconds) params.set("start", String(startSeconds));
+  if (options.autoplay) params.set("autoplay", "1");
+  const query = params.toString();
+  return `https://www.youtube-nocookie.com/embed/${videoId}${query ? `?${query}` : ""}`;
+}
