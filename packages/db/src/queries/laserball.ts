@@ -3,6 +3,7 @@
 
 import { and, asc, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "../client";
+import { parseGameSlug } from "../lib/game-slug";
 import {
   center,
   game,
@@ -307,12 +308,8 @@ export async function getLbGameDetail(gameId: string): Promise<LbGameDetail | nu
 }
 
 export async function getLbGameDetailBySlug(slug: string): Promise<LbGameDetail | null> {
-  const parts = slug.split("-");
-  if (parts.length !== 3) return null;
-  const [cc, sc, ts] = parts;
-  const countryCode = parseInt(cc!, 10);
-  const siteCode = parseInt(sc!, 10);
-  if (isNaN(countryCode) || isNaN(siteCode) || !/^\d{14}$/.test(ts!)) return null;
+  const parsed = parseGameSlug(slug);
+  if (!parsed) return null;
 
   const [idRow] = await db
     .select({ id: game.id })
@@ -321,9 +318,9 @@ export async function getLbGameDetailBySlug(slug: string): Promise<LbGameDetail 
     .where(
       and(
         eq(game.type, "lb"),
-        eq(center.countryCode, countryCode),
-        eq(center.siteCode, siteCode),
-        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${ts}`,
+        eq(center.countryCode, parsed.countryCode),
+        eq(center.siteCode, parsed.siteCode),
+        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${parsed.timestamp}`,
       ),
     );
 

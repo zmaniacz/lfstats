@@ -3,6 +3,7 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../client";
+import { parseGameSlug } from "../lib/game-slug";
 import { center, game, gameVideo, lbScorecard, player, sm5Scorecard } from "../schema";
 
 export type GameVideoRow = typeof gameVideo.$inferSelect;
@@ -133,24 +134,17 @@ export async function getPlayerVideos(playerId: string): Promise<PlayerVideo[]> 
 }
 
 /**
- * Resolves a canonical game id of the form `{countryCode}-{siteCode}_{YYYYMMDDHHmmss}`
- * (matching the TDF filename prefix, e.g. `4-23_20260809214345`).
+ * Resolves a game slug (`{countryCode}-{siteCode}-{YYYYMMDDHHmmss}`, e.g.
+ * `4-23-20260808212334`) to a lightweight game row.
  *
- * Deliberately does NOT filter on game.type — unlike getGameDetailBySlug, this
- * must resolve both SM5 and Laserball games.
+ * Deliberately does NOT filter on game.type — unlike getGameDetailBySlug and
+ * getLbGameDetailBySlug, this must resolve both SM5 and Laserball games.
  */
-export async function getGameByCanonicalId(
-  canonicalId: string,
+export async function getGameBySlug(
+  slug: string,
 ): Promise<{ id: string; centerId: string; type: string } | null> {
-  const [centerPart, ts] = canonicalId.split("_");
-  if (!centerPart || !ts || !/^\d{14}$/.test(ts)) return null;
-
-  const parts = centerPart.split("-");
-  if (parts.length !== 2) return null;
-
-  const countryCode = parseInt(parts[0]!, 10);
-  const siteCode = parseInt(parts[1]!, 10);
-  if (isNaN(countryCode) || isNaN(siteCode)) return null;
+  const parsed = parseGameSlug(slug);
+  if (!parsed) return null;
 
   const [row] = await db
     .select({ id: game.id, centerId: game.centerId, type: game.type })
@@ -158,9 +152,9 @@ export async function getGameByCanonicalId(
     .innerJoin(center, eq(game.centerId, center.id))
     .where(
       and(
-        eq(center.countryCode, countryCode),
-        eq(center.siteCode, siteCode),
-        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${ts}`,
+        eq(center.countryCode, parsed.countryCode),
+        eq(center.siteCode, parsed.siteCode),
+        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${parsed.timestamp}`,
       ),
     );
 

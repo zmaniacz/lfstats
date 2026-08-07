@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { db } from "../client";
+import { parseGameSlug } from "../lib/game-slug";
 import {
   game,
   sm5GameTeam,
@@ -139,10 +140,10 @@ export type GameExportFilters = {
 
 export type GameExportItem = {
   centerSlug: string;
-  // `{countryCode}-{siteCode}_{YYYYMMDDHHmmss}` — the id accepted by
-  // getGameByCanonicalId / POST /api/videos. Note the underscore before the
-  // timestamp, unlike the all-dash slug used in page URLs.
-  canonicalId: string;
+  // `{countryCode}-{siteCode}-{YYYYMMDDHHmmss}` — the same slug used in game
+  // page URLs and accepted by getGameBySlug / the video routes. Built here to
+  // mirror parseGameSlug, its inverse.
+  slug: string;
   startTime: Date;
   gameType: string;
   tdfFilename: string;
@@ -169,7 +170,7 @@ export async function getGamesForExport(filters: GameExportFilters): Promise<Gam
   return db
     .select({
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
-      canonicalId: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '_', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       startTime: game.startTime,
       gameType: game.type,
       tdfFilename: game.tdfFilename,
@@ -1107,12 +1108,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 }
 
 export async function getGameDetailBySlug(slug: string): Promise<GameDetail | null> {
-  const parts = slug.split("-");
-  if (parts.length !== 3) return null;
-  const [cc, sc, ts] = parts;
-  const countryCode = parseInt(cc, 10);
-  const siteCode = parseInt(sc, 10);
-  if (isNaN(countryCode) || isNaN(siteCode) || !/^\d{14}$/.test(ts)) return null;
+  const parsed = parseGameSlug(slug);
+  if (!parsed) return null;
 
   const [idRow] = await db
     .select({ id: game.id })
@@ -1121,9 +1118,9 @@ export async function getGameDetailBySlug(slug: string): Promise<GameDetail | nu
     .where(
       and(
         eq(game.type, "sm5"),
-        eq(center.countryCode, countryCode),
-        eq(center.siteCode, siteCode),
-        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${ts}`,
+        eq(center.countryCode, parsed.countryCode),
+        eq(center.siteCode, parsed.siteCode),
+        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${parsed.timestamp}`,
       ),
     );
 

@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import {
   addGameVideo,
   authenticateApiKey,
-  getGameByCanonicalId,
+  getGameBySlug,
   getGameSlugById,
   getGameVideos,
   getScorecardPlayerIdByIplId,
@@ -17,7 +17,7 @@ import { parseYoutubeVideoId } from "@/lib/youtube";
 // Keys are global: any valid key may write for any center.
 
 type PostBody = {
-  game_canonical_id?: unknown;
+  game_slug?: unknown;
   youtube_url?: unknown;
   ipl_id?: unknown;
   label?: unknown;
@@ -53,13 +53,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Body must be valid JSON" }, { status: 400 });
   }
 
-  const canonicalId = typeof body.game_canonical_id === "string" ? body.game_canonical_id : null;
+  const slug = typeof body.game_slug === "string" ? body.game_slug : null;
   const youtubeUrl = typeof body.youtube_url === "string" ? body.youtube_url.trim() : null;
   const iplId = typeof body.ipl_id === "string" && body.ipl_id ? body.ipl_id : null;
   const label = typeof body.label === "string" && body.label ? body.label : null;
 
-  if (!canonicalId) {
-    return NextResponse.json({ error: "game_canonical_id is required" }, { status: 400 });
+  if (!slug) {
+    return NextResponse.json({ error: "game_slug is required" }, { status: 400 });
   }
   if (!youtubeUrl) {
     return NextResponse.json({ error: "youtube_url is required" }, { status: 400 });
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 });
   }
 
-  const game = await getGameByCanonicalId(canonicalId);
+  const game = await getGameBySlug(slug);
   if (!game) {
     return NextResponse.json({ error: "Game not found" }, { status: 404 });
   }
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       id: video.id,
-      game_canonical_id: canonicalId,
+      game_slug: slug,
       ipl_id: iplId,
       youtube_url: video.youtubeUrl,
       label: video.label,
@@ -112,12 +112,12 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const canonicalId = searchParams.get("game_canonical_id");
-  if (!canonicalId) {
-    return NextResponse.json({ error: "game_canonical_id is required" }, { status: 400 });
+  const slug = searchParams.get("game_slug");
+  if (!slug) {
+    return NextResponse.json({ error: "game_slug is required" }, { status: 400 });
   }
 
-  const game = await getGameByCanonicalId(canonicalId);
+  const game = await getGameBySlug(slug);
   if (!game) {
     return NextResponse.json({ error: "Game not found" }, { status: 404 });
   }

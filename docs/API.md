@@ -46,7 +46,7 @@ one.
 {
   "data": [
     {
-      "game_canonical_id": "4-23_20260712155024",
+      "game_slug": "4-23-20260712155024",
       "center_slug": "4-23",
       "timestamp": "2026-07-12T15:50:24.000Z",
       "game_type": "sm5",
@@ -64,9 +64,8 @@ Sorted by `timestamp` descending. `timestamp` is the game's stored local start t
 conversion is applied (see root `CLAUDE.md`'s "no UTC conversion" convention), but note that
 `NextResponse.json` serializes JS `Date` values with a `Z` suffix regardless.
 
-`game_canonical_id` is the game's [canonical id](#game-canonical-ids) and is the same value
-`POST /api/videos` expects in its `game_canonical_id` field, so a consumer can feed this route's
-output straight back into the video routes.
+`game_slug` is the game's [slug](#game-slugs) — the same value `POST /api/videos` expects, so a
+consumer can feed this route's output straight back into the video routes.
 
 `competition_slug` is `null` for social games. `round_number`, `match_number` and `game_number`
 come from the competition's match schedule (`competition_match_game` → `competition_match` →
@@ -132,18 +131,22 @@ Competition standings/leaderboard, keyed by competition slug. Backed by
 
 ---
 
-## Game canonical ids
+## Game slugs
 
-The video routes identify a game by its **canonical id**, which matches the TDF filename prefix:
+`GET /api/games` and the video routes identify a game by its **slug**:
 
 ```
-{countryCode}-{siteCode}_{YYYYMMDDHHmmss}
+{countryCode}-{siteCode}-{YYYYMMDDHHmmss}
 ```
 
-For example `4-23_20260809214345` — center `4-23`, game starting `2026-08-09 21:43:45` local
-center time. Note the **underscore** before the timestamp; this differs from the all-dash slug
-used in page URLs (`/games/4-23-20260809214345`). Resolution is via `getGameByCanonicalId` in
-`packages/db/src/queries/videos.ts` and covers both SM5 and Laserball games.
+For example `4-23-20260808212334` — center `4-23`, game starting `2026-08-08 21:23:34` local
+center time. This is **the same string used in game page URLs**
+(`/games/4-23-20260808212334`), so a slug from either source works anywhere one is accepted.
+
+Parsing goes through `parseGameSlug` in `packages/db/src/lib/game-slug.ts`, the single inverse of
+the `concat(...)` expression that builds these SQL-side. Lookup for the video routes is
+`getGameBySlug` in `packages/db/src/queries/videos.ts`, which covers both SM5 and Laserball
+games (the per-type `getGameDetailBySlug` / `getLbGameDetailBySlug` filter by type).
 
 ## `POST /api/videos`
 
@@ -167,16 +170,16 @@ rejected immediately.
 
 ### Request body
 
-| Field               | Required | Description                                                       |
-| ------------------- | -------- | ----------------------------------------------------------------- |
-| `game_canonical_id` | yes      | Canonical id, e.g. `4-23_20260809214345`                          |
-| `youtube_url`       | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…` |
-| `ipl_id`            | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.   |
-| `label`             | no       | Free text, e.g. `Arena Cam 2`                                     |
+| Field         | Required | Description                                                       |
+| ------------- | -------- | ----------------------------------------------------------------- |
+| `game_slug`   | yes      | Game slug, e.g. `4-23-20260808212334`                             |
+| `youtube_url` | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…` |
+| `ipl_id`      | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.   |
+| `label`       | no       | Free text, e.g. `Arena Cam 2`                                     |
 
 ```json
 {
-  "game_canonical_id": "4-23_20260809214345",
+  "game_slug": "4-23-20260808212334",
   "youtube_url": "https://youtu.be/dQw4w9WgXcQ",
   "ipl_id": "#1234567",
   "label": "Red Commander POV"
@@ -211,9 +214,9 @@ uploaded.
 
 ### Query parameters
 
-| Param               | Required | Description                              |
-| ------------------- | -------- | ---------------------------------------- |
-| `game_canonical_id` | yes      | Canonical id, e.g. `4-23_20260809214345` |
+| Param       | Required | Description                           |
+| ----------- | -------- | ------------------------------------- |
+| `game_slug` | yes      | Game slug, e.g. `4-23-20260808212334` |
 
 ### Response
 
@@ -237,7 +240,7 @@ uploaded.
 `ipl_id`/`callsign` are `null` for game-level videos and populated for player POV videos.
 `source` is `admin` (added through the game page UI) or `api` (posted through this endpoint).
 
-`400` if `game_canonical_id` is absent, `404` if it doesn't resolve to a game.
+`400` if `game_slug` is absent, `404` if it doesn't resolve to a game.
 
 ---
 
