@@ -122,6 +122,38 @@ Drop a `.tdf` file into the root Drive folder, then run `syncNewTdfs()` manually
 
 To re-upload files, move them out of `_processed/` — there is no reset function to run.
 
+## Tests
+
+[Code.test.js](Code.test.js) covers `Code.gs`. Run it from the repo root:
+
+```bash
+node scripts/google-drive-sync/Code.test.js
+```
+
+No dependencies and no build step — it uses only Node built-ins. It prints one line per
+test and exits non-zero if any fail.
+
+Apps Script has no local test runner, so the harness loads `Code.gs` into a Node `vm`
+context with stubbed Apps Script globals (`DriveApp`, `PropertiesService`, `UrlFetchApp`,
+`LockService`, `Utilities`) backed by an in-memory fake Drive. The script's real logic runs
+unmodified against it: which files are picked up, what S3 keys they get, where they are
+moved, how sites are scheduled, and what happens when a site or an upload fails.
+
+**It is not wired into `pnpm build`, `pnpm typecheck`, or CI** — `Code.gs` isn't a
+TypeScript source file and Turborepo doesn't know about this folder. Run it by hand after
+editing `Code.gs`.
+
+### What it deliberately cannot cover
+
+The stubs assert how the Apps Script APIs are _assumed_ to behave. Anything that depends on
+how they _really_ behave has to be checked against the live project by running
+`syncNewTdfs()` from the editor:
+
+- Drive sharing and permissions (notably that Editor on an externally-owned folder is
+  enough to create `_processed/` and move files into it)
+- Apps Script execution timeouts, trigger scheduling, and quota limits
+- Whether S3 accepts the SigV4 signature
+
 ## Adding a competition
 
 1. Create a subfolder in the site's Drive folder whose name matches the competition slug
