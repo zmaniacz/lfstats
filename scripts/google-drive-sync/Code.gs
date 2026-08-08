@@ -156,14 +156,7 @@ function syncSite_(site, cfg, deadline) {
  */
 function getSites_(props) {
   var raw = props.getProperty("SITE_FOLDERS");
-
-  if (!raw) {
-    // Pre-multi-site config. Keeps the trigger working in the window between pasting new
-    // code and updating the properties; safe to delete once SITE_FOLDERS is set.
-    var legacyId = props.getProperty("DRIVE_FOLDER_ID");
-    if (legacyId) return [{ name: "default", folderId: legacyId }];
-    throw new Error("No sites configured — set SITE_FOLDERS (run setupProperties() first)");
-  }
+  if (!raw) throw new Error("No sites configured — set the SITE_FOLDERS script property");
 
   var sites = JSON.parse(raw);
   if (!sites.length) throw new Error("SITE_FOLDERS is configured but empty");
@@ -382,7 +375,6 @@ function setupProperties() {
     AWS_ACCESS_KEY_ID:     "YOUR_ACCESS_KEY_HERE",
     AWS_SECRET_ACCESS_KEY: "YOUR_SECRET_KEY_HERE",
   });
-  props.deleteProperty("DRIVE_FOLDER_ID"); // superseded by SITE_FOLDERS
   Logger.log("Properties saved for " + sites.length + " site(s). Now run installTrigger().");
 }
 
