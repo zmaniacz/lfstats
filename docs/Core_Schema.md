@@ -2,15 +2,20 @@
 
 **Game Type:** Space Marines 5 (SM5)  
 **Scope:** Tables required to record the complete end state of a single game  
-**Last Updated:** 2026
+**Last Updated:** 2026-08
 
 ---
 
 ## Overview
 
-This document specifies the core table set required to record a single SM5 game from a TDF file. It covers identity and reference tables (`Center`, `Player`, `PlayerCallsignHistory`, `Battlesuit`, `Target`), game structure tables (`Game`, `GameTeam`), non-player entity tables (`GameTarget`, `GameTargetDestruction`, `GameReferee`), player performance tables (`Scorecard`, `GamePlayerInteraction`), penalty tracking (`GamePenalty`), MVP scoring tables (`MvpModel`, `ScorecardMvp`), and replay data tables (`GameEvent`, `GamePlayerState`).
+This document specifies the core table set required to record a single SM5 game from a TDF file. It covers identity and reference tables (`Center`, `Player`, `PlayerCallsignHistory`, `Battlesuit`, `Target`), game structure tables (`Game`, `GameTeam`), non-player entity tables (`GameTarget`, `GameTargetDestruction`, `GameReferee`), player performance tables (`Scorecard`, `GamePlayerInteraction`), penalty tracking (`GamePenalty`, `GameTeamPenalty`), MVP scoring tables (`MvpModel`, `ScorecardMvp`), and replay data tables (`GameEvent`, `GamePlayerState`).
 
-Replay data is out of scope for this document and is specified separately.
+**Out of scope — documented elsewhere:**
+
+- **Laserball tables** (`lb_game_team`, `lb_scorecard`, `lb_game_event`, `lb_game_player_state`, `lb_game_player_interaction`, `lb_match`, `lb_match_game`) — see [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28) and [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md). Note that `Game` itself is **shared** between SM5 and Laserball and is specified here.
+- **Competition tables** (`competition`, `competition_team`, `competition_round`, `competition_pool`, `competition_match`, …) — see [Competition_Structure.md](Competition_Structure.md).
+- **Auth and access tables** (`auth_user`, `auth_session`, `user_roles`, `api_key`) — see [Role_Spec.md](Role_Spec.md) for the role model.
+- **Tagging and favorites** (`game_tag`, `game_tag_assignment`, `user_favorite_game`, `user_favorite_player`).
 
 **Full table inventory:**
 
@@ -162,25 +167,44 @@ One row per physical target unit at a center. Keyed by `(center_id, hardware_id)
 
 One row per TDF file ingested. The natural key is `(center_id, start_time)` — a physical location can only run one game at a given moment.
 
-| Column               | Type      | Null  | Description                                                                                                                                                                                                                                                            |
-| -------------------- | --------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                 | uuid      | never | Primary key.                                                                                                                                                                                                                                                           |
-| `center_id`          | uuid FK   | never | References `Center`. Resolved at ingest from the `centre` composite key on line type 0.                                                                                                                                                                                |
-| `start_time`         | timestamp | never | When the game was initialized, from the `start` field on line type 1. Stored in the center's local time. Combined with `center_id` forms the natural unique key.                                                                                                       |
-| `tdf_filename`       | string    | never | The original TDF filename as stored on S3 (e.g. `3-3_20260519201615_-_Space_Marines_5.tdf`). Used for debugging, re-ingestion, and linking to the raw file from the game view.                                                                                         |
-| `outcome`            | enum      | never | How the game ended. `score` — time expired and the winner was determined by team score. `elimination` — one team was fully eliminated before time expired (or within the 60-second run-to-time window). `draw` — time expired with both teams at exactly equal scores. |
-| `scheduled_duration` | integer   | never | Configured game length in milliseconds from line type 1 `duration` field. Defaults to `900000` (15 minutes) for pre-2.001 files where the field is absent. Represents intended game length, not actual.                                                                |
-| `actual_duration`    | integer   | never | Actual elapsed game time in milliseconds, calculated as the timestamp of the `0101` Mission End event minus the `0100` Mission Start event timestamp. Will be less than `scheduled_duration` for elimination games that ended early.                                   |
+**This table is shared across game modes.** Both SM5 and Laserball write `Game` rows; the `type` column discriminates, and each mode's per-player and per-team data lives in its own set of tables (`sm5_*` vs `lb_*`).
+
+| Column               | Type      | Null     | Description                                                                                                                                                                                                                                                                                                                                                |
+| -------------------- | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                 | uuid      | never    | Primary key.                                                                                                                                                                                                                                                                                                                                               |
+| `center_id`          | uuid FK   | never    | References `Center`. Resolved at ingest from the `centre` composite key on line type 0.                                                                                                                                                                                                                                                                    |
+| `competition_id`     | uuid FK   | nullable | The competition this game belongs to, or null for a social (non-competition) game. `ON DELETE SET NULL`. Set at ingest by resolving a competition-slug prefix on the S3 key (`index.ts` step 6b); an unrecognised slug logs a warning and leaves this null. Editable afterwards in the admin UI. See [Competition_Structure.md](Competition_Structure.md). |
+| `start_time`         | timestamp | never    | When the game was initialized, from the `start` field on line type 1. Stored in the center's local time. Combined with `center_id` forms the natural unique key.                                                                                                                                                                                           |
+| `tdf_filename`       | string    | never    | The original TDF filename as stored on S3 (e.g. `3-3_20260519201615_-_Space_Marines_5.tdf`). Used for debugging, re-ingestion, and linking to the raw file from the game view.                                                                                                                                                                             |
+| `outcome`            | enum      | never    | How the game ended. See the outcome values below.                                                                                                                                                                                                                                                                                                          |
+| `scheduled_duration` | integer   | never    | Configured game length in milliseconds from line type 1 `duration` field. Defaults to `900000` (15 minutes) for pre-2.001 files where the field is absent. Represents intended game length, not actual.                                                                                                                                                    |
+| `actual_duration`    | integer   | never    | Actual elapsed game time in milliseconds, calculated as the timestamp of the `0101` Mission End event minus the `0100` Mission Start event timestamp. Will be less than `scheduled_duration` for elimination games that ended early.                                                                                                                       |
+| `type`               | string    | never    | Game mode discriminator: `"sm5"` or `"lb"` (Laserball). Set from the line type 1 mission type — `5` → `"sm5"`, `28` → `"lb"`. Determines which set of child tables holds this game's data.                                                                                                                                                                 |
+| `description`        | string    | nullable | Free-text admin annotation shown on the game page. Never set by ingest; preserved across re-ingest.                                                                                                                                                                                                                                                        |
+| `exclude`            | boolean   | never    | Default `false`. If true, the game is omitted from all aggregates and leaderboards but remains stored, replayable, and visible. Set automatically at ingest when `outcome = "aborted"`, and toggleable by admins afterwards.                                                                                                                               |
+
+**Outcome values:**
+
+| Value         | Meaning                                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `score`       | Time expired and the winner was determined by team score.                                                                                 |
+| `elimination` | One team was fully eliminated before time expired (or within the 60-second run-to-time window). SM5 only — Laserball has no eliminations. |
+| `draw`        | Time expired with both teams at exactly equal scores.                                                                                     |
+| `aborted`     | The game did not complete normally. Sets `exclude = true` at ingest.                                                                      |
+| `forfeit`     | Administratively recorded forfeit. Not produced by ingest.                                                                                |
+| `replay`      | The game was replayed and this record is superseded. Not produced by ingest.                                                              |
 
 **Constraints:**
 
 - `(center_id, start_time)` is a unique key.
+- Indexed on `start_time` and on `competition_id`.
 
 **Notes:**
 
-- Only SM5 games are ingested — files where line type 1 `type` is not `5` are skipped entirely.
+- Only mission types `5` (SM5) and `28` (Laserball) are ingested — any other line type 1 `type` is skipped entirely.
 - `actual_duration` will equal `scheduled_duration` for score and draw outcomes. It will be shorter for elimination outcomes, except in the edge case where elimination occurred with 60 seconds or fewer remaining and the game ran to time — in that case `outcome` is still `elimination` but `actual_duration` will equal `scheduled_duration`.
 - The `penalty` value from line type 1 is not stored on `Game` — it is applied per-event during ingest and its effect is captured in `GamePenalty.score_value`. For pre-2.003 files where the field is absent, default to `0`.
+- `competition_id`, `description`, and `exclude` are **admin-owned metadata, not derived from the TDF**. Re-ingest paths (`bulk-reingest.ts`, `bulk-reingest-lb.ts`) snapshot and restore all three rather than overwriting the `Game` row.
 
 ---
 
@@ -333,182 +357,32 @@ One row per penalty assessed directly against a team as a whole, rather than aga
 
 ### `Scorecard`
 
+**Table name:** `sm5_scorecard`
+
 One row per player per game. The primary record of a single player's participation and performance. Combines identity context with a full set of recorded and derived performance stats.
 
 Non-player entities (targets, referees) are stored separately and do not appear here. Guest players with no iplId appear here with a null `player_id`.
 
 All stat columns that are position-specific are stored as `null` for positions where they do not apply. A value of `0` always means the stat is applicable but the player recorded zero — it is never used as a substitute for null.
 
-#### Identity & Context
+> **Every column is specified in [Scorecard_Table_Spec.md](Scorecard_Table_Spec.md)** — type, source (line type 7 vs derived), null rules, and derivation logic, grouped as Identity & Context, Shot, Missile, Nuke, Nuke Cancel, Special Ability, Support, Combat Outcomes, SP Tracking, Targets, Penalties, End State, Uptime & Downtime, and Derived Performance. That document is the single source of truth; this section covers only what is specific to the schema.
 
-| Column          | Type      | Null     | Source        | Description                                                                                                                                                                 |
-| --------------- | --------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | uuid      | never    | generated     | Primary key.                                                                                                                                                                |
-| `game_id`       | uuid FK   | never    | line type 1   | The game this scorecard belongs to.                                                                                                                                         |
-| `player_id`     | uuid FK   | nullable | line type 3   | The persistent player record. Null for unregistered guests with no iplId.                                                                                                   |
-| `team_id`       | uuid FK   | never    | line type 2/3 | The team this player was on during this game. References `GameTeam`.                                                                                                        |
-| `battlesuit_id` | uuid FK   | nullable | line type 3   | The physical battlesuit assigned to this player. Null if absent in older file versions.                                                                                     |
-| `ipl_id`        | string    | nullable | line type 3   | Denormalized from Player for query convenience. The globally unique Laserforce member identifier (`#xxxxxxx`). Null for unregistered guests.                                |
-| `callsign`      | string    | never    | line type 3   | The player's display name at the time of this game. Stored as a point-in-time fact.                                                                                         |
-| `position`      | integer   | never    | line type 3   | The role the player selected for this game. Maps to: 1=Commander, 2=Heavy Weapons, 3=Scout, 4=Ammo Carrier, 5=Medic.                                                        |
-| `eliminated`    | boolean   | never    | line type 6   | True if the player ran out of lives before the game ended (exit code `04`). False if they survived to mission end (exit code `02`).                                         |
-| `end_time`      | timestamp | never    | line type 4/6 | The moment this player's game ended. For survivors this is the `0101` Mission End event timestamp. For eliminated players this is the timestamp of their line type 6 entry. |
+#### MVP columns
 
-#### Shot Stats
+These two live on the scorecard but belong to the MVP model rather than the stat set, and so are specified here rather than in the scorecard spec.
 
-| Column                     | Type    | Null  | Source      | Description                                                                                                                                                                     |
-| -------------------------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shots_fired`              | integer | never | line type 7 | Total shots fired including misses.                                                                                                                                             |
-| `shots_hit`                | integer | never | line type 7 | Total shots that hit any target, player or non-player.                                                                                                                          |
-| `shots_hit_opponent`       | integer | never | line type 7 | Shots that hit an opposing team player (`0205` and `0206` where target is an opponent).                                                                                         |
-| `shots_hit_team`           | integer | never | line type 7 | Shots that hit a friendly team player (`0205` and `0206` where target is a teammate).                                                                                           |
-| `shots_hit_opponent_3hit`  | integer | never | line type 7 | Shots that hit an opposing Commander or Heavy Weapons player — the two 3-hit-point positions.                                                                                   |
-| `shots_hit_opponent_medic` | integer | never | derived     | Shots that hit the opposing team's Medic. Since the Medic has 1 hit point, every hit is also a deactivation.                                                                    |
-| `shots_hit_team_medic`     | integer | never | derived     | Shots that hit the friendly team's Medic. Shame stat.                                                                                                                           |
-| `times_hit`                | integer | never | line type 7 | Number of times this player was hit by any shot.                                                                                                                                |
-| `times_reset`              | integer | never | derived     | Subset of `times_hit` where this player was already in state 2 (vulnerable) when hit, restarting their respawn cycle. Victim-side counterpart to `reset_opponent`/`reset_team`. |
+| Column         | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                                      |
+| -------------- | ------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mvp_points`   | double  | never | derived | Total MVP points under the model version active at ingest time. Sum of all `ScorecardMvp.points` for this scorecard under `mvp_model_id`. Denormalized for query performance — MVP is heavily used for sorting and aggregation. Updated if a newer model is applied post-ingest. |
+| `mvp_model_id` | uuid FK | never | derived | References `MvpModel` — the version used to calculate `mvp_points`. Required to interpret the value correctly and to identify when a newer model is available for re-calculation.                                                                                                |
 
-#### Missile Stats
+See [`MvpModel`](#mvpmodel) and [`ScorecardMvp`](#scorecardmvp) below, and the MVP formula in [chomper-design.md](chomper-design.md).
 
-| Column                        | Type    | Null  | Source      | Description                                                                                                                                                   |
-| ----------------------------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `missile_hits`                | integer | never | line type 7 | Total missiles fired by this player that hit any target, player or non-player.                                                                                |
-| `missiles_hit_opponent`       | integer | never | line type 7 | Missiles that hit an opposing team player.                                                                                                                    |
-| `missiles_hit_team`           | integer | never | line type 7 | Missiles that hit a friendly team player. Shame stat.                                                                                                         |
-| `missiles_hit_opponent_medic` | integer | never | derived     | Missiles that hit the opposing team's Medic. High value — a missile always deactivates in one hit.                                                            |
-| `missiles_hit_team_medic`     | integer | never | derived     | Missiles that hit the friendly team's Medic. Shame stat.                                                                                                      |
-| `times_hit_by_missile`        | integer | never | line type 7 | Number of times this player was hit by a missile.                                                                                                             |
-| `times_reset_by_missile`      | integer | never | derived     | Subset of `times_hit_by_missile` where this player was already in state 2 when hit. Victim-side counterpart to `missile_reset_opponent`/`missile_reset_team`. |
+#### Competition columns
 
-#### Nuke Stats — Commander only, null for all other positions
-
-| Column                         | Type    | Null           | Source      | Description                                                                                                                                                             |
-| ------------------------------ | ------- | -------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `nukes_activated`              | integer | Commander only | line type 7 | Number of nuke activation sequences begun (`0404` events), including those subsequently cancelled.                                                                      |
-| `nukes_detonated`              | integer | Commander only | line type 7 | Number of nukes that successfully detonated (`0405` events). Always ≤ `nukes_activated`.                                                                                |
-| `nukes_hit_medic`              | integer | Commander only | line type 7 | Number of opposing Medic lives lost due to this Commander's nuke detonations.                                                                                           |
-| `lives_removed_by_nuke`        | integer | Commander only | derived     | Total lives actually removed from opposing players across all nuke detonations. Calculated as `sum(min(3, target_lives_remaining))` per affected player per detonation. |
-| `total_nuke_activation_time`   | integer | Commander only | derived     | Total milliseconds between nuke activation and detonation across all successful nukes. Cancelled nukes excluded.                                                        |
-| `average_nuke_activation_time` | integer | Commander only | derived     | `total_nuke_activation_time / nukes_detonated`. Null if `nukes_detonated = 0`.                                                                                          |
-
-#### Nuke Cancel Stats — all positions
-
-| Column                | Type    | Null  | Source      | Description                                                                                                                                      |
-| --------------------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `nukes_canceled`      | integer | never | line type 7 | Number of opposing team nukes cancelled by this player — times this player deactivated an enemy Commander during their nuke activation sequence. |
-| `team_nukes_canceled` | integer | never | line type 7 | Number of friendly nukes accidentally cancelled by this player. Shame stat.                                                                      |
-
-#### Special Ability Stats — position-specific, null where not applicable
-
-| Column                            | Type    | Null              | Source      | Description                                                                                                                                        |
-| --------------------------------- | ------- | ----------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rapid_fire`                      | integer | Scout only        | line type 7 | Number of times this Scout activated rapid fire (`0400` events).                                                                                   |
-| `total_rapid_time`                | integer | Scout only        | derived     | Total milliseconds spent in rapid fire across all activations. Each window runs from `0400` to the next `0500` ammo resupply targeting this Scout. |
-| `average_rapid_time`              | integer | Scout only        | derived     | `total_rapid_time / rapid_fire`. Null if `rapid_fire = 0`.                                                                                         |
-| `shots_fired_during_rapid`        | integer | Scout only        | derived     | Total shots fired while rapid fire was active.                                                                                                     |
-| `shots_hit_during_rapid`          | integer | Scout only        | derived     | Total shots that hit any target while rapid fire was active.                                                                                       |
-| `shots_hit_opponent_during_rapid` | integer | Scout only        | derived     | Shots that hit an opposing player while rapid fire was active.                                                                                     |
-| `shots_hit_team_during_rapid`     | integer | Scout only        | derived     | Shots that hit a friendly player while rapid fire was active.                                                                                      |
-| `accuracy_during_rapid`           | double  | Scout only        | derived     | `shots_hit_during_rapid / shots_fired_during_rapid`. 0 if `shots_fired_during_rapid = 0`.                                                          |
-| `ammo_boost`                      | integer | Ammo Carrier only | line type 7 | Number of times this Ammo Carrier used the team ammo resupply special ability (`0510` events).                                                     |
-| `life_boost`                      | integer | Medic only        | line type 7 | Number of times this Medic used the team lives resupply special ability (`0512` events).                                                           |
-
-#### Support Stats — Ammo Carrier and Medic only, null for all other positions
-
-| Column                      | Type    | Null            | Source  | Description                                                                                                                                                                                 |
-| --------------------------- | ------- | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `resupplies_given`          | integer | Ammo/Medic only | derived | Number of individual resupply tags given — `0500` events for Ammo Carrier, `0502` events for Medic.                                                                                         |
-| `double_resupplies_given`   | integer | Ammo/Medic only | derived | Number of successful double resupplies — simultaneous `0500` and `0502` events at the same timestamp against the same target. Tracked independently on both the Ammo Carrier and Medic row. |
-| `resupplies_received_ammo`  | integer | never           | derived | Number of times this player received a shot resupply (`0500` events where this player is the target). Always 0 for Ammo Carriers.                                                           |
-| `resupplies_received_lives` | integer | never           | derived | Number of times this player received a lives resupply (`0502` events where this player is the target). Always 0 for Medics.                                                                 |
-
-#### Combat Outcomes
-
-| Column                      | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------- | ------- | ----- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deactivated_opponent`      | integer | never | derived | Number of opposing players deactivated by this player via `0206` or `0306`.                                                                                                                                                                                                                                                                       |
-| `deactivated_team`          | integer | never | derived | Number of friendly players deactivated by this player via `0206` or `0306`. Shame stat.                                                                                                                                                                                                                                                           |
-| `eliminated_opponent`       | integer | never | derived | Number of opposing players personally eliminated by this player — `0206` or `0306` events that caused the target's lives to reach 0. Includes eliminations via nuke (`0405`).                                                                                                                                                                     |
-| `eliminated_team`           | integer | never | derived | Number of friendly players personally eliminated by this player. Friendly nukes cannot eliminate teammates so nuke events are excluded. Shame stat.                                                                                                                                                                                               |
-| `eliminated_opponent_medic` | integer | never | derived | Number of times this player personally eliminated the opposing Medic. Subset of `eliminated_opponent`.                                                                                                                                                                                                                                            |
-| `eliminated_team_medic`     | integer | never | derived | Number of times this player personally eliminated their own Medic. Subset of `eliminated_team`.                                                                                                                                                                                                                                                   |
-| `assists`                   | integer | never | derived | Assists credited to this player — landing a damaging hit (`0205`) on a Commander or Heavy Weapons opponent that is followed by a deactivating hit from any other player within 8000ms, provided the target did not transition to state 3 between this player's hit and the deactivation. The deactivating player does not also receive an assist. |
-| `reset_opponent`            | integer | never | derived | Number of times this player reset an opposing player — landing a `0205` or `0206` hit on an opponent currently in state 2, restarting their full 8000ms respawn cycle.                                                                                                                                                                            |
-| `reset_team`                | integer | never | derived | Number of times this player accidentally reset a teammate in state 2. Shame stat.                                                                                                                                                                                                                                                                 |
-| `missile_reset_opponent`    | integer | never | derived | Number of times this player reset an opposing player via missile (`0306`) while the target was in state 2.                                                                                                                                                                                                                                        |
-| `missile_reset_team`        | integer | never | derived | Number of times this player reset a teammate via missile while in state 2. Shame stat.                                                                                                                                                                                                                                                            |
-
-#### SP Tracking — null for Heavy Weapons only
-
-| Column      | Type    | Null       | Source  | Description                                                                                                                                                                                                                                                                                                                        |
-| ----------- | ------- | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sp_earned` | integer | Heavy only | derived | Total SP earned during the game, capped at 99 at any point. Earned at: +1 per opponent tag (`0205`/`0206`), +2 per Commander missile hit on an opponent (`0306`), +5 per target destroyed (`0204`/`0303`). Must be tracked cumulatively through the event stream — cannot be derived from end-state stats alone due to the 99 cap. |
-| `sp_spent`  | integer | Heavy only | derived | Total SP spent on special abilities. Commander: `nukes_activated × 20`. Scout: `rapid_fire × 10`. Ammo Carrier: `ammo_boost × 15`. Medic: `life_boost × 10`.                                                                                                                                                                       |
-
-#### Targets
-
-| Column              | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                    |
-| ------------------- | ------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `targets_destroyed` | integer | never | derived | Number of non-player targets destroyed by this player. Counts both `0204` and `0303` destructions. Consistent with row count in `GameTargetDestruction` where `scorecard_id` matches and `method` is `shot` or `missile` — use as an ingest consistency check. |
-
-#### Penalties
-
-| Column      | Type    | Null  | Source      | Description                                                                                                                                                                                                                                 |
-| ----------- | ------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `penalties` | integer | never | line type 7 | Number of referee penalties assessed against this player during the game (`0600` events where this player is the target). Fixed at ingest — never updated after the fact. Use `sum(GamePenalty.score_value)` for score impact calculations. |
-
-#### End State
-
-| Column       | Type    | Null  | Source      | Description                                                   |
-| ------------ | ------- | ----- | ----------- | ------------------------------------------------------------- |
-| `lives_left` | integer | never | line type 7 | Lives remaining at game end. Always 0 for eliminated players. |
-| `shots_left` | integer | never | line type 7 | Shots remaining at game end.                                  |
-
-#### Uptime & Downtime
-
-All values in milliseconds. The three columns always sum to total time between the `0100` Mission Start event and this player's `end_time` — useful as a consistency check at ingest. Derived from line type 9 player state transitions, or synthetic reconstruction for pre-2.005 files using 4000ms + 4000ms timers from each deactivating event.
-
-| Column              | Type    | Null  | Source  | Description                                                                                                                                                                                                          |
-| ------------------- | ------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `uptime`            | integer | never | derived | Total milliseconds spent in state 0 (active).                                                                                                                                                                        |
-| `resupply_downtime` | integer | never | derived | Total milliseconds spent in state 2 or 3 following a resupply event (`0500` or `0502`). Determined by checking whether a resupply event at the same timestamp targeting this player preceded the state 3 transition. |
-| `other_downtime`    | integer | never | derived | Total milliseconds spent in state 2 or 3 for any reason other than resupply — enemy fire, nuke, penalty, or friendly fire.                                                                                           |
-
-#### Derived Performance
-
-| Column         | Type    | Null  | Source      | Description                                                                                                                                                                                                                                                                      |
-| -------------- | ------- | ----- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `score`        | integer | never | line type 6 | Final score at game end. Matches the `new` value of this player's last line type 5 score entry. Authoritative value is from line type 6.                                                                                                                                         |
-| `accuracy`     | double  | never | derived     | `shots_hit / shots_fired`. Stored as 0 if `shots_fired = 0`.                                                                                                                                                                                                                     |
-| `hit_diff`     | double  | never | derived     | `shots_hit_opponent / max(times_hit, 1)`. Values above 1.0 indicate this player is landing more hits on opponents than they are receiving. `max(times_hit, 1)` used as divisor so players who were never hit produce a meaningful ratio.                                         |
-| `mvp_points`   | double  | never | derived     | Total MVP points under the model version active at ingest time. Sum of all `ScorecardMvp.points` for this scorecard under `mvp_model_id`. Denormalized for query performance — MVP is heavily used for sorting and aggregation. Updated if a newer model is applied post-ingest. |
-| `mvp_model_id` | uuid FK | never | derived     | References `MvpModel` — the version used to calculate `mvp_points`. Required to interpret the value correctly and to identify when a newer model is available for re-calculation.                                                                                                |
-
-#### Position-Specific Null Summary
-
-| Column Group                    | Commander | Heavy Weapons | Scout    | Ammo Carrier | Medic    |
-| ------------------------------- | --------- | ------------- | -------- | ------------ | -------- |
-| Nuke stats                      | ✓ stored  | null          | null     | null         | null     |
-| `rapid_fire` + rapid fire group | null      | null          | ✓ stored | null         | null     |
-| `ammo_boost`                    | null      | null          | null     | ✓ stored     | null     |
-| `life_boost`                    | null      | null          | null     | null         | ✓ stored |
-| `resupplies_given`              | null      | null          | null     | ✓ stored     | ✓ stored |
-| `double_resupplies_given`       | null      | null          | null     | ✓ stored     | ✓ stored |
-| `sp_earned` / `sp_spent`        | ✓ stored  | null          | ✓ stored | ✓ stored     | ✓ stored |
-
-#### Ingest Notes
-
-Several columns require event stream replay at ingest rather than being readable directly from line type 7:
-
-- **SP tracking** — must simulate SP accrual through the event stream respecting the 99 cap.
-- **Rapid fire windows** — must track `0400` → `0500` pairs to identify rapid fire periods.
-- **State tracking** — uptime/downtime, resets, and assists all require knowing each player's current state (0, 2, or 3) at each event timestamp. For pre-2.005 files, state must be reconstructed synthetically using 4000ms + 4000ms timers from each deactivating event.
-- **Resupply downtime attribution** — distinguish resupply-caused state 3 transitions from other causes by checking whether a `0500`/`0502` event at the same timestamp targeting this player preceded the transition.
-- **Medic hit stats** — `shots_hit_opponent_medic`, `shots_hit_team_medic`, `missiles_hit_opponent_medic`, `missiles_hit_team_medic` require knowing which players are Medics. In non-standard compositions with multiple Medics per team, all qualifying players should be counted.
-- **Missile medic stats** — `missiles_hit_opponent_medic` and `missiles_hit_team_medic` are not in line type 7 and must be derived from `0306` events.
-- **Elimination detection** — requires tracking each player's running life count through the event stream to identify when a deactivation causes lives to reach 0.
-- **Lives removed by nuke** — requires knowing each affected player's life count at the moment of each `0405` event to correctly apply the `min(3, lives_remaining)` cap.
-- **Assists** — requires an 8000ms sliding window of damaging hits against Commander and Heavy Weapons targets, cleared on state 3 transitions.
+| Column         | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                                                                               |
+| -------------- | ------- | ----- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `is_mercenary` | boolean | never | derived | Default `false`. True when this player played for a competition team they are not a rostered member of. Derived from `competition_team_player.is_mercenary` at link time, not from the TDF. Mercenary scorecards are excluded from aggregate competition stats. See [Competition_Structure.md](Competition_Structure.md). |
 
 ---
 

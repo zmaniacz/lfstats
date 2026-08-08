@@ -231,12 +231,14 @@ export function MyActionButton({ action }: { action: () => Promise<void> }) {
 }
 ```
 
-This was trialed on `GameTagManager.tsx` and the team roster admin page before being rolled
-out across the rest of the app (see `docs/TODO.md` git history for the migration list) — watch
-new Pattern B sites in production for a stuck `isPending` the same way. `DeleteEntityButton.tsx`
-(`components/admin/competition/`) is the one deliberate holdout still on
-`window.location.reload()`: it's shared across 7+ admin pages and accepts either calling
-convention, so it can be migrated independently later without another cross-cutting change.
+This was trialed on `GameTagManager.tsx` and the team roster admin page, then rolled out across
+the rest of the app. **The migration is complete — no component uses `window.location.reload()`
+any more**, and new code should never reintroduce it. Still watch new Pattern B sites in
+production for a stuck `isPending`, since no automated repro exists for that scheduler bug.
+
+`DeleteEntityButton.tsx` (`components/admin/competition/`) is worth reading as the reference
+implementation: it is shared across 7+ admin pages, accepts either calling convention
+(`void` or `{ok, error}`), and keeps its dialog open on failure so the error stays visible.
 
 ### Never throw a user-facing error from a Server Action
 

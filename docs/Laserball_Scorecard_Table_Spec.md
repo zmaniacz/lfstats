@@ -6,8 +6,9 @@ has no roles/positions, so **every stat applies to every player** and is stored 
 
 All stats are a faithful port of the European reference implementation
 (`demo_files/laserball-code/process_logs.php`); the cited line numbers are the authoritative
-source for each computation. See [laserball-chomper-design.md](laserball-chomper-design.md) for
-the simulation overview.
+source for each computation. See
+[chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28) for the simulation
+overview.
 
 ## Identity & context
 

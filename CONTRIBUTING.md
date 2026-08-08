@@ -123,10 +123,14 @@ conventions so the codebase stays consistent:
 When in doubt about game logic, parsing rules, or schema, the specification
 documents are authoritative:
 
-- `TDF_Specification.md` — the complete TDF format, line types, event codes, and
-  version-gated features.
-- `Scorecard_Specification.md` — every Scorecard column and its derivation.
-- `SM5_Core_Schema.md` — the full database schema, MVP formula, and state model.
+- [`docs/TDF_Spec.md`](docs/TDF_Spec.md) — the complete TDF format, line types,
+  event codes, and version-gated features.
+- [`docs/Scorecard_Table_Spec.md`](docs/Scorecard_Table_Spec.md) — every Scorecard
+  column and its derivation.
+- [`docs/Core_Schema.md`](docs/Core_Schema.md) — the SM5 database schema, MVP
+  formula, and state model.
+
+[`docs/README.md`](docs/README.md) indexes the rest.
 
 ---
 

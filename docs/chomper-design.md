@@ -2,18 +2,22 @@
 
 **Tool:** Chomper  
 **Location:** `apps/chomper`  
-**Purpose:** TDF file ingestion — parses SM5 game files from S3, simulates the game state machine to compute derived stats, writes all data to the database, and archives the file.
+**Purpose:** TDF file ingestion — parses game files from S3, simulates the game state machine to compute derived stats, writes all data to the database, and archives the file.
 
 ---
 
 ## Overview
 
-Chomper has two execution modes:
+Chomper ingests **two game modes** from the same package: SM5 (mission type 5) and Laserball (mission type 28). Every entry point dispatches on mission type. This document covers the shared infrastructure, the SM5 pipeline in full, the [Laserball pipeline](#laserball-pipeline-mission-type-28), and the [test suite](#test-suite).
+
+The primary execution modes:
 
 - **Lambda handler** (`src/index.ts`) — triggered by S3 upload events; processes one file per invocation
 - **Bulk ingest CLI** (`src/bulk-ingest.ts`) — manually invoked tool for re-processing files from the archive bucket
 
-Both share the same core pipeline: parse → simulate → consistency check → ingest. The local dev CLI (`src/cli.ts`) runs parse + simulate without touching the database and writes a `.debug.json` file for inspection.
+Both share the same core pipeline: parse → simulate → validate → ingest. Validation differs by mode — SM5 runs a stat-by-stat consistency check against line type 7, Laserball asserts a goals↔score invariant because it has no line type 7.
+
+The local dev CLI (`src/cli.ts`) runs parse + simulate without touching the database and writes a `.debug.json` file for inspection. See the [Repository Structure](#repository-structure) table below for the full set of CLI entry points.
 
 ---
 
@@ -22,23 +26,38 @@ Both share the same core pipeline: parse → simulate → consistency check → 
 ```
 apps/chomper/
   src/
-    index.ts          ← Lambda entry point
-    bulk-ingest.ts    ← Bulk re-ingest CLI tool
-    cli.ts            ← Local dev CLI (parse + simulate + debug output, no DB)
-    parser.ts         ← Phase 1: TDF file parsing
-    simulator.ts      ← Phase 2: state machine simulation and stat computation
-    ingester.ts       ← Phase 3: database writes
-    mvp.ts            ← MVP score calculation
-    s3.ts             ← S3 fetch, archive, delete helpers
-    types.ts          ← Shared TypeScript interfaces and types
+    index.ts              ← Lambda entry point; routes on mission type
+    parser.ts             ← Phase 1: TDF file parsing (shared by both modes)
+    simulator.ts          ← Phase 2 (SM5): state machine simulation and stat computation
+    ingester.ts           ← Phase 3 (SM5): database writes
+    reingester.ts         ← Phase 3 (SM5) variant: rewrites an existing game in place
+    mvp.ts                ← MVP score calculation
+    s3.ts                 ← S3 fetch, archive, delete helpers
+    types.ts              ← Shared TypeScript interfaces and types
+    laserball/            ← Laserball (mission type 28) pipeline
+      types.ts            ← Constants + interfaces
+      simulator.ts        ← Phase 2 (LB)
+      ingester.ts         ← Phase 3 (LB)
 
-packages/db/
-  schema.ts           ← Drizzle schema (includes ChomperJob table)
+    # CLI entry points (each has a package.json script)
+    cli.ts                ← `ingest`            — one file, parse + simulate, no DB
+    test-suite.ts         ← `test`              — whole demo_files corpus, no DB
+    bulk-ingest.ts        ← `bulk-ingest`       — ingest from S3 (both modes)
+    bulk-reingest.ts      ← `bulk-reingest`     — re-ingest stored SM5 games
+    bulk-reingest-lb.ts   ← `bulk-reingest-lb`  — re-ingest stored Laserball games
+    ingest-local-lb.ts    ← `ingest-lb-local`   — local dir → DB, Laserball only
+    recalc-mvp.ts         ← `recalcMVP`         — recompute MVP from stored scorecards
+
+packages/db/src/
+  schema.ts               ← Drizzle schema (includes the ChomperJob table)
   queries/
-    chomper.ts        ← All Chomper query functions
+    chomper.ts            ← Shared + SM5 query functions
+    laserball.ts          ← lb_ insert helpers
 ```
 
-All database query functions used by Chomper live in `packages/db/queries/chomper.ts` as named exports. No inline SQL or Drizzle calls inside `apps/chomper`.
+All database query functions used by Chomper live in `packages/db/src/queries/` as named exports — `chomper.ts` for the shared identity upserts and SM5 writes, `laserball.ts` for the `lb_` tables. No inline SQL or Drizzle calls inside `apps/chomper`.
+
+> `recalc-mvp.ts` is the one tool that does **not** re-simulate. It reconstructs MVP inputs from the stored `sm5_scorecard` columns, so it can only be used for MVP-model changes — never to fix a stat that simulation got wrong.
 
 ---
 
@@ -46,31 +65,46 @@ All database query functions used by Chomper live in `packages/db/queries/chompe
 
 The Lambda handler receives an S3 event, extracts bucket name and key, and runs this pipeline:
 
+Steps 1–6b are **shared by both game modes**; the pipeline then branches on mission type.
+
 ```
 1.  Write ChomperJob (status: processing) — idempotent on lambdaRequestId
 2.  Fetch TDF file from S3
 3.  Parse TDF (Phase 1)
         → RejectionError: mark "rejected", move to error bucket, exit
         → ParseError:     mark "failed",   move to error bucket, exit
-4.  Validate mission type == 5
-        → if not: mark "skipped", delete from incoming bucket, exit
-5.  Validate player entities present
+4.  Validate mission type is 5 (SM5) or 28 (Laserball)
+        → if neither: mark "skipped", delete from incoming bucket, exit
+4b. Validate player entities present
         → if none: mark "skipped", delete from incoming bucket, exit
-6.  Check for duplicate game
+5.  Check for duplicate game (natural key: center + start time)
         → if found: mark "skipped", delete from incoming bucket, exit
-7.  Simulate (Phase 2)
-        → if throws: mark "failed", move to error bucket, exit
-8.  Run consistency check
-        → if discrepancies: mark "failed", move to error bucket, exit
-9.  Find active MVP model
-10. Calculate MVP scores
-11. Write all rows to database in a single transaction (Phase 3)
-        — retries on Postgres deadlock (code 40P01), up to 3 attempts
-12. Update ChomperJob (status: completed, gameId)
-13. Move TDF to archive bucket with normalized key
+6b. Resolve competition slug prefix on the S3 key → competitionId
+        → unrecognised slug: log a warning, continue with competitionId = null
+
+    ── branch on mission type ──────────────────────────────────────────
+
+    SM5 (type 5)                        Laserball (type 28)
+    ─────────────────────────           ────────────────────────────────
+    Simulate (Phase 2)                  simulateLaserball (Phase 2)
+    6a. Consistency check               → no qualifying players:
+        → discrepancies: throw               mark "skipped", delete, exit
+    7.  Find active MVP model           Assert goals↔line-5-score invariant
+    8.  Calculate MVP scores                 → mismatch: throw
+    9–15. Phase 3 in one transaction    ingestLaserball (Phase 3)
+                                        (no MVP model — Laserball has none)
+
+    ── rejoin ──────────────────────────────────────────────────────────
+
+10. Update ChomperJob (status: completed, gameId)
+11. Move TDF to archive bucket with normalized key
 ```
 
-Any unhandled error caught by the outer try/catch marks the job `failed` with the error message and moves the file to the error bucket.
+The Phase 3 transaction retries on Postgres deadlock (code `40P01`), up to 3 attempts.
+
+Any unhandled error caught by the outer try/catch — including the two `throw`s above — marks the job `failed` with the error message and moves the file to the error bucket.
+
+> The step numbers match the `// N.` comments in `index.ts`, which are non-contiguous for historical reasons (`4b`, `6a`, `6b`).
 
 Re-invocation with the same Lambda request ID is idempotent: the handler checks `findChomperJobByLambdaRequestId` on startup and skips if already completed.
 
@@ -78,13 +112,13 @@ Re-invocation with the same Lambda request ID is idempotent: the handler checks 
 
 ## ChomperJob Status Lifecycle
 
-| Status | Meaning |
-|---|---|
-| `processing` | Pipeline in progress |
-| `completed` | Successfully ingested into the database |
-| `skipped` | Not ingested — non-SM5 game, duplicate, no players; file deleted |
-| `rejected` | Structurally invalid game (e.g. player registered on multiple teams); file moved to error bucket |
-| `failed` | Parse, simulation, or ingest error; file moved to error bucket |
+| Status       | Meaning                                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `processing` | Pipeline in progress                                                                                                   |
+| `completed`  | Successfully ingested into the database                                                                                |
+| `skipped`    | Not ingested — mission type is neither 5 (SM5) nor 28 (Laserball), duplicate game, or no player entities; file deleted |
+| `rejected`   | Structurally invalid game (e.g. player registered on multiple teams); file moved to error bucket                       |
+| `failed`     | Parse, simulation, or ingest error; file moved to error bucket                                                         |
 
 ---
 
@@ -92,21 +126,21 @@ Re-invocation with the same Lambda request ID is idempotent: the handler checks 
 
 ### Lambda (`index.ts`)
 
-| Variable | Description |
-|---|---|
-| `INCOMING_BUCKET` | S3 bucket where new TDF files arrive |
-| `ARCHIVE_BUCKET` | S3 bucket for successfully processed files |
-| `ERROR_BUCKET` | S3 bucket for failed or rejected files |
+| Variable          | Description                                |
+| ----------------- | ------------------------------------------ |
+| `INCOMING_BUCKET` | S3 bucket where new TDF files arrive       |
+| `ARCHIVE_BUCKET`  | S3 bucket for successfully processed files |
+| `ERROR_BUCKET`    | S3 bucket for failed or rejected files     |
 
 All three are required — Lambda throws immediately on startup if any is absent.
 
 ### Bulk Ingest CLI (`bulk-ingest.ts`)
 
-| Variable | Description |
-|---|---|
-| `ARCHIVE_BUCKET` | Source bucket (where legacy files live) |
+| Variable                | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| `ARCHIVE_BUCKET`        | Source bucket (where legacy files live)             |
 | `MODERN_ARCHIVE_BUCKET` | Destination bucket for successfully processed files |
-| `ERROR_BUCKET` | Destination for failed or rejected files |
+| `ERROR_BUCKET`          | Destination for failed or rejected files            |
 
 ---
 
@@ -129,27 +163,49 @@ pnpm bulk-ingest "1-1-2026*"   # combined
 
 ---
 
+## Re-ingest and Maintenance CLIs
+
+Four further tools operate on games that are **already in the database**. All are manually invoked and all read `packages/db/.env`.
+
+| Script                                   | What it does                                                                                                                                                                                                     |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter chomper bulk-reingest`    | **SM5 only.** Re-runs parse + simulate over stored SM5 games, deletes their child rows and rewrites them via `reingester.ts`, then recomputes MVP. Worker pool with deadlock retry. Laserball games are skipped. |
+| `pnpm --filter chomper bulk-reingest-lb` | The Laserball counterpart. Deletes the `lb_` child rows (`deleteLbGameChildren`) and rewrites them. No MVP step — Laserball has no MVP model.                                                                    |
+| `pnpm --filter chomper ingest-lb-local`  | Full three-phase Laserball ingest from a directory on disk, bypassing S3 entirely. Development convenience. Always ingests as a social game (`competitionId = null`).                                            |
+| `pnpm --filter chomper recalcMVP`        | Recomputes MVP for stored scorecards under the active model.                                                                                                                                                     |
+
+**Both re-ingest paths preserve admin-owned metadata.** Before rewriting a `game` row they snapshot `competition_id`, `exclude`, and `description`, and restore them afterwards via `restoreGameMetadata`. Without this, re-ingesting would silently detach games from their competitions.
+
+> `recalcMVP` does **not** re-simulate — it reconstructs MVP inputs from the stored `sm5_scorecard` columns. It is therefore only valid for MVP _model_ changes. If simulation computed a stat wrongly, `bulk-reingest` is the tool; `recalcMVP` would faithfully recompute MVP from the same bad numbers.
+
+---
+
 ## Drizzle Patterns
 
 All queries in `packages/db/queries/chomper.ts` use these patterns:
 
 ### Upsert
+
 ```typescript
-await db.insert(center)
+await db
+  .insert(center)
   .values(row)
   .onConflictDoUpdate({
     target: [center.countryCode, center.siteCode],
-    set: { name: sql`excluded.name` }
-  })
+    set: { name: sql`excluded.name` },
+  });
 ```
 
 ### Bulk insert
+
 ```typescript
-await db.insert(gamePlayerState).values(arrayOfRows)
+await db.insert(gamePlayerState).values(arrayOfRows);
 ```
+
 Always use the array form — never loop individual inserts for high-volume tables.
 
 ### Transaction
+
 ```typescript
 await db.transaction(async (tx) => {
   await tx.insert(game).values(...)
@@ -183,46 +239,46 @@ Lines beginning with `;` are schema comment lines. The parser tracks the most re
 ```typescript
 interface ParsedTdf {
   meta: {
-    fileVersion: number
-    centre: string           // e.g. "3-3"
-    countryCode: number      // parsed from centre
-    siteCode: number         // parsed from centre
-    startTime: string        // YYYYMMDDHHmmss from line type 1
-    duration: number         // ms, default 900000 if absent
-    penalty: number          // default 0 if absent
-    missionType: number      // skip if not 5
-    missionDesc: string
-  }
-  teams: ParsedTeam[]
-  entities: ParsedEntity[]   // internalId may differ from originalId for multi-gen players
-  events: ParsedEvent[]
-  scores: ParsedScore[]
-  entityEnds: ParsedEntityEnd[]
-  sm5Stats: ParsedSm5Stats[] // duplicate entries merged by mergeDuplicateSm5Stats
-  playerStateLog: ParsedPlayerState[]  // empty array for pre-2.005 files (type 9 lines discarded if fileVersion < 2.005)
-  entityRouting: EntityRouting[]       // routing table for multi-generation players
+    fileVersion: number;
+    centre: string; // e.g. "3-3"
+    countryCode: number; // parsed from centre
+    siteCode: number; // parsed from centre
+    startTime: string; // YYYYMMDDHHmmss from line type 1
+    duration: number; // ms, default 900000 if absent
+    penalty: number; // default 0 if absent
+    missionType: number; // skip if not 5
+    missionDesc: string;
+  };
+  teams: ParsedTeam[];
+  entities: ParsedEntity[]; // internalId may differ from originalId for multi-gen players
+  events: ParsedEvent[];
+  scores: ParsedScore[];
+  entityEnds: ParsedEntityEnd[];
+  sm5Stats: ParsedSm5Stats[]; // duplicate entries merged by mergeDuplicateSm5Stats
+  playerStateLog: ParsedPlayerState[]; // empty array for pre-2.005 files (type 9 lines discarded if fileVersion < 2.005)
+  entityRouting: EntityRouting[]; // routing table for multi-generation players
 }
 ```
 
 ### Version-Gated Field Defaults
 
-| Field | Absent default |
-|---|---|
-| `duration` (line type 1) | `900000` |
-| `penalty` (line type 1) | `0` |
-| `battlesuit` (line type 3) | `null` |
-| `memberId` (line type 3) | `null` |
-| `colourRgb` (line type 2) | `null` |
-| Line type 9 entirely | Empty array — simulator uses synthetic 4-second state reconstruction. Type 9 lines present in pre-2.005 files (early test artefacts) are discarded by the parser. |
+| Field                      | Absent default                                                                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `duration` (line type 1)   | `900000`                                                                                                                                                          |
+| `penalty` (line type 1)    | `0`                                                                                                                                                               |
+| `battlesuit` (line type 3) | `null`                                                                                                                                                            |
+| `memberId` (line type 3)   | `null`                                                                                                                                                            |
+| `colourRgb` (line type 2)  | `null`                                                                                                                                                            |
+| Line type 9 entirely       | Empty array — simulator uses synthetic 4-second state reconstruction. Type 9 lines present in pre-2.005 files (early test artefacts) are discarded by the parser. |
 
 ### Entity Type Classification
 
-| type value | Classification |
-|---|---|
-| `player` | Player entity — full stat tracking |
-| `referee` | Referee — stored, no stats |
-| `standard-target`, `beacon`, `generator-target` | Target — all treated identically |
-| Anything else | Non-player — stored for completeness, interactions not interpreted |
+| type value                                      | Classification                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `player`                                        | Player entity — full stat tracking                                 |
+| `referee`                                       | Referee — stored, no stats                                         |
+| `standard-target`, `beacon`, `generator-target` | Target — all treated identically                                   |
+| Anything else                                   | Non-player — stored for completeness, interactions not interpreted |
 
 ### Entity Routing (Multi-Generation Players)
 
@@ -251,6 +307,7 @@ Takes the `ParsedTdf` from Phase 1 and produces a `SimulatedGame` with all deriv
 ### Architecture
 
 The simulator is a class (`Simulator`) with:
+
 - A `Map<string, PlayerSimState>` keyed by internal entity ID for all player entities
 - A sorted event queue from `parsed.events`
 - Several pre-built lookup tables built before the main event loop
@@ -261,20 +318,21 @@ The simulator is a class (`Simulator`) with:
 
 Built in a single O(N) pass before the main event loop:
 
-| Map | Key | Value | Purpose |
-|---|---|---|---|
-| `lastActorEventTime` | entityId | Last timestamp this entity appears as actor | Actor-lookahead for premature elimination detection |
-| `entityEndTimeById` | entityId | Line-type-6 timestamp | Forward simulation ceiling |
-| `tdfFinalLives` | entityId | `sm5Stats.livesLeft` | Forward simulation target |
-| `deactivationsReceived` | entityId | Sorted `{time, lives}[]` | Forward simulation deactivations |
-| `resuppliesGained` | entityId | Sorted `{time, lives}[]` | Direct lives resupplies received (0502 events) |
-| `directTeamBoostsReceived` | entityId | Sorted `{time, lives}[]` | Team lives boosts (0512) received while in state_0 (excludes boosts that fall within the respawn uncertainty window — see 0512 handler) |
+| Map                        | Key      | Value                                       | Purpose                                                                                                                                 |
+| -------------------------- | -------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `lastActorEventTime`       | entityId | Last timestamp this entity appears as actor | Actor-lookahead for premature elimination detection                                                                                     |
+| `entityEndTimeById`        | entityId | Line-type-6 timestamp                       | Forward simulation ceiling                                                                                                              |
+| `tdfFinalLives`            | entityId | `sm5Stats.livesLeft`                        | Forward simulation target                                                                                                               |
+| `deactivationsReceived`    | entityId | Sorted `{time, lives}[]`                    | Forward simulation deactivations                                                                                                        |
+| `resuppliesGained`         | entityId | Sorted `{time, lives}[]`                    | Direct lives resupplies received (0502 events)                                                                                          |
+| `directTeamBoostsReceived` | entityId | Sorted `{time, lives}[]`                    | Team lives boosts (0512) received while in state_0 (excludes boosts that fall within the respawn uncertainty window — see 0512 handler) |
 
 `deactivationsReceived` life costs: `0206`/`0209` = 1 life; `0306`/`0308` = 2 lives; nuke hits = 3 lives.
 
 **Two-pass nuke detection for `deactivationsReceived`:**
-- *Pass 1:* Any state_3 entry in the state log within 100ms of a `0405` event (player transitioned to state_3 at nuke time)
-- *Pass 2:* Players already in state_3 strictly before the nuke (no new state_3 entry appears in the log because they were already down — but nukes hit all non-eliminated opponents regardless of current state)
+
+- _Pass 1:_ Any state_3 entry in the state log within 100ms of a `0405` event (player transitioned to state_3 at nuke time)
+- _Pass 2:_ Players already in state_3 strictly before the nuke (no new state_3 entry appears in the log because they were already down — but nukes hit all non-eliminated opponents regardless of current state)
 
 ### `directTeamBoostsReceived` Pre-Build
 
@@ -288,10 +346,10 @@ The 0512 handler applies a direct boost to state_0 teammates unless the player j
 
 The window width differs by file version because timing precision differs:
 
-| File version | Window | Rationale |
-|---|---|---|
-| 2.005+ | 250 ms | State log is authoritative; radio lag is the only uncertainty source |
-| Pre-2.005 | 2000 ms | Synthetic 4+4-second transitions are approximations; real state_0 start can be off by ~1 second |
+| File version | Window  | Rationale                                                                                       |
+| ------------ | ------- | ----------------------------------------------------------------------------------------------- |
+| 2.005+       | 250 ms  | State log is authoritative; radio lag is the only uncertainty source                            |
+| Pre-2.005    | 2000 ms | Synthetic 4+4-second transitions are approximations; real state_0 start can be off by ~1 second |
 
 ### Two-Pass Shots Reference (`buildShotsReference`)
 
@@ -328,6 +386,7 @@ Consume line type 9 entries with `time <= T` in file order, applying the explici
 
 **For pre-2.005 files** (empty `playerStateLog`):
 For any player with a pending synthetic transition scheduled at `<= T`, fire it in time order:
+
 - Player in state 3: synthetic state 2 at `stateEnteredAt + 4000`
 - Player in state 2: synthetic state 0 at `stateEnteredAt + 4000`
 
@@ -366,28 +425,28 @@ A post-loop `applyEntityEnds()` still runs as a safety net for files where the l
 
 ### Event Handlers
 
-| Event | Key behavior |
-|---|---|
-| `0100` Mission Start | Initialize `PlayerSimState` for all players; record initial snapshots; set `missionStartTime` |
-| `0101` Mission End | Record `missionEndTime`; close any open rapid fire windows; accumulate final uptime |
-| `0205` Player Hit | Apply shot power to target HP; update hit stats; if target in state 2 → re-deactivate; add to assist window if target is Commander or Heavy |
-| `0206` Player Deactivate | All 0205 logic + decrement `target.lives` by 1 + check elimination + clear assist window + award assists to assist window occupants |
-| `0306` Missile Hit Player (opponent) | Decrement `target.lives` by 2; one-hit deactivation regardless of HP; handle nuke cancel; earn SP if Commander missile; deduct missile |
-| `0308` Missile Hit Player (friendly) | Same handler as 0306; friendly-fire missile deactivation; routes correctly via isOpponent/isFriendly flag |
-| `0404` Nuke Activate | Set `isNuking = true`; increment `nukesActivated`; deduct 20 SP |
-| `0405` Nuke Detonate | For each non-eliminated opposing player: −3 lives, force state_3; award +500 to actor |
-| `0400` Rapid Fire Activate | Set `isRapidFire = true`; record start time; increment `rapidFire`; deduct 10 SP |
-| `0500` Ammo Resupply | Restore target shots to max; end rapid fire if active; transition target to state_3 (resupply cause) |
-| `0502` Lives Resupply | Restore target lives to max; transition target to state_3 (resupply cause) |
-| `0510` Team Ammo Boost | Restore shots for all state_0 teammates; state_3/state_2 teammates receive a pending boost recorded for reconciliation |
-| `0512` Team Lives Boost | Restore lives for all state_0 teammates (unless within the respawn uncertainty window — see below); state_3/state_2 teammates receive a pending boost |
-| `0600` Referee Penalty | Increment `penalties`; transition target to state_3 |
-| `0204` Target Destroy | Increment `targetsDestroyed`; earn +5 SP |
-| `0303` Missile Destroy Target | Increment `targetsDestroyed`; earn +5 SP; deduct missile |
-| `0209` Warbot Deactivate | Decrement `target.lives` by 1; trigger state_3 (deactivationCause = 'other'); handle nuke cancel. Does **not** increment `timesHit` — warbot deactivations are excluded from the TDF's `timesZapped` stat. No actor playerState (actor is a non-player warbot). |
-| `0B00` Beacon Claim | Increment `actor.shotsFired` and `actor.shotsHit` by 1; decrement shots by 1 (except Ammo Carrier). The two warm-up hits before the claim have no section 4 events — they are ghost shots (see below). |
-| `0B03` Base Award | Increment `targetsDestroyed` (no SP — post-elimination award, not an in-game action) |
-| `0201`, `0202`, `0203`, `0300`, `0301`, `0304`, `0900`, `0902` | No state changes; skip |
+| Event                                                          | Key behavior                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0100` Mission Start                                           | Initialize `PlayerSimState` for all players; record initial snapshots; set `missionStartTime`                                                                                                                                                                   |
+| `0101` Mission End                                             | Record `missionEndTime`; close any open rapid fire windows; accumulate final uptime                                                                                                                                                                             |
+| `0205` Player Hit                                              | Apply shot power to target HP; update hit stats; if target in state 2 → re-deactivate; add to assist window if target is Commander or Heavy                                                                                                                     |
+| `0206` Player Deactivate                                       | All 0205 logic + decrement `target.lives` by 1 + check elimination + clear assist window + award assists to assist window occupants                                                                                                                             |
+| `0306` Missile Hit Player (opponent)                           | Decrement `target.lives` by 2; one-hit deactivation regardless of HP; handle nuke cancel; earn SP if Commander missile; deduct missile                                                                                                                          |
+| `0308` Missile Hit Player (friendly)                           | Same handler as 0306; friendly-fire missile deactivation; routes correctly via isOpponent/isFriendly flag                                                                                                                                                       |
+| `0404` Nuke Activate                                           | Set `isNuking = true`; increment `nukesActivated`; deduct 20 SP                                                                                                                                                                                                 |
+| `0405` Nuke Detonate                                           | For each non-eliminated opposing player: −3 lives, force state_3; award +500 to actor                                                                                                                                                                           |
+| `0400` Rapid Fire Activate                                     | Set `isRapidFire = true`; record start time; increment `rapidFire`; deduct 10 SP                                                                                                                                                                                |
+| `0500` Ammo Resupply                                           | Restore target shots to max; end rapid fire if active; transition target to state_3 (resupply cause)                                                                                                                                                            |
+| `0502` Lives Resupply                                          | Restore target lives to max; transition target to state_3 (resupply cause)                                                                                                                                                                                      |
+| `0510` Team Ammo Boost                                         | Restore shots for all state_0 teammates; state_3/state_2 teammates receive a pending boost recorded for reconciliation                                                                                                                                          |
+| `0512` Team Lives Boost                                        | Restore lives for all state_0 teammates (unless within the respawn uncertainty window — see below); state_3/state_2 teammates receive a pending boost                                                                                                           |
+| `0600` Referee Penalty                                         | Increment `penalties`; transition target to state_3                                                                                                                                                                                                             |
+| `0204` Target Destroy                                          | Increment `targetsDestroyed`; earn +5 SP                                                                                                                                                                                                                        |
+| `0303` Missile Destroy Target                                  | Increment `targetsDestroyed`; earn +5 SP; deduct missile                                                                                                                                                                                                        |
+| `0209` Warbot Deactivate                                       | Decrement `target.lives` by 1; trigger state_3 (deactivationCause = 'other'); handle nuke cancel. Does **not** increment `timesHit` — warbot deactivations are excluded from the TDF's `timesZapped` stat. No actor playerState (actor is a non-player warbot). |
+| `0B00` Beacon Claim                                            | Increment `actor.shotsFired` and `actor.shotsHit` by 1; decrement shots by 1 (except Ammo Carrier). The two warm-up hits before the claim have no section 4 events — they are ghost shots (see below).                                                          |
+| `0B03` Base Award                                              | Increment `targetsDestroyed` (no SP — post-elimination award, not an in-game action)                                                                                                                                                                            |
+| `0201`, `0202`, `0203`, `0300`, `0301`, `0304`, `0900`, `0902` | No state changes; skip                                                                                                                                                                                                                                          |
 
 **Missiles that consume a missile:** `0301` (gen miss), `0303` (destroy target), `0304` (miss vs player), `0306`/`0308` (hit player). `0300` (missile lock) does not consume a missile.
 
@@ -450,12 +509,12 @@ Applies remaining pending boosts accumulated from team boosts that fired while a
 
 Safety net for entity-ends not yet processed in-loop, plus special handling for kicked players:
 
-| Exit type | Behavior |
-|---|---|
-| `04` (eliminated) | If `lives > 0`: record `entityEndForcedLives`, zero lives |
-| `01` (kicked) | Set `lives = tdfFinalLives.get(id)` (TDF records their lives at kick time, which may be positive); mark eliminated |
-| `17` (kicked by referee) | Same as `01` |
-| `02` (mission complete) | No action needed |
+| Exit type                | Behavior                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `04` (eliminated)        | If `lives > 0`: record `entityEndForcedLives`, zero lives                                                          |
+| `01` (kicked)            | Set `lives = tdfFinalLives.get(id)` (TDF records their lives at kick time, which may be positive); mark eliminated |
+| `17` (kicked by referee) | Same as `01`                                                                                                       |
+| `02` (mission complete)  | No action needed                                                                                                   |
 
 Kicked players are treated differently because TDF records their lives at the moment of kick, not at elimination. Zeroing lives as if they were eliminated produces spurious consistency check failures.
 
@@ -467,33 +526,34 @@ After applying exit-type logic, the final snapshot is synced from `ps.lives` **a
 
 `runConsistencyCheck()` compares simulator-computed values against TDF `sm5Stats` (line type 7). All fields are checked; any discrepancy causes a consistency check failure, which routes the game to the error bucket.
 
-| sm5Stats field | Computed equivalent |
-|---|---|
-| `shotsHit` | `shots_hit` |
-| `shotsFired` | `shots_fired` |
-| `timesZapped` | `times_hit` |
-| `timesMissiled` | `times_hit_by_missile` |
-| `missileHits` | `missile_hits` |
-| `nukesDetonated` | `nukes_detonated` |
-| `nukesActivated` | `nukes_activated` |
-| `nukeCancels` | `nukes_canceled` |
-| `medicHits` | `shots_hit_opponent_medic` (lives formula — see above) |
-| `ownMedicHits` | `shots_hit_team_medic` |
-| `medicNukes` | `nukes_hit_medic` |
-| `scoutRapid` | `rapid_fire` |
-| `lifeBoost` | `life_boost` |
-| `ammoBoost` | `ammo_boost` |
-| `livesLeft` | `lives_left` |
-| `shotsLeft` | `shots_left` |
-| `penalties` | `penalties` |
-| `shot3Hit` | `shots_hit_opponent_3hit` |
-| `ownNukeCancels` | `team_nukes_canceled` |
-| `shotOpponent` | `shots_hit_opponent` |
-| `shotTeam` | `shots_hit_team` |
-| `missiledOpponent` | `missiles_hit_opponent` |
-| `missiledTeam` | `missiles_hit_team` |
+| sm5Stats field     | Computed equivalent                                    |
+| ------------------ | ------------------------------------------------------ |
+| `shotsHit`         | `shots_hit`                                            |
+| `shotsFired`       | `shots_fired`                                          |
+| `timesZapped`      | `times_hit`                                            |
+| `timesMissiled`    | `times_hit_by_missile`                                 |
+| `missileHits`      | `missile_hits`                                         |
+| `nukesDetonated`   | `nukes_detonated`                                      |
+| `nukesActivated`   | `nukes_activated`                                      |
+| `nukeCancels`      | `nukes_canceled`                                       |
+| `medicHits`        | `shots_hit_opponent_medic` (lives formula — see above) |
+| `ownMedicHits`     | `shots_hit_team_medic`                                 |
+| `medicNukes`       | `nukes_hit_medic`                                      |
+| `scoutRapid`       | `rapid_fire`                                           |
+| `lifeBoost`        | `life_boost`                                           |
+| `ammoBoost`        | `ammo_boost`                                           |
+| `livesLeft`        | `lives_left`                                           |
+| `shotsLeft`        | `shots_left`                                           |
+| `penalties`        | `penalties`                                            |
+| `shot3Hit`         | `shots_hit_opponent_3hit`                              |
+| `ownNukeCancels`   | `team_nukes_canceled`                                  |
+| `shotOpponent`     | `shots_hit_opponent`                                   |
+| `shotTeam`         | `shots_hit_team`                                       |
+| `missiledOpponent` | `missiles_hit_opponent`                                |
+| `missiledTeam`     | `missiles_hit_team`                                    |
 
 Additional checks:
+
 - `Scorecard.score` must equal `entityEnds[id].score`
 - `Scorecard.targets_destroyed` must equal the count of `GameTargetDestruction` rows for this scorecard
 - `phantomDeactivations > 0` — HP reached 0 on a `0205` (non-deactivating) event; signals HP drift from hardware
@@ -572,6 +632,7 @@ Writes to the database in a single transaction. Insert in this exact order to sa
 ```
 
 After the transaction commits:
+
 ```
 17. updateChomperJob (status: completed, gameId)
 18. Move TDF file to archive bucket with normalized key
@@ -584,6 +645,7 @@ After the transaction commits:
 Query the active `MvpModel` (where `retiredAt` is null) before the transaction. Calculate MVP points for each player using the formula in `MvpModel.parameters`. Store results as `ScorecardMvp` rows and set `Scorecard.mvp_points` and `Scorecard.mvp_model_id`.
 
 Key notes:
+
 - Accuracy input is `ceil(accuracy × 100)` — ceiling to nearest whole percent
 - `elimination_bonus` component: applies only if this player's team won by elimination; input is seconds of game time remaining above the 3-minute threshold at elimination
 - `score_bonus` threshold and multiplier are position-specific
@@ -592,8 +654,155 @@ Key notes:
 
 ---
 
+## Laserball Pipeline (mission type 28)
+
+Laserball reuses everything above except the **event semantics** and the **destination tables**. The parser, the shared identity upserts, the shared `game` table, and every entry point are common with SM5; only Phase 2 and Phase 3 diverge.
+
+Laserball is a distinct game mode with no lives, no shot limits, and no roles. Games end in a **score** victory or a **draw** — never an elimination. The stat set is a faithful port of the European reference implementation, `demo_files/laserball-code/process_logs.php`, which is the authoritative spec for every computation. Per-stat definitions with PHP line references are in [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md); the format deltas are in [Laserball_TDF_Spec.md](Laserball_TDF_Spec.md).
+
+### Phase 1 — Parsing (shared `parser.ts`)
+
+No Laserball-specific parser is needed. The generic line parsers produce a `ParsedTdf` whose `events` array carries `{ time, type, actor, target, description }` for every line type 4 event, and whose `playerStateLog` carries line type 9 transitions. Two facts make this work:
+
+- Laserball player entities have `category === 0`, so the "player entities but no scorecard" rejection does not fire, and `buildEntityRouting` (which only considers `category > 0`) produces empty routing.
+- The line type 9 version gate is widened: line 9 is admitted when `fileVersion >= 2.005 || missionType !== 5`. This keeps SM5 behaviour identical while letting Laserball (`2.005`/`2.006`) state logs through. `2.004` Laserball files simply have no line 9.
+
+### Phase 2 — Simulation (`laserball/simulator.ts`)
+
+`simulateLaserball(parsed): SimulatedLbGame` is a near-line-for-line port of `process_logs.php` §5–7.
+
+**Unified event/state timeline.** The PHP processes line 4 and line 9 lines in one document-ordered pass. The parser splits them into `events` and `playerStateLog`; `buildTimeline()` re-merges them by raw time (event-before-state on ties). Line 9 timestamps are strictly at-or-after their triggering action, so this recovers document order.
+
+**Time smoother.** Ported verbatim (php:271-319): a running offset corrects negative time jumps (`+= lastRaw`) and large (>60s) forward gaps (`-= gap-1000`), applied across the merged stream.
+
+**Player discovery & teams.** Player entities define team membership. The two competing teams are the first two team indices that contain players (php:155-162); all other teams (e.g. Neutral) get `score`/`result` of null.
+
+**Ball possession.** A single `currentHolder` is tracked across `1107`/`1100`/`1109`/`1103` (gain) and `1101`/`1102`/`1106`/`1108`/`0101` (loss); `possession_time_ms` accrues per holder, with a final flush at the smoothed end time (php:357-376, 624-627).
+
+**State machine.** Line 9 drives per-player `status` and the `state0/2/3` counters, and derives `dynamicRespawnTime` from the first state-3→state-0 gap (php:321-345). When line 9 is absent (`2.004`), `status` stays 0 and `dynamicRespawnTime` is null.
+
+**Event handlers.** The PHP if/else-if structure is preserved exactly: round start/end & match reset; miss; target resets; get-ball; pass/clear; steal; failed clear (incl. cooldown-adjusted `failed_clears_calc`, `bad_attacks_fc`, and the inactive-clear penalty + `no_clear_blocks`); block (reset vs normal, `blocks_with_ball`, `block_serie_max`, `clutch_saves`, `reset_point`); the standalone futile-attack evaluator; and the goal handler (assist/clear-assist chain, `big_goals`, `defense_score`, `blocks_before_goal`, `futile_attacks_goal`, `pass_over_opponent`, `no_clear_goal`). `big_mid` combos and `registerAggressiveAction` mirror php:281-292.
+
+**Replay emission** — an extension beyond the PHP. For each meaningful event (everything except `0201` misses and `0900–0902` achievements) the simulator records an `LbSimEvent` and, for the involved actor/target, a per-player snapshot (`state`, `has_ball`, running `score`). This mirrors SM5's targeted snapshot approach.
+
+**Output.** Team scores are the sum of each team's players' goals; outcome is `score` (unequal) or `draw` (equal). Persisted players are those on a competing team with >30s playtime (php:646). The result also carries a `goalCheck` comparing per-team goal totals against line-5 score-event totals.
+
+### Phase 3 — Insertion (`laserball/ingester.ts`)
+
+A single transaction writes, in FK-safe order:
+
+```
+1.  upsertCenter                     (shared)
+2.  upsertPlayer                     (shared; one per #… entity, sorted for deadlock-safe locking)
+3.  insertGame                       (shared `game`; type = "lb", exclude = outcome === "aborted")
+4.  insertLbGameTeams                (competing teams + Neutral)
+5.  upsertBattlesuit                 (shared; one per battlesuit)
+6.  insertLbScorecards               (persisted players only)
+7.  insertLbGamePlayerInteractions   (ordered actor→target steals/blocks/passes)
+8.  insertLbGameEvents               (returns UUIDs for snapshot linkage)
+9.  insertLbGamePlayerStates         (chunked; the largest table)
+10. upsertPlayerCallsignHistory      (shared)
+```
+
+Shared identity upserts come from `packages/db/src/queries/chomper.ts`; lb-specific inserts from `packages/db/src/queries/laserball.ts`.
+
+### Validation
+
+Laserball TDFs have **no line type 7**, so there is no SM5-style stat-by-stat consistency check. Validation instead uses:
+
+- **Goal invariant** — per-team goal totals must equal per-team line-5 score-event totals. Asserted in the Lambda and bulk paths, reported by the CLI and test suite. Across the 207-game sample corpus this holds for every game.
+- **Graceful non-TDF handling** — downloaded HTML 404 pages are detected and skipped, not crashed.
+- **Parity spot-checks** — hand-comparison of core stats (goals, assists, steals, blocks, clears, possession time) against the raw events. The PHP remains the reference for the heuristic stats, which have no file-based ground truth.
+
+To validate end-to-end DB writes: `pnpm db:migrate`, then ingest a few files and query `lb_scorecard`, `lb_game_team`, `lb_game_event`, and `lb_game_player_state`, confirming `game.type = 'lb'` and a correct outcome.
+
+---
+
+## Test Suite
+
+The test suite runs every TDF in `demo_files/` (SM5) and `demo_files/laserball/` through Phase 1 and Phase 2 and verifies the output. **It does not touch the database.**
+
+```bash
+pnpm --filter chomper run test        # or, from apps/chomper: node_modules/.bin/tsx src/test-suite.ts
+```
+
+### What it does
+
+1. Deletes any stale `.debug.json` files from `demo_files/` before starting.
+2. Collects every `*.tdf` in `demo_files/` and `demo_files/laserball/` (sorted). A missing `laserball/` subdirectory is not an error.
+3. For each file: runs `parseTdf`, dispatches on `parsed.meta.missionType`, writes `<filename>.debug.json` next to the TDF, and reports `PASS` / `FAIL` / `SKIP`.
+4. Writes a timestamped log to `apps/chomper/logs/test-suite-<timestamp>.log`.
+5. Exits 1 if any file failed, 0 if all passed or skipped.
+
+Placement in `laserball/` is convention only — dispatch is on the mission type inside the file, so a misfiled Laserball TDF at the top level still runs the Laserball path.
+
+### Pass / fail / skip criteria
+
+| Result | When                                                                                                                                                                                                       |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS` | **SM5:** `consistencyCheck.discrepancies` is empty. **Laserball:** `goalCheck.ok` is true. **Either:** the file threw a `RejectionError` — a structurally invalid game, correctly identified and rejected. |
+| `SKIP` | The file is not a TDF at all (an HTML page — some downloaded samples are 404s), **or** the mission type is neither 5 nor 28.                                                                               |
+| `FAIL` | **SM5:** `consistencyCheck.discrepancies` is non-empty. **Laserball:** `goalCheck.ok` is false. **Either:** the file could not be read, or an unexpected parse/simulation error.                           |
+
+A `RejectionError` (e.g. a player registered on multiple teams) counts as `PASS` because the parser correctly identified the file as invalid. Only unexpected errors, consistency discrepancies, and goal-invariant mismatches are failures.
+
+### Debug output
+
+SM5 files produce the full comparison shape:
+
+```json
+{
+  "consistencyCheck": { "passed": true, "discrepancies": [], "ghostShots": [], "warnings": [] },
+  "events": [...],
+  "playerStates": { ... }
+}
+```
+
+- `discrepancies` — each mismatch between computed stats and TDF `sm5Stats` (line type 7). Non-empty means `FAIL`.
+- `ghostShots` — shot anomalies that don't produce a discrepancy but flag edge cases.
+- `warnings` — informational notes from simulation.
+- `events` — the full simulated event list with indices, for replay debugging.
+- `playerStates` — per-player computed state and snapshot history, side-by-side with the TDF `sm5Stats`.
+
+Laserball files write a smaller shape — with no line type 7 there is nothing to reconcile against, so there is no `consistencyCheck`:
+
+```json
+{
+  "missionType": 28,
+  "outcome": "score",
+  "actualDuration": 900000,
+  "goalCheck": { "ok": true },
+  "teams": [...],
+  "playerCount": 10,
+  "eventCount": 1234
+}
+```
+
+These files are gitignored and regenerated on every run.
+
+### Single-file testing
+
+```bash
+pnpm --filter chomper run ingest <path/to/file.tdf>
+```
+
+Runs Phase 1 + Phase 2 for one file and writes its `.debug.json`, dispatching on mission type exactly as the suite does. Identical in coverage, just scoped to one file, and it does not touch the database.
+
+> The `pnpm ingest` root script forwards its argument to the chomper package, but path handling can be unreliable on Windows. Running `pnpm --filter chomper run ingest` from the repo root with a relative path (e.g. `../../demo_files/foo.tdf`), or from `apps/chomper` directly, is more reliable.
+
+**Testing Phase 3.** There is no single-file SM5 tool that exercises database ingest — an SM5 file must go through the Lambda handler or a bulk-ingest run against S3. Laserball has a local escape hatch in `ingest-local-lb.ts` (see [Re-ingest and Maintenance CLIs](#re-ingest-and-maintenance-clis)).
+
+### Adding test files
+
+Drop an SM5 `.tdf` into `demo_files/`, or a Laserball `.tdf` into `demo_files/laserball/`, and the next run picks it up. Any other mission type is reported as `SKIP`.
+
+---
+
 ## Reference Documents
 
-- `TDF_Spec.md` — complete TDF format, all line types, all event codes, version-gated features
-- `Scorecard_Table_Spec.md` — full definition of every Scorecard column including derivation logic
-- `Core_Schema.md` — complete database schema, all tables, MVP formula, GamePlayerState structure
+- [`TDF_Spec.md`](TDF_Spec.md) — complete TDF format, all line types, all event codes, version-gated features
+- [`Scorecard_Table_Spec.md`](Scorecard_Table_Spec.md) — full definition of every Scorecard column including derivation logic
+- [`Core_Schema.md`](Core_Schema.md) — SM5 database schema, MVP formula, GamePlayerState structure
+- [`Laserball_TDF_Spec.md`](Laserball_TDF_Spec.md) — Laserball's deltas to the TDF format
+- [`Laserball_Scorecard_Table_Spec.md`](Laserball_Scorecard_Table_Spec.md) — every `lb_scorecard` column, with PHP line references
+- [`Competition_Structure.md`](Competition_Structure.md) — what `game.competition_id` means downstream of ingest

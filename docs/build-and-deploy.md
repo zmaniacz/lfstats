@@ -2,6 +2,16 @@
 
 This document describes the architecture, configuration, and deployment process for the web app in this monorepo. It exists so that the mental model can be recovered without re-deriving it. Project-specific facts (package names, image names, domain) are concrete; host-specific facts (user names, paths) are abstract.
 
+**The repo has three workflows.** This document covers the first in depth; the other two are summarised under [Other Workflows](#other-workflows).
+
+| Workflow             | Triggers on                                                                                            | What it does                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `build-web.yml`      | push to `main` touching `apps/web/**`, `packages/db/**`, the lockfile, or itself                       | Builds the Docker image, pushes to GHCR, deploys via self-hosted runner. **The subject of this document.** |
+| `deploy-chomper.yml` | push to `main` touching `apps/chomper/**`, `packages/db/**`, or the lockfile; also `workflow_dispatch` | Builds and deploys the ingestion Lambda to AWS with SAM.                                                   |
+| `typecheck.yml`      | push to `main` **and every pull request**                                                              | Runs `pnpm typecheck` across the monorepo. The only workflow that gates PRs.                               |
+
+Note that `packages/db/**` triggers **both** deploy workflows — a schema change ships to the web app and the Lambda independently, and they are not sequenced relative to each other.
+
 ---
 
 ## Overview
@@ -28,6 +38,8 @@ Three runtimes are involved:
 .
 ├── apps/
 │   ├── chomper/                  # TDF ingestion Lambda (separate AWS deploy)
+│   │   ├── template.yaml         # SAM template — the Lambda's infrastructure
+│   │   └── README.md             # secret shape, pipeline secrets, manual deploy
 │   └── web/                      # the Next.js app
 │       ├── Dockerfile
 │       ├── next.config.ts
@@ -42,8 +54,11 @@ Three runtimes are involved:
 │           ├── schema.ts
 │           └── index.ts          # barrel — re-exports public API
 ├── .dockerignore                 # at the monorepo root (build context root)
+├── .gitattributes                # pins the working tree to LF on all platforms
 ├── .github/workflows/
-│   └── build-web.yml
+│   ├── build-web.yml             # build + deploy the web app (this document)
+│   ├── deploy-chomper.yml        # build + deploy the ingestion Lambda via SAM
+│   └── typecheck.yml             # pnpm typecheck on push to main and every PR
 ├── pnpm-workspace.yaml
 └── turbo.json
 ```
@@ -155,6 +170,37 @@ Auth-related env vars: `AUTH_TRUST_HOST=true` and explicit `AUTH_URL=https://mod
 ### `.env` (on the deploy host, never committed)
 
 Contains: `DB_PASSWORD`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`. Mode 660, owned by the runner user with the admin user added to the runner's group.
+
+---
+
+## Other Workflows
+
+### `.github/workflows/deploy-chomper.yml` — the ingestion Lambda
+
+A completely separate deployment path from the web app: **AWS, not the production host**, and no self-hosted runner. Everything runs on GitHub-hosted Ubuntu.
+
+Triggered by a push to `main` touching `apps/chomper/**`, `packages/db/**`, or `pnpm-lock.yaml` — plus `workflow_dispatch` for a manual redeploy. The job:
+
+1. Installs deps and runs `pnpm --filter chomper build` (esbuild bundles `src/index.ts` to a single ESM file).
+2. Configures AWS credentials from repository secrets.
+3. `sam validate` → `sam package` → `sam deploy` against `apps/chomper/template.yaml`, stack name `lfstats-chomper`, with `CAPABILITY_IAM`.
+4. **Re-applies the S3 bucket notification** — looks up the deployed function ARN and puts a `s3:ObjectCreated:*` notification on the incoming bucket, filtered to a `.tdf` suffix. This is what actually wires uploads to the Lambda.
+
+> Step 4 runs on **every** deploy, not just the first. The notification lives on the bucket rather than in the SAM stack, so it would otherwise be lost or drift out of sync with a redeployed function.
+
+Deploy parameters and credentials come entirely from repository secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `SAM_DEPLOYMENT_BUCKET`, `INCOMING_BUCKET`, `ARCHIVE_BUCKET`, `ERROR_BUCKET`, `DB_SECRET_ARN`, `ERROR_EMAIL_ADDRESS`.
+
+See [`apps/chomper/README.md`](../apps/chomper/README.md) for the Secrets Manager secret shape the Lambda reads at runtime, how local development differs, and how to deploy manually. See [chomper-design.md](chomper-design.md) for what the Lambda actually does with a file.
+
+### `.github/workflows/typecheck.yml` — the PR gate
+
+Runs `pnpm typecheck` (Turbo, across every package) on push to `main` and on **every pull request**, with no path filter.
+
+This is the only workflow with a `pull_request` trigger, and therefore the only automated check standing between a PR and `main`. Nothing else gates a merge:
+
+- **No lint job.** `pnpm lint` exists and Husky/lint-staged runs Prettier and ESLint on staged files locally, but CI never checks it — a `--no-verify` commit reaches `main` unlinted.
+- **No test job.** The chomper test suite is run manually; see [chomper-design.md](chomper-design.md#test-suite).
+- **The web build is post-merge.** `build-web.yml` only has a `push` trigger, so a change that breaks the Docker build passes PR review and fails after merging.
 
 ---
 

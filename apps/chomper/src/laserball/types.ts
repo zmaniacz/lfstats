@@ -5,7 +5,7 @@
 // Laserball simulator types and constants
 //
 // This module is a faithful port of the European reference implementation
-// (demo_files/laserball-code/process_logs.php). See docs/laserball-chomper-design.md.
+// (demo_files/laserball-code/process_logs.php). See docs/chomper-design.md.
 // ---------------------------------------------------------------------------
 
 /** Mission type code for Laserball (line type 1). SM5 is 5. */

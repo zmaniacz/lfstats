@@ -1,7 +1,8 @@
 # Scorecard Table Specification
 
 **Game Type:** Space Marines 5 (SM5)  
-**Last Updated:** 2026
+**Table name:** `sm5_scorecard`  
+**Last Updated:** 2026-08
 
 ---
 
@@ -9,11 +10,18 @@
 
 The `Scorecard` table is the primary record of a single player's participation and performance in a single game. It combines identity context (who played, in what role, on what team) with a full set of recorded and derived performance stats.
 
-One row exists per player per game. Non-player entities (targets, referees) are stored separately in `GameNonPlayerEntity` and do not appear here.
+One row exists per player per game. Non-player entities are stored separately — targets in `sm5_game_target` and referees in `game_referee` — and do not appear here.
 
 All stat columns that are position-specific are stored as `null` for positions where they do not apply. A value of `0` always means the stat is applicable but the player simply recorded zero — it is never used as a substitute for null.
 
 All derived stats are calculated at ingest time from the event stream or from other columns on the same row. They are stored rather than computed at query time for consistency and query performance.
+
+**This document is the source of truth for the stat set.** Three further columns live on the same table but belong to other subsystems and are specified where those subsystems are defined:
+
+| Column                       | Specified in                                                               |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| `mvp_points`, `mvp_model_id` | [Core_Schema.md](Core_Schema.md#scorecard) — MVP scoring                   |
+| `is_mercenary`               | [Competition_Structure.md](Competition_Structure.md) — competition rosters |
 
 ---
 
@@ -68,6 +76,17 @@ Missile stats are derived from `0306` events and line type 7 fields where noted.
 | `times_hit_by_missile`        | integer | never | line type 7 | Number of times this player was hit by a missile (`0306` events where this player is the target).                                                                                                                                 |
 | `times_reset_by_missile`      | integer | never | derived     | Number of times this player was reset by a missile — subset of `times_hit_by_missile` where the player was already in state 2 when hit. Victim-side counterpart to `missile_reset_opponent`/`missile_reset_team` on the attacker. |
 
+#### Combined medic damage
+
+These two span **both** shots and missiles, so they do not belong to either group alone. They exist because they are the values line type 7 reports, and the ingest consistency check reconciles against them directly.
+
+| Column            | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                                                 |
+| ----------------- | ------- | ----- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `medic_hits`      | integer | never | derived | Total opposing-Medic **lives removed** by this player: `shots_hit_opponent_medic + missiles_hit_opponent_medic_lives`. Counts damage dealt, not events — a missile normally removes 2 lives but only 1 if that was all the Medic had. Reconciled against the line type 7 `medicHits` field. |
+| `team_medic_hits` | integer | never | derived | The same measure against the **friendly** Medic: `shots_hit_team_medic + missiles_hit_team_medic_lives`. Shame stat. Reconciled against the line type 7 `ownMedicHits` field.                                                                                                               |
+
+> Note the unit difference: `shots_hit_opponent_medic` and `missiles_hit_opponent_medic` count **events**, while these two count **lives**. They will not sum to each other in games where a missile hit a Medic holding a single life.
+
 ---
 
 ### Nuke Stats
@@ -93,6 +112,15 @@ Tracked for all positions — any player can cancel an opposing or friendly nuke
 | --------------------- | ------- | ----- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `nukes_canceled`      | integer | never | line type 7 | Number of opposing team nukes cancelled by this player — i.e. times this player deactivated an enemy Commander during their nuke activation sequence before detonation. High value defensive play. |
 | `team_nukes_canceled` | integer | never | line type 7 | Number of friendly nukes accidentally cancelled by this player — i.e. times this player deactivated their own Commander during an active nuke sequence. Shame stat.                                |
+
+#### Nuke-cancelled-by-nuke — Commander only
+
+A distinct mechanism from the two above: rather than a player shooting the Commander down, one Commander's **detonating nuke** deactivates an opposing Commander who is themselves mid-countdown, cancelling that second nuke. Only a Commander can be on either side of this, so both columns are null for all other positions.
+
+| Column                       | Type    | Null           | Source  | Description                                                                                                                                                  |
+| ---------------------------- | ------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `nukes_canceled_by_nuke`     | integer | Commander only | derived | Opposing nukes this Commander cancelled **by detonating their own** — counted per opposing Commander caught mid-activation in the blast. Attacker-side stat. |
+| `own_nukes_canceled_by_nuke` | integer | Commander only | derived | Times this Commander's own in-progress nuke was cancelled by an opposing Commander's detonation. Victim-side counterpart. Losing a nuke race, measured.      |
 
 ---
 
@@ -125,6 +153,18 @@ Resupply activity for Ammo Carrier and Medic. Null for all other positions — o
 | `double_resupplies_given`   | integer | Ammo/Medic only | derived | Number of successful double resupplies — simultaneous `0500` and `0502` events at the same timestamp against the same target, resulting in a single 8-second downtime that grants both shots and lives. Tracked independently on both the Ammo Carrier and Medic row — in standard games with one of each these numbers will match, but custom variants with multiple support players may differ. |
 | `resupplies_received_ammo`  | integer | never           | derived | Number of times this player received a shot resupply (`0500` events where this player is the target). Will always be 0 for Ammo Carriers (cannot resupply their own shots).                                                                                                                                                                                                                       |
 | `resupplies_received_lives` | integer | never           | derived | Number of times this player received a lives resupply (`0502` events where this player is the target). Will always be 0 for Medics (cannot be resupplied by anyone per the spec).                                                                                                                                                                                                                 |
+
+#### Received-side resupply stats — all positions
+
+Three further received-side counters, all applicable to every position.
+
+| Column                                | Type    | Null  | Source  | Description                                                                                                                                                                                                |
+| ------------------------------------- | ------- | ----- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `emergency_resupplies_received_ammo`  | integer | never | derived | Shot resupplies received from the **base station** rather than a teammate — a `0500` event with a target but **no actor**. Receiving one also ends any active rapid fire, exactly as a normal `0500` does. |
+| `emergency_resupplies_received_lives` | integer | never | derived | Lives resupplies received from the base station — a `0502` event with a target but no actor.                                                                                                               |
+| `double_resupplies_received`          | integer | never | derived | Victim-side counterpart to `double_resupplies_given`: times this player received a second resupply within the same respawn cycle, taking both shots and lives from a single 8-second downtime.             |
+
+> The absence of an actor is what distinguishes an emergency resupply from a teammate resupply — the same event codes (`0500`, `0502`) carry both. See `handleEmergencyResupply` in `simulator.ts`.
 
 ---
 
@@ -208,15 +248,18 @@ All values in milliseconds. The three columns always sum to total time between t
 
 ## Position-Specific Null Summary
 
-| Column Group                    | Commander | Heavy Weapons | Scout    | Ammo Carrier | Medic    |
-| ------------------------------- | --------- | ------------- | -------- | ------------ | -------- |
-| Nuke stats                      | ✓ stored  | null          | null     | null         | null     |
-| `rapid_fire` + rapid fire group | null      | null          | ✓ stored | null         | null     |
-| `ammo_boost`                    | null      | null          | null     | ✓ stored     | null     |
-| `life_boost`                    | null      | null          | null     | null         | ✓ stored |
-| `resupplies_given`              | null      | null          | null     | ✓ stored     | ✓ stored |
-| `double_resupplies_given`       | null      | null          | null     | ✓ stored     | ✓ stored |
-| `sp_earned` / `sp_spent`        | ✓ stored  | null          | ✓ stored | ✓ stored     | ✓ stored |
+| Column Group                                            | Commander | Heavy Weapons | Scout    | Ammo Carrier | Medic    |
+| ------------------------------------------------------- | --------- | ------------- | -------- | ------------ | -------- |
+| Nuke stats                                              | ✓ stored  | null          | null     | null         | null     |
+| `nukes_canceled_by_nuke` / `own_nukes_canceled_by_nuke` | ✓ stored  | null          | null     | null         | null     |
+| `rapid_fire` + rapid fire group                         | null      | null          | ✓ stored | null         | null     |
+| `ammo_boost`                                            | null      | null          | null     | ✓ stored     | null     |
+| `life_boost`                                            | null      | null          | null     | null         | ✓ stored |
+| `resupplies_given`                                      | null      | null          | null     | ✓ stored     | ✓ stored |
+| `double_resupplies_given`                               | null      | null          | null     | ✓ stored     | ✓ stored |
+| `sp_earned` / `sp_spent`                                | ✓ stored  | null          | ✓ stored | ✓ stored     | ✓ stored |
+
+Everything not listed above — including `nukes_canceled` / `team_nukes_canceled`, all received-side resupply counters, and `medic_hits` / `team_medic_hits` — is stored for **every** position.
 
 ---
 

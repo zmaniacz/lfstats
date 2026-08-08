@@ -177,23 +177,38 @@ Next.js requires one name per dynamic segment and the parent route uses the slug
 Laserball equivalent of the above — backed by `getLbGameReplayData` in
 `packages/db/src/queries/laserball.ts`.
 
+## `GET /api/laserball/matches/[matchId]/replay`
+
+Replay data for a Laserball **match** — both halves of a two-game match stitched together — keyed
+by internal `lb_match` UUID. Backed by `getLbMatchReplayData` in
+`packages/db/src/queries/lb-match.ts`. Returns `404` with `{ "error": "Not found" }` for an
+unknown `matchId`.
+
+A Laserball match links two games that are the same two teams with sides swapped at the half. Side
+identity is match-scoped: `lb_match_game` records which `lb_game_team` row is "Side 1" and "Side 2"
+in each half, because the same real-world team normally carries a different colour in each. There
+is no persistent Laserball team table — this is a lighter structure than the SM5
+`competition_match` model.
+
 ---
 
 ## `GET /api/competitions/[slug]/stats`
 
 Per-player stats for a competition, keyed by competition slug. Backed by
-`getCompetitionPlayerStats` in `packages/db/src/queries/competitions.ts`. `404` if the slug
-doesn't match a competition.
+`getCompetitionPlayerStats` in `packages/db/src/queries/competition-tournament.ts`. `404` if the
+slug doesn't match a competition.
 
 ## `GET /api/competitions/[slug]/schedule`
 
 Competition schedule (rounds/matches), keyed by competition slug. Backed by
-`getCompetitionSchedule`. `404` if the slug doesn't match a competition.
+`getCompetitionSchedule` in `packages/db/src/queries/competition-tournament.ts`. `404` if the slug
+doesn't match a competition.
 
 ## `GET /api/competitions/[slug]/standings`
 
 Competition standings/leaderboard, keyed by competition slug. Backed by
-`getCompetitionStandingsData`. `404` if the slug doesn't match a competition.
+`getCompetitionStandingsData` in `packages/db/src/queries/competition-tournament.ts`. `404` if the
+slug doesn't match a competition.
 
 ---
 

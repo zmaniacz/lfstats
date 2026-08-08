@@ -44,6 +44,11 @@ To ingest a game file:
 pnpm ingest <file.tdf>
 ```
 
+## Documentation
+
+Format specs, schema reference, ingestion design, and deployment notes live in
+[`docs/`](docs/README.md).
+
 ## License
 
 AGPL-3.0-or-later. Copyright (C) 2015 Russell Lewis.

@@ -23,17 +23,31 @@ Parses TDF files into a Postgres database and serves stats via a Next.js web app
 
 ## Key Domain Documents
 
-The specs live in /docs:
+The specs live in /docs — see [docs/README.md](docs/README.md) for the full index.
+
+**File formats**
 
 - TDF_Spec.md — raw game log file format
-- Scorecard_Table_Spec.md — per-player stat definitions
-- API.md — public API routes reference
-- Core_Schema.md — full database schema spec
-- chomper-design.md — chomper architecture, parsing, simulation, and ingest design
-- chomper-test-suite.md — how to run the chomper test suite
-- laserball-chomper-design.md — Laserball ingestion/simulation design (mission type 28)
 - Laserball_TDF_Spec.md — Laserball-specific TDF deltas (events, no line 7)
+
+**Schema**
+
+- Core_Schema.md — SM5 core database schema
+- Scorecard_Table_Spec.md — per-player stat definitions
 - Laserball_Scorecard_Table_Spec.md — per-stat definitions for the lb_scorecard table
+- Competition_Structure.md — competition/tournament tables, standings, mercenary rules
+- SM5-penalty-definitions.md — penalty types and their default score/MVP impact
+
+**Ingestion**
+
+- chomper-design.md — chomper architecture, parsing, simulation, and ingest design for both game
+  modes, plus the CLI entry points and the test suite
+
+**App and operations**
+
+- API.md — public API routes reference
+- Role_Spec.md — the four-level role hierarchy and permission matrix
+- build-and-deploy.md — web app Docker/GHCR build and self-hosted deploy
 
 ## Skills
 
@@ -44,7 +58,7 @@ The specs live in /docs:
 
 - All timestamps stored as local time (no UTC conversion)
 - Position-specific nullable columns: null = not applicable, 0 = applicable but zero
-- See SM5_Core_Schema.md for full table definitions
+- See docs/Core_Schema.md for full table definitions
 
 ## File Headers
 

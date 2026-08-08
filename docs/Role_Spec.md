@@ -52,19 +52,19 @@ Upload-only access. No admin panels.
 
 ## Permissions Matrix
 
-| Action | superAdmin | admin | centerAdmin | uploader |
-|---|---|---|---|---|
-| Access `/upload` | ✓ | ✓ | ✓ | ✓ |
-| Access `/admin` | ✓ | ✓ | ✓ | ✗ |
-| Edit games/competitions/tags (any center) | ✓ | ✓ | own center only | ✗ |
-| Grant `superAdmin` | ✓ | ✗ | ✗ | ✗ |
-| Grant `admin` | ✓ | ✗ | ✗ | ✗ |
-| Grant `centerAdmin` | ✓ | ✓ (any center) | ✗ | ✗ |
-| Grant `uploader` | ✓ | ✓ (any center) | ✓ (own center only) | ✗ |
-| Revoke `superAdmin` / `admin` | ✓ | ✗ | ✗ | ✗ |
-| Revoke `centerAdmin` | ✓ | ✓ | ✗ | ✗ |
-| Revoke `uploader` | ✓ | ✓ (any center) | ✓ (own center only) | ✗ |
-| View user admin panel | ✓ | ✓ | ✓ (filtered) | ✗ |
+| Action                                    | superAdmin | admin          | centerAdmin         | uploader |
+| ----------------------------------------- | ---------- | -------------- | ------------------- | -------- |
+| Access `/upload`                          | ✓          | ✓              | ✓                   | ✓        |
+| Access `/admin`                           | ✓          | ✓              | ✓                   | ✗        |
+| Edit games/competitions/tags (any center) | ✓          | ✓              | own center only     | ✗        |
+| Grant `superAdmin`                        | ✓          | ✗              | ✗                   | ✗        |
+| Grant `admin`                             | ✓          | ✗              | ✗                   | ✗        |
+| Grant `centerAdmin`                       | ✓          | ✓ (any center) | ✗                   | ✗        |
+| Grant `uploader`                          | ✓          | ✓ (any center) | ✓ (own center only) | ✗        |
+| Revoke `superAdmin` / `admin`             | ✓          | ✗              | ✗                   | ✗        |
+| Revoke `centerAdmin`                      | ✓          | ✓              | ✗                   | ✗        |
+| Revoke `uploader`                         | ✓          | ✓ (any center) | ✓ (own center only) | ✗        |
+| View user admin panel                     | ✓          | ✓              | ✓ (filtered)        | ✗        |
 
 ---
 

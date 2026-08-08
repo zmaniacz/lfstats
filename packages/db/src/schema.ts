@@ -760,7 +760,7 @@ export const sm5GamePlayerState = pgTable(
 //
 // Stat definitions and computation are a port of the European reference
 // implementation (demo_files/laserball-code/process_logs.php). See
-// docs/laserball-chomper-design.md and docs/Laserball_Scorecard_Table_Spec.md.
+// docs/chomper-design.md and docs/Laserball_Scorecard_Table_Spec.md.
 // Laserball has no roles/positions, so every stat applies to every player and
 // is stored notNull (no null-vs-zero ambiguity).
 // ---------------------------------------------------------------------------
