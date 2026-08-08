@@ -88,6 +88,70 @@ Laserball games at center `4-23` played between 2026-07-01 and 2026-07-12 inclus
 
 ---
 
+## `GET /api/games/[slug]`
+
+Returns one game's header and its full entity roster — who and what was on the field, not how
+they did. Keyed by the public [game slug](#game-slugs); both SM5 and Laserball resolve.
+
+Defined in `apps/web/src/app/api/games/[game]/route.ts`, backed by `getGameSummaryBySlug` in
+`packages/db/src/queries/games.ts`.
+
+No query parameters. `404` with `{ "error": "Not found" }` for a malformed or unknown slug.
+
+### Response
+
+```json
+{
+  "game_slug": "4-19-20260805223932",
+  "game_type": "sm5",
+  "tdf_url": "https://lfstats-modern-archive.s3.us-west-1.amazonaws.com/4-19-20260805223932.tdf",
+  "start_date": "2026-08-05",
+  "start_time": "22:39:32",
+  "scheduled_length": "15:00",
+  "actual_length": "15:00",
+  "center_slug": "4-19",
+  "center_name": "Loveland",
+  "teams": [
+    {
+      "name": "Earth Team",
+      "colour_enum": 13,
+      "is_neutral": false,
+      "players": [{ "ipl_id": "#jRw9Q93", "codename": "Burnt_lettuce" }]
+    },
+    { "name": "Neutral", "colour_enum": 0, "is_neutral": true, "players": [] }
+  ],
+  "targets": [
+    { "entity_id": "@247", "codename": "Beacon (Red Base)", "type": "beacon", "team": "Red Team" }
+  ],
+  "referees": [{ "ipl_id": null, "entity_id": "@235", "codename": "Zen" }]
+}
+```
+
+`start_date` and `start_time` split the game's stored local start time — no timezone conversion
+(see root `CLAUDE.md`). `scheduled_length` and `actual_length` are `m:ss`, formatted from the
+stored millisecond durations.
+
+### Entity groups
+
+Entities are grouped by kind rather than all nested under teams, because a referee belongs to no
+team and a target's team says which side _owns_ it, not who played on it.
+
+- **`teams`** — one per team in `tdf_team_index` order, including the neutral team (which
+  normally has no players). `players` lists every scorecard on that team, sorted by codename.
+- **`targets`** — every non-player target entity in the game (beacons, generators, warbots),
+  sorted by hardware id, each with the name of its owning team or `null`. Always `[]` for
+  Laserball, which declares no target entities.
+- **`referees`** — sorted by codename.
+
+`ipl_id` is the `#xxxxxxx` Laserforce member id; `entity_id` is the `@NNN` center-local hardware
+id. See [Appendix C of `TDF_Spec.md`](./TDF_Spec.md) for both formats.
+
+A player's `ipl_id` is `null` for a guest. Guests play under a `@NNN` id that ingest does not
+persist on the scorecard, so **a guest is identifiable only by codename** — there is no
+`entity_id` to fall back on. Referees carry whichever of the two ids they signed in with.
+
+---
+
 ## `GET /api/players/averages`
 
 Returns overall and per-position career averages for every player. Defined in
@@ -101,10 +165,12 @@ overall and per position — commander/heavy/scout/ammo/medic).
 ## `GET /api/games/[gameId]/replay`
 
 Full SM5 replay data (events, per-tick player states, non-player actors) for one game, keyed by
-internal `gameId` (UUID), not the public game slug. Defined in
-`apps/web/src/app/api/games/[gameId]/replay/route.ts`, backed by `getGameReplayData` in
-`packages/db/src/queries/games.ts`. Returns `404` with `{ "error": "Not found" }` for an unknown
-`gameId`.
+internal `gameId` (UUID), **not** the public game slug — unlike its parent
+[`GET /api/games/[slug]`](#get-apigamesslug), which is keyed by slug. Defined in
+`apps/web/src/app/api/games/[game]/replay/route.ts` (the directory is named `[game]` because
+Next.js requires one name per dynamic segment and the parent route uses the slug), backed by
+`getGameReplayData` in `packages/db/src/queries/games.ts`. Returns `404` with
+`{ "error": "Not found" }` for an unknown `gameId`.
 
 ## `GET /api/laserball/games/[gameId]/replay`
 

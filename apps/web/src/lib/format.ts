@@ -85,6 +85,23 @@ export function formatDateOnly(d: string | null): string {
   return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
 }
 
+/** `2026-07-12` — the date half of a stored local timestamp. */
+export function formatDateIso(d: Date | null): string {
+  if (d === null) return EM_DASH;
+  const MM = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const DD = String(d.getUTCDate()).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${MM}-${DD}`;
+}
+
+/** `15:50:24` — the wall-clock half of a stored local timestamp. */
+export function formatTimeOfDay(d: Date | null): string {
+  if (d === null) return EM_DASH;
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
 export function toDateTimeInputValue(d: Date | null): string {
   if (d === null) return "";
   const YYYY = d.getUTCFullYear();

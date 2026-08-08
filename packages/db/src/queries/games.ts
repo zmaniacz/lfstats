@@ -18,8 +18,11 @@ import {
   competitionRound,
   competitionMatch,
   competitionMatchGame,
+  gameReferee,
   gameTag,
   gameTagAssignment,
+  lbGameTeam,
+  lbScorecard,
 } from "../schema";
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -187,6 +190,181 @@ export async function getGamesForExport(filters: GameExportFilters): Promise<Gam
     .leftJoin(competitionRound, eq(competitionMatch.roundId, competitionRound.id))
     .where(and(...conditions))
     .orderBy(desc(game.startTime));
+}
+
+// ---------------------------------------------------------------------------
+// Single-game summary (public API)
+// ---------------------------------------------------------------------------
+
+/**
+ * One player entity that took the field.
+ *
+ * `iplId` is null for guests: they play under a `@NNN` hardware id (TDF_Spec.md
+ * Appendix C) which the ingest does not persist on the scorecard, so a guest is
+ * identifiable only by codename.
+ */
+export type GameSummaryPlayer = {
+  iplId: string | null;
+  callsign: string;
+};
+
+export type GameSummaryTeam = {
+  tdfTeamIndex: number;
+  name: string;
+  colourEnum: number;
+  isNeutral: boolean;
+  players: GameSummaryPlayer[];
+};
+
+/** A non-player target entity: `entityId` is its `@NNN` hardware id. */
+export type GameSummaryTarget = {
+  entityId: string;
+  name: string;
+  type: string;
+  /** Owning team's name, null when the target belongs to no team. */
+  teamName: string | null;
+};
+
+/** A referee signs in either with an iplId or with a bare hardware id. */
+export type GameSummaryReferee = {
+  iplId: string | null;
+  entityId: string | null;
+  callsign: string;
+};
+
+export type GameSummary = {
+  slug: string;
+  gameType: string;
+  startTime: Date;
+  /** Both in milliseconds. */
+  scheduledDuration: number;
+  actualDuration: number;
+  centerSlug: string;
+  centerName: string;
+  tdfFilename: string;
+  teams: GameSummaryTeam[];
+  /** Always empty for Laserball, which has no target entities. */
+  targets: GameSummaryTarget[];
+  referees: GameSummaryReferee[];
+};
+
+/**
+ * Every entity in one game, keyed by its public slug — the roster behind a
+ * TDF, not its stats. Covers both SM5 and Laserball (like getGameBySlug, and
+ * unlike getGameDetailBySlug, it does not filter on game.type), reading
+ * whichever team/scorecard pair matches the stored type.
+ *
+ * Targets and referees are returned alongside the teams rather than nested
+ * inside them: referees belong to no team at all, and a target's team says
+ * which side owns it rather than who played on it.
+ */
+export async function getGameSummaryBySlug(slug: string): Promise<GameSummary | null> {
+  const parsed = parseGameSlug(slug);
+  if (!parsed) return null;
+
+  const [gameRow] = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      centerName: center.name,
+      gameType: game.type,
+      startTime: game.startTime,
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      tdfFilename: game.tdfFilename,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(center.countryCode, parsed.countryCode),
+        eq(center.siteCode, parsed.siteCode),
+        sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${parsed.timestamp}`,
+      ),
+    );
+
+  if (!gameRow) return null;
+
+  const isLb = gameRow.gameType === "lb";
+  const gameTeam = isLb ? lbGameTeam : sm5GameTeam;
+  const scorecard = isLb ? lbScorecard : sm5Scorecard;
+
+  const [teamRows, playerRows, targetRows, refereeRows] = await Promise.all([
+    db
+      .select({
+        id: gameTeam.id,
+        tdfTeamIndex: gameTeam.tdfTeamIndex,
+        name: gameTeam.name,
+        colourEnum: gameTeam.colourEnum,
+        isNeutral: gameTeam.isNeutral,
+      })
+      .from(gameTeam)
+      .where(eq(gameTeam.gameId, gameRow.id))
+      .orderBy(asc(gameTeam.tdfTeamIndex)),
+
+    db
+      .select({
+        teamId: scorecard.teamId,
+        iplId: scorecard.iplId,
+        callsign: scorecard.callsign,
+      })
+      .from(scorecard)
+      .where(eq(scorecard.gameId, gameRow.id))
+      .orderBy(asc(scorecard.callsign)),
+
+    // Laserball files declare no target entities, so this table only ever has
+    // SM5 rows — the gameId filter alone is enough to return [] for lb.
+    db
+      .select({
+        entityId: target.hardwareId,
+        name: target.name,
+        type: sm5GameTarget.type,
+        teamName: sm5GameTeam.name,
+      })
+      .from(sm5GameTarget)
+      .innerJoin(target, eq(target.id, sm5GameTarget.targetId))
+      .leftJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5GameTarget.gameTeamId))
+      .where(eq(sm5GameTarget.gameId, gameRow.id))
+      .orderBy(asc(target.hardwareId)),
+
+    db
+      .select({
+        iplId: gameReferee.iplId,
+        entityId: gameReferee.hardwareId,
+        callsign: gameReferee.callsign,
+      })
+      .from(gameReferee)
+      .where(eq(gameReferee.gameId, gameRow.id))
+      .orderBy(asc(gameReferee.callsign)),
+  ]);
+
+  const playersByTeam = new Map<string, GameSummaryPlayer[]>();
+  for (const p of playerRows) {
+    const list = playersByTeam.get(p.teamId) ?? [];
+    list.push({ iplId: p.iplId, callsign: p.callsign });
+    playersByTeam.set(p.teamId, list);
+  }
+
+  return {
+    slug: gameRow.slug,
+    gameType: gameRow.gameType,
+    startTime: gameRow.startTime,
+    scheduledDuration: gameRow.scheduledDuration,
+    actualDuration: gameRow.actualDuration,
+    centerSlug: gameRow.centerSlug,
+    centerName: gameRow.centerName,
+    tdfFilename: gameRow.tdfFilename,
+    teams: teamRows.map((t) => ({
+      tdfTeamIndex: t.tdfTeamIndex,
+      name: t.name,
+      colourEnum: t.colourEnum,
+      isNeutral: t.isNeutral,
+      players: playersByTeam.get(t.id) ?? [],
+    })),
+    targets: targetRows,
+    referees: refereeRows,
+  };
 }
 
 export type MvpComponentRow = {
