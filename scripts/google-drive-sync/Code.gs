@@ -1,12 +1,18 @@
-// Google Apps Script — syncs new TDF files from a Google Drive folder to S3.
+// Google Apps Script — syncs new TDF files from one or more Google Drive folders to S3.
 //
-// Folder structure:
+// Each configured site has its own watched folder, with the same layout:
 //   root/            → TDFs here upload to S3 as {filename}.tdf (social / non-competition)
 //   root/slug-name/  → TDFs here upload to S3 as slug-name/{filename}.tdf
 //   root/_processed/ → files are moved here after a successful upload
 //
 // Subfolders whose names match a competition slug route games to that competition.
 // Files in the root folder have no prefix and are automatically treated as social games.
+//
+// S3 keys are NOT namespaced by site, deliberately. Chomper identifies the center from the
+// TDF's own country/site codes, and TDF filenames already start with that code
+// ("3-3_20260519201615_-_Space_Marines_5.tdf"), so keys are unique across sites without a
+// prefix. The first path segment is reserved for the competition slug — putting a site
+// name there would make chomper search for a competition by that name and not find one.
 //
 // Uploaded files are moved into _processed/ (mirroring the slug structure) rather than
 // being recorded in a tracking property. That keeps stored state at zero and keeps each
@@ -20,7 +26,7 @@
 //   4. Run installTrigger() once to start the 5-minute polling loop
 //
 // Script Properties (set via setupProperties or manually in Project Settings):
-//   DRIVE_FOLDER_ID       — the Google Drive folder ID to watch
+//   SITE_FOLDERS          — JSON array of {name, folderId}, one entry per site
 //   S3_BUCKET             — your chomper incoming S3 bucket name
 //   S3_REGION             — AWS region (e.g. us-east-1)
 //   AWS_ACCESS_KEY_ID     — IAM user access key with s3:PutObject on the bucket
@@ -53,7 +59,6 @@ function syncNewTdfs() {
 
 function runSync_() {
   var props = PropertiesService.getScriptProperties();
-  var folderId = props.getProperty("DRIVE_FOLDER_ID");
   var cfg = {
     bucket: props.getProperty("S3_BUCKET"),
     region: props.getProperty("S3_REGION"),
@@ -61,19 +66,63 @@ function runSync_() {
     secretKey: props.getProperty("AWS_SECRET_ACCESS_KEY"),
   };
 
-  if (!folderId || !cfg.bucket || !cfg.region || !cfg.accessKey || !cfg.secretKey) {
-    throw new Error("Missing script properties — run setupProperties() first");
+  if (!cfg.bucket || !cfg.region || !cfg.accessKey || !cfg.secretKey) {
+    throw new Error("Missing S3 script properties — run setupProperties() first");
   }
 
+  var sites = getSites_(props);
   var deadline = Date.now() + MAX_RUNTIME_MS;
-  var rootFolder = DriveApp.getFolderById(folderId);
+
+  // All sites share one 6-minute execution, so the order matters. Start one site further
+  // along each run: a site with a standing backlog that always exhausts the budget then
+  // can't permanently starve the sites behind it.
+  var startAt = Number(props.getProperty("SITE_CURSOR") || 0) % sites.length;
+  props.setProperty("SITE_CURSOR", String((startAt + 1) % sites.length));
+
+  var uploaded = 0;
+  var deferred = 0;
+  var skipped = 0;
+
+  for (var n = 0; n < sites.length; n++) {
+    var site = sites[(startAt + n) % sites.length];
+
+    if (Date.now() > deadline) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      var result = syncSite_(site, cfg, deadline);
+      uploaded += result.uploaded;
+      deferred += result.deferred;
+    } catch (e) {
+      // One unreachable folder (revoked sharing, deleted folder) must not stop the rest.
+      Logger.log("ERROR syncing site \"" + site.name + "\": " + e.message);
+    }
+  }
+
+  if (uploaded > 0) {
+    Logger.log("Sync complete — uploaded " + uploaded + " file(s) across " + sites.length + " site(s)");
+  }
+  if (deferred > 0 || skipped > 0) {
+    Logger.log(
+      "Hit the runtime budget — " + deferred + " file(s) and " + skipped + " site(s) deferred to the next run",
+    );
+  }
+}
+
+/** Syncs one site's folder tree. Its layout is identical to the single-site original. */
+function syncSite_(site, cfg, deadline) {
+  var rootFolder = DriveApp.getFolderById(site.folderId);
 
   // Created lazily so an idle sync never touches Drive's folder structure at all.
   var processedRoot = lazyFolder_(function () {
     return getOrCreateFolder_(rootFolder, PROCESSED_FOLDER_NAME);
   });
 
-  // Root folder → no prefix (unprefixed files are treated as social games by chomper)
+  // Root folder → no prefix (unprefixed files are treated as social games by chomper).
+  // Note the S3 key is deliberately NOT namespaced by site: chomper reads the first path
+  // segment as a competition slug, and identifies the center from the TDF contents.
   var result = uploadTdfsFromFolder_(rootFolder, "", cfg, processedRoot, deadline);
   var uploaded = result.uploaded;
   var deferred = result.deferred;
@@ -95,12 +144,37 @@ function runSync_() {
     deferred += subResult.deferred;
   }
 
-  if (uploaded > 0) {
-    Logger.log("Sync complete — uploaded " + uploaded + " file(s)");
+  if (uploaded > 0 || deferred > 0) {
+    Logger.log(site.name + ": uploaded " + uploaded + ", deferred " + deferred);
   }
-  if (deferred > 0) {
-    Logger.log("Hit the runtime budget with " + deferred + " file(s) left — resuming next run");
+  return { uploaded: uploaded, deferred: deferred };
+}
+
+/**
+ * Reads the configured sites from SITE_FOLDERS, a JSON array of {name, folderId}.
+ * `name` is only used for logging — it must never reach the S3 key.
+ */
+function getSites_(props) {
+  var raw = props.getProperty("SITE_FOLDERS");
+
+  if (!raw) {
+    // Pre-multi-site config. Keeps the trigger working in the window between pasting new
+    // code and updating the properties; safe to delete once SITE_FOLDERS is set.
+    var legacyId = props.getProperty("DRIVE_FOLDER_ID");
+    if (legacyId) return [{ name: "default", folderId: legacyId }];
+    throw new Error("No sites configured — set SITE_FOLDERS (run setupProperties() first)");
   }
+
+  var sites = JSON.parse(raw);
+  if (!sites.length) throw new Error("SITE_FOLDERS is configured but empty");
+
+  for (var i = 0; i < sites.length; i++) {
+    if (!sites[i].folderId) {
+      throw new Error("SITE_FOLDERS entry " + i + ' is missing "folderId"');
+    }
+    if (!sites[i].name) sites[i].name = sites[i].folderId;
+  }
+  return sites;
 }
 
 /**
@@ -283,19 +357,33 @@ function bytesToHex_(bytes) {
 // ─── One-time setup helpers ────────────────────────────────────────────────
 
 /**
- * Run this once to configure your script properties.
+ * Run this once, on a fresh project, to configure your script properties.
  * Edit the values below before running.
+ *
+ * WARNING: this overwrites every property listed here. On an already-configured project
+ * it would replace live AWS credentials with the placeholders below — to add a site to an
+ * existing deployment, edit SITE_FOLDERS directly in Project Settings instead.
  */
 function setupProperties() {
   var props = PropertiesService.getScriptProperties();
+
+  // One entry per site. `name` is for logging only; `folderId` comes from the Drive
+  // folder URL (the part after /folders/). Folders owned by other sites must be shared
+  // with this script's Google account as Editor, so it can move files into _processed/.
+  var sites = [
+    { name: "hq",       folderId: "YOUR_FOLDER_ID_HERE" },
+    { name: "westside", folderId: "ANOTHER_FOLDER_ID_HERE" },
+  ];
+
   props.setProperties({
-    DRIVE_FOLDER_ID:       "YOUR_FOLDER_ID_HERE",      // from the Drive folder URL
+    SITE_FOLDERS:          JSON.stringify(sites),
     S3_BUCKET:             "YOUR_INCOMING_BUCKET_HERE", // e.g. lfstats-incoming
     S3_REGION:             "us-east-1",                 // your bucket's region
     AWS_ACCESS_KEY_ID:     "YOUR_ACCESS_KEY_HERE",
     AWS_SECRET_ACCESS_KEY: "YOUR_SECRET_KEY_HERE",
   });
-  Logger.log("Properties saved. Now run installTrigger().");
+  props.deleteProperty("DRIVE_FOLDER_ID"); // superseded by SITE_FOLDERS
+  Logger.log("Properties saved for " + sites.length + " site(s). Now run installTrigger().");
 }
 
 /**
