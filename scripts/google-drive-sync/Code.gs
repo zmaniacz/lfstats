@@ -1,11 +1,17 @@
 // Google Apps Script — syncs new TDF files from a Google Drive folder to S3.
 //
 // Folder structure:
-//   root/           → TDFs here upload to S3 as {filename}.tdf (social / non-competition)
-//   root/slug-name/ → TDFs here upload to S3 as slug-name/{filename}.tdf
+//   root/            → TDFs here upload to S3 as {filename}.tdf (social / non-competition)
+//   root/slug-name/  → TDFs here upload to S3 as slug-name/{filename}.tdf
+//   root/_processed/ → files are moved here after a successful upload
 //
 // Subfolders whose names match a competition slug route games to that competition.
 // Files in the root folder have no prefix and are automatically treated as social games.
+//
+// Uploaded files are moved into _processed/ (mirroring the slug structure) rather than
+// being recorded in a tracking property. That keeps stored state at zero and keeps each
+// run's work proportional to the number of *new* files instead of the whole archive.
+// To re-upload something, drag it out of _processed/ back into its folder.
 //
 // Setup:
 //   1. Open https://script.google.com and create a new project
@@ -20,85 +26,152 @@
 //   AWS_ACCESS_KEY_ID     — IAM user access key with s3:PutObject on the bucket
 //   AWS_SECRET_ACCESS_KEY — IAM user secret key
 
+// Subfolder that uploaded files are moved into. Skipped by the competition-slug walk.
+var PROCESSED_FOLDER_NAME = "_processed";
+
+// Apps Script kills an execution at 6 minutes. Stop starting new uploads before then so
+// a large backlog drains over several runs instead of dying partway through one.
+var MAX_RUNTIME_MS = 4.5 * 60 * 1000;
+
 // ─── Entry point (called by time-driven trigger) ───────────────────────────
 
 function syncNewTdfs() {
+  // The 5-minute trigger can overlap a manual run or a slow previous run. Without this,
+  // two executions upload the same files concurrently.
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    Logger.log("Another sync is already running — skipping this run");
+    return;
+  }
+
+  try {
+    runSync_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function runSync_() {
   var props = PropertiesService.getScriptProperties();
   var folderId = props.getProperty("DRIVE_FOLDER_ID");
-  var bucket = props.getProperty("S3_BUCKET");
-  var region = props.getProperty("S3_REGION");
-  var accessKey = props.getProperty("AWS_ACCESS_KEY_ID");
-  var secretKey = props.getProperty("AWS_SECRET_ACCESS_KEY");
+  var cfg = {
+    bucket: props.getProperty("S3_BUCKET"),
+    region: props.getProperty("S3_REGION"),
+    accessKey: props.getProperty("AWS_ACCESS_KEY_ID"),
+    secretKey: props.getProperty("AWS_SECRET_ACCESS_KEY"),
+  };
 
-  if (!folderId || !bucket || !region || !accessKey || !secretKey) {
+  if (!folderId || !cfg.bucket || !cfg.region || !cfg.accessKey || !cfg.secretKey) {
     throw new Error("Missing script properties — run setupProperties() first");
   }
 
+  var deadline = Date.now() + MAX_RUNTIME_MS;
   var rootFolder = DriveApp.getFolderById(folderId);
-  var processedIds = getProcessedIds_(props);
-  var uploaded = 0;
+
+  // Created lazily so an idle sync never touches Drive's folder structure at all.
+  var processedRoot = lazyFolder_(function () {
+    return getOrCreateFolder_(rootFolder, PROCESSED_FOLDER_NAME);
+  });
 
   // Root folder → no prefix (unprefixed files are treated as social games by chomper)
-  uploaded += uploadTdfsFromFolder_(rootFolder, "", bucket, region, accessKey, secretKey, processedIds);
+  var result = uploadTdfsFromFolder_(rootFolder, "", cfg, processedRoot, deadline);
+  var uploaded = result.uploaded;
+  var deferred = result.deferred;
 
   // Each subfolder → folder name becomes the S3 key prefix (competition slug)
   var subfolders = rootFolder.getFolders();
   while (subfolders.hasNext()) {
     var subfolder = subfolders.next();
     var slug = subfolder.getName();
-    uploaded += uploadTdfsFromFolder_(subfolder, slug, bucket, region, accessKey, secretKey, processedIds);
-  }
+    if (slug === PROCESSED_FOLDER_NAME) continue;
 
-  saveProcessedIds_(props, processedIds);
+    // Consumed synchronously below, so capturing the loop's `slug` directly is safe.
+    var slugDest = lazyFolder_(function () {
+      return getOrCreateFolder_(processedRoot(), slug);
+    });
+
+    var subResult = uploadTdfsFromFolder_(subfolder, slug, cfg, slugDest, deadline);
+    uploaded += subResult.uploaded;
+    deferred += subResult.deferred;
+  }
 
   if (uploaded > 0) {
     Logger.log("Sync complete — uploaded " + uploaded + " file(s)");
   }
-}
-
-function uploadTdfsFromFolder_(folder, s3Prefix, bucket, region, accessKey, secretKey, processedIds) {
-  var files = folder.getFiles();
-  var uploaded = 0;
-
-  while (files.hasNext()) {
-    var file = files.next();
-    var name = file.getName();
-
-    if (!name.toLowerCase().endsWith(".tdf")) continue;
-    if (processedIds.has(file.getId())) continue;
-
-    var s3Key = s3Prefix ? s3Prefix + "/" + name : name;
-
-    try {
-      putS3Object_(bucket, region, s3Key, file.getBlob().getBytes(), accessKey, secretKey);
-      processedIds.add(file.getId());
-      uploaded++;
-      Logger.log("Uploaded: " + name + " → s3://" + bucket + "/" + s3Key);
-    } catch (e) {
-      Logger.log("ERROR uploading " + name + ": " + e.message);
-    }
+  if (deferred > 0) {
+    Logger.log("Hit the runtime budget with " + deferred + " file(s) left — resuming next run");
   }
-
-  return uploaded;
-}
-
-// ─── Processed-file tracking ───────────────────────────────────────────────
-
-function getProcessedIds_(props) {
-  var raw = props.getProperty("PROCESSED_IDS") || "";
-  return new Set(raw ? raw.split(",") : []);
-}
-
-function saveProcessedIds_(props, idSet) {
-  props.setProperty("PROCESSED_IDS", Array.from(idSet).join(","));
 }
 
 /**
- * Reset tracking so all files are re-uploaded on next sync.
+ * Uploads every .tdf in `folder` to S3, moving each one into the processed folder as
+ * soon as its upload succeeds.
+ *
+ * @param getDestFolder  Zero-arg function returning the destination folder, called only
+ *                       when there is actually something to move.
+ * @param deadline       Epoch ms after which no further uploads are started.
  */
-function resetProcessedIds() {
-  PropertiesService.getScriptProperties().deleteProperty("PROCESSED_IDS");
-  Logger.log("Cleared processed file list — next sync will re-upload all TDFs");
+function uploadTdfsFromFolder_(folder, s3Prefix, cfg, getDestFolder, deadline) {
+  // Collect first: moving files out of a folder while iterating its own file iterator
+  // is not something Drive guarantees, and would silently skip entries.
+  var pending = [];
+  var files = folder.getFiles();
+  while (files.hasNext()) {
+    var file = files.next();
+    if (file.getName().toLowerCase().endsWith(".tdf")) pending.push(file);
+  }
+
+  var uploaded = 0;
+
+  for (var i = 0; i < pending.length; i++) {
+    if (Date.now() > deadline) {
+      return { uploaded: uploaded, deferred: pending.length - i };
+    }
+
+    var pendingFile = pending[i];
+    var name = pendingFile.getName();
+    var s3Key = s3Prefix ? s3Prefix + "/" + name : name;
+
+    try {
+      putS3Object_(cfg.bucket, cfg.region, s3Key, pendingFile.getBlob().getBytes(), cfg.accessKey, cfg.secretKey);
+    } catch (e) {
+      // Left in place, so the next run retries it.
+      Logger.log("ERROR uploading " + name + ": " + e.message);
+      continue;
+    }
+
+    uploaded++;
+    Logger.log("Uploaded: " + name + " → s3://" + cfg.bucket + "/" + s3Key);
+
+    try {
+      pendingFile.moveTo(getDestFolder());
+    } catch (e) {
+      // Upload succeeded but the file stays put, so it will be re-uploaded next run.
+      // Chomper dedupes on game start time, so this is noisy rather than harmful.
+      Logger.log(
+        "ERROR moving " + name + " to " + PROCESSED_FOLDER_NAME + "/ (it will re-upload next run): " + e.message,
+      );
+    }
+  }
+
+  return { uploaded: uploaded, deferred: 0 };
+}
+
+// ─── Drive folder helpers ──────────────────────────────────────────────────
+
+function getOrCreateFolder_(parent, name) {
+  var existing = parent.getFoldersByName(name);
+  if (existing.hasNext()) return existing.next();
+  return parent.createFolder(name);
+}
+
+/** Defers a folder lookup/creation until something actually needs the folder. */
+function lazyFolder_(resolve) {
+  var cached = null;
+  return function () {
+    if (!cached) cached = resolve();
+    return cached;
+  };
 }
 
 // ─── AWS Signature V4 for S3 PutObject ─────────────────────────────────────
@@ -118,8 +191,12 @@ function putS3Object_(bucket, region, key, contentBytes, accessKey, secretKey) {
     "x-amz-date:" + amzDate + "\n";
   var signedHeaders = "host;x-amz-content-sha256;x-amz-date";
 
+  // SigV4 requires !'()* percent-encoded too, which encodeURIComponent leaves alone.
+  // A mismatch here produces a SignatureDoesNotMatch on filenames containing them.
   var encodedKey = key.split("/").map(function(segment) {
-    return encodeURIComponent(segment);
+    return encodeURIComponent(segment).replace(/[!'()*]/g, function(c) {
+      return "%" + c.charCodeAt(0).toString(16).toUpperCase();
+    });
   }).join("/");
 
   var canonicalRequest =

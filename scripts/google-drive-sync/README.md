@@ -7,26 +7,36 @@ Automatically syncs new TDF files from a Google Drive folder to your S3 incoming
 ```
 My Drive/
   └── LFstats TDFs/              ← this is DRIVE_FOLDER_ID
-        ├── game1.tdf             ← uploads as game1.tdf (social)
-        ├── game2.tdf             ← uploads as game2.tdf (social)
+        ├── game3.tdf             ← uploads as game3.tdf (social)
         ├── summer-2026/          ← subfolder name = competition slug
-        │     ├── match1.tdf      ← uploads as summer-2026/match1.tdf
-        │     └── match2.tdf      ← uploads as summer-2026/match2.tdf
-        └── fall-league/
-              └── finals.tdf      ← uploads as fall-league/finals.tdf
+        │     └── match7.tdf      ← uploads as summer-2026/match7.tdf
+        ├── fall-league/
+        │     └── finals.tdf      ← uploads as fall-league/finals.tdf
+        └── _processed/           ← files land here after a successful upload
+              ├── game1.tdf
+              ├── game2.tdf
+              └── summer-2026/
+                    └── match1.tdf
 ```
 
 - **Root folder** — TDFs upload with no prefix (chomper treats unprefixed files as social games)
 - **Subfolders** — the folder name becomes the S3 key prefix, which chomper uses as the competition slug
+- **`_processed/`** — created automatically, mirrors the slug structure, and is skipped by the competition walk
 
 To add a new competition, just create a subfolder whose name matches the competition slug in your database.
 
 ## How it works
 
 1. A Google Apps Script runs every 5 minutes via a time-driven trigger
-2. It scans the root folder and all subfolders for `.tdf` files it hasn't seen before
+2. It scans the root folder and each competition subfolder for `.tdf` files
 3. New files are uploaded directly to S3 using AWS Signature V4
-4. Processed file IDs are tracked in Script Properties so files are only uploaded once
+4. Each file is moved into `_processed/` as soon as its upload succeeds, so the next run only sees new files
+
+The `_processed/` folder _is_ the record of what has been uploaded — the script stores no
+tracking state of its own. To re-upload a file, drag it out of `_processed/` back into its
+folder; it will go up on the next run.
+
+A failed upload leaves the file where it is, so the next run retries it automatically.
 
 ## Setup
 
@@ -81,12 +91,13 @@ Drop a `.tdf` file into the root Drive folder, then run `syncNewTdfs()` manually
 
 ## Management
 
-| Function              | Purpose                                                     |
-| --------------------- | ----------------------------------------------------------- |
-| `syncNewTdfs()`       | Run manually to sync immediately                            |
-| `resetProcessedIds()` | Clear the tracking list (re-uploads all files on next sync) |
-| `uninstallTrigger()`  | Stop the automatic polling                                  |
-| `installTrigger()`    | Restart polling                                             |
+| Function             | Purpose                          |
+| -------------------- | -------------------------------- |
+| `syncNewTdfs()`      | Run manually to sync immediately |
+| `uninstallTrigger()` | Stop the automatic polling       |
+| `installTrigger()`   | Restart polling                  |
+
+To re-upload files, move them out of `_processed/` — there is no reset function to run.
 
 ## Adding a competition
 
@@ -96,5 +107,12 @@ Drop a `.tdf` file into the root Drive folder, then run `syncNewTdfs()` manually
 ## Limits
 
 - Apps Script time-driven triggers run at minimum every 1 minute, configured here at 5 minutes
-- Each execution has a 6-minute timeout (plenty for uploading TDF files, which are small)
-- `PropertiesService` has a 500KB total storage limit — sufficient for tracking ~20,000+ file IDs
+- Each execution has a 6-minute timeout. The script stops starting new uploads at 4.5 minutes and
+  logs how many it deferred, so a large backlog drains across several runs instead of being killed
+  partway through one
+- A `LockService` lock prevents an overlapping manual run from double-uploading
+- The script stores no per-file state. Tracking uploads in a Script Property is tempting but
+  does not scale: Apps Script caps a single property **value** at 9 KB — roughly 260 Drive file
+  IDs — after which every write fails and files start re-uploading on every run. Moving files
+  into `_processed/` keeps stored state at zero and keeps each run's work proportional to the
+  number of new files rather than the size of the archive
