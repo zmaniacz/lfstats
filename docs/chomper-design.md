@@ -33,6 +33,7 @@ apps/chomper/
     reingester.ts         ← Phase 3 (SM5) variant: rewrites an existing game in place
     mvp.ts                ← MVP score calculation
     s3.ts                 ← S3 fetch, archive, delete helpers
+    webhook.ts            ← New-game webhook POST (fired after a successful ingest)
     types.ts              ← Shared TypeScript interfaces and types
     laserball/            ← Laserball (mission type 28) pipeline
       types.ts            ← Constants + interfaces
@@ -98,11 +99,14 @@ Steps 1–6b are **shared by both game modes**; the pipeline then branches on mi
 
 10. Update ChomperJob (status: completed, gameId)
 11. Move TDF to archive bucket with normalized key
+12. POST the new-game webhook (best-effort)
 ```
 
 The Phase 3 transaction retries on Postgres deadlock (code `40P01`), up to 3 attempts.
 
 Any unhandled error caught by the outer try/catch — including the two `throw`s above — marks the job `failed` with the error message and moves the file to the error bucket.
+
+Step 12 is the exception: `notifyNewGame` (`webhook.ts`) never throws. By the time it runs the game is committed and the file archived, so a webhook failure must not roll the job back into `failed` or send a good TDF to the error bucket — non-2xx responses and network errors are logged with `console.warn` and swallowed.
 
 > The step numbers match the `// N.` comments in `index.ts`, which are non-contiguous for historical reasons (`4b`, `6a`, `6b`).
 
@@ -133,6 +137,10 @@ Re-invocation with the same Lambda request ID is idempotent: the handler checks 
 | `ERROR_BUCKET`    | S3 bucket for failed or rejected files     |
 
 All three are required — Lambda throws immediately on startup if any is absent.
+
+| Optional variable      | Description                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `NEW_GAME_WEBHOOK_URL` | Overrides the new-game webhook target (default `https://www.ebomike.com/lfserver/new_game`). Set to an empty string to disable. |
 
 ### Bulk Ingest CLI (`bulk-ingest.ts`)
 

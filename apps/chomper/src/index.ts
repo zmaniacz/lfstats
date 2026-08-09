@@ -20,6 +20,7 @@ import { runConsistencyCheck, simulate } from "./simulator.js";
 import { simulateLaserball } from "./laserball/simulator.js";
 import { ingestLaserball } from "./laserball/ingester.js";
 import { LASERBALL_MISSION_TYPE } from "./laserball/types.js";
+import { buildGameSlug, notifyNewGame } from "./webhook.js";
 
 const DEADLOCK_CODE = "40P01";
 const MAX_INGEST_RETRIES = 3;
@@ -239,6 +240,12 @@ export const handler: S3Handler = async (event, context) => {
       parsed.meta.startTime,
     );
     await archiveTdf(bucket, key, ARCHIVE_BUCKET, archiveKey, true);
+
+    // 12. Notify downstream consumers that a new game is available.
+    //     Best-effort — never fails the job (the game is already committed).
+    await notifyNewGame(
+      buildGameSlug(parsed.meta.countryCode, parsed.meta.siteCode, parsed.meta.startTime),
+    );
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     await updateChomperJob(job.id, {
