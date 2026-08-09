@@ -42,13 +42,7 @@ type PlayerSummary = {
 const PAGE_SIZE = 10;
 
 type SortKey =
-  | "callsign"
-  | "avgScore"
-  | "avgMvp"
-  | "avgAccuracy"
-  | "avgHitDiff"
-  | "totalMedicHits"
-  | "winRate";
+  "callsign" | "avgScore" | "avgMvp" | "avgAccuracy" | "avgHitDiff" | "totalMedicHits" | "winRate";
 
 function getSortValue(s: PlayerSummary, key: SortKey): string | number {
   switch (key) {
