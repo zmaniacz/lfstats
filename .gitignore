@@ -49,6 +49,10 @@ Thumbs.db
 .vscode/launch.json
 .idea/
 
+# Claude Code — per-user local overrides. The shared .claude/settings.json and
+# .claude/launch.json stay tracked; only the *.local.json overlay is personal.
+.claude/settings.local.json
+
 # Testing
 coverage/
 .nyc_output/
