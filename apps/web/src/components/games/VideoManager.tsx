@@ -41,7 +41,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { YoutubeEmbed } from "@/components/video/YoutubeEmbed";
-import { parseYoutubeVideoId, youtubeWatchUrl } from "@/lib/youtube";
+import {
+  formatVideoOffset,
+  parseOffsetInput,
+  parseYoutubeVideoId,
+  youtubeWatchUrl,
+} from "@/lib/youtube";
 import type { GameVideo } from "@lfstats/db";
 
 export type VideoRosterEntry = {
@@ -87,6 +92,7 @@ export function VideoManager({
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
+  const [gameStartOffset, setGameStartOffset] = useState("");
   const [playerId, setPlayerId] = useState("");
 
   const gameVideos = videos.filter((v) => v.playerId === null);
@@ -104,6 +110,7 @@ export function VideoManager({
   function openDialog(mode: "game" | "pov") {
     setUrl("");
     setLabel("");
+    setGameStartOffset("");
     setPlayerId("");
     setEditing(null);
     setError(null);
@@ -113,6 +120,11 @@ export function VideoManager({
   function openEditDialog(video: GameVideo) {
     setUrl(video.youtubeUrl);
     setLabel(video.label ?? "");
+    // Round-tripped through the clock format the field accepts, so an unchanged
+    // offset re-submits as the same number of seconds it was loaded with.
+    setGameStartOffset(
+      video.gameStartOffset === null ? "" : formatVideoOffset(video.gameStartOffset),
+    );
     setPlayerId("");
     setEditing(video);
     setError(null);
@@ -128,10 +140,17 @@ export function VideoManager({
       setError("Pick a player for this POV video.");
       return;
     }
+    // The server validates this too — checking here saves a round trip and keeps
+    // a typo from reading as a server failure.
+    if (!parseOffsetInput(gameStartOffset).ok) {
+      setError("Game start must be a time like 1:42:30, 2:30, or a second count.");
+      return;
+    }
 
     const formData = new FormData();
     formData.set("youtubeUrl", url.trim());
     formData.set("label", label.trim());
+    formData.set("gameStartOffset", gameStartOffset.trim());
     if (dialogMode === "pov") formData.set("playerId", playerId);
 
     setIsPending(true);
@@ -154,6 +173,7 @@ export function VideoManager({
     setEditing(null);
     setUrl("");
     setLabel("");
+    setGameStartOffset("");
     setPlayerId("");
     setError(null);
     setIsPending(false);
@@ -299,6 +319,23 @@ export function VideoManager({
               </p>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="gameStartOffset">Game start (optional)</Label>
+              <Input
+                id="gameStartOffset"
+                value={gameStartOffset}
+                onChange={(e) => {
+                  setGameStartOffset(e.target.value);
+                  setError(null);
+                }}
+                placeholder="e.g. 1:42:30"
+              />
+              <p className="text-xs text-muted-foreground">
+                Where the game clock hits 0:00, timed from the start of the video — not from the
+                link&apos;s start time. Set both when the link opens early on purpose, to catch the
+                huddle or the countdown.
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="label">Label (optional)</Label>
               <Input
                 id="label"
@@ -384,6 +421,19 @@ function VideoCard({
             >
               YouTube ↗
             </a>
+            {/* Only worth its own link when it differs from where the embed
+                already opens — otherwise it points at the same frame. */}
+            {video.gameStartOffset !== null && video.gameStartOffset !== video.startSeconds && (
+              <a
+                href={youtubeWatchUrl(video.youtubeVideoId, video.gameStartOffset)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:underline tabular-nums"
+                title="Jump to the start of the game"
+              >
+                Game @ {formatVideoOffset(video.gameStartOffset)} ↗
+              </a>
+            )}
             {halfLabel && (
               <Badge variant="secondary" className="text-xs px-1 py-0">
                 {halfLabel}

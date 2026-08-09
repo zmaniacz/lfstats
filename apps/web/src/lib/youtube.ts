@@ -39,6 +39,53 @@ function parseStartSeconds(raw: string | null): number | null {
   return seconds > 0 ? seconds : null;
 }
 
+// A clock reading, the form a user reads off a video player's scrubber:
+// "1:42:30", "102:30", "2:30". Minutes may exceed 59 only when no hours part is
+// given, so "102:30" is 102 minutes rather than an invalid hour.
+const CLOCK_PATTERN = /^(?:(\d+):)?(\d+):(\d{1,2})$/;
+
+export type ParsedOffsetInput = { ok: true; seconds: number | null } | { ok: false };
+
+/**
+ * Parses a hand-entered offset. Unlike the URL parser above this distinguishes
+ * "empty" (`seconds: null` — the field was left blank) from "unparseable"
+ * (`ok: false`), because a typo in a field the user filled in deliberately
+ * should be reported rather than silently dropped.
+ *
+ * Zero is a legitimate value here: a video that opens exactly on the starting
+ * horn has a game start offset of 0, which is not the same as having none.
+ *
+ * Accepts a clock reading ("1:42:30"), one of YouTube's duration strings
+ * ("1h42m30s"), or bare seconds ("6150").
+ */
+export function parseOffsetInput(raw: string): ParsedOffsetInput {
+  const value = raw.trim().toLowerCase();
+  if (!value) return { ok: true, seconds: null };
+
+  const clock = CLOCK_PATTERN.exec(value);
+  if (clock) {
+    const [, h, m, s] = clock;
+    const minutes = parseInt(m!, 10);
+    const seconds = parseInt(s!, 10);
+    if (seconds > 59) return { ok: false };
+    if (h !== undefined && minutes > 59) return { ok: false };
+    return { ok: true, seconds: parseInt(h ?? "0", 10) * 3600 + minutes * 60 + seconds };
+  }
+
+  if (/^\d+$/.test(value)) return { ok: true, seconds: parseInt(value, 10) };
+
+  const match = DURATION_PATTERN.exec(value);
+  if (!match) return { ok: false };
+
+  const [, h, m, s] = match;
+  if (h === undefined && m === undefined && s === undefined) return { ok: false };
+
+  return {
+    ok: true,
+    seconds: parseInt(h ?? "0", 10) * 3600 + parseInt(m ?? "0", 10) * 60 + parseInt(s ?? "0", 10),
+  };
+}
+
 /**
  * Extracts the video id and any start offset from a YouTube URL, or null if the
  * URL isn't one we recognise. Both the admin server actions and the public API
@@ -81,6 +128,39 @@ export function parseYoutubeLink(url: string): ParsedYoutubeLink | null {
     parseStartSeconds(hashOffset);
 
   return { videoId: candidate, startSeconds };
+}
+
+export type VideoOffsets = { startSeconds: number | null; gameStartOffset: number | null };
+
+/**
+ * Resolves the two offsets a video link stores, from the offset carried by the
+ * submitted URL and the game-start offset typed into the admin form.
+ *
+ * Both are measured from the video's start, so the gap between them is preroll
+ * — footage the link deliberately opens on before the game itself begins — and
+ * can only run forwards. A game start *earlier* than where playback begins is
+ * always a mistake, so it's reported rather than stored.
+ *
+ * Shared by the SM5 and Laserball video actions, which are otherwise identical
+ * on this path and would drift apart if each validated its own.
+ */
+export function resolveVideoOffsets(
+  urlStartSeconds: number | null,
+  rawGameStartOffset: string,
+): { ok: true; offsets: VideoOffsets } | { ok: false; error: string } {
+  const parsed = parseOffsetInput(rawGameStartOffset);
+  if (!parsed.ok) {
+    return { ok: false, error: "Game start must be a time like 1:42:30, 2:30, or a second count." };
+  }
+
+  if (parsed.seconds !== null && urlStartSeconds !== null && parsed.seconds < urlStartSeconds) {
+    return {
+      ok: false,
+      error: `Game start must be at or after ${formatVideoOffset(urlStartSeconds)}, where the link starts playing.`,
+    };
+  }
+
+  return { ok: true, offsets: { startSeconds: urlStartSeconds, gameStartOffset: parsed.seconds } };
 }
 
 /** Convenience wrapper for callers that only need to validate the URL. */

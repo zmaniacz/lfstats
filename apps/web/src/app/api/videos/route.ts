@@ -22,8 +22,18 @@ type PostBody = {
   ipl_id?: unknown;
   label?: unknown;
   start_seconds?: unknown;
+  game_start_offset?: unknown;
   overwrite?: unknown;
 };
+
+/** Both offsets are whole non-negative seconds from the start of the video. */
+function invalidOffset(value: unknown): boolean {
+  return (
+    value !== undefined &&
+    value !== null &&
+    (typeof value !== "number" || !Number.isInteger(value) || value < 0)
+  );
+}
 
 function bearerToken(request: Request): string | null {
   const header = request.headers.get("authorization");
@@ -68,15 +78,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "youtube_url is required" }, { status: 400 });
   }
 
-  if (
-    body.start_seconds !== undefined &&
-    body.start_seconds !== null &&
-    (typeof body.start_seconds !== "number" ||
-      !Number.isInteger(body.start_seconds) ||
-      body.start_seconds < 0)
-  ) {
+  if (invalidOffset(body.start_seconds)) {
     return NextResponse.json(
       { error: "start_seconds must be a non-negative integer" },
+      { status: 400 },
+    );
+  }
+  if (invalidOffset(body.game_start_offset)) {
+    return NextResponse.json(
+      { error: "game_start_offset must be a non-negative integer" },
       { status: 400 },
     );
   }
@@ -90,6 +100,21 @@ export async function POST(request: Request) {
   // that computes offsets into a long recording doesn't have to build the URL.
   const startSeconds =
     typeof body.start_seconds === "number" ? body.start_seconds || null : link.startSeconds;
+
+  // Unlike start_seconds, 0 is kept: a recording that opens on the starting horn
+  // has a game start offset of 0, which is not the same as having none.
+  const gameStartOffset =
+    typeof body.game_start_offset === "number" ? body.game_start_offset : null;
+
+  // Both offsets run from the video's start, so the gap between them is preroll
+  // and can only run forwards — a game starting before playback does is a bug in
+  // the caller's arithmetic, not a link worth storing.
+  if (gameStartOffset !== null && startSeconds !== null && gameStartOffset < startSeconds) {
+    return NextResponse.json(
+      { error: "game_start_offset must be greater than or equal to start_seconds" },
+      { status: 400 },
+    );
+  }
 
   const game = await getGameBySlug(slug);
   if (!game) {
@@ -113,6 +138,7 @@ export async function POST(request: Request) {
       youtubeUrl,
       youtubeVideoId: link.videoId,
       startSeconds,
+      gameStartOffset,
       label,
       source: "api",
       createdByApiKeyId: key.id,
@@ -129,6 +155,7 @@ export async function POST(request: Request) {
       ipl_id: iplId,
       youtube_url: video.youtubeUrl,
       start_seconds: video.startSeconds,
+      game_start_offset: video.gameStartOffset,
       label: video.label,
       created,
       updated,
@@ -159,6 +186,7 @@ export async function GET(request: Request) {
       youtube_url: v.youtubeUrl,
       youtube_video_id: v.youtubeVideoId,
       start_seconds: v.startSeconds,
+      game_start_offset: v.gameStartOffset,
       label: v.label,
       source: v.source,
       created_at: v.createdAt,

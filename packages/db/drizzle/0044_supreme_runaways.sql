@@ -1,0 +1,1 @@
+ALTER TABLE "game_video" ADD COLUMN "game_start_offset" integer;

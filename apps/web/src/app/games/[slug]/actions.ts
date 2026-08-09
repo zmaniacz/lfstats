@@ -4,7 +4,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { parseYoutubeLink } from "@/lib/youtube";
+import { parseYoutubeLink, resolveVideoOffsets } from "@/lib/youtube";
 import {
   addFavorite,
   addGameVideo,
@@ -278,6 +278,12 @@ export async function addGameVideoAction(
   const link = parseYoutubeLink(youtubeUrl);
   if (!link) return { ok: false, error: "That doesn't look like a YouTube video URL." };
 
+  const offsets = resolveVideoOffsets(
+    link.startSeconds,
+    (formData.get("gameStartOffset") as string) || "",
+  );
+  if (!offsets.ok) return { ok: false, error: offsets.error };
+
   // overwrite: re-adding a video already on this game means correcting it (a
   // fixed start offset or label), not asking for a second copy of the same link.
   await addGameVideo(
@@ -286,7 +292,7 @@ export async function addGameVideoAction(
       playerId: (formData.get("playerId") as string) || null,
       youtubeUrl,
       youtubeVideoId: link.videoId,
-      startSeconds: link.startSeconds,
+      ...offsets.offsets,
       label: (formData.get("label") as string) || null,
       source: "admin",
       createdByUserId: session.user.id,
@@ -336,10 +342,16 @@ export async function updateGameVideoAction(
   const link = parseYoutubeLink(youtubeUrl);
   if (!link) return { ok: false, error: "That doesn't look like a YouTube video URL." };
 
+  const offsets = resolveVideoOffsets(
+    link.startSeconds,
+    (formData.get("gameStartOffset") as string) || "",
+  );
+  if (!offsets.ok) return { ok: false, error: offsets.error };
+
   const result = await updateGameVideo(videoId, {
     youtubeUrl,
     youtubeVideoId: link.videoId,
-    startSeconds: link.startSeconds,
+    ...offsets.offsets,
     label: ((formData.get("label") as string) || "").trim() || null,
   });
 

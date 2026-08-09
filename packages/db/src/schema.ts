@@ -1193,12 +1193,19 @@ export const gameVideo = pgTable(
     playerId: uuid("player_id").references(() => player.id, { onDelete: "cascade" }),
     youtubeVideoId: text("youtube_video_id").notNull(),
     youtubeUrl: text("youtube_url").notNull(),
-    // Offset into the video where this game starts, parsed from the submitted
+    // Offset into the video where playback begins, parsed from the submitted
     // URL's t/start param. Centers often publish one multi-hour recording
     // covering a whole night, so the offset is what makes the link useful.
     // Deliberately NOT part of the unique constraint below: a corrected offset
     // for an already-linked video must update that row, not add a second one.
     startSeconds: integer("start_seconds"),
+    // Offset into the video where the game clock actually hits 0:00. Measured
+    // from the video's start, exactly like startSeconds — not relative to it —
+    // so adjusting how much pre-game footage a link opens on never invalidates
+    // this value. It is >= startSeconds whenever both are set, the gap being
+    // deliberate preroll (team huddle, intro, countdown). This is the anchor a
+    // replay engine syncs against: videoPosition = gameStartOffset + gameClock.
+    gameStartOffset: integer("game_start_offset"),
     label: text("label"),
     source: videoSourceEnum("source").notNull(),
     createdByUserId: text("created_by_user_id").references(() => authUser.id),

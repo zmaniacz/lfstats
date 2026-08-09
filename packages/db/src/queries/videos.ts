@@ -17,6 +17,7 @@ export type GameVideo = {
   youtubeVideoId: string;
   youtubeUrl: string;
   startSeconds: number | null;
+  gameStartOffset: number | null;
   label: string | null;
   source: "admin" | "api";
   createdAt: Date;
@@ -32,6 +33,7 @@ export type PlayerVideo = {
   youtubeVideoId: string;
   youtubeUrl: string;
   startSeconds: number | null;
+  gameStartOffset: number | null;
   label: string | null;
   createdAt: Date;
 };
@@ -42,6 +44,7 @@ export type NewGameVideo = {
   youtubeVideoId: string;
   youtubeUrl: string;
   startSeconds: number | null;
+  gameStartOffset: number | null;
   label: string | null;
   source: "admin" | "api";
   createdByUserId?: string | null;
@@ -66,8 +69,8 @@ const gameSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${cente
  *
  * Without `overwrite` a conflict is a no-op and the stored row is returned
  * untouched. With it, the row is rewritten from `input` — the way a capture
- * tool corrects a start offset or label on a link it already published. The
- * offset is not part of the unique key precisely so that this is an update.
+ * tool corrects a start offset or label on a link it already published. Neither
+ * offset is part of the unique key precisely so that this is an update.
  *
  * `created` marks a fresh insert (201); `updated` marks a conflict whose
  * contents actually changed, so callers can skip revalidation on a true no-op.
@@ -93,6 +96,7 @@ export async function addGameVideo(
   const changed =
     existing!.youtubeUrl !== input.youtubeUrl ||
     existing!.startSeconds !== input.startSeconds ||
+    existing!.gameStartOffset !== input.gameStartOffset ||
     existing!.label !== input.label;
 
   if (!options.overwrite || !changed) {
@@ -106,6 +110,7 @@ export async function addGameVideo(
     .set({
       youtubeUrl: input.youtubeUrl,
       startSeconds: input.startSeconds,
+      gameStartOffset: input.gameStartOffset,
       label: input.label,
     })
     .where(conflict)
@@ -133,6 +138,7 @@ export type UpdateGameVideoFields = {
   youtubeUrl: string;
   youtubeVideoId: string;
   startSeconds: number | null;
+  gameStartOffset: number | null;
   label: string | null;
 };
 
@@ -197,6 +203,7 @@ export async function getGameVideosForGames(gameIds: string[]): Promise<GameVide
       youtubeVideoId: gameVideo.youtubeVideoId,
       youtubeUrl: gameVideo.youtubeUrl,
       startSeconds: gameVideo.startSeconds,
+      gameStartOffset: gameVideo.gameStartOffset,
       label: gameVideo.label,
       source: gameVideo.source,
       createdAt: gameVideo.createdAt,
@@ -219,6 +226,7 @@ export async function getPlayerVideos(playerId: string): Promise<PlayerVideo[]> 
       youtubeVideoId: gameVideo.youtubeVideoId,
       youtubeUrl: gameVideo.youtubeUrl,
       startSeconds: gameVideo.startSeconds,
+      gameStartOffset: gameVideo.gameStartOffset,
       label: gameVideo.label,
       createdAt: gameVideo.createdAt,
     })

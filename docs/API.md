@@ -251,14 +251,15 @@ rejected immediately.
 
 ### Request body
 
-| Field           | Required | Description                                                                    |
-| --------------- | -------- | ------------------------------------------------------------------------------ |
-| `game_slug`     | yes      | Game slug, e.g. `4-23-20260808212334`                                          |
-| `youtube_url`   | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…`              |
-| `ipl_id`        | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.                |
-| `label`         | no       | Free text, e.g. `Arena Cam 2`                                                  |
-| `start_seconds` | no       | Non-negative integer offset; overrides any offset in the URL. See below.       |
-| `overwrite`     | no       | `true` rewrites an already-linked video instead of no-opping. Default `false`. |
+| Field               | Required | Description                                                                        |
+| ------------------- | -------- | ---------------------------------------------------------------------------------- |
+| `game_slug`         | yes      | Game slug, e.g. `4-23-20260808212334`                                              |
+| `youtube_url`       | yes      | `youtu.be/…`, `/watch?v=…`, `/shorts/…`, `/embed/…`, or `/live/…`                  |
+| `ipl_id`            | no       | Player's IPL id (e.g. `#1234567`). Omit for a game-level video.                    |
+| `label`             | no       | Free text, e.g. `Arena Cam 2`                                                      |
+| `start_seconds`     | no       | Non-negative integer offset where playback begins; overrides the URL's. See below. |
+| `game_start_offset` | no       | Non-negative integer offset where the game clock hits 0:00. See below.             |
+| `overwrite`         | no       | `true` rewrites an already-linked video instead of no-opping. Default `false`.     |
 
 ```json
 {
@@ -266,6 +267,7 @@ rejected immediately.
   "youtube_url": "https://youtu.be/dQw4w9WgXcQ?t=1h2m3s",
   "ipl_id": "#1234567",
   "label": "Red Commander POV",
+  "game_start_offset": 3800,
   "overwrite": true
 }
 ```
@@ -283,8 +285,33 @@ bare seconds (`3675`, `3675s`) and durations (`1h2m3s`, `2m30s`, `1h30m`).
 computes offsets into a long recording, it's simpler than rewriting the URL. An unparseable offset
 in the URL is ignored rather than failing the request; an invalid `start_seconds` is a `400`.
 
-The offset is deliberately **not** part of the uniqueness key, so a corrected offset for a video
-already linked to a game is an update (see below), never a second copy of the same link.
+Neither offset is part of the uniqueness key, so a corrected offset for a video already linked to
+a game is an update (see below), never a second copy of the same link.
+
+### `game_start_offset` — where the game actually starts
+
+`start_seconds` is where the viewer is dropped in. `game_start_offset` is where the **game clock
+hits 0:00**. They differ whenever a link deliberately opens early to catch preroll worth watching:
+
+```
+0:00        video start
+1:41:00  ── start_seconds     = 6060   (opens on the huddle)
+1:42:30  ── game_start_offset = 6150   (game clock 0:00)
+```
+
+**Both are measured from the start of the video**, so `game_start_offset` is _not_ "seconds of
+preroll" — the preroll is the gap between them. Timing it absolutely means re-cutting how much
+preroll a link opens on never invalidates the game start.
+
+- Whole non-negative seconds. `400` otherwise, and `400` if `game_start_offset < start_seconds`.
+- `0` is meaningful and preserved — a recording that opens exactly on the starting horn. (A
+  `start_seconds` of `0` is stored as `null`, since "starts at the beginning" is the absence of an
+  offset.)
+- Omitted leaves it `null`. It is never inferred from the URL; only this field sets it.
+
+It exists to anchor replay-to-video sync — `videoPosition = game_start_offset + gameClockSeconds`
+— though nothing consumes it that way yet. Today it drives a "Game @ h:mm:ss" link on the game
+page's Videos tab.
 
 ### Idempotency and `overwrite`
 
@@ -293,9 +320,11 @@ returned untouched with `200` and `"created": false`. This is enforced by a
 `UNIQUE NULLS NOT DISTINCT (game_id, player_id, youtube_video_id)` constraint, so retries and
 re-runs are safe and won't clutter the game page with duplicates.
 
-`"overwrite": true` makes that conflict an update instead: `youtube_url`, `start_seconds` and
-`label` are rewritten from the request. Use it when re-running a tool with corrected data — a
-resynced start offset, a fixed label. `created_at` and the original creator are preserved, since
+`"overwrite": true` makes that conflict an update instead: `youtube_url`, `start_seconds`,
+`game_start_offset` and `label` are rewritten from the request. Use it when re-running a tool with
+corrected data — a resynced start offset, a fixed label. Note that this rewrites from the request
+wholesale: omitting `game_start_offset` on an overwrite clears a value already stored, so re-send
+every field you want kept. `created_at` and the original creator are preserved, since
 this is the same link being corrected rather than a new one.
 
 `"updated"` in the response distinguishes a real change from a no-op — re-posting identical data
@@ -321,6 +350,7 @@ on the game, so it can't clobber a second arena cam or another player's POV foot
   "ipl_id": null,
   "youtube_url": "https://youtu.be/dQw4w9WgXcQ?t=1h2m3s",
   "start_seconds": 3723,
+  "game_start_offset": 3800,
   "label": "Arena Cam",
   "created": true,
   "updated": false
@@ -354,6 +384,7 @@ uploaded.
       "youtube_url": "https://youtu.be/dQw4w9WgXcQ?t=3675",
       "youtube_video_id": "dQw4w9WgXcQ",
       "start_seconds": 3675,
+      "game_start_offset": 3750,
       "label": "Scoreboard Cam",
       "source": "api",
       "created_at": "2026-08-06T20:47:22.688Z"
@@ -364,8 +395,10 @@ uploaded.
 
 `ipl_id`/`callsign` are `null` for game-level videos and populated for player POV videos.
 `source` is `admin` (added through the game page UI) or `api` (posted through this endpoint).
-`start_seconds` is the normalized offset (see [Start offsets](#start-offsets)) and is `null` when
-the video has none; `youtube_url` is the URL exactly as submitted.
+`start_seconds` is the normalized playback offset (see [Start offsets](#start-offsets)) and is
+`null` when the video has none; `game_start_offset` is where the game clock hits 0:00 (see
+[`game_start_offset`](#game_start_offset--where-the-game-actually-starts)) and is `null` when
+unset. Both count from the start of the video. `youtube_url` is the URL exactly as submitted.
 
 `400` if `game_slug` is absent, `404` if it doesn't resolve to a game.
 
