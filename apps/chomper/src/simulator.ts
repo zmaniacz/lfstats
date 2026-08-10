@@ -139,6 +139,7 @@ class Simulator {
     // the correct internal IDs without needing per-call routing logic.
     this.buildGenerationRouting();
     this.resolveGenerationIds();
+    this.stripPenaltyDeductionsFromScores();
     this.buildEntityMaps();
     this.initPlayerStates();
     this.initInteractionMap();
@@ -1106,6 +1107,62 @@ class Simulator {
       const n = orderCount.get(end.id) ?? 0;
       orderCount.set(end.id, n + 1);
       end.id = this.resolveByOrder(end.id, n);
+    }
+  }
+
+  // A 0600 penalty generates an accompanying line type 5 entry for -penalty, so
+  // the TDF score stream — and therefore every entity-end score — already has
+  // the deduction baked in. The database models a penalty as a separate,
+  // editable GamePenalty row applied on top of the raw score
+  // (recalculateGameResult: score + eliminationBonus + sum(penalty.scoreValue)),
+  // so leaving the deduction in the stream counts it twice and makes it
+  // impossible to undo when the penalty is rescinded after the game.
+  //
+  // Rewrite the score stream so it reflects the score the player actually
+  // earned. Every downstream consumer — running-total snapshots, final
+  // scorecard score, team score, MVP score bonus — then sees the raw score, and
+  // GamePenalty.score_value is the single place the deduction is applied.
+  private stripPenaltyDeductionsFromScores(): void {
+    const penaltyValue = this.parsed.meta.penalty;
+    if (penaltyValue === 0) return;
+    const penaltyDelta = -Math.abs(penaltyValue);
+
+    // Match on (time, entity) of an actual 0600 event rather than on the delta
+    // alone, so an ordinary score change that happens to equal the penalty
+    // amount is left untouched.
+    const penaltyKeys = new Set<string>();
+    for (const event of this.parsed.events) {
+      if (event.type === "0600" && event.actor) {
+        penaltyKeys.add(`${event.time}:${event.actor}`);
+      }
+    }
+    if (penaltyKeys.size === 0) return;
+
+    // Per entity, the running total of deductions removed so far. Entries after
+    // a penalty carry its effect in their old/new values and must be shifted by
+    // the same amount to keep the stream continuous.
+    const offsets = new Map<string, number>();
+    const strippedAt = new Map<string, number[]>();
+    for (const score of this.parsed.scores) {
+      let offset = offsets.get(score.entity) ?? 0;
+      score.old += offset;
+      if (score.delta === penaltyDelta && penaltyKeys.has(`${score.time}:${score.entity}`)) {
+        offset += Math.abs(penaltyDelta);
+        offsets.set(score.entity, offset);
+        strippedAt.set(score.entity, [...(strippedAt.get(score.entity) ?? []), score.time]);
+        score.delta = 0;
+      }
+      score.new += offset;
+    }
+
+    // Line type 6 records the same penalized total. It is the MVP score-bonus
+    // input and the ingester's fallback when there is no simulated score, so it
+    // has to move with the stream — shifted only by the penalties that landed
+    // before this entity left the game.
+    for (const end of this.parsed.entityEnds) {
+      const times = strippedAt.get(end.id);
+      if (!times) continue;
+      end.score += times.filter((t) => t <= end.time).length * Math.abs(penaltyDelta);
     }
   }
 

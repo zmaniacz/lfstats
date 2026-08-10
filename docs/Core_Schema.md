@@ -203,7 +203,7 @@ One row per TDF file ingested. The natural key is `(center_id, start_time)` — 
 
 - Only mission types `5` (SM5) and `28` (Laserball) are ingested — any other line type 1 `type` is skipped entirely.
 - `actual_duration` will equal `scheduled_duration` for score and draw outcomes. It will be shorter for elimination outcomes, except in the edge case where elimination occurred with 60 seconds or fewer remaining and the game ran to time — in that case `outcome` is still `elimination` but `actual_duration` will equal `scheduled_duration`.
-- The `penalty` value from line type 1 is not stored on `Game` — it is applied per-event during ingest and its effect is captured in `GamePenalty.score_value`. For pre-2.003 files where the field is absent, default to `0`.
+- The `penalty` value from line type 1 is not stored on `Game` — it is applied per-event during ingest and its effect is captured in `GamePenalty.score_value`. For pre-2.003 files where the field is absent, default to `0`. A `0600` event also produces a line type 5 entry for the same deduction, so ingest strips those entries back out of the score stream — see the `GamePenalty` notes below.
 - `competition_id`, `description`, and `exclude` are **admin-owned metadata, not derived from the TDF**. Re-ingest paths (`bulk-reingest.ts`, `bulk-reingest-lb.ts`) snapshot and restore all three rather than overwriting the `Game` row.
 
 ---
@@ -234,7 +234,7 @@ One row per team per game, including the Neutral team. The Neutral team is inclu
 **Notes:**
 
 - All queries over competing teams should filter on `is_neutral = false`. Aggregate queries such as win rates, average scores, and standings should always exclude the Neutral row.
-- `score` does not include `elimination_bonus` — it is the raw sum of player scores as recorded in the TDF. The bonus is tracked separately so both components are visible.
+- `score` does not include `elimination_bonus` or `penalty_score` — it is the raw sum of player scores. The bonus and the penalty total are tracked separately so all three components are visible; the effective score is `score + elimination_bonus + penalty_score`.
 - `score`, `elimination_bonus`, `result`, and `eliminated` are null for the Neutral team rather than 0 or false — null correctly reflects that these concepts do not apply, consistent with the position-specific null pattern established in `Scorecard`.
 - For draw outcomes both competing teams will have `result = draw`, `eliminated = false`, and `elimination_bonus = 0`.
 
@@ -324,6 +324,7 @@ One row per penalty assessed during or after a game. Populated at ingest from `0
 **Notes:**
 
 - At ingest, one row is created per `0600` event. `score_value` is initialized from line type 1 `penalty` (defaulting to `0` for pre-2.003 files), `description` defaults to `"Common Foul"`, and `time` is set from the event timestamp.
+- **The deduction lives here and nowhere else.** A `0600` event also generates a line type 5 score entry for `-penalty`, so the raw TDF score stream — and every entity-end score derived from it — already has the penalty subtracted. Ingest removes those entries from the stream (`Simulator.stripPenaltyDeductionsFromScores`) before computing anything, so `Scorecard.score`, `GameTeam.score`, `GamePlayerState.score`, and the MVP score bonus all reflect the score the player earned. The deduction is then applied once, on top, via `score_value`. Without this, a live penalty would be counted twice and a rescinded one could never be undone.
 - Post-game manually added penalties will have `time = null` and `referee_id = null` unless explicitly provided.
 - `Scorecard.penalties` reflects only the count of `0600` events recorded at ingest and is never updated after the fact. Use `sum(GamePenalty.score_value)` for any score impact calculation.
 

@@ -242,6 +242,8 @@ Reads a UTF-16 LE file (with BOM), splits on `\r\n`, and produces a single `Pars
 
 Lines beginning with `;` are schema comment lines. The parser tracks the most recently seen schema comment for each line type and uses it as the authoritative column list. **Never rely solely on `file-version` to determine which columns are present.**
 
+The first field of a schema comment is the line type joined to a human-readable name — `;1/mission`, `;3/entity-start`. Only the numeric part before the `/` is the key; data lines carry the bare number. Keying on the full field silently yields an empty column list for every line type, which makes every schema-driven field (`duration`, `penalty`, `colour-rgb`, `battlesuit`, `memberId`) read as absent and fall back to its default.
+
 ### ParsedTdf Structure
 
 ```typescript
@@ -448,7 +450,7 @@ A post-loop `applyEntityEnds()` still runs as a safety net for files where the l
 | `0502` Lives Resupply                                          | Restore target lives to max; transition target to state_3 (resupply cause)                                                                                                                                                                                      |
 | `0510` Team Ammo Boost                                         | Restore shots for all state_0 teammates; state_3/state_2 teammates receive a pending boost recorded for reconciliation                                                                                                                                          |
 | `0512` Team Lives Boost                                        | Restore lives for all state_0 teammates (unless within the respawn uncertainty window — see below); state_3/state_2 teammates receive a pending boost                                                                                                           |
-| `0600` Referee Penalty                                         | Increment `penalties`; transition target to state_3                                                                                                                                                                                                             |
+| `0600` Referee Penalty                                         | Increment `penalties`; record a `SimPenalty` with `scoreValue = -abs(meta.penalty)`; transition target to state_3. The matching line type 5 deduction is stripped from the score stream during setup so the score stays raw — see below.                        |
 | `0204` Target Destroy                                          | Increment `targetsDestroyed`; earn +5 SP                                                                                                                                                                                                                        |
 | `0303` Missile Destroy Target                                  | Increment `targetsDestroyed`; earn +5 SP; deduct missile                                                                                                                                                                                                        |
 | `0209` Warbot Deactivate                                       | Decrement `target.lives` by 1; trigger state_3 (deactivationCause = 'other'); handle nuke cancel. Does **not** increment `timesHit` — warbot deactivations are excluded from the TDF's `timesZapped` stat. No actor playerState (actor is a non-player warbot). |
@@ -617,6 +619,12 @@ Track `receivedAmmoResupplyThisCycle` and `receivedLivesResupplyThisCycle` per p
 ### Score
 
 Do not compute score from events. Read the authoritative final score from line type 6 `score` field. Use line type 5 entries only for `GamePlayerState.score` snapshots during replay — read the `new` field from the matching line 5 entry at each event's timestamp.
+
+**Penalty deductions are removed first.** A `0600` event generates a line type 5 entry for `-penalty`, so both the score stream and the line type 6 totals arrive with the deduction already applied. The database instead models a penalty as an editable, rescindable `GamePenalty` row layered on top of the raw score (`recalculateGameResult`: `score + eliminationBonus + sum(penalty.scoreValue)`). Leaving the deduction in the stream would therefore count it twice, and rescinding the penalty afterwards could never recover the points.
+
+`Simulator.stripPenaltyDeductionsFromScores()` runs during setup, right after generation-ID resolution and before any state is built. For every line 5 entry whose `delta` equals the line type 1 penalty **and** whose `(time, entity)` matches a real `0600` event, it zeroes the delta and shifts that entity's subsequent `old`/`new` values back up by the same amount, keeping `new = old + delta` intact throughout. It then applies the same shift to each line type 6 `score`, counting only the penalties that landed before that entity left the game. Matching on the `0600` event rather than the delta alone keeps an ordinary score change that happens to equal the penalty amount from being stripped.
+
+Everything downstream — replay snapshots, `Scorecard.score`, `GameTeam.score`, and the MVP score bonus (which reads line type 6) — therefore sees the score the player actually earned, and `GamePenalty.score_value` is the single place the deduction is applied.
 
 ### Game Outcome
 

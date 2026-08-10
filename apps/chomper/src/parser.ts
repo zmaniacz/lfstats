@@ -49,11 +49,14 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
   const playerStateLog: ParsedPlayerState[] = [];
 
   for (const line of lines) {
-    // Schema comment line — update column list for the following line type
+    // Schema comment line — update column list for the following line type.
+    // The first field is the line type followed by a human-readable name
+    // (";1/mission", ";3/entity-start"); only the numeric part is the key the
+    // data lines are looked up by.
     if (line.startsWith(";")) {
       const parts = line.slice(1).split("\t");
-      const lineType = parts[0];
-      if (lineType !== undefined) {
+      const lineType = parts[0]?.split("/")[0];
+      if (lineType !== undefined && lineType !== "") {
         schemaColumns.set(lineType, parts.slice(1));
       }
       continue;
