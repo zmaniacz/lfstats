@@ -326,3 +326,166 @@ The team names in this label come from `competition_team.name` (resolved via `co
 Admin routes are keyed by **slug**, not id. Games can also be assigned to a competition and to a match slot directly from the game detail page (`/games/[slug]`) by admins and center admins.
 
 Alternatively, games can be filed into a competition **at ingest** with no admin step at all, by dropping the TDF into a Drive subfolder named after the competition slug — see the [Google Drive sync](../scripts/google-drive-sync/README.md).
+
+---
+
+## Legacy Migration
+
+Competitions played before go-live were organized in the legacy `lfstats` database and
+were never carried over — the **games** were all re-ingested from TDF and already exist
+in `lfstats_modern`, but with no competition, team, round, or match structure around
+them. `packages/db/src/scripts/migrate-legacy-competition.ts` imports that structure.
+
+```
+pnpm --filter @lfstats/db migrate-legacy-comp --report            # status of every legacy event
+pnpm --filter @lfstats/db migrate-legacy-comp --event 1312 --dry-run
+pnpm --filter @lfstats/db migrate-legacy-comp --event 1312
+pnpm --filter @lfstats/db migrate-legacy-comp --all
+```
+
+Needs `LEGACY_DATABASE_URL` alongside `DATABASE_URL`. The legacy connection is opened
+with `default_transaction_read_only = on` — the legacy site is still live. Per-event
+scope and every judgement call live in `packages/db/src/scripts/legacy-events.ts`.
+
+### Join keys
+
+| Concept   | Legacy                                      | Modern                                          | Notes                                            |
+| --------- | ------------------------------------------- | ----------------------------------------------- | ------------------------------------------------ |
+| Game      | `games.tdf_key` (`4-19_20260610180835.tdf`) | `game.tdf_filename` (`4-19-20260610180835.tdf`) | `replace(tdf_key,'_','-')`; matched 1516/1516    |
+| Game team | `game_teams.index`                          | `sm5_game_team.tdf_team_index`                  | both come from the TDF; matched 3032/3032        |
+| Player    | `players.ipl_id`                            | `player.ipl_id`                                 | not used — rosters derive from modern scorecards |
+| Center    | `centers.ipl_id` (`4-19`)                   | `center.country_code` + `site_code`             |                                                  |
+
+### Colour is not migrated
+
+The legacy site assumed every team was either red or green and coerced anything else, so
+`game_teams.color_normal` is only ever `'red'` or `'green'`. **St George Summer League
+2025 actually played Red vs Blue and Fire vs Ice** — legacy labelled both the Blue and
+the Ice side "green".
+
+The migration therefore treats `color_normal` strictly as a **side discriminator** — the
+token saying whether a game team is the one named by `games.red_team_id` or by
+`games.green_team_id` — and writes no colour data at all. `sm5_game_team.colour_enum` /
+`colour_rgb` / `name` come from the TDF at ingest and remain authoritative. Migrated
+games therefore render Blue and Ice correctly and **diverge from the legacy site by
+design**; that is the more accurate representation, not a bug.
+
+Because the side mapping cannot be checked against colour, the script validates it two
+other ways and refuses to proceed if either fails:
+
+- **Structural** — a game's `{red_team_id, green_team_id}` must be exactly its match's
+  `{team_1_id, team_2_id}`. Holds for 100% of games.
+- **Roster** — players must land on their most-played team in at least 90% of scorecards.
+  Observed 92.5%–100%, with the residual tracking known mercenary counts.
+
+### Derived data
+
+- **Rosters.** Legacy has no roster table, so rosters are derived from who actually
+  played, reading **modern** scorecards (which sidesteps legacy player-id mapping, and
+  makes guests fall out naturally as `player_id IS NULL`). A player's roster team is the
+  one they played the most games for; every other team they appear on gets an
+  `is_mercenary = true` entry — the only legal way to be attached to two teams in one
+  competition. Ties break on earliest appearance.
+- **Round numbers.** Legacy `rounds.round` is not unique per event, but modern enforces
+  `unique(competition_id, round_number)`. Rounds are sorted finals-last, then by round
+  number with NULL last, then by id, and renumbered 1..N. Rounds with zero matches are
+  dropped.
+- **Team short names.** Legacy team names are free text with emoji and punctuation
+  (`🥞Stacked Team🥞`), while `slugify` only lowercases and swaps whitespace. Short names
+  are auto-derived and printed for review — correct them via `shortNames` in the config
+  or in the admin UI.
+
+### Penalties
+
+The structure migration carries **no** penalty data. A second script,
+`packages/db/src/scripts/migrate-legacy-penalties.ts`, back-fills it:
+
+```
+pnpm --filter @lfstats/db migrate-legacy-penalties --dry-run
+pnpm --filter @lfstats/db migrate-legacy-penalties
+pnpm --filter @lfstats/db migrate-legacy-penalties --report
+```
+
+The penalty _rows_ already exist in modern — chomper re-derives them from the TDF's 0600
+events at ingest. What legacy held on top of them did not survive: `rescinded` flags,
+hand classification (`type`), score `value`, `mvp_value`, and team penalties, which have
+no player attribution and were absent entirely.
+
+- **Player penalties** match on `(tdf_filename, ipl_id)` and are applied through
+  `updatePenalty()` so MVP components and game results stay consistent.
+- **Manual legacy entries** — rows with no TDF event behind them, e.g. `Unknown +6232`
+  used as a score award, or `Game Misconduct -5122` — are created via `addPenalty()`
+  where modern has none for that player in that game.
+- **Team penalties** go to `sm5_game_team_penalty` via `addTeamPenalty()`;
+  `recalculateGameResult()` folds both kinds into `sm5_game_team.penalty_score`.
+- `match_penalties` (3 rows) are all on pre-TDF events and are out of scope.
+
+**Not automated, reported instead.** Legacy's `penalties` table has no `time` column, so
+within a `(game, player)` group the two sides pair up in order. Where counts disagree the
+group is skipped rather than guessed at, and where one player has several _differing_
+penalties in one game the pairing is applied but flagged — totals are correct either way,
+but the type/MVP split between them may be transposed. Run with `--report` for the
+current list.
+
+### Standings will not match the legacy site exactly
+
+This is expected, and is **not** a migration defect. The full residue is enumerated by
+
+```
+pnpm --filter @lfstats/db legacy-variance                # standings, matches, scores
+pnpm --filter @lfstats/db legacy-variance --scores-only  # score disagreements only
+```
+
+which is read-only against both databases and is the authority for the figures below.
+
+Fifteen competitions are comparable — the eleven migrated team events plus four of the
+five built by hand. (`internationals_2026` exists in legacy as a shell: ten placeholder
+teams, no games.) Of those fifteen, **eight reproduce exactly**. Of 82 team-seasons, 19
+differ: 11 on points and a further 8 only in finishing position.
+
+1. **The two systems score games differently** — 440 of 3032 team-game totals disagree.
+   Every one of them but five is a whole number of 1000-point penalty deductions, give
+   or take the 10000 elimination bonus: modern nets penalties off the team total and
+   legacy's own handling was inconsistent. 392 are exactly `-1000 × (non-rescinded
+penalties)`, 34 count the rescinded ones too, 7 land on some other subset, and 2 are
+   the elimination bonus that legacy left out of `adj`. Where a close game's result
+   flips, the match points follow — this is the whole of the Fake Nats 2021 and WCT 2022
+   variance. **Five totals fit no such shape and are worth a look**, listed by the
+   script; three of them trace to penalty groups the back-fill skipped, and two are raw
+   score differences on Internationals 2024 games.
+2. **The Nerd Sturgis round-4 multiplier** (see below) accounts for all four of that
+   event's team rows — the diffs sum to exactly 36, the round's extra point pool.
+3. **Tie-breaks.** The remaining four competitions — Darmstadt 2021 Season 1, Armageddon
+   2024, St George Summer League 2025 and (inter)nationals 2024 — reproduce every points
+   total exactly and differ only in the order of teams that are level on points, which
+   modern breaks on score ratio. Eight team-seasons, no points moved.
+
+Modern's scores are the correct basis for the modern site. The team-to-side mapping is
+verified independently by the structural and roster checks above, and by the fact that on
+every game the _matching_ side's score agrees with legacy to the point.
+
+### Known data loss
+
+- **Round multipliers.** `rounds.multiplier` has one non-1 value in the entire legacy
+  database (Nerd Sturgis round 4 is `2`). Modern has no multiplier, so that round's
+  points are not weighted. The script warns.
+- **Solo handicaps.** `event_players.handicap` has no modern equivalent.
+- **Single-game matches.** Armageddon 2024 is 15 matches × 1 game, and Darmstadt 2021
+  Season 1 round 2 is 4 more. Modern awards the match bonus only when both games are
+  recorded, so those matches read `incomplete` and contribute 0 match points; game
+  points still count. The script warns.
+
+### Out of scope
+
+Legacy `tdf_key` only starts appearing in late 2019. Competitive events before that
+(Nationals 2012–2013, Internationals 2014–2019, ECT 2020, WCT 5, …) have no TDF and their
+games **do not exist in the modern database at all** — verified by matching center IPL id
+plus timestamp. They are permanently unmigratable. `--report` lists every legacy
+competitive event with its status and flags any that have TDF games but no config entry.
+
+**Solo events** (individually-scored leagues: Brisbane solo seasons, Loveland
+Duos/Summer/Winter, Auckland Triple Threat, …) have no teams, rounds, or matches in the
+legacy schema. They get a competition row and their game assignments and nothing else, so
+per-competition leaderboards, all-star, and player stats work while the standings page is
+empty. Solo/handicap standings are a deferred design question — do not "fix" these events
+by inventing teams.
