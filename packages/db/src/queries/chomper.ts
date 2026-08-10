@@ -27,6 +27,7 @@ import {
   teamResultEnum,
   lbGameTeam,
   lbGameEvent,
+  lbMatchGame,
 } from "../schema";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -480,6 +481,48 @@ export async function getCompetitionMatchGameForReingest(gameId: string) {
   };
 }
 
+// Laserball counterpart of getCompetitionMatchGameForReingest. Side 1 / Side 2 are
+// admin-asserted, match-scoped labels rather than anything the TDF records, so the
+// only stable way to carry them across a reingest is the tdfTeamIndex each side
+// pointed at. Note the sides normally swap between halves — that swap lives in the
+// index mapping, so preserving per-game indices reproduces it exactly.
+export async function getLbMatchGameForReingest(gameId: string) {
+  const [lmg] = await db
+    .select({
+      matchId: lbMatchGame.matchId,
+      half: lbMatchGame.half,
+      side1GameTeamId: lbMatchGame.side1GameTeamId,
+      side2GameTeamId: lbMatchGame.side2GameTeamId,
+    })
+    .from(lbMatchGame)
+    .where(eq(lbMatchGame.gameId, gameId))
+    .limit(1);
+
+  if (!lmg) return null;
+
+  const teamRows = await db
+    .select({ id: lbGameTeam.id, tdfTeamIndex: lbGameTeam.tdfTeamIndex })
+    .from(lbGameTeam)
+    .where(inArray(lbGameTeam.id, [lmg.side1GameTeamId, lmg.side2GameTeamId]));
+
+  const indexById = new Map(teamRows.map((r) => [r.id, r.tdfTeamIndex]));
+  const side1TdfTeamIndex = indexById.get(lmg.side1GameTeamId);
+  const side2TdfTeamIndex = indexById.get(lmg.side2GameTeamId);
+
+  if (side1TdfTeamIndex === undefined || side2TdfTeamIndex === undefined) return null;
+
+  return {
+    matchId: lmg.matchId,
+    half: lmg.half,
+    side1TdfTeamIndex,
+    side2TdfTeamIndex,
+  };
+}
+
+export async function insertLbMatchGame(tx: Tx, data: typeof lbMatchGame.$inferInsert) {
+  await tx.insert(lbMatchGame).values(data);
+}
+
 export async function getPenaltiesWithIplForReingest(gameId: string) {
   return db
     .select({
@@ -521,6 +564,9 @@ export async function deleteGameChildren(tx: Tx, gameId: string) {
 }
 
 export async function deleteLbGameChildren(tx: Tx, gameId: string) {
+  // Must go first: side1GameTeamId/side2GameTeamId FKs have no cascade (would restrict).
+  // Snapshot it with getLbMatchGameForReingest first — reingest has to put it back.
+  await tx.delete(lbMatchGame).where(eq(lbMatchGame.gameId, gameId));
   // Cascades to: lbScorecard (→ lbGamePlayerInteraction, lbGamePlayerState, lbGameEvent actor/target)
   await tx.delete(lbGameTeam).where(eq(lbGameTeam.gameId, gameId));
   // Catch remaining events (round start/end with null actor and target)

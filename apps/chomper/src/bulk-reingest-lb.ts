@@ -6,11 +6,13 @@ import {
   deleteLbGameChildren,
   getGameById,
   getLbGameIdsForReingest,
+  getLbMatchGameForReingest,
   initDb,
   insertLbGameEvents,
   insertLbGamePlayerInteractions,
   insertLbGamePlayerStates,
   insertLbGameTeams,
+  insertLbMatchGame,
   insertLbScorecards,
   restoreGameMetadata,
   updateGameRow,
@@ -159,7 +161,10 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
   }
 
   // 5. Snapshot metadata to preserve
-  const gameRow = await getGameById(gameId);
+  const [gameRow, matchGameRow] = await Promise.all([
+    getGameById(gameId),
+    getLbMatchGameForReingest(gameId),
+  ]);
   if (!gameRow) {
     const reason = "Game row disappeared between listing and reingest";
     log(`FAIL [missing] ${gameId}`);
@@ -168,10 +173,11 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
     return;
   }
 
-  const preservedMeta = {
+  const preservedMeta: PreservedLbMeta = {
     competitionId: gameRow.competitionId ?? null,
     exclude: gameRow.exclude,
     description: gameRow.description ?? null,
+    matchGame: matchGameRow,
   };
 
   // 6. Reingest in a transaction (with deadlock retry)
@@ -204,9 +210,18 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
   reingested++;
 }
 
+// Admin-owned metadata that reingest must carry across the rebuild, since none of
+// it is derivable from the TDF.
+interface PreservedLbMeta {
+  competitionId: string | null;
+  exclude: boolean;
+  description: string | null;
+  matchGame: Awaited<ReturnType<typeof getLbMatchGameForReingest>>;
+}
+
 async function reingestLb(
   existingGameId: string,
-  preservedMeta: { competitionId: string | null; exclude: boolean; description: string | null },
+  preservedMeta: PreservedLbMeta,
   parsed: ReturnType<typeof parseTdf>,
   sim: ReturnType<typeof simulateLaserball>,
   gameStartTime: Date,
@@ -457,6 +472,34 @@ async function reingestLb(
 
     // 12. Restore game metadata
     await restoreGameMetadata(tx, existingGameId, preservedMeta);
+
+    // 13. Restore the match link and its side assignments
+    //
+    // deleteLbGameChildren dropped the lb_match_game row so the lb_game_team
+    // rows it pointed at could be deleted. Rebuild it against the new team ids,
+    // resolving each side through the tdfTeamIndex it was assigned to. Skip the
+    // rebuild if a side's index is gone from the TDF — better to leave the game
+    // unlinked for an admin to re-link than to silently attach the wrong side.
+    if (preservedMeta.matchGame) {
+      const { matchId, half, side1TdfTeamIndex, side2TdfTeamIndex } = preservedMeta.matchGame;
+      const side1GameTeamId = teamIdByIndex.get(side1TdfTeamIndex);
+      const side2GameTeamId = teamIdByIndex.get(side2TdfTeamIndex);
+      if (side1GameTeamId && side2GameTeamId) {
+        await insertLbMatchGame(tx, {
+          matchId,
+          gameId: existingGameId,
+          half,
+          side1GameTeamId,
+          side2GameTeamId,
+        });
+      } else {
+        log(
+          `WARN ${existingGameId}: match link dropped — team index ` +
+            `${side1GameTeamId ? side2TdfTeamIndex : side1TdfTeamIndex} no longer exists in the TDF. ` +
+            `Re-link match ${matchId} half ${half} by hand.`,
+        );
+      }
+    }
   });
 }
 
