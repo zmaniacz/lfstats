@@ -528,6 +528,23 @@ Kicked players are treated differently because TDF records their lives at the mo
 
 After applying exit-type logic, the final snapshot is synced from `ps.lives` **and** `ps.shots`. The shots sync handles one specific edge case: when a post-elimination `0500` ammo resupply fires after a player's last life is taken but before their entity-end, `handle0500` correctly updates `ps.shots`, but the state transition that would record a new snapshot is blocked (`isEliminated = true`). Without this sync the final snapshot would show the pre-resupply shots count, failing the consistency check.
 
+### Post-Simulation: `mergeRestartGenerations`
+
+Same-position hardware restarts (routing Cases 2 and 3) are simulated as separate generations so each period's counters start from the correct baseline, but they represent one human player and must collapse to a single Scorecard. Mid-game position changes (Case 1 with differing `category`) are genuinely different roles and stay separate. A route can contain both in sequence, so the merge decision is made per consecutive pair rather than once per route.
+
+`mergeGenerationInto(target, source)` sums every cumulative counter across the two periods and adds the scores (score resets to 0 at the start of each generation, so the merged total is the sum). Which generation supplies the _end_ state depends on how the earlier one finished:
+
+| Earlier generation's exit | End state, residual `livesLeft`/`shotsLeft`, surviving entity-end                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `01` / `17` / `02`        | Taken from the **later** generation — the usual broken-vest swap, where the newer vest holds the real end state |
+| `04` (eliminated)         | Kept from the **earlier** generation — see below                                                                |
+
+**Elimination is terminal.** An `exitType=04` means the player genuinely exhausted their lives. A later registration — a replacement vest issued in error, or a referee putting an eliminated player back in — cannot undo that, and the elimination still counts toward the opposing team's win condition. When the earlier generation ended in `04`, its end state and entity-end record are authoritative and the later exit record is discarded.
+
+Counters and score are still summed in that case: if the player actually played a second stint, those points were scored and those shots were fired, but the player was still out. The later period's replay snapshots are also kept (the events happened and replay rows hang off them), with the final snapshot's `lives`/`shots` pinned to the eliminated values so the replay tail does not contradict the scorecard.
+
+Getting this backwards is quiet but expensive: the surviving entity-end drives `Scorecard.eliminated` in the ingester, and `eliminatedInGame` drives the team elimination check in `buildResult()` — so a dropped elimination silently flips a game from an elimination win to a score win and strips the winning team's 10,000-point bonus. The consistency check does not catch it, because the merge leaves `sm5Stats` self-consistent with the wrong state. The test suite asserts the invariant directly instead: every `04` in a file must still surface as a genuine elimination in one of that player's surviving generations.
+
 ---
 
 ## Consistency Checks

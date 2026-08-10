@@ -138,6 +138,16 @@ for (const { file, path: filePath } of entries) {
     continue;
   }
 
+  // Capture exit codes before simulate() merges restart generations and rewrites
+  // entity-end IDs — the pre-merge codes are what the invariant below checks.
+  const exitsByEntity = new Map<string, string[]>();
+  for (const end of parsed.entityEnds) {
+    if (!end.id.startsWith("#")) continue;
+    const arr = exitsByEntity.get(end.id) ?? [];
+    arr.push(end.exitType);
+    exitsByEntity.set(end.id, arr);
+  }
+
   const simResult = simulate(parsed);
   const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
   const { discrepancies, ghostShots, warnings } = runConsistencyCheck(
@@ -145,10 +155,33 @@ for (const { file, path: filePath } of entries) {
     sm5StatsById,
   );
 
+  // Invariant: exit code "04" means the player exhausted their lives, and that is
+  // terminal — a later registration (replacement vest, or a referee putting an
+  // eliminated player back in) cannot undo it. A dropped elimination silently
+  // flips a game from an elimination win to a score win, so assert that every
+  // "04" still shows up as a genuine elimination somewhere in the player's
+  // surviving generations. Checked against siblings because a mid-game position
+  // change keeps generations as separate scorecards rather than merging them.
+  const eliminationViolations: string[] = [];
+  for (const [externalId, exits] of exitsByEntity) {
+    if (!exits.includes("04")) continue;
+    const survivors = [...simResult.playerStats.entries()].filter(
+      ([id]) => id === externalId || id.startsWith(`${externalId}_gen`),
+    );
+    if (survivors.length === 0) continue;
+    if (!survivors.some(([, ps]) => ps.eliminatedInGame && ps.lives === 0)) {
+      eliminationViolations.push(
+        `${externalId} exits=[${exits.join(">")}] but no surviving generation is eliminated ` +
+          `(${survivors.map(([id, ps]) => `${id}: eliminatedInGame=${ps.eliminatedInGame} lives=${ps.lives}`).join(", ")})`,
+      );
+    }
+  }
+
   const debugOut = {
     consistencyCheck: {
-      passed: discrepancies.length === 0,
+      passed: discrepancies.length === 0 && eliminationViolations.length === 0,
       discrepancies,
+      eliminationViolations,
       ghostShots,
       warnings,
     },
@@ -171,10 +204,17 @@ for (const { file, path: filePath } of entries) {
 
   writeFileSync(debugPath, JSON.stringify(debugOut, null, 2));
 
-  if (discrepancies.length === 0) {
+  if (discrepancies.length === 0 && eliminationViolations.length === 0) {
     console.log(`PASS ${file}`);
     passes.push(file);
     passed++;
+  } else if (eliminationViolations.length > 0) {
+    console.error(`FAIL [dropped elimination] ${file}`);
+    failures.push({
+      file,
+      reason: JSON.stringify([...eliminationViolations, ...discrepancies], null, 2),
+    });
+    failed++;
   } else {
     console.error(`FAIL [consistency] ${file}`);
     failures.push({

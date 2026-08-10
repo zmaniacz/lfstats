@@ -586,6 +586,14 @@ class Simulator {
     const source = this.playerStates.get(sourceId);
     if (!target || !source) return;
 
+    // Did the earlier generation end in a genuine lives-exhausted elimination?
+    // Read from the entity-end rather than target.eliminatedInGame: by this point
+    // applyEntityEnds() has already run, so the exit code is the authoritative
+    // signal and is not confused with an in-simulation lives-hit-zero that was
+    // later superseded. detectAndFixStatSwaps() has already settled entity-end IDs.
+    const targetEliminated =
+      this.parsed.entityEnds.find((e) => e.id === targetId)?.exitType === "04";
+
     // Sum cumulative counters across both periods.
     target.uptime += source.uptime;
     target.resupplyDowntime += source.resupplyDowntime;
@@ -658,29 +666,41 @@ class Simulator {
     const targetScoreAtMerge = target.score;
     target.score += source.score;
 
-    // Live/final state carries over from the later generation.
-    target.state = source.state;
-    target.stateEnteredAt = source.stateEnteredAt;
-    target.state3EnteredAt = source.state3EnteredAt;
-    target.lastTransitionToActiveAt = source.lastTransitionToActiveAt;
-    target.hitPoints = source.hitPoints;
-    target.lives = source.lives;
-    target.shots = source.shots;
-    target.missiles = source.missiles;
-    target.sp = source.sp;
-    target.isRapidFire = source.isRapidFire;
-    target.rapidFireStartedAt = source.rapidFireStartedAt;
-    target.isNuking = source.isNuking;
-    target.nukeActivatedAt = source.nukeActivatedAt;
-    target.isEliminated = source.isEliminated;
-    target.eliminatedInGame = source.eliminatedInGame;
-    target.eliminatedAt = source.eliminatedAt;
-    target.deactivationCause = source.deactivationCause;
-    target.receivedAmmoResupplyThisCycle = source.receivedAmmoResupplyThisCycle;
-    target.receivedLivesResupplyThisCycle = source.receivedLivesResupplyThisCycle;
-    target.lastAmmoResuppliedBy = source.lastAmmoResuppliedBy;
-    target.lastLivesResuppliedBy = source.lastLivesResuppliedBy;
-    target.entityEndForcedLives = source.entityEndForcedLives ?? target.entityEndForcedLives;
+    // Live/final state normally carries over from the later generation — the
+    // usual restart is a broken vest (exitType "01") swapped mid-game, so the
+    // newer vest holds the real end state.
+    //
+    // An exitType "04" on the earlier generation inverts that. "04" means the
+    // player genuinely exhausted their lives, and elimination is terminal: a
+    // later registration (a fresh vest issued in error, or a referee putting an
+    // eliminated player back in) cannot undo it. The elimination still counts
+    // toward the opposing team's win condition, so the earlier generation's end
+    // state is authoritative. The later period's counters and score are still
+    // summed in above — the points were scored, the player was still out.
+    if (!targetEliminated) {
+      target.state = source.state;
+      target.stateEnteredAt = source.stateEnteredAt;
+      target.state3EnteredAt = source.state3EnteredAt;
+      target.lastTransitionToActiveAt = source.lastTransitionToActiveAt;
+      target.hitPoints = source.hitPoints;
+      target.lives = source.lives;
+      target.shots = source.shots;
+      target.missiles = source.missiles;
+      target.sp = source.sp;
+      target.isRapidFire = source.isRapidFire;
+      target.rapidFireStartedAt = source.rapidFireStartedAt;
+      target.isNuking = source.isNuking;
+      target.nukeActivatedAt = source.nukeActivatedAt;
+      target.isEliminated = source.isEliminated;
+      target.eliminatedInGame = source.eliminatedInGame;
+      target.eliminatedAt = source.eliminatedAt;
+      target.deactivationCause = source.deactivationCause;
+      target.receivedAmmoResupplyThisCycle = source.receivedAmmoResupplyThisCycle;
+      target.receivedLivesResupplyThisCycle = source.receivedLivesResupplyThisCycle;
+      target.lastAmmoResuppliedBy = source.lastAmmoResuppliedBy;
+      target.lastLivesResuppliedBy = source.lastLivesResuppliedBy;
+      target.entityEndForcedLives = source.entityEndForcedLives ?? target.entityEndForcedLives;
+    }
 
     // Replay snapshots concatenate — source's period starts after target's ends.
     // Both generations existed in playerStates at mission-start, so
@@ -715,6 +735,18 @@ class Simulator {
 
     target.stateSnapshots.push(...source.stateSnapshots);
 
+    // The later period's snapshots are kept either way — those events happened
+    // and the replay rows hang off them. But for an eliminated player they end on
+    // the replacement vest's fresh loadout, which would contradict the scorecard's
+    // 0 lives. Pin the tail to the authoritative final values.
+    if (targetEliminated) {
+      const finalSnap = target.stateSnapshots[target.stateSnapshots.length - 1];
+      if (finalSnap) {
+        finalSnap.lives = target.lives;
+        finalSnap.shots = target.shots;
+      }
+    }
+
     this.playerStates.delete(sourceId);
 
     // Merge sm5Stats: sum accumulated counters, take the later generation's residuals.
@@ -743,20 +775,33 @@ class Simulator {
       targetStats.shotTeam += sourceStats.shotTeam;
       targetStats.missiledOpponent += sourceStats.missiledOpponent;
       targetStats.missiledTeam += sourceStats.missiledTeam;
-      targetStats.livesLeft = sourceStats.livesLeft;
-      targetStats.shotsLeft = sourceStats.shotsLeft;
+      // Residual lives/shots come from the generation that holds the real end
+      // state — the later one normally, the earlier one when it was eliminated
+      // (whose TDF livesLeft is already 0, per spec).
+      if (!targetEliminated) {
+        targetStats.livesLeft = sourceStats.livesLeft;
+        targetStats.shotsLeft = sourceStats.shotsLeft;
+      }
       this.parsed.sm5Stats.splice(sourceStatsIdx, 1);
     }
 
     // Merge entity-ends: keep the later generation's exit record (the real
-    // game-end outcome), dropping the earlier generation's mid-game record.
+    // game-end outcome), dropping the earlier generation's mid-game record —
+    // unless the earlier generation was eliminated, in which case that record
+    // is the player's true outcome and the later exit is discarded instead.
     const targetEndIdx = this.parsed.entityEnds.findIndex((e) => e.id === targetId);
     const sourceEndIdx = this.parsed.entityEnds.findIndex((e) => e.id === sourceId);
-    if (sourceEndIdx >= 0) {
-      this.parsed.entityEnds[sourceEndIdx]!.id = targetId;
-    }
-    if (targetEndIdx >= 0 && targetEndIdx !== sourceEndIdx) {
-      this.parsed.entityEnds.splice(targetEndIdx, 1);
+    if (targetEliminated) {
+      if (sourceEndIdx >= 0) {
+        this.parsed.entityEnds.splice(sourceEndIdx, 1);
+      }
+    } else {
+      if (sourceEndIdx >= 0) {
+        this.parsed.entityEnds[sourceEndIdx]!.id = targetId;
+      }
+      if (targetEndIdx >= 0 && targetEndIdx !== sourceEndIdx) {
+        this.parsed.entityEnds.splice(targetEndIdx, 1);
+      }
     }
 
     // Remove the source generation's entity so ingestion produces one Scorecard.
