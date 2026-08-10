@@ -8,6 +8,8 @@ import {
   getGameIdsForReingest,
   getPenaltiesWithIplForReingest,
   getScorecardsIsMercenaryForReingest,
+  getTeamPenaltiesForReingest,
+  assertReingestHandlesGameTeamReferences,
   initDb,
 } from "@lfstats/db";
 import { writeFileSync } from "node:fs";
@@ -49,6 +51,7 @@ if (!MODERN_ARCHIVE_BUCKET) {
 }
 
 await initDb();
+await assertReingestHandlesGameTeamReferences();
 
 const mvpModel = await findActiveMvpModel();
 if (!mvpModel) {
@@ -172,11 +175,12 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
   }
 
   // 6. Snapshot metadata to preserve
-  const [gameRow, matchGameRow, penaltyRows, mercenaryRows] = await Promise.all([
+  const [gameRow, matchGameRow, penaltyRows, mercenaryRows, teamPenaltyRows] = await Promise.all([
     getGameById(gameId),
     getCompetitionMatchGameForReingest(gameId),
     getPenaltiesWithIplForReingest(gameId),
     getScorecardsIsMercenaryForReingest(gameId),
+    getTeamPenaltiesForReingest(gameId),
   ]);
 
   if (!gameRow) {
@@ -233,6 +237,7 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
     inGamePenalties,
     postGamePenalties,
     mercenaries: new Set(mercenaryRows.map((r) => r.iplId).filter((id): id is string => !!id)),
+    teamPenalties: teamPenaltyRows,
   };
 
   // 7. Calculate MVP

@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import {
+  assertReingestHandlesGameTeamReferences,
   db,
   deleteLbGameChildren,
   getGameById,
@@ -42,6 +43,7 @@ if (!MODERN_ARCHIVE_BUCKET) {
 }
 
 await initDb();
+await assertReingestHandlesGameTeamReferences();
 
 let gameList: { id: string; tdfFilename: string }[];
 

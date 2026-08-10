@@ -23,6 +23,7 @@ import {
   chomperJob,
   sm5MvpModel,
   competitionMatchGame,
+  sm5GameTeamPenalty,
   gameOutcomeEnum,
   teamResultEnum,
   lbGameTeam,
@@ -521,6 +522,73 @@ export async function getLbMatchGameForReingest(gameId: string) {
 
 export async function insertLbMatchGame(tx: Tx, data: typeof lbMatchGame.$inferInsert) {
   await tx.insert(lbMatchGame).values(data);
+}
+
+// Team penalties are admin-entered — no TDF event produces them — and they cascade
+// away with sm5_game_team, so reingest has to carry them across by hand. Resolved to
+// tdfTeamIndex (and the referee's natural id) because both uuids are recreated.
+export async function getTeamPenaltiesForReingest(gameId: string) {
+  return db
+    .select({
+      tdfTeamIndex: sm5GameTeam.tdfTeamIndex,
+      scoreValue: sm5GameTeamPenalty.scoreValue,
+      description: sm5GameTeamPenalty.description,
+      time: sm5GameTeamPenalty.time,
+      type: sm5GameTeamPenalty.type,
+      inGame: sm5GameTeamPenalty.inGame,
+      rescinded: sm5GameTeamPenalty.rescinded,
+      refereeIplId: gameReferee.iplId,
+      refereeHardwareId: gameReferee.hardwareId,
+    })
+    .from(sm5GameTeamPenalty)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeamPenalty.gameTeamId, sm5GameTeam.id))
+    .leftJoin(gameReferee, eq(sm5GameTeamPenalty.refereeId, gameReferee.id))
+    .where(eq(sm5GameTeamPenalty.gameId, gameId));
+}
+
+export async function insertGameTeamPenalties(
+  tx: Tx,
+  rows: (typeof sm5GameTeamPenalty.$inferInsert)[],
+) {
+  if (rows.length === 0) return;
+  await tx.insert(sm5GameTeamPenalty).values(rows);
+}
+
+// Every table that references a game-team row is either rebuilt from the TDF or
+// explicitly preserved across a reingest. A new one that is neither would be
+// cascade-deleted without anyone noticing — which is exactly how the team-penalty
+// rows were lost. Fail loudly at startup instead of silently dropping data.
+const REINGEST_HANDLED_GAME_TEAM_REFERENCES: Record<string, string> = {
+  sm5_scorecard: "rebuilt from the TDF",
+  sm5_game_target: "rebuilt from the TDF",
+  lb_scorecard: "rebuilt from the TDF",
+  competition_match_game: "preserved via getCompetitionMatchGameForReingest",
+  lb_match_game: "preserved via getLbMatchGameForReingest",
+  sm5_game_team_penalty: "preserved via getTeamPenaltiesForReingest",
+};
+
+export async function assertReingestHandlesGameTeamReferences() {
+  const rows = await db.execute<{ referencing: string }>(sql`
+    select distinct tc.table_name as referencing
+    from information_schema.table_constraints tc
+    join information_schema.constraint_column_usage ccu
+      on ccu.constraint_name = tc.constraint_name
+    where tc.constraint_type = 'FOREIGN KEY'
+      and ccu.table_name in ('sm5_game_team', 'lb_game_team')`);
+
+  const unhandled = [...rows]
+    .map((r) => r.referencing)
+    .filter((t) => !(t in REINGEST_HANDLED_GAME_TEAM_REFERENCES))
+    .sort();
+
+  if (unhandled.length > 0) {
+    throw new Error(
+      `Reingest safety check failed: ${unhandled.join(", ")} reference(s) a game-team row ` +
+        `but are neither rebuilt from the TDF nor preserved across reingest. They would be ` +
+        `silently cascade-deleted. Add a preserve/restore step, then list them in ` +
+        `REINGEST_HANDLED_GAME_TEAM_REFERENCES.`,
+    );
+  }
 }
 
 export async function getPenaltiesWithIplForReingest(gameId: string) {

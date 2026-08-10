@@ -21,6 +21,7 @@ import {
   insertPostGamePenalties,
   applyScorecardIsMercenary,
   insertCompetitionMatchGame,
+  insertGameTeamPenalties,
   getNewInGamePenaltiesWithIplTx,
   recalculateGameResult,
   upsertPlayersBulk,
@@ -69,6 +70,19 @@ export interface PreservedGameMeta {
   }>;
   // Set of iplIds that have isMercenary = true
   mercenaries: Set<string>;
+  // Admin-entered team penalties. No TDF event produces these, and they cascade
+  // with sm5_game_team, so they only survive a reingest by being carried across.
+  teamPenalties: Array<{
+    tdfTeamIndex: number;
+    scoreValue: number;
+    description: string;
+    time: number | null;
+    type: string;
+    inGame: boolean;
+    rescinded: boolean;
+    refereeIplId: string | null;
+    refereeHardwareId: string | null;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -671,7 +685,41 @@ export async function reingest(
     }
 
     // -----------------------------------------------------------------------
-    // 23. Recalculate win/loss/draw accounting for post-game penalties
+    // 23. Restore team penalties
+    //
+    // These cascaded away with the old sm5_game_team rows in step 1. Rebuild them
+    // against the new team ids, re-linking the referee by natural id the same way
+    // post-game player penalties do. A penalty whose team index is no longer in the
+    // TDF is dropped rather than reassigned — recalculateGameResult below then
+    // reflects whatever survived.
+    // -----------------------------------------------------------------------
+    const teamPenaltyRows = preservedMeta.teamPenalties.flatMap((p) => {
+      const gameTeamId = teamIdByIndex.get(p.tdfTeamIndex);
+      if (!gameTeamId) return [];
+
+      let refereeId: string | null = null;
+      if (p.refereeIplId) refereeId = refereeIdByKey.get(p.refereeIplId) ?? null;
+      if (!refereeId && p.refereeHardwareId)
+        refereeId = refereeIdByKey.get(p.refereeHardwareId) ?? null;
+
+      return [
+        {
+          gameId: existingGameId,
+          gameTeamId,
+          refereeId,
+          scoreValue: p.scoreValue,
+          description: p.description,
+          time: p.time,
+          type: p.type,
+          inGame: p.inGame,
+          rescinded: p.rescinded,
+        },
+      ];
+    });
+    await insertGameTeamPenalties(tx, teamPenaltyRows);
+
+    // -----------------------------------------------------------------------
+    // 24. Recalculate win/loss/draw accounting for post-game penalties
     //
     // Raw scorecard and team scores are kept as simulator output. The effective
     // score for result determination is: score + eliminationBonus + sum(penalty.scoreValue)
