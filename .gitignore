@@ -34,6 +34,9 @@ bulk-*-results*.json
 *.tsbuildinfo
 
 # Logs
+# logs/ covers whole run-output directories such as apps/chomper/logs, which
+# collect reports and per-game result files alongside the .log files themselves.
+logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
