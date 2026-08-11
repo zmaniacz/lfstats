@@ -3,17 +3,25 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
-import { Settings } from "lucide-react";
-import { getCompetitionRounds, getCompetitionUnassignedGamesForAdmin } from "@lfstats/db";
-import { FilterBar } from "@/components/filters/FilterBar";
+import {
+  getCompetitionRounds,
+  getCompetitionUnassignedGamesForAdmin,
+  getSoloCompetitionUnenrolledPlayers,
+} from "@lfstats/db";
 import { RoundFilter } from "./RoundFilter";
 import { StandingsContent } from "@/components/competitions/StandingsContent";
+import { SoloStandingsContent } from "@/components/competitions/SoloStandingsContent";
 import { FinalsContent } from "@/components/competitions/FinalsContent";
+import { StandingsHeader } from "@/components/competitions/StandingsHeader";
 import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
 import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesBlock";
+import { UnenrolledPlayersBlock } from "@/components/competitions/UnenrolledPlayersBlock";
 import { StandingsTabs } from "./StandingsTabs";
 import { resolveFilterContext } from "@/lib/filter-context";
+import {
+  enrollAllSoloPlayersAction,
+  enrollSoloPlayerAction,
+} from "@/app/admin/competitions/[slug]/players/actions";
 import { auth } from "@/auth";
 
 export const metadata: Metadata = { title: "Standings" };
@@ -49,6 +57,31 @@ export default async function StandingsPage({
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
 
+  // A solo competition has no rounds, matches or finals, so none of the tab/round
+  // machinery below applies — `?round` and `?tab` are simply inert. In place of the
+  // unassigned-games block (every game counts, so none are ever unassigned) it shows the
+  // players who have games here but have not been enrolled.
+  if (activeComp.format === "solo") {
+    const unenrolled = isAdmin ? await getSoloCompetitionUnenrolledPlayers(activeId) : [];
+
+    return (
+      <div className="p-6 space-y-6">
+        {isAdmin && (
+          <UnenrolledPlayersBlock
+            players={unenrolled}
+            enrollAction={enrollSoloPlayerAction.bind(null, activeId)}
+            enrollAllAction={enrollAllSoloPlayersAction.bind(null, activeId)}
+          />
+        )}
+        <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
+
+        <Suspense key={activeComp.slug} fallback={<StandingsSkeleton />}>
+          <SoloStandingsContent activeId={activeId} competitionName={activeComp.name} />
+        </Suspense>
+      </div>
+    );
+  }
+
   const [allRounds, unassignedGames] = await Promise.all([
     getCompetitionRounds(activeId),
     isAdmin ? getCompetitionUnassignedGamesForAdmin(activeId) : Promise.resolve([]),
@@ -70,29 +103,7 @@ export default async function StandingsPage({
   return (
     <div className="p-6 space-y-6">
       {isAdmin && <UnassignedGamesBlock games={unassignedGames} />}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold">Standings</h2>
-          {isAdmin && (
-            <Link
-              href={`/admin/competitions/${activeComp.slug}`}
-              className="text-muted-foreground hover:text-foreground"
-              title="Manage competition"
-            >
-              <Settings className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-        <FilterBar
-          basePath="/standings"
-          mode="competition-only"
-          scope="competition"
-          activeCenterSlug={null}
-          activeCompetitionSlug={activeComp.slug}
-          centers={ctx.centers}
-          competitions={ctx.competitions}
-        />
-      </div>
+      <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
 
       <StandingsTabs
         defaultTab={activeTab}

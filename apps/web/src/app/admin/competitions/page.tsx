@@ -57,9 +57,12 @@ export default async function CompetitionsPage() {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={c.type === "competitive" ? "default" : "secondary"}>
-                    {c.type}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={c.type === "competitive" ? "default" : "secondary"}>
+                      {c.type}
+                    </Badge>
+                    {c.format === "solo" && <Badge variant="outline">solo</Badge>}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={competitionStateBadgeVariant(c.state)}>

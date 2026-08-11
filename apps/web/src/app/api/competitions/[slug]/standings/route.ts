@@ -2,11 +2,23 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { NextResponse } from "next/server";
-import { getCompetitionStandingsData } from "@lfstats/db";
+import {
+  getCompetitionBySlug,
+  getCompetitionStandingsData,
+  getSoloCompetitionStandingsData,
+} from "@lfstats/db";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const data = await getCompetitionStandingsData(slug);
+
+  const comp = await getCompetitionBySlug(slug);
+  if (!comp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Solo competitions have no matches, so the team standings query would always be empty.
+  const data =
+    comp.format === "solo"
+      ? await getSoloCompetitionStandingsData(slug)
+      : await getCompetitionStandingsData(slug);
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(data);
 }

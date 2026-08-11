@@ -4,7 +4,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { requireCompetitionAccess } from "@/lib/competition-access";
 import {
   createCompetition,
   updateCompetition,
@@ -16,35 +16,14 @@ import {
 } from "@lfstats/db";
 import { redirect } from "next/navigation";
 
-async function requireCompetitionAccess(hostCenterId: string | null) {
-  const session = await auth();
-  const roles = session?.user?.roles ?? [];
-
-  const isSuperOrAdmin = roles.some((r) => r.role === "superAdmin" || r.role === "admin");
-  if (isSuperOrAdmin) return session!;
-
-  // centerAdmin may only manage competitions at their own center(s)
-  const centerAdminCenterIds = roles
-    .filter((r) => r.role === "centerAdmin" && r.centerId != null)
-    .map((r) => r.centerId!);
-
-  if (
-    centerAdminCenterIds.length > 0 &&
-    hostCenterId != null &&
-    centerAdminCenterIds.includes(hostCenterId)
-  ) {
-    return session!;
-  }
-
-  throw new Error("Forbidden");
-}
-
 export async function createCompetitionAction(formData: FormData) {
   const hostCenterId = (formData.get("hostCenterId") as string) || null;
   await requireCompetitionAccess(hostCenterId);
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
+  // Coerced rather than cast: anything other than an explicit "solo" is a team competition.
+  const format = formData.get("format") === "solo" ? "solo" : "team";
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
@@ -58,6 +37,7 @@ export async function createCompetitionAction(formData: FormData) {
   const { slug } = await createCompetition({
     name,
     type,
+    format,
     state,
     startDate,
     endDate,
@@ -77,6 +57,8 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
+  // Coerced rather than cast: anything other than an explicit "solo" is a team competition.
+  const format = formData.get("format") === "solo" ? "solo" : "team";
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
@@ -91,6 +73,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
   await updateCompetition(id, {
     name,
     type,
+    format,
     state,
     startDate,
     endDate,

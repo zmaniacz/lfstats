@@ -84,7 +84,8 @@ export default async function LeaderboardsPage({
         <LaserballStub feature="leaderboards" />
       ) : (
         <>
-          {specificCompetition && ctx.competition && (
+          {/* Rounds/finals/mercs are match-structure concepts; solo competitions have none. */}
+          {specificCompetition && ctx.competition && ctx.competition.format !== "solo" && (
             <ScopeExtraToggles
               basePath="/leaderboards"
               competitionSlug={ctx.competition.slug}

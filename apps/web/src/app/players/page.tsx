@@ -83,7 +83,8 @@ export default async function PlayersPage({
         <LaserballStub feature="player rankings" />
       ) : (
         <MinGamesProvider enabled={!useCompetitionView}>
-          {useCompetitionView && ctx.competition && (
+          {/* Rounds/finals/mercs are match-structure concepts; solo competitions have none. */}
+          {useCompetitionView && ctx.competition && ctx.competition.format !== "solo" && (
             <ScopeExtraToggles
               basePath="/players"
               competitionSlug={ctx.competition.slug}

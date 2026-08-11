@@ -643,6 +643,7 @@ async function applyPlan(
   const created = await createCompetition({
     name: plan.name,
     type: "competitive",
+    format: plan.cfg.kind === "solo" ? "solo" : "team",
     state: "completed",
     hostCenterId: plan.hostCenterId,
     startDate: plan.startDate,
