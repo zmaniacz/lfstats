@@ -1,0 +1,1 @@
+ALTER TABLE "competition_round" ADD COLUMN "multiplier" integer DEFAULT 1 NOT NULL;

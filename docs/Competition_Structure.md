@@ -130,14 +130,15 @@ Official roster for a team within a competition. The source of truth for mercena
 
 A named phase of a competition (e.g. "Round 1", "Quarterfinals"). Rounds are ordered by `round_number`.
 
-| Column           | Type                  | Notes                                                    |
-| ---------------- | --------------------- | -------------------------------------------------------- |
-| `id`             | uuid PK               |                                                          |
-| `competition_id` | uuid FK → competition | cascade delete                                           |
-| `name`           | text                  |                                                          |
-| `round_number`   | integer               | Sort order                                               |
-| `type`           | enum                  | `"pool"` \| `"finals"` \| `"split-pool"` \| `"wildcard"` |
-| `created_at`     | timestamp             | defaults to now                                          |
+| Column           | Type                  | Notes                                                                                               |
+| ---------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+| `id`             | uuid PK               |                                                                                                     |
+| `competition_id` | uuid FK → competition | cascade delete                                                                                      |
+| `name`           | text                  |                                                                                                     |
+| `round_number`   | integer               | Sort order                                                                                          |
+| `type`           | enum                  | `"pool"` \| `"finals"` \| `"split-pool"` \| `"wildcard"`                                            |
+| `multiplier`     | integer               | default `1`. Scales every point earned in the round — see [Points Calculation](#points-calculation) |
+| `created_at`     | timestamp             | defaults to now                                                                                     |
 
 **Unique:** `(competition_id, round_number)`
 
@@ -281,7 +282,8 @@ Points are derived at query time — never stored. For each match:
    Higher total takes +2; an exact tie gives +1 each. Note that `penalty_score` is included — penalties can flip a match bonus, not just a game result.
 
 5. **Incomplete matches.** With fewer than 2 games recorded, `matchWinner` is `"incomplete"` and both sides get 0 match points. Game points already earned still count.
-6. Sum per team across all matches in a round or the full competition for standings.
+6. **Round multiplier.** Both game points and the match bonus are multiplied by `competition_round.multiplier` (default `1`), so a round can be made worth double or more. Win/loss/draw _counts_ are never scaled — only points. Admins set the multiplier per round in `/admin/competitions/[slug]/rounds`; a non-1 multiplier is surfaced as a "N× points" badge on the round.
+7. Sum per team across all matches in a round or the full competition for standings.
 
 Implemented in `packages/db/src/queries/competition-tournament.ts`.
 

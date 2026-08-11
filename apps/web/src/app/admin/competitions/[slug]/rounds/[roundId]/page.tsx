@@ -110,6 +110,7 @@ export default async function RoundMatchesPage({
           >
             {round.type}
           </Badge>
+          {round.multiplier !== 1 && <Badge variant="outline">{round.multiplier}× points</Badge>}
         </div>
       </div>
 
@@ -122,6 +123,7 @@ export default async function RoundMatchesPage({
             initialName={round.name}
             initialRoundNumber={round.roundNumber}
             initialType={round.type}
+            initialMultiplier={round.multiplier}
             action={updateRoundAction.bind(null, id, round.id)}
           />
         </CardContent>

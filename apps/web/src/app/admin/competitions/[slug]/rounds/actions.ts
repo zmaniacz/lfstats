@@ -44,12 +44,20 @@ async function revalidateRoundPage(competitionId: string, roundId: string): Prom
   }
 }
 
+// Points multiplier for the round: a whole number of at least 1. Anything the browser
+// lets through (blank, 0, fractional) falls back to normal scoring.
+function parseMultiplier(value: FormDataEntryValue | null): number {
+  const parsed = Math.floor(Number(value));
+  return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+}
+
 export async function createRoundAction(competitionId: string, formData: FormData): Promise<void> {
   await requireAdmin();
   const name = formData.get("name") as string;
   const roundNumber = parseInt(formData.get("roundNumber") as string, 10);
   const type = formData.get("type") as "pool" | "finals" | "split-pool" | "wildcard";
-  await createCompetitionRound({ competitionId, name, roundNumber, type });
+  const multiplier = parseMultiplier(formData.get("multiplier"));
+  await createCompetitionRound({ competitionId, name, roundNumber, type, multiplier });
   await revalidateRoundsPage(competitionId);
   refresh();
 }
@@ -63,7 +71,8 @@ export async function updateRoundAction(
   const name = formData.get("name") as string;
   const roundNumber = parseInt(formData.get("roundNumber") as string, 10);
   const type = formData.get("type") as "pool" | "finals" | "split-pool" | "wildcard";
-  await updateCompetitionRound(roundId, { name, roundNumber, type });
+  const multiplier = parseMultiplier(formData.get("multiplier"));
+  await updateCompetitionRound(roundId, { name, roundNumber, type, multiplier });
   await revalidateRoundPage(competitionId, roundId);
   refresh();
 }

@@ -84,6 +84,9 @@ export default async function RoundsPage({ params }: { params: Promise<{ slug: s
                 >
                   {round.type}
                 </Badge>
+                {round.multiplier !== 1 && (
+                  <Badge variant="outline">{round.multiplier}× points</Badge>
+                )}
                 <span className="text-sm text-muted-foreground">
                   {round.matchCount} {round.matchCount === 1 ? "match" : "matches"}
                 </span>

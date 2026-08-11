@@ -58,6 +58,19 @@ export function CompetitionRoundForm({ nextRoundNumber, action }: Props) {
         />
       </div>
       <div className="space-y-1">
+        <Label htmlFor="roundMultiplier">Multiplier</Label>
+        <Input
+          id="roundMultiplier"
+          name="multiplier"
+          type="number"
+          required
+          defaultValue={1}
+          min={1}
+          step={1}
+          className="w-20"
+        />
+      </div>
+      <div className="space-y-1">
         <Label>Type</Label>
         <Select
           value={type}

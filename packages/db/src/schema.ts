@@ -200,6 +200,9 @@ export const competitionRound = pgTable(
     name: text("name").notNull(),
     roundNumber: integer("round_number").notNull(),
     type: competitionRoundTypeEnum("type").notNull(),
+    // Scales every competition point earned in this round (game points and the
+    // match bonus). 1 = normal scoring.
+    multiplier: integer("multiplier").notNull().default(1),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.competitionId, t.roundNumber)],

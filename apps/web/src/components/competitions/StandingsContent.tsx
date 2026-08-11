@@ -9,6 +9,7 @@ import {
   type CompetitionMatchResult,
   type CompetitionRoundType,
 } from "@lfstats/db";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StandingsTable } from "@/components/competitions/StandingsTable";
 import { MatchCard } from "@/components/competitions/MatchCard";
@@ -16,13 +17,19 @@ import { MatchCard } from "@/components/competitions/MatchCard";
 function groupMatchesByRound(matchResults: CompetitionMatchResult[]) {
   const rounds = new Map<
     string,
-    { roundName: string; roundNumber: number; matches: CompetitionMatchResult[] }
+    {
+      roundName: string;
+      roundNumber: number;
+      roundMultiplier: number;
+      matches: CompetitionMatchResult[];
+    }
   >();
   for (const match of matchResults) {
     if (!rounds.has(match.roundId)) {
       rounds.set(match.roundId, {
         roundName: match.roundName,
         roundNumber: match.roundNumber,
+        roundMultiplier: match.roundMultiplier,
         matches: [],
       });
     }
@@ -118,7 +125,12 @@ export async function StandingsContent({
 
       {sortedRounds.map((round) => (
         <div key={round.roundName} className="space-y-3">
-          <h3 className="text-lg font-semibold">{round.roundName}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">{round.roundName}</h3>
+            {round.roundMultiplier !== 1 && (
+              <Badge variant="outline">{round.roundMultiplier}× points</Badge>
+            )}
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {round.matches.map((match) => (
               <MatchCard key={match.matchId} match={match} competitionSlug={competitionSlug} />

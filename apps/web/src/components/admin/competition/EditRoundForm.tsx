@@ -19,10 +19,17 @@ type Props = {
   initialName: string;
   initialRoundNumber: number;
   initialType: "pool" | "finals" | "split-pool" | "wildcard";
+  initialMultiplier: number;
   action: (formData: FormData) => Promise<void>;
 };
 
-export function EditRoundForm({ initialName, initialRoundNumber, initialType, action }: Props) {
+export function EditRoundForm({
+  initialName,
+  initialRoundNumber,
+  initialType,
+  initialMultiplier,
+  action,
+}: Props) {
   const [type, setType] = useState<"pool" | "finals" | "split-pool" | "wildcard">(initialType);
   const [isPending, setIsPending] = useState(false);
 
@@ -60,6 +67,19 @@ export function EditRoundForm({ initialName, initialRoundNumber, initialType, ac
           required
           defaultValue={initialRoundNumber}
           min={1}
+          className="w-20"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="roundMultiplier">Multiplier</Label>
+        <Input
+          id="roundMultiplier"
+          name="multiplier"
+          type="number"
+          required
+          defaultValue={initialMultiplier}
+          min={1}
+          step={1}
           className="w-20"
         />
       </div>

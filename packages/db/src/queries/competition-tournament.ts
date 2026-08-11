@@ -74,6 +74,7 @@ export type CompetitionRoundListItem = {
   name: string;
   roundNumber: number;
   type: CompetitionRoundType;
+  multiplier: number;
   matchCount: number;
 };
 
@@ -625,6 +626,7 @@ export async function getCompetitionRounds(
       name: competitionRound.name,
       roundNumber: competitionRound.roundNumber,
       type: competitionRound.type,
+      multiplier: competitionRound.multiplier,
       matchCount: sql<number>`count(${competitionMatch.id})::int`,
     })
     .from(competitionRound)
@@ -646,6 +648,7 @@ export async function getCompetitionRoundById(
       name: competitionRound.name,
       roundNumber: competitionRound.roundNumber,
       type: competitionRound.type,
+      multiplier: competitionRound.multiplier,
       matchCount: sql<number>`count(${competitionMatch.id})::int`,
     })
     .from(competitionRound)
@@ -674,6 +677,7 @@ export async function createCompetitionRound(data: {
   name: string;
   roundNumber: number;
   type: CompetitionRoundType;
+  multiplier?: number;
 }): Promise<string> {
   const [row] = await db
     .insert(competitionRound)
@@ -685,7 +689,7 @@ export async function createCompetitionRound(data: {
 
 export async function updateCompetitionRound(
   id: string,
-  data: { name: string; roundNumber: number; type: CompetitionRoundType },
+  data: { name: string; roundNumber: number; type: CompetitionRoundType; multiplier?: number },
 ): Promise<void> {
   await db.update(competitionRound).set(data).where(eq(competitionRound.id, id));
   if (data.type === "wildcard") await ensureWildcardPool(id);
@@ -1484,6 +1488,8 @@ export type CompetitionStandingsRow = {
 type StandingsGameRow = {
   matchId: string;
   gameNumber: number;
+  // Round-level scaling applied to every point this game can earn.
+  roundMultiplier: number;
   team1Id: string | null;
   team1Score: number;
   team1Result: string;
@@ -1513,12 +1519,17 @@ function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAc
   // Group games by match (matches always have both teams assigned once games are linked)
   const matchMap = new Map<
     string,
-    { team1Id: string; team2Id: string; games: StandingsGameRow[] }
+    { team1Id: string; team2Id: string; multiplier: number; games: StandingsGameRow[] }
   >();
   for (const row of gameRows) {
     if (row.team1Id === null || row.team2Id === null) continue;
     if (!matchMap.has(row.matchId)) {
-      matchMap.set(row.matchId, { team1Id: row.team1Id, team2Id: row.team2Id, games: [] });
+      matchMap.set(row.matchId, {
+        team1Id: row.team1Id,
+        team2Id: row.team2Id,
+        multiplier: row.roundMultiplier,
+        games: [],
+      });
     }
     matchMap.get(row.matchId)!.games.push(row);
   }
@@ -1543,7 +1554,7 @@ function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAc
     return stats.get(id)!;
   }
 
-  for (const [, { team1Id, team2Id, games }] of matchMap) {
+  for (const [, { team1Id, team2Id, multiplier, games }] of matchMap) {
     const t1 = ensureTeam(team1Id);
     const t2 = ensureTeam(team2Id);
 
@@ -1564,17 +1575,22 @@ function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAc
       if (g.team1EliminatedOpponent) t1.teamEliminations += 1;
       if (g.team2EliminatedOpponent) t2.teamEliminations += 1;
 
+      // Game points: 2 per win, 1 per draw, scaled by the round multiplier.
       const r1 = g.team1Result;
       const r2 = g.team2Result;
       if (r1 === "win") {
         t1.gameWins += 1;
+        t1.matchPoints += 2 * multiplier;
         t2.gameLosses += 1;
       } else if (r2 === "win") {
         t2.gameWins += 1;
+        t2.matchPoints += 2 * multiplier;
         t1.gameLosses += 1;
       } else {
         t1.gameDraws += 1;
+        t1.matchPoints += multiplier;
         t2.gameDraws += 1;
+        t2.matchPoints += multiplier;
       }
     }
 
@@ -1582,25 +1598,20 @@ function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAc
     // (both games reported) — an in-progress match shouldn't grant the win/draw bonus yet.
     if (games.length >= 2) {
       if (t1TotalScore > t2TotalScore) {
-        t1.matchPoints += 2;
+        t1.matchPoints += 2 * multiplier;
         t1.matchWins += 1;
         t2.matchLosses += 1;
       } else if (t2TotalScore > t1TotalScore) {
-        t2.matchPoints += 2;
+        t2.matchPoints += 2 * multiplier;
         t2.matchWins += 1;
         t1.matchLosses += 1;
       } else {
-        t1.matchPoints += 1;
+        t1.matchPoints += multiplier;
         t1.matchDraws += 1;
-        t2.matchPoints += 1;
+        t2.matchPoints += multiplier;
         t2.matchDraws += 1;
       }
     }
-  }
-
-  // Also add game points into matchPoints (2 per game win, 1 per draw)
-  for (const s of stats.values()) {
-    s.matchPoints += s.gameWins * 2 + s.gameDraws;
   }
 
   return stats;
@@ -1625,6 +1636,7 @@ export async function getCompetitionStandings(
     .select({
       matchId: competitionMatch.id,
       gameNumber: competitionMatchGame.gameNumber,
+      roundMultiplier: competitionRound.multiplier,
       // team1 perspective
       team1Id: competitionMatch.team1Id,
       team1Score: sql<number>`t1.score + t1.elimination_bonus + coalesce(t1.penalty_score, 0)`,
@@ -1736,6 +1748,7 @@ export type CompetitionMatchResult = {
   roundId: string;
   roundName: string;
   roundNumber: number;
+  roundMultiplier: number;
   team1Id: string | null;
   team1Name: string;
   team1Slug: string | null;
@@ -1764,7 +1777,7 @@ export type CompetitionMatchResult = {
   game2ScheduledStartTime: Date | null;
   // match-level outcome (compare combined scores across both games)
   matchWinner: "team1" | "team2" | "draw" | "incomplete";
-  team1MatchPoints: number; // match bonus only (2/1/0)
+  team1MatchPoints: number; // match bonus only (2/1/0, scaled by roundMultiplier)
   team2MatchPoints: number;
   team1TotalPoints: number; // game points + match bonus
   team2TotalPoints: number;
@@ -1788,6 +1801,7 @@ export async function getCompetitionMatchResults(
       roundId: competitionRound.id,
       roundName: competitionRound.name,
       roundNumber: competitionRound.roundNumber,
+      roundMultiplier: competitionRound.multiplier,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
@@ -1879,6 +1893,7 @@ export async function getCompetitionMatchResults(
         roundId: row.roundId,
         roundName: row.roundName,
         roundNumber: row.roundNumber,
+        roundMultiplier: row.roundMultiplier,
         team1Id: row.team1Id,
         team1Name: row.team1Id ? (t1?.name ?? "Unknown") : "TBD",
         team1Slug: t1?.slug ?? null,
@@ -1915,16 +1930,18 @@ export async function getCompetitionMatchResults(
     const m = matchMap.get(id)!;
 
     // Game points: 2 per win, 1 per draw — always reflect what's been reported so far.
+    // Everything the match is worth is scaled by the round multiplier.
+    const mult = m.roundMultiplier;
     let t1GamePoints = 0;
     let t2GamePoints = 0;
     for (const g of m.games) {
       if (g.team1Result === "win") {
-        t1GamePoints += 2;
+        t1GamePoints += 2 * mult;
       } else if (g.team2Result === "win") {
-        t2GamePoints += 2;
+        t2GamePoints += 2 * mult;
       } else {
-        t1GamePoints += 1;
-        t2GamePoints += 1;
+        t1GamePoints += mult;
+        t2GamePoints += mult;
       }
     }
 
@@ -1946,16 +1963,16 @@ export async function getCompetitionMatchResults(
     let team2MatchPoints: number;
     if (t1Total > t2Total) {
       matchWinner = "team1";
-      team1MatchPoints = 2;
+      team1MatchPoints = 2 * mult;
       team2MatchPoints = 0;
     } else if (t2Total > t1Total) {
       matchWinner = "team2";
       team1MatchPoints = 0;
-      team2MatchPoints = 2;
+      team2MatchPoints = 2 * mult;
     } else {
       matchWinner = "draw";
-      team1MatchPoints = 1;
-      team2MatchPoints = 1;
+      team1MatchPoints = mult;
+      team2MatchPoints = mult;
     }
 
     return {
