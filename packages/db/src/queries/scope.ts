@@ -13,13 +13,19 @@ import { game } from "../schema";
  * dateFrom/dateTo only exist on the social/all variants — competitions have their own
  * round/match structure and never get date-range filtering.
  *
+ * `format` is optional and only meaningful alongside a specific `competitionId`. It does
+ * not affect gameScopeConditions() — which already reads game.competition_id directly —
+ * but the leaderboard helpers in competition-tournament.ts select competition games via
+ * the match/round structure, and a solo competition has no matches. Omitting it therefore
+ * keeps the existing team-shaped behaviour.
+ *
  * This is the single source of truth for the social/competition SQL split.
  * Pass the result of gameScopeConditions() into a query's `and(...)` where clause.
  */
 export type GameScopeFilter =
   | { scope: "all"; centerId?: string; dateFrom?: string; dateTo?: string }
   | { scope: "social"; centerId?: string; dateFrom?: string; dateTo?: string }
-  | { scope: "competition"; competitionId?: string };
+  | { scope: "competition"; competitionId?: string; format?: "team" | "solo" };
 
 function dateRangeConditions(filter: { dateFrom?: string; dateTo?: string }): SQL[] {
   const conditions: SQL[] = [];

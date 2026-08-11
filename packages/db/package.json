@@ -18,6 +18,7 @@
     "migrate-legacy-penalties": "tsx --env-file=.env src/scripts/migrate-legacy-penalties.ts",
     "reset-arena-penalties": "tsx --env-file=.env src/scripts/reset-arena-penalty-deductions.ts",
     "legacy-variance": "tsx --env-file=.env src/scripts/legacy-variance-report.ts",
+    "backfill-solo-format": "tsx --env-file=.env src/scripts/backfill-solo-format.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

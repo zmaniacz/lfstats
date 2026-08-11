@@ -177,7 +177,11 @@ export function toGameScopeFilter(ctx: FilterContext): GameScopeFilter {
       };
     case "competition":
       return ctx.competition
-        ? { scope: "competition", competitionId: ctx.competition.id }
+        ? {
+            scope: "competition",
+            competitionId: ctx.competition.id,
+            format: ctx.competition.format,
+          }
         : { scope: "competition" };
     case "all":
       return {

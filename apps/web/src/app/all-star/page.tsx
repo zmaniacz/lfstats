@@ -62,16 +62,23 @@ export default async function AllStarPage({
         />
       </div>
 
-      <ScopeExtraToggles
-        basePath="/all-star"
-        competitionSlug={activeComp.slug}
-        showPool={showPool}
-        showFinals={showFinals}
-        showMercs={showMercs}
-      />
+      {/* Rounds/finals/mercs are all match-structure concepts; a solo competition has none. */}
+      {activeComp.format !== "solo" && (
+        <ScopeExtraToggles
+          basePath="/all-star"
+          competitionSlug={activeComp.slug}
+          showPool={showPool}
+          showFinals={showFinals}
+          showMercs={showMercs}
+        />
+      )}
 
       <Suspense key={contentKey} fallback={<AllStarSkeleton />}>
-        <AllStarContent competitionId={activeComp.id} options={options} />
+        <AllStarContent
+          competitionId={activeComp.id}
+          options={options}
+          format={activeComp.format}
+        />
       </Suspense>
     </div>
   );

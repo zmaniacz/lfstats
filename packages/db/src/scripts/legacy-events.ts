@@ -20,11 +20,12 @@
  * `team` events have event_teams, rounds, and matches, and get the full treatment.
  *
  * `solo` events are individually-scored leagues with no teams, rounds, or matches in
- * the legacy schema — only an `event_players` list, sometimes with handicaps. The
- * modern schema has no equivalent, so they get a competition row and their game
- * assignments and nothing else: per-competition leaderboards, all-star, and player
- * stats work; the standings page is empty. Solo/handicap standings are a deferred
- * design question — do not "fix" these events by inventing teams.
+ * the legacy schema — only an `event_players` list, sometimes with handicaps. They get a
+ * competition row with `format = 'solo'` and their game assignments, and nothing else:
+ * standings come from per-player scoring (see docs/Competition_Structure.md, "Solo
+ * Competitions") rather than any team structure — do not "fix" these events by inventing
+ * teams. Legacy handicaps are not migrated; events already migrated before the solo
+ * format existed are flagged by src/scripts/backfill-solo-format.ts.
  */
 export type LegacyEventKind = "team" | "solo";
 

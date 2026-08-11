@@ -323,6 +323,13 @@
       "when": 1786425790281,
       "tag": "0045_silky_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1786464138370,
+      "tag": "0046_solo_competition_format",
+      "breakpoints": true
     }
   ]
 }

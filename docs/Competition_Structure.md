@@ -61,6 +61,11 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 
 ## Design Decisions
 
+- **Format is orthogonal to type.** `type` decides stat routing (competitive feeds the all-competitive
+  aggregate; social does not). `format` decides scoring shape: a `team` competition runs matches inside
+  rounds, a `solo` competition ranks individual players and has no match structure at all. A solo league is
+  normally `type = 'competitive', format = 'solo'`, so it still appears in the competition picker and the
+  all-competitive aggregate. See [Solo Competitions](#solo-competitions).
 - **Teams are per-competition.** A team is created for each event and does not carry identity across competitions.
 - **Matches are 2 games.** Teams play once on each color (e.g. Red → Green). Each game is recorded as game 1 or game 2 of the match.
 - **Color mapping is explicit.** `competition_match_game` records which `sm5_game_team` row corresponds to each competition team in each game. This is required because team color assignments swap between games.
@@ -83,7 +88,8 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 | `id`                       | uuid PK          |                                                                                                                                            |
 | `name`                     | text             |                                                                                                                                            |
 | `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                   |
-| `type`                     | enum             | `"competitive"` or `"social"`                                                                                                              |
+| `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                   |
+| `format`                   | enum             | `"team"` (default) or `"solo"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive.  |
 | `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted. |
 | `host_center_id`           | uuid FK → center | nullable — null for a true multi-center competition                                                                                        |
 | `start_date`               | date             |                                                                                                                                            |
@@ -125,6 +131,21 @@ Official roster for a team within a competition. The source of truth for mercena
 | `created_at`          | timestamp                  | defaults to now                                           |
 
 **Unique:** `(competition_team_id, player_id)` · **Index:** `player_id`
+
+### `competition_player`
+
+Enrollment in a **solo-format** competition, and the player's handicap for it. Team competitions
+do not use this table; solo competitions do not use `competition_team_player`.
+
+| Column           | Type                  | Notes                                                                                   |
+| ---------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| `id`             | uuid PK               |                                                                                         |
+| `competition_id` | uuid FK → competition | cascade delete                                                                          |
+| `player_id`      | uuid FK → player      | cascade delete. NOT NULL, so guest scorecards (null `player_id`) can never be enrolled. |
+| `handicap`       | integer               | default `0`. Whole MVP points added to **each counted game**. **May be negative.**      |
+| `created_at`     | timestamp             | defaults to now                                                                         |
+
+**Unique:** `(competition_id, player_id)` · **Index:** `player_id`
 
 ### `competition_round`
 
@@ -246,6 +267,7 @@ Served by `GET /api/laserball/matches/[matchId]/replay` — see [API.md](API.md)
 
 ```
 competition
+  ├── competition_player ──── player          (solo format only: enrollment + handicap)
   ├── competition_team ──── competition_team_player ──── player
   │                              └── is_mercenary  ─────────────┐
   └── competition_round                                          │  (stamped onto
@@ -286,6 +308,68 @@ Points are derived at query time — never stored. For each match:
 7. Sum per team across all matches in a round or the full competition for standings.
 
 Implemented in `packages/db/src/queries/competition-tournament.ts`.
+
+---
+
+## Solo Competitions
+
+A **solo** competition (`format = 'solo'`) scores individual performance instead of team results.
+It has **no teams, rounds, pools, matches, or mercenaries**. Every game with
+`game.competition_id = <the competition>` and `exclude = false` counts — there is no such thing as
+an "unassigned game" here, because there is no match slot for a game to be assigned to.
+
+### Standings
+
+Ranked by **Total MVP**, descending. Ties break on Avg MVP, then callsign.
+
+| Column        | Definition                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| Total MVP     | Sum of `mvp_points` over the player's **counted games**, plus `handicap × gamesCounted`.         |
+| Handicap      | `competition_player.handicap`. Whole number, may be negative. Admin-set, defaults to 0.          |
+| Avg MVP       | Mean `mvp_points` over **all** the player's games in the competition. **Excludes the handicap.** |
+| Avg Score     | Mean `score` over **all** the player's games in the competition.                                 |
+| Games Counted | The size of the counted set.                                                                     |
+
+**Counted games.** For each position the player has played, take their top games by `mvp_points`:
+**10 for Scout (position 3), 5 for every other position.** With positions 1–5 that caps Games
+Counted at `4 × 5 + 10 = 30`. The cap is a property of the data, not a SQL constraint —
+`sm5_scorecard.position` is a plain integer with no enum or CHECK, so the query's `CASE … ELSE 5`
+handles any value rather than silently dropping games and desyncing the counted set from the
+averages.
+
+> **Avg MVP × Games Counted does not equal Total MVP, by design.** The averages describe a
+> player's form across every game they played; Total MVP is a best-N total that also carries the
+> handicap. They answer different questions and are not meant to reconcile.
+
+**The handicap is applied per counted game**, not once to the total. Because it is a constant per
+player, adding it before or after the top-N selection picks the same games.
+
+### Enrollment
+
+Only players in `competition_player` appear in the standings. Where a team competition's standings
+page shows admins an "unassigned games" block, a solo competition shows **unenrolled players** —
+anyone with a scorecard in the competition and no enrollment row. Each row takes a handicap and an
+Add button; a bulk "Enroll all at 0" enrolls everyone at once. Guests (`sm5_scorecard.player_id IS
+NULL`) are excluded structurally and can never be enrolled.
+
+Un-enrolling a player removes them from the standings and returns them to the unenrolled block. It
+does not touch their scorecards.
+
+### Query routing
+
+Competition-scoped leaderboards normally select games through `competition_match_game`, which
+yields nothing for a competition with no matches. `leaderboardScopeConditions`
+(`packages/db/src/queries/competition-solo.ts`'s sibling in
+`packages/db/src/queries/competition-tournament.ts`) therefore switches on
+`GameScopeFilter.format`: solo competitions select on `game.competition_id` directly, and the
+pool/finals toggles — meaningless without rounds — are not applied. The same switch is made in
+`getCompetitionPlayerStats`, which additionally sources its player universe from
+`competition_player` rather than team rosters.
+
+Solo standings themselves live in `packages/db/src/queries/competition-solo.ts`.
+
+`sm5_scorecard.is_mercenary` is only ever stamped by `assignGameToMatch`, which solo competitions
+never call, so the flag is uniformly `false` and is deliberately not filtered on.
 
 ---
 
@@ -477,7 +561,10 @@ every game the _matching_ side's score agrees with legacy to the point.
 - **Round multipliers.** `rounds.multiplier` has one non-1 value in the entire legacy
   database (Nerd Sturgis round 4 is `2`). Modern has no multiplier, so that round's
   points are not weighted. The script warns.
-- **Solo handicaps.** `event_players.handicap` has no modern equivalent.
+- **Solo handicaps.** `event_players.handicap` was not migrated. Modern models handicaps on
+  `competition_player.handicap`, but the legacy values are unrecoverable, so every backfilled solo
+  event starts with nobody enrolled and an admin must re-enter them. See
+  [Solo Competitions](#solo-competitions).
 - **Single-game matches.** Armageddon 2024 is 15 matches × 1 game, and Darmstadt 2021
   Season 1 round 2 is 4 more. Modern awards the match bonus only when both games are
   recorded, so those matches read `incomplete` and contribute 0 match points; game
@@ -493,7 +580,16 @@ competitive event with its status and flags any that have TDF games but no confi
 
 **Solo events** (individually-scored leagues: Brisbane solo seasons, Loveland
 Duos/Summer/Winter, Auckland Triple Threat, …) have no teams, rounds, or matches in the
-legacy schema. They get a competition row and their game assignments and nothing else, so
-per-competition leaderboards, all-star, and player stats work while the standings page is
-empty. Solo/handicap standings are a deferred design question — do not "fix" these events
-by inventing teams.
+legacy schema, and get a competition row plus their game assignments and nothing else.
+They are now flagged `format = 'solo'` and served by the individual scoring described in
+[Solo Competitions](#solo-competitions) — do **not** "fix" these events by inventing teams.
+
+The migration sets the flag for new runs; the thirteen already-migrated events are flipped by
+
+```
+pnpm --filter @lfstats/db backfill-solo-format --dry-run
+pnpm --filter @lfstats/db backfill-solo-format
+```
+
+which enrolls nobody, so every player lands in the standings page's unenrolled block for an
+admin to add with a handicap.

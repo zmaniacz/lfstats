@@ -13,8 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CenterListItem, CompetitionDetail, CompetitionState } from "@lfstats/db";
+import type {
+  CenterListItem,
+  CompetitionDetail,
+  CompetitionFormat,
+  CompetitionState,
+} from "@lfstats/db";
 import { COMPETITION_STATE_LABELS } from "@/lib/competition-state";
+import { COMPETITION_FORMAT_LABELS } from "@/lib/competition-format";
 import { useState } from "react";
 
 type Props = {
@@ -28,6 +34,7 @@ type Props = {
 export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
+  const [format, setFormat] = useState<CompetitionFormat>(competition?.format ?? "team");
   const [state, setState] = useState<CompetitionState>(competition?.state ?? "preshow");
   const [hostCenterId, setHostCenterId] = useState<string>(competition?.hostCenterId ?? "none");
 
@@ -35,6 +42,7 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);
+    formData.set("format", format);
     formData.set("state", state);
     formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId);
     setIsPending(true);
@@ -70,6 +78,33 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
             <SelectItem value="social">Social</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Format</Label>
+        <Select
+          value={format}
+          onValueChange={(v) => setFormat(v as CompetitionFormat)}
+          name="format"
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(COMPETITION_FORMAT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {competition && competition.format !== format && (
+          <p className="text-xs text-muted-foreground">
+            Changing the format deletes nothing, but it does change how this competition is scored
+            and displayed. Switching to Solo hides any existing rounds and matches from the
+            standings page; switching to Team leaves player enrollments unused.
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">

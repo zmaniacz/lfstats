@@ -13,7 +13,7 @@ This document specifies the core table set required to record a single SM5 game 
 **Out of scope — documented elsewhere:**
 
 - **Laserball tables** (`lb_game_team`, `lb_scorecard`, `lb_game_event`, `lb_game_player_state`, `lb_game_player_interaction`, `lb_match`, `lb_match_game`) — see [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28) and [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md). Note that `Game` itself is **shared** between SM5 and Laserball and is specified here.
-- **Competition tables** (`competition`, `competition_team`, `competition_round`, `competition_pool`, `competition_match`, …) — see [Competition_Structure.md](Competition_Structure.md).
+- **Competition tables** (`competition`, `competition_team`, `competition_team_player`, `competition_player`, `competition_round`, `competition_pool`, `competition_match`, …) — see [Competition_Structure.md](Competition_Structure.md).
 - **Auth and access tables** (`auth_user`, `auth_session`, `user_roles`, `api_key`) — see [Role_Spec.md](Role_Spec.md) for the role model.
 - **Tagging and favorites** (`game_tag`, `game_tag_assignment`, `user_favorite_game`, `user_favorite_player`).
 

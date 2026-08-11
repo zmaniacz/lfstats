@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { getCompetitionAllStarRankings, type CompetitionTopPlayersOptions } from "@lfstats/db";
+import {
+  getCompetitionAllStarRankings,
+  type CompetitionFormat,
+  type CompetitionTopPlayersOptions,
+} from "@lfstats/db";
 import { AllStarPositionTable } from "@/components/competitions/AllStarPositionTable";
 import { POSITIONS } from "@/lib/positions";
 
 export async function AllStarContent({
   competitionId,
   options,
+  format,
 }: {
   competitionId: string;
   options: CompetitionTopPlayersOptions;
+  format: CompetitionFormat;
 }) {
-  const rankings = await getCompetitionAllStarRankings(competitionId, options);
+  const rankings = await getCompetitionAllStarRankings(competitionId, options, format);
 
   return (
     <>

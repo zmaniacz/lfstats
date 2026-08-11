@@ -11,6 +11,7 @@ import {
   getCompetitionTeams,
   getCompetitionRounds,
   getCompetitionUnassignedGamesForAdmin,
+  getSoloCompetitionEnrollments,
   getCompetitionAssignedGamesForAdmin,
 } from "@lfstats/db";
 import { CompetitionDetailsCard } from "@/components/admin/CompetitionDetailsCard";
@@ -60,12 +61,17 @@ export default async function CompetitionDetailPage({
   const comp = await getCompetition(slug);
   if (!comp) notFound();
 
-  const [unassignedGames, assignedGames, centers, teams, rounds] = await Promise.all([
+  const isSolo = comp.format === "solo";
+
+  const [unassignedGames, assignedGames, centers, teams, rounds, soloPlayers] = await Promise.all([
     getCompetitionUnassignedGamesForAdmin(comp.id),
-    getCompetitionAssignedGamesForAdmin(comp.id),
+    // A solo competition has no matches, so nothing is ever "assigned" and there is no
+    // roster or round structure to count.
+    isSolo ? Promise.resolve([]) : getCompetitionAssignedGamesForAdmin(comp.id),
     getCenterList(),
-    getCompetitionTeams(comp.id),
-    getCompetitionRounds(comp.id),
+    isSolo ? Promise.resolve([]) : getCompetitionTeams(comp.id),
+    isSolo ? Promise.resolve([]) : getCompetitionRounds(comp.id),
+    isSolo ? getSoloCompetitionEnrollments(comp.id) : Promise.resolve([]),
   ]);
 
   const boundUpdate = updateCompetitionAction.bind(null, comp.id);
@@ -109,7 +115,7 @@ export default async function CompetitionDetailPage({
         </CardContent>
       </Card>
 
-      {comp.type === "competitive" && (
+      {comp.type === "competitive" && !isSolo && (
         <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardHeader>
@@ -137,13 +143,33 @@ export default async function CompetitionDetailPage({
         </div>
       )}
 
+      {comp.type === "competitive" && isSolo && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Enrolled Players</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between">
+            <p className="text-2xl font-bold tabular-nums">{soloPlayers.length}</p>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/admin/competitions/${comp.slug}/players`}>Manage Players</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Unassigned Games ({unassignedGames.length})</CardTitle>
+          <CardTitle>
+            {isSolo
+              ? `Games (${unassignedGames.length})`
+              : `Unassigned Games (${unassignedGames.length})`}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {unassignedGames.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No unassigned games.</p>
+            <p className="text-sm text-muted-foreground">
+              {isSolo ? "No games in this competition." : "No unassigned games."}
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -183,56 +209,60 @@ export default async function CompetitionDetailPage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Assigned Games ({assignedGames.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {assignedGames.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No games assigned to matches yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Game</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Outcome</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assignedGames.map((g) => {
-                  const t1Color = getTeamColor(g.team1ColourEnum);
-                  const t2Color = getTeamColor(g.team2ColourEnum);
-                  return (
-                    <TableRow key={g.id}>
-                      <TableCell>
-                        <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
-                          {g.roundName} · Match {g.matchNumber} · Game {g.gameNumber} ·{" "}
-                          <span className={t1Color?.text}>{g.team1Name}</span>
-                          {" vs "}
-                          <span className={t2Color?.text}>{g.team2Name}</span>
-                        </Link>
-                      </TableCell>
-                      <TableCell className="tabular-nums">{formatDateTime(g.startTime)}</TableCell>
-                      <TableCell className="capitalize">{g.outcome}</TableCell>
-                      <TableCell className="text-right">
-                        <DeleteEntityButton
-                          id={g.matchGameId}
-                          label={`${g.roundName} · Match ${g.matchNumber} · Game ${g.gameNumber} · ${g.team1Name} vs ${g.team2Name}`}
-                          description="This removes the game from its match slot. The game stays in the competition."
-                          action={boundUnassignGame}
-                          confirmLabel="Unassign"
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {!isSolo && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Assigned Games ({assignedGames.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assignedGames.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No games assigned to matches yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Game</TableHead>
+                    <TableHead>Started</TableHead>
+                    <TableHead>Outcome</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignedGames.map((g) => {
+                    const t1Color = getTeamColor(g.team1ColourEnum);
+                    const t2Color = getTeamColor(g.team2ColourEnum);
+                    return (
+                      <TableRow key={g.id}>
+                        <TableCell>
+                          <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
+                            {g.roundName} · Match {g.matchNumber} · Game {g.gameNumber} ·{" "}
+                            <span className={t1Color?.text}>{g.team1Name}</span>
+                            {" vs "}
+                            <span className={t2Color?.text}>{g.team2Name}</span>
+                          </Link>
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDateTime(g.startTime)}
+                        </TableCell>
+                        <TableCell className="capitalize">{g.outcome}</TableCell>
+                        <TableCell className="text-right">
+                          <DeleteEntityButton
+                            id={g.matchGameId}
+                            label={`${g.roundName} · Match ${g.matchNumber} · Game ${g.gameNumber} · ${g.team1Name} vs ${g.team2Name}`}
+                            description="This removes the game from its match slot. The game stays in the competition."
+                            action={boundUnassignGame}
+                            confirmLabel="Unassign"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

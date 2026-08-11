@@ -198,6 +198,11 @@ Per-player stats for a competition, keyed by competition slug. Backed by
 `getCompetitionPlayerStats` in `packages/db/src/queries/competition-tournament.ts`. `404` if the
 slug doesn't match a competition.
 
+For a **solo** competition (`competition.format = 'solo'`) the player list comes from
+`competition_player` rather than team rosters, and the per-competition aggregate counts every
+non-excluded game assigned to the competition. `team_name` is an empty string and `team_logo_url`
+is null for every row, since solo competitions have no teams.
+
 ## `GET /api/competitions/[slug]/schedule`
 
 Competition schedule (rounds/matches), keyed by competition slug. Backed by
@@ -206,9 +211,35 @@ doesn't match a competition.
 
 ## `GET /api/competitions/[slug]/standings`
 
-Competition standings/leaderboard, keyed by competition slug. Backed by
-`getCompetitionStandingsData` in `packages/db/src/queries/competition-tournament.ts`. `404` if the
-slug doesn't match a competition.
+Competition standings/leaderboard, keyed by competition slug. `404` if the slug doesn't match a
+competition. **The response shape depends on `competition.format`.**
+
+`format = 'team'` — team standings, backed by `getCompetitionStandingsData` in
+`packages/db/src/queries/competition-tournament.ts`: one row per team with match/game records,
+points, and score ratio.
+
+`format = 'solo'` — per-player standings, backed by `getSoloCompetitionStandingsData` in
+`packages/db/src/queries/competition-solo.ts`, ordered by `totalMvp` descending:
+
+```jsonc
+[
+  {
+    "rank": 1,
+    "playerId": "…",
+    "iplId": "#1234567",
+    "callsign": "SHRAPNEL",
+    "handicap": 0, // whole number, may be negative
+    "totalMvp": 312.5, // best-N sum + handicap * gamesCounted
+    "gamesCounted": 24, // at most 30
+    "totalGames": 47, // every non-excluded game played
+    "avgMvp": 11.4, // over ALL games, handicap-free; null if none
+    "avgScore": 38915.2, // over ALL games; null if none
+  },
+]
+```
+
+See [Competition_Structure.md](Competition_Structure.md#solo-competitions) for how the counted set
+and the handicap are defined. Note that `avgMvp * gamesCounted` is deliberately not `totalMvp`.
 
 ---
 

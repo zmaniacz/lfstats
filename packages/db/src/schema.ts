@@ -37,6 +37,14 @@ export const destructionMethodEnum = pgEnum("destruction_method", ["shot", "miss
 
 export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "social"]);
 
+/**
+ * How a competition is scored, orthogonal to `type`. A `team` competition runs matches
+ * inside rounds and derives standings from team results; a `solo` competition has no
+ * matches at all and ranks individual players on their own scorecards. A solo league is
+ * normally `type = 'competitive', format = 'solo'`.
+ */
+export const competitionFormatEnum = pgEnum("competition_format", ["team", "solo"]);
+
 export const competitionRoundTypeEnum = pgEnum("competition_round_type", [
   "pool",
   "finals",
@@ -142,6 +150,7 @@ export const competition = pgTable("competition", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   type: competitionTypeEnum("type").notNull(),
+  format: competitionFormatEnum("format").notNull().default("team"),
   state: competitionStateEnum("state").notNull().default("active"),
   hostCenterId: uuid("host_center_id").references(() => center.id),
   startDate: date("start_date").notNull(),
@@ -187,6 +196,31 @@ export const competitionTeamPlayer = pgTable(
   (t) => [
     unique().on(t.competitionTeamId, t.playerId),
     index("competition_team_player_player_id_idx").on(t.playerId),
+  ],
+);
+
+/**
+ * Enrollment in a solo-format competition, and the player's handicap for it. Only enrolled
+ * players appear in solo standings; the handicap is added to each of their counted games'
+ * MVP when computing Total MVP, and may be negative. `playerId` is NOT NULL, so guest
+ * scorecards (which carry a null `player_id`) can never be enrolled.
+ */
+export const competitionPlayer = pgTable(
+  "competition_player",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitionId: uuid("competition_id")
+      .notNull()
+      .references(() => competition.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id, { onDelete: "cascade" }),
+    handicap: integer("handicap").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.competitionId, t.playerId),
+    index("competition_player_player_id_idx").on(t.playerId),
   ],
 );
 

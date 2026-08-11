@@ -62,7 +62,11 @@ export default async function CenterDetailPage({
   const scopeFilter: GameScopeFilter =
     ctx.scope === "competition"
       ? ctx.competition
-        ? { scope: "competition", competitionId: ctx.competition.id }
+        ? {
+            scope: "competition",
+            competitionId: ctx.competition.id,
+            format: ctx.competition.format,
+          }
         : { scope: "competition" }
       : {
           scope: ctx.scope,

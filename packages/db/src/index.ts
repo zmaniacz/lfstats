@@ -8,6 +8,7 @@ export * from "./queries/admin";
 export * from "./queries/apiKeys";
 export * from "./queries/penalties";
 export * from "./queries/competition-tournament";
+export * from "./queries/competition-solo";
 export * from "./queries/centers";
 export * from "./queries/chomper";
 export * from "./queries/favorites";
