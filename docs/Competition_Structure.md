@@ -445,16 +445,22 @@ five built by hand. (`internationals_2026` exists in legacy as a shell: ten plac
 teams, no games.) Of those fifteen, **eight reproduce exactly**. Of 82 team-seasons, 19
 differ: 11 on points and a further 8 only in finishing position.
 
-1. **The two systems score games differently** — 440 of 3032 team-game totals disagree.
-   Every one of them but five is a whole number of 1000-point penalty deductions, give
-   or take the 10000 elimination bonus: modern nets penalties off the team total and
-   legacy's own handling was inconsistent. 392 are exactly `-1000 × (non-rescinded
-penalties)`, 34 count the rescinded ones too, 7 land on some other subset, and 2 are
-   the elimination bonus that legacy left out of `adj`. Where a close game's result
-   flips, the match points follow — this is the whole of the Fake Nats 2021 and WCT 2022
-   variance. **Five totals fit no such shape and are worth a look**, listed by the
-   script; three of them trace to penalty groups the back-fill skipped, and two are raw
-   score differences on Internationals 2024 games.
+1. **The two systems score penalties differently** — 405 of 3032 team-game totals
+   disagree. A penalty is scored twice over, and the databases take different views of
+   each half. _In-game_, the arena deducts line 1 `penalty` on every `0600` event; that
+   setting is per game, and center 4-19 runs `-1000` normally but was set to `0` for the
+   Internationals 2024 files. _After the game_, referees meet and decide which penalties
+   are escalated, normally to `-1000` score and `-5` MVP; that decision exists only in
+   legacy `penalties.value` and can only arrive via the back-fill. Legacy stored a
+   deduction-free score and counted escalations only; modern counts the in-game
+   deduction and has not received the escalations. So 361 rows are modern counting an
+   in-game deduction legacy dropped, 36 are legacy holding an escalation modern lacks,
+   and 2 are the elimination bonus legacy left out of `adj`. Note that `score_value`
+   cannot be summed to measure this — where the arena deducted in-game on a pre-2.003
+   TDF the amount is baked into the line 5 score stream and the row's own `score_value`
+   is 0. Where a close game's result flips, the match points follow — this is the whole
+   of the Fake Nats 2021 and WCT 2022 variance. **Six totals fit no such shape**; all six
+   are listed by the script with both sides' penalty ledgers.
 2. **The Nerd Sturgis round-4 multiplier** (see below) accounts for all four of that
    event's team rows — the diffs sum to exactly 36, the round's extra point pool.
 3. **Tie-breaks.** The remaining four competitions — Darmstadt 2021 Season 1, Armageddon

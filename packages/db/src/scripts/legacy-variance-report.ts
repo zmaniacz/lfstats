@@ -20,6 +20,7 @@
  * Usage:
  *   pnpm --filter @lfstats/db legacy-variance                 # sections 1-3
  *   pnpm --filter @lfstats/db legacy-variance --scores-only   # section 3 only
+ *   pnpm --filter @lfstats/db legacy-variance --all           # itemize every disagreement
  */
 
 import postgres from "postgres";
@@ -337,21 +338,39 @@ function rankOf<T>(rows: T[], key: (r: T) => number): Map<T, number> {
  *
  * A legacy total is `score + adj`, with `adj` lumping the elimination bonus together
  * with every manual score award. Modern keeps three columns: `score`,
- * `elimination_bonus` and `penalty_score` — and a 1000-point penalty deduction lands in
- * either the first or the last of those depending on whether it came off the TDF score
- * or was applied afterwards, so only the *total* is comparable.
+ * `elimination_bonus` and `penalty_score` — and a penalty deduction lands in either the
+ * first or the last of those depending on whether it came off the TDF score or was
+ * applied afterwards, so only the *total* is comparable.
  *
- * Every delta is therefore tested against `-1000 x k + e`, where `k` is some number of
- * penalties this team actually has on record and `e` is either nothing or the whole
- * 10000 elimination bonus (legacy left it out of `adj` on some games). A delta that
- * cannot be written that way is a real disagreement about what happened in the game.
+ * A penalty is scored twice over, and the two databases take different views of each:
+ *
+ *   in-game     the arena deducts line 1 `penalty` on every 0600 event. That setting is
+ *               per game — center 4-19 runs -1000 normally but was set to 0 for the
+ *               Internationals 2024 files. Modern counts it; legacy stored a
+ *               deduction-free score and did not.
+ *   escalation  referees meet after the game and decide which penalties are escalated,
+ *               normally to -1000 score and -5 MVP. That decision lives only in legacy
+ *               `penalties.value`, and only the back-fill can carry it across.
+ *
+ * So the delta runs both ways: modern lower where it counts an in-game deduction legacy
+ * dropped, modern higher where legacy holds an escalation modern has not received. Both
+ * are worth 1000 a time, so every delta is tested against `1000 x k + e`, `e` being
+ * either nothing or the whole 10000 elimination bonus that legacy left out of `adj` on
+ * some games. `k` has to be covered by penalties actually on record on the side that
+ * charged more. Note that `score_value` cannot be summed instead: where the arena
+ * deducted in-game on a pre-2.003 TDF the amount is baked into the line 5 score stream
+ * and the row's own `score_value` is 0. The sums are still printed for the residue rows,
+ * where they are worth reading.
+ *
+ * Penalties were also used to correct scores after pack malfunctions, which is why a few
+ * legacy values are not multiples of 1000. Those cases usually came with a hand edit to
+ * the player's scorecard as well, which the TDF knows nothing about — see the residue.
  */
 type DeltaCause =
-  | "penalty" // -1000 x every non-rescinded penalty: modern deducts, legacy did not
-  | "penalty-rescinded" // ... counting the rescinded ones too
-  | "penalty-partial" // ... some other subset of this team's penalties
+  | "arena-deduction" // modern counts the arena's in-game deduction, legacy did not
+  | "escalation-missing" // legacy holds a referee escalation modern has not received
   | "elim-bonus" // legacy left the 10000 elimination bonus out of `adj`
-  | "review"; // nothing fits — the two systems genuinely disagree
+  | "review"; // residue no penalty or bonus bookkeeping accounts for
 
 type ScoreVariance = {
   fn: string;
@@ -365,35 +384,44 @@ type ScoreVariance = {
   legacyTotal: number;
   modernTotal: number;
   delta: number;
-  scoreDelta: number;
-  bonusDelta: number;
-  /** How many penalty deductions the delta implies, when it implies a whole number. */
-  impliedPenalties: number | null;
+  /** Sum of `score_value` on each side's own penalty rows — evidence, not the model. */
+  legacyCharge: number;
+  modernCharge: number;
+  /** Penalties on record, either side, non-rescinded and rescinded. */
+  legacyLive: number;
+  legacyRescinded: number;
   live: number;
   rescinded: number;
+  /** How many 1000-point deductions the delta implies, when it implies a whole number. */
+  impliedPenalties: number | null;
   causes: DeltaCause[];
 };
 
 /**
- * Tries to write `delta` as `-1000 x k + e`, with `k` between 0 and the number of
- * penalties on the team and `e` either 0 or the full elimination bonus. Returns the
- * causes that explains, or `["review"]` when nothing does.
+ * Tries to write `delta` as `1000 x k + e`, with `e` either 0 or the full elimination
+ * bonus and `k` covered by penalties on record on whichever side charged more. Returns
+ * the causes that explains, or `["review"]` when nothing does.
  */
 function explainDelta(
   delta: number,
-  live: number,
-  rescinded: number,
+  penalties: { legacyLive: number; legacyResc: number; modernLive: number; modernResc: number },
   modernElim: number,
 ): { causes: DeltaCause[]; k: number | null } {
+  const legacyOnRecord = penalties.legacyLive + penalties.legacyResc;
+  const modernOnRecord = penalties.modernLive + penalties.modernResc;
+
   for (const e of modernElim > 0 ? [0, modernElim] : [0]) {
     const remainder = delta - e;
     if (remainder % 1000 !== 0) continue;
-    const k = -remainder / 1000;
-    if (k < 0 || k > live + rescinded) continue;
+    const k = remainder / 1000;
     const causes: DeltaCause[] = [];
-    if (k === live && k > 0) causes.push("penalty");
-    else if (k === live + rescinded && k > 0) causes.push("penalty-rescinded");
-    else if (k > 0) causes.push("penalty-partial");
+    if (k < 0) {
+      if (-k > modernOnRecord) continue;
+      causes.push("arena-deduction");
+    } else if (k > 0) {
+      if (k > legacyOnRecord) continue;
+      causes.push("escalation-missing");
+    }
     if (e > 0) causes.push("elim-bonus");
     if (causes.length > 0) return { causes, k };
   }
@@ -430,13 +458,14 @@ async function scoreVariances(
     .where(and(inArray(game.tdfFilename, filenames), eq(sm5GameTeam.isNeutral, false)));
   const modernByKey = new Map(modernRows.map((r) => [`${r.fn}:${r.idx}`, r]));
 
-  // Modern penalty counts, for reading the penalty delta against.
+  // Modern penalty counts and the deduction modern says it charged.
   const penRows = await db
     .select({
       fn: game.tdfFilename,
       idx: sm5GameTeam.tdfTeamIndex,
       total: sql<number>`count(*)::int`,
       rescinded: sql<number>`count(*) filter (where ${sm5GamePenalty.rescinded})::int`,
+      charge: sql<number>`coalesce(sum(${sm5GamePenalty.scoreValue}) filter (where not ${sm5GamePenalty.rescinded}),0)::int`,
     })
     .from(sm5GamePenalty)
     .innerJoin(sql`sm5_scorecard sc`, sql`sc.id = ${sm5GamePenalty.scorecardId}`)
@@ -445,6 +474,59 @@ async function scoreVariances(
     .where(inArray(game.tdfFilename, filenames))
     .groupBy(game.tdfFilename, sm5GameTeam.tdfTeamIndex);
   const penByKey = new Map(penRows.map((r) => [`${r.fn}:${r.idx}`, r]));
+
+  // Team penalties, which carry no player attribution, on both sides.
+  const teamPenRows = await db
+    .select({
+      fn: game.tdfFilename,
+      idx: sm5GameTeam.tdfTeamIndex,
+      charge: sql<number>`coalesce(sum(tp.score_value) filter (where not tp.rescinded),0)::int`,
+    })
+    .from(sql`sm5_game_team_penalty tp`)
+    .innerJoin(sm5GameTeam, sql`${sm5GameTeam.id} = tp.game_team_id`)
+    .innerJoin(game, sql`${game.id} = tp.game_id`)
+    .where(inArray(game.tdfFilename, filenames))
+    .groupBy(game.tdfFilename, sm5GameTeam.tdfTeamIndex);
+  for (const r of teamPenRows) {
+    const key = `${r.fn}:${r.idx}`;
+    const existing = penByKey.get(key);
+    if (existing) existing.charge += r.charge;
+    else penByKey.set(key, { fn: r.fn, idx: r.idx, total: 0, rescinded: 0, charge: r.charge });
+  }
+
+  // Legacy's own penalty ledger, player and team rows alike. `scorecards.team_index` is
+  // 0 on every row and means nothing — the side comes from `team_id` -> `game_teams`.
+  const legacyPenRows = (await legacy`
+    select replace(g.tdf_key,'_','-') as fn, gt.index::int as idx,
+           count(*) filter (where coalesce(p.rescinded,0) = 0)::int as live,
+           count(*) filter (where coalesce(p.rescinded,0) <> 0)::int as rescinded,
+           coalesce(sum(p.value) filter (where coalesce(p.rescinded,0) = 0),0)::int as charge
+    from penalties p
+     join scorecards s on s.id = p.scorecard_id
+     join game_teams gt on gt.id = s.team_id
+     join games g on g.id = s.game_id
+     join events e on e.id = g.event_id
+    where e.is_comp and g.tdf_key is not null
+    group by 1,2
+    union all
+    select replace(g.tdf_key,'_','-') as fn, gt.index::int as idx,
+           count(*)::int as live, 0 as rescinded, coalesce(sum(tp.value),0)::int as charge
+    from team_penalties tp
+     join games g on g.id = tp.game_id
+     join events e on e.id = g.event_id
+     join game_teams gt on gt.game_id = g.id and gt.color_normal = tp.team_color
+    where e.is_comp and g.tdf_key is not null
+    group by 1,2
+  `) as unknown as { fn: string; idx: number; live: number; rescinded: number; charge: number }[];
+  const legacyPenByKey = new Map<string, { live: number; rescinded: number; charge: number }>();
+  for (const r of legacyPenRows) {
+    const key = `${r.fn}:${r.idx}`;
+    const acc = legacyPenByKey.get(key) ?? { live: 0, rescinded: 0, charge: 0 };
+    acc.live += r.live;
+    acc.rescinded += r.rescinded;
+    acc.charge += r.charge;
+    legacyPenByKey.set(key, acc);
+  }
 
   const out: ScoreVariance[] = [];
   for (const l of legacyRows) {
@@ -457,13 +539,16 @@ async function scoreVariances(
 
     const pen = penByKey.get(key);
     const live = (pen?.total ?? 0) - (pen?.rescinded ?? 0);
+    const lpen = legacyPenByKey.get(key) ?? { live: 0, rescinded: 0, charge: 0 };
 
-    const scoreDelta = m.score - l.score;
-    const bonusDelta = m.elim + m.pen - l.adj;
     const { causes, k } = explainDelta(
       modernTotal - legacyTotal,
-      live,
-      pen?.rescinded ?? 0,
+      {
+        legacyLive: lpen.live,
+        legacyResc: lpen.rescinded,
+        modernLive: live,
+        modernResc: pen?.rescinded ?? 0,
+      },
       m.elim,
     );
 
@@ -479,15 +564,137 @@ async function scoreVariances(
       legacyTotal,
       modernTotal,
       delta: modernTotal - legacyTotal,
-      scoreDelta,
-      bonusDelta,
-      impliedPenalties: k,
+      legacyCharge: lpen.charge,
+      modernCharge: pen?.charge ?? 0,
+      legacyLive: lpen.live,
+      legacyRescinded: lpen.rescinded,
       live,
       rescinded: pen?.rescinded ?? 0,
+      impliedPenalties: k,
       causes,
     });
   }
   return out.sort((a, b) => a.competition.localeCompare(b.competition) || a.fn.localeCompare(b.fn));
+}
+
+/** One penalty as either database records it, for the side-by-side residue dump. */
+type LedgerRow = {
+  side: "legacy" | "modern";
+  callsign: string;
+  type: string;
+  scoreValue: number;
+  mvpValue: number;
+  inGame: boolean;
+  rescinded: boolean;
+  time: number | null;
+};
+
+/**
+ * Both databases' penalty rows for the given team-games, so a residue row can be read
+ * without going back to SQL. Keyed `filename:index`.
+ */
+async function penaltyLedger(
+  db: Awaited<ReturnType<typeof initDb>>,
+  legacy: Legacy,
+  keys: { fn: string; idx: number }[],
+): Promise<Map<string, LedgerRow[]>> {
+  const out = new Map<string, LedgerRow[]>();
+  if (keys.length === 0) return out;
+  const wanted = new Set(keys.map((k) => `${k.fn}:${k.idx}`));
+  const filenames = [...new Set(keys.map((k) => k.fn))];
+
+  const push = (fn: string, idx: number, row: LedgerRow) => {
+    const key = `${fn}:${idx}`;
+    if (!wanted.has(key)) return;
+    const list = out.get(key) ?? [];
+    list.push(row);
+    out.set(key, list);
+  };
+
+  const legacyRows = (await legacy`
+    select replace(g.tdf_key,'_','-') as fn, gt.index::int as idx,
+           s.player_name as callsign, p.type, p.value::int as score_value,
+           p.mvp_value::float8 as mvp_value, p.in_game::int as in_game,
+           p.rescinded::int as rescinded
+    from penalties p
+     join scorecards s on s.id = p.scorecard_id
+     join game_teams gt on gt.id = s.team_id
+     join games g on g.id = s.game_id
+    where replace(g.tdf_key,'_','-') = any(${filenames})
+    union all
+    select replace(g.tdf_key,'_','-') as fn, gt.index::int as idx,
+           '(team)' as callsign, coalesce(tp.type,'?') as type, tp.value::int as score_value,
+           0::float8 as mvp_value, 1 as in_game, 0 as rescinded
+    from team_penalties tp
+     join games g on g.id = tp.game_id
+     join game_teams gt on gt.game_id = g.id and gt.color_normal = tp.team_color
+    where replace(g.tdf_key,'_','-') = any(${filenames})
+  `) as unknown as {
+    fn: string;
+    idx: number;
+    callsign: string;
+    type: string;
+    score_value: number;
+    mvp_value: number;
+    in_game: number;
+    rescinded: number;
+  }[];
+  for (const r of legacyRows) {
+    push(r.fn, r.idx, {
+      side: "legacy",
+      callsign: r.callsign,
+      type: r.type,
+      scoreValue: r.score_value,
+      mvpValue: r.mvp_value,
+      inGame: r.in_game === 1,
+      rescinded: r.rescinded !== 0,
+      time: null,
+    });
+  }
+
+  const modernRows = await db
+    .select({
+      fn: game.tdfFilename,
+      idx: sm5GameTeam.tdfTeamIndex,
+      callsign: sql<string>`coalesce(sc.callsign, '?')`,
+      type: sm5GamePenalty.type,
+      scoreValue: sm5GamePenalty.scoreValue,
+      mvpValue: sm5GamePenalty.mvpValue,
+      inGame: sm5GamePenalty.inGame,
+      rescinded: sm5GamePenalty.rescinded,
+      time: sm5GamePenalty.time,
+    })
+    .from(sm5GamePenalty)
+    .innerJoin(sql`sm5_scorecard sc`, sql`sc.id = ${sm5GamePenalty.scorecardId}`)
+    .innerJoin(sm5GameTeam, sql`${sm5GameTeam.id} = sc.team_id`)
+    .innerJoin(game, eq(game.id, sm5GamePenalty.gameId))
+    .where(inArray(game.tdfFilename, filenames));
+  for (const r of modernRows) {
+    push(r.fn, r.idx, { ...r, side: "modern" });
+  }
+
+  const modernTeamRows = await db
+    .select({
+      fn: game.tdfFilename,
+      idx: sm5GameTeam.tdfTeamIndex,
+      type: sql<string>`tp.type`,
+      scoreValue: sql<number>`tp.score_value::int`,
+      inGame: sql<boolean>`tp.in_game`,
+      rescinded: sql<boolean>`tp.rescinded`,
+      time: sql<number | null>`tp.time`,
+    })
+    .from(sql`sm5_game_team_penalty tp`)
+    .innerJoin(sm5GameTeam, sql`${sm5GameTeam.id} = tp.game_team_id`)
+    .innerJoin(game, sql`${game.id} = tp.game_id`)
+    .where(inArray(game.tdfFilename, filenames));
+  for (const r of modernTeamRows) {
+    push(r.fn, r.idx, { ...r, side: "modern", callsign: "(team)", mvpValue: 0 });
+  }
+
+  for (const list of out.values()) {
+    list.sort((a, b) => a.side.localeCompare(b.side) || a.callsign.localeCompare(b.callsign));
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -504,6 +711,7 @@ function lpad(s: string | number, n: number): string {
 async function main() {
   const args = process.argv.slice(2);
   const scoresOnly = args.includes("--scores-only");
+  const listAll = args.includes("--all");
 
   const legacy = connectLegacy();
   const db = await initDb();
@@ -714,44 +922,91 @@ async function main() {
     const sv = await scoreVariances(db, legacy);
     const has = (c: DeltaCause) => sv.filter((v) => v.causes.includes(c));
     const review = has("review");
+    const fullyExplained = sv.filter((v) => !v.causes.includes("review"));
     console.log(`  disagreeing team-games : ${sv.length}`);
     console.log(
-      `    -1000 x every non-rescinded penalty (modern deducts, legacy did not) : ${has("penalty").length}`,
+      `    modern counts the arena's in-game deduction, legacy did not          : ${has("arena-deduction").length}`,
     );
     console.log(
-      `    ... counting the rescinded ones too                                  : ${has("penalty-rescinded").length}`,
-    );
-    console.log(
-      `    ... some other subset of the team's penalties                        : ${has("penalty-partial").length}`,
+      `    legacy holds a referee escalation modern has not received            : ${has("escalation-missing").length}`,
     );
     console.log(
       `    the 10000 elimination bonus, absent from legacy \`adj\`                : ${has("elim-bonus").length}`,
     );
     console.log(
-      `    nothing fits — listed in full below                                  : ${review.length}`,
+      `    fully accounted for by the above                                     : ${fullyExplained.length}`,
+    );
+    console.log(
+      `    residue left over — listed in full below                             : ${review.length}`,
     );
 
     if (review.length > 0) {
-      console.log(`\n  --- NOTHING FITS — REVIEW THESE (${review.length}) ---`);
+      const sgn = (n: number) => (n > 0 ? `+${n}` : String(n));
+      console.log(`\n  --- UNEXPLAINED RESIDUE — REVIEW THESE (${review.length}) ---`);
       console.log(
         `    ${pad("competition", 30)} ${pad("tdf", 26)} idx  ` +
           `${lpad("L score", 8)} ${lpad("L adj", 7)} | ${lpad("M score", 8)} ${lpad("M elim", 7)} ${lpad("M pen", 7)} | ` +
-          `${lpad("delta", 7)}  penalties`,
+          `${lpad("delta", 7)}  penalties (legacy | modern)`,
       );
       for (const v of review) {
-        const sgn = (n: number) => (n > 0 ? `+${n}` : String(n));
         console.log(
           `    ${pad(v.competition.slice(0, 28), 30)} ${pad(v.fn, 26)} ${v.idx}    ` +
             `${lpad(v.legacyScore, 8)} ${lpad(v.legacyAdj, 7)} | ${lpad(v.modernScore, 8)} ` +
             `${lpad(v.modernElim, 7)} ${lpad(v.modernPen, 7)} | ${lpad(sgn(v.delta), 7)}  ` +
-            `${v.live} live / ${v.rescinded} resc`,
+            `${v.legacyLive}L/${v.legacyRescinded}R chg ${v.legacyCharge} | ` +
+            `${v.live}L/${v.rescinded}R chg ${v.modernCharge}`,
+        );
+      }
+
+      // The penalty rows behind each residue, both sides, so it can be read from here.
+      const ledger = await penaltyLedger(db, legacy, review);
+      console.log(`\n  --- RESIDUE PENALTY LEDGERS ---`);
+      for (const v of review) {
+        console.log(
+          `\n    ${v.fn} idx ${v.idx}  (${v.competition})  ` +
+            `legacy ${v.legacyTotal} vs modern ${v.modernTotal} = ${sgn(v.delta)}`,
+        );
+        const rows = ledger.get(`${v.fn}:${v.idx}`) ?? [];
+        if (rows.length === 0) {
+          console.log(`      no penalty rows on either side`);
+          continue;
+        }
+        for (const r of rows) {
+          const flags = [r.inGame ? "in-game" : "post-game", r.rescinded ? "rescinded" : null]
+            .filter(Boolean)
+            .join(", ");
+          console.log(
+            `      ${pad(r.side, 7)} ${pad(r.callsign.slice(0, 20), 22)} ${pad(r.type.slice(0, 26), 28)} ` +
+              `score=${lpad(sgn(r.scoreValue), 6)} mvp=${lpad(r.mvpValue, 6)}  ` +
+              `${r.time !== null ? `t=${r.time} ` : ""}(${flags})`,
+          );
+        }
+      }
+    }
+
+    if (listAll) {
+      const sgn = (n: number) => (n > 0 ? `+${n}` : String(n));
+      console.log(`\n  --- EVERY DISAGREEING TEAM-GAME (${sv.length}) ---`);
+      console.log(
+        `    ${pad("competition", 30)} ${pad("tdf", 26)} idx  ` +
+          `${lpad("L total", 9)} ${lpad("M total", 9)} ${lpad("delta", 7)}  ` +
+          `${pad("cause", 20)} where`,
+      );
+      for (const v of sv) {
+        // Whether the deduction sits in the raw score or in penalty_score decides
+        // which fix applies, so say it here rather than making it a second query.
+        const where = v.modernPen !== 0 ? "penalty_score" : "score";
+        console.log(
+          `    ${pad(v.competition.slice(0, 28), 30)} ${pad(v.fn, 26)} ${v.idx}    ` +
+            `${lpad(v.legacyTotal, 9)} ${lpad(v.modernTotal, 9)} ${lpad(sgn(v.delta), 7)}  ` +
+            `${pad(v.causes.join("+"), 20)} ${where}`,
         );
       }
     }
 
     console.log(`\n  --- ALL DISAGREEMENTS BY COMPETITION ---`);
     console.log(
-      `    ${pad("competition", 46)} ${lpad("rows", 5)} ${lpad("pen", 5)} ${lpad("resc", 5)} ${lpad("part", 5)} ${lpad("elim", 5)} ${lpad("review", 7)} ${lpad("net", 10)}`,
+      `    ${pad("competition", 46)} ${lpad("rows", 5)} ${lpad("arena", 6)} ${lpad("escal", 7)} ${lpad("elim", 5)} ${lpad("review", 7)} ${lpad("net", 10)}`,
     );
     const byComp = new Map<string, ScoreVariance[]>();
     for (const v of sv) {
@@ -762,8 +1017,8 @@ async function main() {
     for (const [comp, list] of [...byComp].sort((a, b) => b[1].length - a[1].length)) {
       const n = (c: DeltaCause) => list.filter((v) => v.causes.includes(c)).length;
       console.log(
-        `    ${pad(comp.slice(0, 44), 46)} ${lpad(list.length, 5)} ${lpad(n("penalty"), 5)} ` +
-          `${lpad(n("penalty-rescinded"), 5)} ${lpad(n("penalty-partial"), 5)} ` +
+        `    ${pad(comp.slice(0, 44), 46)} ${lpad(list.length, 5)} ${lpad(n("arena-deduction"), 6)} ` +
+          `${lpad(n("escalation-missing"), 7)} ` +
           `${lpad(n("elim-bonus"), 5)} ${lpad(n("review"), 7)} ` +
           `${lpad(
             list.reduce((s, v) => s + v.delta, 0),

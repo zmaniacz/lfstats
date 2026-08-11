@@ -257,7 +257,13 @@ async function main() {
     const mg = groupBy(modernPens, (p) => `${p.fn}|${p.iplId ?? ""}`);
 
     const mismatches: Mismatch[] = [];
-    const updates: { id: string; data: Parameters<typeof updatePenalty>[1]; fn: string }[] = [];
+    const updates: {
+      id: string;
+      data: Parameters<typeof updatePenalty>[1];
+      fn: string;
+      /** The modern row as it stands, so the report can show what would change. */
+      before: ModernPenalty;
+    }[] = [];
     const inserts: { fn: string; iplId: string; legacy: LegacyPenalty }[] = [];
     const ordering: Mismatch[] = [];
 
@@ -337,7 +343,7 @@ async function main() {
           m.scoreValue === data.scoreValue &&
           m.mvpValue === data.mvpValue &&
           m.rescinded === data.rescinded;
-        if (!unchanged) updates.push({ id: m.id, data, fn });
+        if (!unchanged) updates.push({ id: m.id, data, fn, before: m });
       }
     }
 
@@ -443,6 +449,25 @@ async function main() {
       console.log(`  either way; the type/MVP split between them may be transposed.`);
       for (const o of ordering.sort((a, b) => a.fn.localeCompare(b.fn))) {
         console.log(`    ${o.fn}  ${o.callsign.padEnd(22)} ${o.legacy} penalties`);
+      }
+    }
+
+    if (updates.length > 0) {
+      console.log(`\n--- UPDATING (modern row differs from legacy) -------------------------`);
+      const field = (name: string, from: unknown, to: unknown) =>
+        from === to ? null : `${name} ${JSON.stringify(from)} -> ${JSON.stringify(to)}`;
+      for (const u of updates.sort((a, b) => a.fn.localeCompare(b.fn))) {
+        const changed = [
+          field("type", u.before.type, u.data.type),
+          field("score", u.before.scoreValue, u.data.scoreValue),
+          field("mvp", u.before.mvpValue, u.data.mvpValue),
+          field("rescinded", u.before.rescinded, u.data.rescinded),
+        ]
+          .filter(Boolean)
+          .join(", ");
+        console.log(
+          `    ${u.fn}  ${u.before.callsign.padEnd(20)} ${u.before.type.padEnd(24)} ${changed}`,
+        );
       }
     }
 
