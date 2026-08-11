@@ -54,7 +54,14 @@ export interface PreservedGameMeta {
   // In-game penalties (time IS NOT NULL): key = "<iplId>:<time>"
   inGamePenalties: Map<
     string,
-    { rescinded: boolean; type: string; mvpValue: number; description: string; inGame: boolean }
+    {
+      rescinded: boolean;
+      type: string;
+      scoreValue: number;
+      mvpValue: number;
+      description: string;
+      inGame: boolean;
+    }
   >;
   // Post-game penalties (time IS NULL): full row data keyed by player iplId
   postGamePenalties: Array<{

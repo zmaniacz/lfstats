@@ -703,6 +703,10 @@ export async function applyPenaltyMetadata(
   data: {
     rescinded: boolean;
     type: string;
+    // Ingest always writes 0 for an in-game penalty — league policy is that it
+    // costs nothing until referees escalate it after the game. That escalation
+    // exists only here, so it has to be carried across a reingest or it is lost.
+    scoreValue: number;
     mvpValue: number;
     description: string;
     inGame: boolean;
@@ -713,6 +717,7 @@ export async function applyPenaltyMetadata(
     .set({
       rescinded: data.rescinded,
       type: data.type,
+      scoreValue: data.scoreValue,
       mvpValue: data.mvpValue,
       description: data.description,
       inGame: data.inGame,

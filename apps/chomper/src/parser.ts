@@ -353,6 +353,7 @@ function parseLine0(fields: string[]): ParsedTdf["meta"] {
     startTime: "", // filled in by parseLine1
     duration: 900000, // default, overwritten by line 1
     penalty: 0, // default, overwritten by line 1
+    penaltyDeclared: false, // true once line 1 supplies the column (2.003+)
     missionType: 0,
     missionDesc: "",
   };
@@ -375,6 +376,7 @@ function parseLine1(fields: string[], columns: string[], meta: ParsedTdf["meta"]
   const penaltyStr = getValue("penalty");
   if (penaltyStr !== null) {
     meta.penalty = parseInt(penaltyStr, 10);
+    meta.penaltyDeclared = true;
   }
 }
 

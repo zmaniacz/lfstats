@@ -193,7 +193,14 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
 
   const inGamePenalties = new Map<
     string,
-    { rescinded: boolean; type: string; mvpValue: number; description: string; inGame: boolean }
+    {
+      rescinded: boolean;
+      type: string;
+      scoreValue: number;
+      mvpValue: number;
+      description: string;
+      inGame: boolean;
+    }
   >();
   const postGamePenalties: PreservedGameMeta["postGamePenalties"] = [];
 
@@ -203,6 +210,7 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
       inGamePenalties.set(key, {
         rescinded: p.rescinded,
         type: p.type,
+        scoreValue: p.scoreValue,
         mvpValue: p.mvpValue,
         description: p.description,
         inGame: p.inGame,

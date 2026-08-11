@@ -14,6 +14,11 @@ export interface ParsedTdf {
     startTime: string; // YYYYMMDDHHmmss
     duration: number; // ms, default 900000
     penalty: number; // default 0
+    /**
+     * Whether line 1 actually carried the `penalty` column. Absent in 2.000-2.002,
+     * where the arena may still have deducted in-game with no record of the amount.
+     */
+    penaltyDeclared: boolean;
     missionType: number; // skip if not 5
     missionDesc: string;
   };

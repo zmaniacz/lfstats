@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "migrate-legacy-comp": "tsx --env-file=.env src/scripts/migrate-legacy-competition.ts",
     "migrate-legacy-penalties": "tsx --env-file=.env src/scripts/migrate-legacy-penalties.ts",
+    "reset-arena-penalties": "tsx --env-file=.env src/scripts/reset-arena-penalty-deductions.ts",
     "legacy-variance": "tsx --env-file=.env src/scripts/legacy-variance-report.ts",
     "lint": "eslint .",
     "format": "prettier --write ."

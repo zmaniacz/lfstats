@@ -1112,21 +1112,16 @@ class Simulator {
 
   // A 0600 penalty generates an accompanying line type 5 entry for -penalty, so
   // the TDF score stream — and therefore every entity-end score — already has
-  // the deduction baked in. The database models a penalty as a separate,
-  // editable GamePenalty row applied on top of the raw score
-  // (recalculateGameResult: score + eliminationBonus + sum(penalty.scoreValue)),
-  // so leaving the deduction in the stream counts it twice and makes it
-  // impossible to undo when the penalty is rescinded after the game.
+  // the deduction baked in.
   //
-  // Rewrite the score stream so it reflects the score the player actually
-  // earned. Every downstream consumer — running-total snapshots, final
-  // scorecard score, team score, MVP score bonus — then sees the raw score, and
-  // GamePenalty.score_value is the single place the deduction is applied.
+  // League policy is that an in-game penalty costs nothing: it is logged at 0
+  // score and 0 MVP, and only a referee escalation after the game carries a
+  // deduction. So the arena's deduction is removed from the stream outright,
+  // rather than moved onto the GamePenalty row. Every downstream consumer —
+  // running-total snapshots, final scorecard score, team score, MVP score bonus
+  // — then sees the score the player actually earned, and any later escalation
+  // is applied on top through GamePenalty.score_value alone.
   private stripPenaltyDeductionsFromScores(): void {
-    const penaltyValue = this.parsed.meta.penalty;
-    if (penaltyValue === 0) return;
-    const penaltyDelta = -Math.abs(penaltyValue);
-
     // Match on (time, entity) of an actual 0600 event rather than on the delta
     // alone, so an ordinary score change that happens to equal the penalty
     // amount is left untouched.
@@ -1138,18 +1133,34 @@ class Simulator {
     }
     if (penaltyKeys.size === 0) return;
 
+    // 2.003+ states the amount, so require the entry to match it exactly. Before
+    // that the column does not exist and the arena's setting is unrecoverable
+    // from the file, so the accompanying entry is the only record of it: take
+    // whatever it deducted. Either way the entry has to sit on a 0600 event.
+    const { penalty, penaltyDeclared } = this.parsed.meta;
+    if (penaltyDeclared && penalty === 0) return; // configured not to deduct
+    const declaredDelta = penaltyDeclared ? -Math.abs(penalty) : null;
+
     // Per entity, the running total of deductions removed so far. Entries after
     // a penalty carry its effect in their old/new values and must be shifted by
     // the same amount to keep the stream continuous.
     const offsets = new Map<string, number>();
-    const strippedAt = new Map<string, number[]>();
+    const strippedAt = new Map<string, { time: number; amount: number }[]>();
     for (const score of this.parsed.scores) {
       let offset = offsets.get(score.entity) ?? 0;
       score.old += offset;
-      if (score.delta === penaltyDelta && penaltyKeys.has(`${score.time}:${score.entity}`)) {
-        offset += Math.abs(penaltyDelta);
+      const isPenaltyEntry =
+        score.delta < 0 &&
+        penaltyKeys.has(`${score.time}:${score.entity}`) &&
+        (declaredDelta === null || score.delta === declaredDelta);
+      if (isPenaltyEntry) {
+        const amount = -score.delta;
+        offset += amount;
         offsets.set(score.entity, offset);
-        strippedAt.set(score.entity, [...(strippedAt.get(score.entity) ?? []), score.time]);
+        strippedAt.set(score.entity, [
+          ...(strippedAt.get(score.entity) ?? []),
+          { time: score.time, amount },
+        ]);
         score.delta = 0;
       }
       score.new += offset;
@@ -1160,9 +1171,9 @@ class Simulator {
     // has to move with the stream — shifted only by the penalties that landed
     // before this entity left the game.
     for (const end of this.parsed.entityEnds) {
-      const times = strippedAt.get(end.id);
-      if (!times) continue;
-      end.score += times.filter((t) => t <= end.time).length * Math.abs(penaltyDelta);
+      const stripped = strippedAt.get(end.id);
+      if (!stripped) continue;
+      end.score += stripped.filter((s) => s.time <= end.time).reduce((sum, s) => sum + s.amount, 0);
     }
   }
 
@@ -2519,12 +2530,14 @@ class Simulator {
   ): void {
     target.penalties++;
 
-    const penaltyValue = this.parsed.meta.penalty;
+    // Always 0: league policy logs an in-game penalty at no score and no MVP
+    // cost, and the arena's own deduction has been taken back out of the score
+    // stream. A referee escalation after the game is what sets a real value.
     this.penalties.push({
       time,
       refereeEntityId,
       targetEntityId: target.entityId,
-      scoreValue: penaltyValue !== 0 ? -Math.abs(penaltyValue) : 0,
+      scoreValue: 0,
     });
 
     this.handleNukeCancel(null, target);
