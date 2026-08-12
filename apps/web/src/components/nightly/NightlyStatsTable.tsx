@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatScore, formatPct, formatHitDiff, formatMVP, formatGameName } from "@/lib/format";
+import { formatScore, formatPct, formatGameName } from "@/lib/format";
 import { getPosition, POSITIONS } from "@/lib/positions";
 import { getTeamColor } from "@/lib/team-colors";
 import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog";

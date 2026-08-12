@@ -18,7 +18,6 @@ import { EditMatchTeamsForm } from "@/components/admin/competition/EditMatchTeam
 import { EditMatchScheduleForm } from "@/components/admin/competition/EditMatchScheduleForm";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { TEAM_COLORS } from "@/lib/team-colors";
 import { formatGameName, formatDateTime } from "@/lib/format";
 import {

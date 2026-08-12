@@ -88,7 +88,6 @@ export default async function SoloPlayersPage({ params }: { params: Promise<{ sl
             in this competition are listed below and can be added with a handicap directly.
           </p>
           <PlayerRosterSearch
-            teamId={comp.id}
             searchAction={searchPlayersAction}
             addAction={(playerId) => boundEnroll(playerId, 0)}
           />

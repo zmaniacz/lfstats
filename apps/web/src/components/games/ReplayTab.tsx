@@ -301,13 +301,19 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
     prevTeamOrderRef.current = newOrder;
   }, [computedTeams, data]);
 
-  // Clean up pending animation timeouts on unmount
+  // Clean up pending animation timeouts on unmount.
+  // These refs hold timer bookkeeping, not DOM nodes, so reading `.current` at unmount is
+  // deliberate: `teamLeadTimeoutRef.current` is reassigned while mounted, and copying it into
+  // a local at effect setup (the rule's usual fix) would capture the initial null and clear
+  // nothing.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     return () => {
       for (const timeout of rankTimeoutsRef.current.values()) clearTimeout(timeout);
       if (teamLeadTimeoutRef.current) clearTimeout(teamLeadTimeoutRef.current);
     };
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Event stream computation: full history up to currentTime, newest first
   const visibleEvents = useMemo(() => {

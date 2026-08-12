@@ -103,7 +103,6 @@ export async function reingest(
   simResult: SimulatedGame,
   gameStartTime: Date,
   mvpRows: MvpRow[],
-  gameType: string,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     // -----------------------------------------------------------------------

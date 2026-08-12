@@ -47,6 +47,7 @@ export async function FinalsContent({
           {bracketUrl ? (
             <>
               <iframe
+                title="Tournament bracket"
                 src={`${bracketUrl}/module?show_final_results=1&show_standings=1`}
                 width="100%"
                 height={challongeBracketHeight ?? 500}

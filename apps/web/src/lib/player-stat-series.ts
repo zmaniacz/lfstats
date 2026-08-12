@@ -80,7 +80,7 @@ export function smoothStatSeries(series: PlayerStatPoint[]): PlayerStatPoint[] {
       return window.reduce((sum, v) => sum + v, 0) / window.length;
     });
 
-    const column: (number | null)[] = new Array(series.length).fill(null);
+    const column: (number | null)[] = Array.from({ length: series.length }, () => null);
     presentIndices.forEach((idx, i) => {
       column[idx] = smoothedValues[i];
     });

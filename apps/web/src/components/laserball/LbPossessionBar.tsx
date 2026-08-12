@@ -34,8 +34,11 @@ export function LbPossessionBar({ teams }: { teams: LbPossessionTeam[] }) {
           );
         })}
       </div>
+      {/* A composite bar built from coloured divs, so `<img>` is not an option;
+          role="img" + aria-label is the correct pattern for a graphic like this. */}
       <div
         className="flex h-3 w-full overflow-hidden rounded-full bg-muted"
+        // eslint-disable-next-line jsx-a11y/prefer-tag-over-role
         role="img"
         aria-label={`Possession: ${teams[0]!.name} ${Math.round(pct[0]!)}%, ${teams[1]!.name} ${Math.round(pct[1]!)}%`}
       >

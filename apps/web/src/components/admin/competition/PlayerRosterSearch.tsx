@@ -9,12 +9,11 @@ import type { PlayerSearchResult, RosterMutationResult } from "@lfstats/db";
 import { useState } from "react";
 
 type Props = {
-  teamId: string;
   searchAction: (query: string) => Promise<PlayerSearchResult[]>;
   addAction: (playerId: string) => Promise<RosterMutationResult>;
 };
 
-export function PlayerRosterSearch({ teamId, searchAction, addAction }: Props) {
+export function PlayerRosterSearch({ searchAction, addAction }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlayerSearchResult[]>([]);
   const [searched, setSearched] = useState(false);

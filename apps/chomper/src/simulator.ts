@@ -824,6 +824,9 @@ class Simulator {
 
     // Merge interaction rows: combine any pair that now collapses onto the same
     // (target, other) key, and drop self-pairs created by the merge.
+    // The spread is load-bearing: the body both deletes and sets entries on
+    // `this.interactions`, and a live Map iterator would visit keys inserted below.
+    // eslint-disable-next-line unicorn/no-useless-spread
     for (const [key, counts] of [...this.interactions.entries()]) {
       if (!key.includes(sourceId)) continue;
       this.interactions.delete(key);

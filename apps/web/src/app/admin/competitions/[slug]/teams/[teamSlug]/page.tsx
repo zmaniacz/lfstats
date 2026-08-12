@@ -124,11 +124,7 @@ export default async function TeamRosterPage({
           <CardTitle>Add Player</CardTitle>
         </CardHeader>
         <CardContent>
-          <PlayerRosterSearch
-            teamId={teamId}
-            searchAction={searchPlayersAction}
-            addAction={boundAdd}
-          />
+          <PlayerRosterSearch searchAction={searchPlayersAction} addAction={boundAdd} />
         </CardContent>
       </Card>
 

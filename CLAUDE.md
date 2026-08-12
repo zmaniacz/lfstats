@@ -78,3 +78,21 @@ Always insert this header when creating a new `.ts` or `.tsx` file.
 - `pnpm ingest <file.tdf>` — ingest a TDF file
 - `pnpm build` — build all apps
 - `pnpm typecheck` — typecheck all packages
+- `pnpm lint` — lint the whole monorepo in one oxlint pass (sub-second)
+- `pnpm lint --fix` — apply oxlint's auto-fixes
+- `pnpm format` — Prettier write across all packages
+
+## Linting
+
+Linting is [oxlint](https://oxc.rs), configured once at the repo root in `.oxlintrc.json`.
+**There is no ESLint in this repo** — do not add it back, and do not add `@typescript-eslint`.
+TypeScript 7 ships no JS compiler API (`import ts from "typescript"` yields only
+`{ version, versionMajorMinor }`), so typescript-eslint hard-throws on import. oxlint has its
+own parser and is unaffected by the TypeScript version.
+
+- `correctness` is an **error**; CI fails on it (`.github/workflows/typecheck.yml`).
+- Suppress with standard `// eslint-disable-next-line <rule>` comments — oxlint honours them.
+  Always say _why_ in an adjacent comment; the existing suppressions are all cases where the
+  rule's suggested fix would have introduced a bug.
+- `apps/web/src/components/ui/**` is ignored (shadcn primitives, not ours to edit).
+- Prettier still owns formatting; oxlint is not a formatter.

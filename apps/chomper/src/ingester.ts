@@ -20,7 +20,7 @@ import {
   insertGamePlayerStates,
   insertScorecardMvps,
 } from "@lfstats/db";
-import type { ParsedTdf, ParsedEntity, PlayerSimState, SimulatedGame } from "./types.js";
+import type { ParsedTdf, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
 import type { MvpRow } from "./mvp.js";
 
@@ -213,7 +213,6 @@ export async function ingest(
     // Find mission end time for end_time calculation
     const missionEndEvent = parsed.events.find((e) => e.type === "0101");
     const missionEndOffset = missionEndEvent?.time ?? 0;
-    const missionEndTimestamp = new Date(gameStartTime.getTime() + missionEndOffset);
 
     const scorecardInsertRows = playerEntityList.map((entity) => {
       const ps = simResult.playerStats.get(entity.id);

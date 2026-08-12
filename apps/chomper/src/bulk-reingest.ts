@@ -263,15 +263,7 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
 
   // 8. Reingest
   try {
-    await reingestWithRetry(
-      gameId,
-      preservedMeta,
-      parsed,
-      simResult,
-      gameStartTime,
-      mvpRows,
-      "sm5",
-    );
+    await reingestWithRetry(gameId, preservedMeta, parsed, simResult, gameStartTime, mvpRows);
   } catch (err) {
     const reason = `Reingest failed: ${(err as Error).message}`;
     log(`FAIL [reingest] ${gameId}`);

@@ -119,8 +119,9 @@ export function UploadZone({ competitionSlug, canUpload, onUploadComplete }: Upl
 
   return (
     <div className="space-y-4">
-      <div
-        className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
+      <button
+        type="button"
+        className={`w-full border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
           isDragging
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/30 hover:border-primary/50"
@@ -134,15 +135,15 @@ export function UploadZone({ competitionSlug, canUpload, onUploadComplete }: Upl
         <p className="text-sm text-muted-foreground">
           Drag and drop .tdf files here, or click to choose
         </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".tdf"
-          multiple
-          className="hidden"
-          onChange={(e) => addFiles(e.target.files)}
-        />
-      </div>
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".tdf"
+        multiple
+        className="hidden"
+        onChange={(e) => addFiles(e.target.files)}
+      />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
