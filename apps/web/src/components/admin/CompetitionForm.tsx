@@ -15,12 +15,17 @@ import {
 } from "@/components/ui/select";
 import type {
   CenterListItem,
+  CompetitionCategory,
   CompetitionDetail,
   CompetitionFormat,
   CompetitionState,
 } from "@lfstats/db";
 import { COMPETITION_STATE_LABELS } from "@/lib/competition-state";
 import { COMPETITION_FORMAT_LABELS } from "@/lib/competition-format";
+import {
+  COMPETITION_CATEGORY_FORM_LABELS,
+  COMPETITION_CATEGORY_ORDER,
+} from "@/lib/competition-category";
 import { useState } from "react";
 
 type Props = {
@@ -35,6 +40,9 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
   const [isPending, setIsPending] = useState(false);
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
   const [format, setFormat] = useState<CompetitionFormat>(competition?.format ?? "team");
+  const [category, setCategory] = useState<CompetitionCategory>(
+    competition?.category ?? "tournament",
+  );
   const [state, setState] = useState<CompetitionState>(competition?.state ?? "preshow");
   const [hostCenterId, setHostCenterId] = useState<string>(competition?.hostCenterId ?? "none");
 
@@ -43,6 +51,7 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);
     formData.set("format", format);
+    formData.set("category", category);
     formData.set("state", state);
     formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId);
     setIsPending(true);
@@ -105,6 +114,30 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
             standings page; switching to Team leaves player enrollments unused.
           </p>
         )}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Category</Label>
+        <Select
+          value={category}
+          onValueChange={(v) => setCategory(v as CompetitionCategory)}
+          name="category"
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {COMPETITION_CATEGORY_ORDER.map((value) => (
+              <SelectItem key={value} value={value}>
+                {COMPETITION_CATEGORY_FORM_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Which section of the Competitions browse page this appears in. Display only — it does not
+          affect scoring or which stats the competition feeds.
+        </p>
       </div>
 
       <div className="space-y-1.5">

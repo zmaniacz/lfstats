@@ -25,6 +25,7 @@ import {
   RadioactiveIcon,
   ShieldIcon,
   SoccerBallIcon,
+  SquaresFourIcon,
   StarIcon,
   TrophyIcon,
   UploadSimpleIcon,
@@ -48,6 +49,11 @@ const socialNavItems = [
 ];
 
 const competitionNavItems = [
+  {
+    title: "Browse",
+    url: "/competitions",
+    icon: <SquaresFourIcon />,
+  },
   {
     title: "Standings",
     url: "/standings",

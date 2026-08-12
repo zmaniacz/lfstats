@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { COMPETITION_STATE_LABELS, competitionStateBadgeVariant } from "@/lib/competition-state";
+import { COMPETITION_CATEGORY_SINGULAR } from "@/lib/competition-category";
 
 export const metadata: Metadata = { title: "Admin: Competitions" };
 
@@ -38,6 +39,7 @@ export default async function CompetitionsPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>State</TableHead>
               <TableHead>Start</TableHead>
               <TableHead>End</TableHead>
@@ -63,6 +65,9 @@ export default async function CompetitionsPage() {
                     </Badge>
                     {c.format === "solo" && <Badge variant="outline">solo</Badge>}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{COMPETITION_CATEGORY_SINGULAR[c.category]}</Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant={competitionStateBadgeVariant(c.state)}>

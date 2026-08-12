@@ -66,6 +66,10 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
   rounds, a `solo` competition ranks individual players and has no match structure at all. A solo league is
   normally `type = 'competitive', format = 'solo'`, so it still appears in the competition picker and the
   all-competitive aggregate. See [Solo Competitions](#solo-competitions).
+- **Category is display-only, and orthogonal to both.** `category` says what kind of _event_ this
+  is — `internationals`, `tournament` or `league` — and its only job is to group competitions into
+  sections on the browse page. It never touches scoring or routing. See
+  [Browsing Competitions](#browsing-competitions).
 - **Teams are per-competition.** A team is created for each event and does not carry identity across competitions.
 - **Matches are 2 games.** Teams play once on each color (e.g. Red → Green). Each game is recorded as game 1 or game 2 of the match.
 - **Color mapping is explicit.** `competition_match_game` records which `sm5_game_team` row corresponds to each competition team in each game. This is required because team color assignments swap between games.
@@ -90,6 +94,7 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 | `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                   |
 | `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                   |
 | `format`                   | enum             | `"team"` (default) or `"solo"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive.  |
+| `category`                 | enum             | `"internationals"` \| `"tournament"` (default) \| `"league"`. **Display only** — see [Browsing Competitions](#browsing-competitions).      |
 | `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted. |
 | `host_center_id`           | uuid FK → center | nullable — null for a true multi-center competition                                                                                        |
 | `start_date`               | date             |                                                                                                                                            |
@@ -388,6 +393,48 @@ Mercenary scorecards are excluded from:
 - Any per-team competition stat totals
 
 Mercenary games are not excluded from the game record itself — the scorecards exist and are visible on the game page, but are flagged so queries can filter them out. Roster views count rostered players and mercs separately (`playerCount` vs `mercCount`).
+
+---
+
+## Browsing Competitions
+
+`/competitions` is the public index of every competition, reached from **Competition → Browse**
+in the sidebar. It renders one section per `competition.category`, each a grid of cards linking
+to that competition's standings (`/standings?scope=competition&competition=<slug>`).
+
+| Category         | What belongs in it                                                        |
+| ---------------- | ------------------------------------------------------------------------- |
+| `internationals` | The big annual world/continental championships — Internationals, ECT, WCT |
+| `tournament`     | Every other tournament-style event: shindigs, random draws, invitationals |
+| `league`         | A local season run at one center over weeks, team or solo                 |
+
+- **`tournament` is the default**, so a new competition lands in the largest bucket without
+  claiming anything about scale or recurrence. Admins pick the category on the competition form.
+- **Scope matches the competition picker.** `getBrowsableCompetitions()`
+  (`packages/db/src/queries/competition-tournament.ts`) applies the same filter as
+  `getCompetitiveCompetitions()` — competitive only, no `preshow` events — so a competition
+  can never appear on the browse page before it appears in the picker.
+- **Card counts are public-facing, not admin figures.** Games exclude `game.exclude = true`
+  rows, so the count on a card can be lower than the one on `/admin/competitions`, which counts
+  every assigned game. The participant count is teams for a team competition and _enrolled_
+  players for a solo one; a solo competition with nobody enrolled yet simply shows no
+  participant badge.
+- **The category has no effect on stats.** Nothing in the routing table above reads it.
+
+### Backfill
+
+The column was added with a default, so every pre-existing competition started in `tournament`.
+`packages/db/src/scripts/backfill-competition-category.ts` moves the ones that belong elsewhere:
+
+```
+pnpm --filter @lfstats/db backfill-competition-category --dry-run
+pnpm --filter @lfstats/db backfill-competition-category
+```
+
+Its slug → category map is a set of judgement calls, not derived data — WCT and ECT were read
+as internationals, and the recurring local seasons (Brisbane, Loveland, Darmstadt, St George,
+Auckland, LLT) as leagues. Re-running re-asserts the map, so it is a one-time backfill; after
+it, change a category in the admin UI, not in the script.
 
 ---
 

@@ -1,0 +1,2 @@
+CREATE TYPE "public"."competition_category" AS ENUM('internationals', 'tournament', 'league');--> statement-breakpoint
+ALTER TABLE "competition" ADD COLUMN "category" "competition_category" DEFAULT 'tournament' NOT NULL;

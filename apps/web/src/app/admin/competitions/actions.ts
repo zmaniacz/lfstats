@@ -14,7 +14,19 @@ import {
   removeGameFromMatch,
   getCompetitionById,
 } from "@lfstats/db";
+import type { CompetitionCategory } from "@lfstats/db";
 import { redirect } from "next/navigation";
+
+const CATEGORIES: CompetitionCategory[] = ["internationals", "tournament", "league"];
+
+/**
+ * Coerced rather than cast: an unrecognised value falls back to `tournament`, the same
+ * default the column carries.
+ */
+function readCategory(formData: FormData): CompetitionCategory {
+  const raw = formData.get("category");
+  return CATEGORIES.find((c) => c === raw) ?? "tournament";
+}
 
 export async function createCompetitionAction(formData: FormData) {
   const hostCenterId = (formData.get("hostCenterId") as string) || null;
@@ -24,6 +36,7 @@ export async function createCompetitionAction(formData: FormData) {
   const type = formData.get("type") as "competitive" | "social";
   // Coerced rather than cast: anything other than an explicit "solo" is a team competition.
   const format = formData.get("format") === "solo" ? "solo" : "team";
+  const category = readCategory(formData);
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
@@ -38,6 +51,7 @@ export async function createCompetitionAction(formData: FormData) {
     name,
     type,
     format,
+    category,
     state,
     startDate,
     endDate,
@@ -59,6 +73,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
   const type = formData.get("type") as "competitive" | "social";
   // Coerced rather than cast: anything other than an explicit "solo" is a team competition.
   const format = formData.get("format") === "solo" ? "solo" : "team";
+  const category = readCategory(formData);
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
   const endDate = (formData.get("endDate") as string) || null;
@@ -74,6 +89,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
     name,
     type,
     format,
+    category,
     state,
     startDate,
     endDate,

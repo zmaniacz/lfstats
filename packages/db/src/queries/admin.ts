@@ -15,12 +15,19 @@ export type CompetitionState = "preshow" | "upcoming" | "active" | "completed";
 /** How a competition is scored. Orthogonal to `type` — see schema.ts `competitionFormatEnum`. */
 export type CompetitionFormat = "team" | "solo";
 
+/**
+ * What kind of event a competition is, for browsing. Orthogonal to both `type` and
+ * `format` — see schema.ts `competitionCategoryEnum`.
+ */
+export type CompetitionCategory = "internationals" | "tournament" | "league";
+
 export type CompetitionListItem = {
   id: string;
   name: string;
   slug: string;
   type: "competitive" | "social";
   format: CompetitionFormat;
+  category: CompetitionCategory;
   state: CompetitionState;
   startDate: string;
   endDate: string | null;
@@ -35,6 +42,7 @@ export type CompetitionDetail = {
   slug: string;
   type: "competitive" | "social";
   format: CompetitionFormat;
+  category: CompetitionCategory;
   state: CompetitionState;
   startDate: string;
   endDate: string | null;
@@ -82,6 +90,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
       slug: competition.slug,
       type: competition.type,
       format: competition.format,
+      category: competition.category,
       state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
@@ -101,6 +110,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
     slug: r.slug,
     type: r.type,
     format: r.format,
+    category: r.category,
     state: r.state,
     startDate: r.startDate,
     endDate: r.endDate,
@@ -123,6 +133,7 @@ export async function getCompetitionsByState(
       slug: competition.slug,
       type: competition.type,
       format: competition.format,
+      category: competition.category,
       state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
@@ -146,6 +157,7 @@ export async function getCompetitionsByState(
     slug: r.slug,
     type: r.type,
     format: r.format,
+    category: r.category,
     state: r.state,
     startDate: r.startDate,
     endDate: r.endDate,
@@ -163,6 +175,7 @@ export async function getCompetitionById(id: string): Promise<CompetitionDetail 
       slug: competition.slug,
       type: competition.type,
       format: competition.format,
+      category: competition.category,
       state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,
@@ -186,6 +199,7 @@ export async function getCompetitionBySlug(slug: string): Promise<CompetitionDet
       slug: competition.slug,
       type: competition.type,
       format: competition.format,
+      category: competition.category,
       state: competition.state,
       startDate: competition.startDate,
       endDate: competition.endDate,

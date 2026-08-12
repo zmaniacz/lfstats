@@ -330,6 +330,13 @@
       "when": 1786464138370,
       "tag": "0046_solo_competition_format",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1786496330049,
+      "tag": "0047_competition_category",
+      "breakpoints": true
     }
   ]
 }

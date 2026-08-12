@@ -22,7 +22,7 @@ import {
 } from "../schema";
 import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
-import type { CompetitionFormat } from "./admin";
+import type { CompetitionCategory, CompetitionFormat, CompetitionState } from "./admin";
 import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
@@ -1463,6 +1463,63 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
     .from(competition)
     .where(and(eq(competition.type, "competitive"), ne(competition.state, "preshow")))
     .orderBy(desc(competition.startDate));
+}
+
+export type BrowsableCompetition = {
+  id: string;
+  name: string;
+  slug: string;
+  category: CompetitionCategory;
+  format: CompetitionFormat;
+  state: CompetitionState;
+  startDate: string;
+  endDate: string | null;
+  description: string | null;
+  hostCenterName: string | null;
+  gameCount: number;
+  /**
+   * Teams for a team competition, enrolled players for a solo one — the two are never
+   * both populated, since a competition uses one roster model or the other.
+   */
+  participantCount: number;
+};
+
+/**
+ * Every competition the public browse page (`/competitions`) lists, newest first.
+ *
+ * Scoped the same way as `getCompetitiveCompetitions()` — competitive only, and no
+ * preshow events, which are not public yet. Callers group the result by `category`.
+ */
+export async function getBrowsableCompetitions(): Promise<BrowsableCompetition[]> {
+  const rows = await db
+    .select({
+      id: competition.id,
+      name: competition.name,
+      slug: competition.slug,
+      category: competition.category,
+      format: competition.format,
+      state: competition.state,
+      startDate: competition.startDate,
+      endDate: competition.endDate,
+      description: competition.description,
+      hostCenterName: center.name,
+      gameCount: sql<number>`count(distinct ${game.id})::int`,
+      teamCount: sql<number>`count(distinct ${competitionTeam.id})::int`,
+      playerCount: sql<number>`count(distinct ${competitionPlayer.id})::int`,
+    })
+    .from(competition)
+    .leftJoin(center, eq(competition.hostCenterId, center.id))
+    .leftJoin(game, and(eq(game.competitionId, competition.id), eq(game.exclude, false)))
+    .leftJoin(competitionTeam, eq(competitionTeam.competitionId, competition.id))
+    .leftJoin(competitionPlayer, eq(competitionPlayer.competitionId, competition.id))
+    .where(and(eq(competition.type, "competitive"), ne(competition.state, "preshow")))
+    .groupBy(competition.id, center.name)
+    .orderBy(desc(competition.startDate));
+
+  return rows.map(({ teamCount, playerCount, ...r }) => ({
+    ...r,
+    participantCount: r.format === "solo" ? playerCount : teamCount,
+  }));
 }
 
 // ---------------------------------------------------------------------------

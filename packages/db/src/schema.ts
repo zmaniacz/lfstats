@@ -45,6 +45,23 @@ export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "s
  */
 export const competitionFormatEnum = pgEnum("competition_format", ["team", "solo"]);
 
+/**
+ * Which bucket a competition sits in when browsing (`/competitions`). Independent of both
+ * `type` and `format` — it says what kind of *event* this is, not how it is scored:
+ *
+ * - `internationals` — the big annual world/continental championships (Internationals, ECT, WCT).
+ * - `tournament` — every other tournament-style event: shindigs, random draws, invitationals.
+ * - `league` — a local, site-run season that plays out over weeks, team or solo.
+ *
+ * Defaults to `tournament`, which is the safe bucket for a new event: it is the largest
+ * group and never implies a claim about scale or recurrence.
+ */
+export const competitionCategoryEnum = pgEnum("competition_category", [
+  "internationals",
+  "tournament",
+  "league",
+]);
+
 export const competitionRoundTypeEnum = pgEnum("competition_round_type", [
   "pool",
   "finals",
@@ -151,6 +168,7 @@ export const competition = pgTable("competition", {
   slug: text("slug").notNull().unique(),
   type: competitionTypeEnum("type").notNull(),
   format: competitionFormatEnum("format").notNull().default("team"),
+  category: competitionCategoryEnum("category").notNull().default("tournament"),
   state: competitionStateEnum("state").notNull().default("active"),
   hostCenterId: uuid("host_center_id").references(() => center.id),
   startDate: date("start_date").notNull(),
