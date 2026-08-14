@@ -222,6 +222,18 @@ minimum) rather than blanking the board.
 > page shows an empty state — but the recompute must be run once after migrating, or `/rankings`
 > has nothing to show.
 
+### In production
+
+Nightly, by cron on the deploy host, running the `ghcr.io/zmaniacz/lfstats-jobs` image as a
+one-shot container. It cannot run inside the web container — that image is a Next.js standalone
+build with neither the scripts nor `tsx`. See
+[build-and-deploy.md § Scheduled Jobs](build-and-deploy.md#scheduled-jobs) for the compose
+service and the crontab entry.
+
+The scheduled run does the full bootstrap. That is most of the ~22s, and `standard_error` is
+currently stored but unused by the board — set `bootstrapSamples` to 0 in the model parameters
+to make the job near-instant if that trade ever becomes worth making.
+
 ---
 
 ## Related

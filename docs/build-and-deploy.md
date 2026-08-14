@@ -173,6 +173,71 @@ Contains: `DB_PASSWORD`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`. 
 
 ---
 
+## Scheduled Jobs
+
+The rating recompute ([Player_Rating.md](Player_Rating.md)) rebuilds the rankings board
+nightly. It cannot run in the web container: that image is a Next.js **standalone** build
+containing only what Next traced for serving, so it has neither `packages/db/src/scripts/` nor
+`tsx`. A second image exists for maintenance jobs of this kind.
+
+### `packages/db/Dockerfile` — the jobs image
+
+Published to `ghcr.io/zmaniacz/lfstats-jobs` by `.github/workflows/build-jobs.yml`. Mirrors the
+install steps in `apps/web/Dockerfile` and stops before the Next build. Its default command is
+the rating recompute; override the command to run any other script in the package.
+
+The workflow's second job **pulls but never starts** the image on the deploy host. Scheduling is
+host cron, not GitHub Actions — scheduled workflows on public repos are disabled automatically
+after 60 days without a commit, which would silently freeze the rankings during a quiet spell.
+
+### `docker-compose.yml` — additional service
+
+```yaml
+jobs:
+  image: ghcr.io/zmaniacz/lfstats-jobs:latest
+  restart: no
+  profiles: ["jobs"]
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@db:5432/lfstats_modern"
+  networks:
+    - lfstats
+```
+
+`restart: no` and `profiles: ["jobs"]` together keep it out of `docker compose up -d` — it is a
+one-shot container, and without the profile a bare `up` would try to start and then restart it.
+No `env_file`: the job needs the database and nothing else, so the auth secrets are not passed.
+
+### Crontab (runner user, on the deploy host)
+
+```cron
+# Rebuild the global player rankings nightly. ~22s including the bootstrap.
+30 8 * * * /usr/bin/flock -n /tmp/lfstats-recalc-rating.lock docker compose -f /opt/lfstats-web/docker-compose.yml run --rm jobs >> /var/log/lfstats/recalc-rating.log 2>&1
+```
+
+- **08:30 UTC** is arbitrary but deliberately mid-morning UTC, which is overnight for the
+  Australian and New Zealand centers that play the most games — it avoids recomputing while a
+  session is still being ingested.
+- **`flock -n`** makes a second run a no-op if one is somehow still going. The recompute is
+  idempotent (it replaces the whole board in one transaction), so an overlap would be harmless,
+  but a lock is cheaper than reasoning about it later.
+- **Redirect to a log.** The script prints the window, game count, timing and top 15; with no
+  redirect that goes to cron's mail and is effectively lost. Create `/var/log/lfstats/` owned by
+  the runner user, and add logrotate if it matters.
+- The cron user must be in the docker group — the same requirement as the runner user.
+
+Verify it end to end before trusting the schedule:
+
+```bash
+cd /opt/lfstats-web
+docker compose run --rm jobs
+```
+
+It prints the window and the top 15, and refuses to publish rather than blanking the board if
+the window is empty or nobody meets the games minimum.
+
+---
+
 ## Other Workflows
 
 ### `.github/workflows/deploy-chomper.yml` — the ingestion Lambda
