@@ -12,6 +12,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | Look up an SM5 per-player stat             | [Scorecard_Table_Spec.md](Scorecard_Table_Spec.md)                             |
 | Look up a Laserball per-player stat        | [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md)         |
 | Work on tournaments, standings, or rosters | [Competition_Structure.md](Competition_Structure.md)                           |
+| Change the global player ranking           | [Player_Rating.md](Player_Rating.md)                                           |
 | Change how TDFs are parsed or simulated    | [chomper-design.md](chomper-design.md)                                         |
 | Change Laserball ingestion specifically    | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
 | Run or debug the ingestion tests           | [chomper-design.md](chomper-design.md#test-suite)                              |

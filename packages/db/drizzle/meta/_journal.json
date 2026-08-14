@@ -337,6 +337,20 @@
       "when": 1786496330049,
       "tag": "0047_competition_category",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1786746492222,
+      "tag": "0048_global_player_rating",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1786747457659,
+      "tag": "0049_rating_display_bands",
+      "breakpoints": true
     }
   ]
 }

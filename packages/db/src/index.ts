@@ -4,6 +4,7 @@
 export { db, getDb, initDb } from "./client";
 export { getTeamLogoUrl } from "./lib/team-logos";
 export { getPlayerPictureUrl } from "./lib/player-pictures";
+export * from "./lib/rating";
 export * from "./queries/admin";
 export * from "./queries/apiKeys";
 export * from "./queries/penalties";
@@ -16,6 +17,7 @@ export * from "./queries/games";
 export * from "./queries/laserball";
 export * from "./queries/lb-match";
 export * from "./queries/players";
+export * from "./queries/ratings";
 export * from "./queries/scope";
 export * from "./queries/stats";
 export * from "./queries/userRoles";

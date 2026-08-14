@@ -20,6 +20,8 @@
     "legacy-variance": "tsx --env-file=.env src/scripts/legacy-variance-report.ts",
     "backfill-solo-format": "tsx --env-file=.env src/scripts/backfill-solo-format.ts",
     "backfill-competition-category": "tsx --env-file=.env src/scripts/backfill-competition-category.ts",
+    "rating-bakeoff": "tsx --env-file=.env src/scripts/rating/bakeoff.ts",
+    "recalc-rating": "tsx --env-file=.env src/scripts/recalc-rating.ts",
     "lint": "oxlint",
     "format": "prettier --write ."
   },

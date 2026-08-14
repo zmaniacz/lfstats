@@ -23,6 +23,7 @@ import {
   MapPinIcon,
   PresentationChartIcon,
   RadioactiveIcon,
+  RankingIcon,
   ShieldIcon,
   SoccerBallIcon,
   SquaresFourIcon,
@@ -80,6 +81,11 @@ const browseNavItems = [
     icon: <UsersIcon />,
   },
   {
+    title: "Rankings",
+    url: "/rankings",
+    icon: <RankingIcon />,
+  },
+  {
     title: "Leaderboards",
     url: "/leaderboards",
     icon: <PresentationChartIcon />,
@@ -93,6 +99,11 @@ const browseNavItems = [
     title: "Penalties",
     url: "/penalties",
     icon: <CardsIcon />,
+  },
+  {
+    title: "About Rankings",
+    url: "/about-rating",
+    icon: <InfoIcon />,
   },
   {
     title: "About SM5",

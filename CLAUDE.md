@@ -36,6 +36,7 @@ The specs live in /docs — see [docs/README.md](docs/README.md) for the full in
 - Scorecard_Table_Spec.md — per-player stat definitions
 - Laserball_Scorecard_Table_Spec.md — per-stat definitions for the lb_scorecard table
 - Competition_Structure.md — competition/tournament tables, standings, mercenary rules
+- Player_Rating.md — the global player ranking: model, why MVP is excluded, schema, recompute
 - SM5-penalty-definitions.md — penalty types and their default score/MVP impact
 
 **Ingestion**

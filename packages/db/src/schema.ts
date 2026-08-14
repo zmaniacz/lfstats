@@ -149,6 +149,71 @@ export const target = pgTable(
 // SM5 MVP Model (defined before sm5Scorecard — sm5Scorecard holds the FK)
 // ---------------------------------------------------------------------------
 
+/**
+ * Versioned parameters for the global player rating, mirroring `sm5_mvp_model`.
+ * Every `player_rating` row records which version produced it, so a future
+ * re-model cannot silently reinterpret published numbers.
+ *
+ * `parameters` holds the fitted model's configuration: the L2 strength, the
+ * margin weighting, the social-game weight, the rolling window length, and the
+ * games minimum.
+ */
+export const sm5RatingModel = pgTable("sm5_rating_model", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  version: text("version").notNull().unique(),
+  releasedAt: timestamp("released_at").notNull(),
+  retiredAt: timestamp("retired_at"),
+  description: text("description"),
+  parameters: jsonb("parameters").notNull(),
+});
+
+/**
+ * The published global ranking: one row per qualifying player per recompute.
+ *
+ * Rebuilt wholesale by `recalc-rating`, never updated incrementally. The rating
+ * is a batch fit over every game in the window simultaneously, so one new game
+ * shifts every player's number — there is no correct incremental update, and a
+ * full replay is also what makes penalty edits, reingests and `exclude` flips
+ * automatically correct.
+ */
+export const playerRating = pgTable(
+  "player_rating",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id, { onDelete: "cascade" }),
+    ratingModelId: uuid("rating_model_id")
+      .notNull()
+      .references(() => sm5RatingModel.id),
+    /** Bradley-Terry strength on the logit scale. Higher is better; ~0 is average. */
+    rating: doublePrecision("rating").notNull(),
+    /** Bootstrap standard error. Drives both the display grouping and rank ranges. */
+    standardError: doublePrecision("standard_error"),
+    /** 1-based position among qualifying players, ordered by rating. */
+    rank: integer("rank").notNull(),
+    /**
+     * Display grouping ordinal within the leaderboard's ranked head. Consecutive
+     * players share a value when the gap between them is smaller than the
+     * measurement noise — i.e. when their ordering is not a real claim.
+     */
+    ratingGroup: integer("rating_group").notNull(),
+    gamesPlayed: integer("games_played").notNull(),
+    wins: integer("wins").notNull(),
+    losses: integer("losses").notNull(),
+    draws: integer("draws").notNull(),
+    /** Inclusive lower bound of the rolling window these numbers cover. */
+    windowStart: timestamp("window_start").notNull(),
+    windowEnd: timestamp("window_end").notNull(),
+    computedAt: timestamp("computed_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // One rating per player per model version — the recompute replaces in place.
+    unique().on(t.playerId, t.ratingModelId),
+    index("player_rating_rank_idx").on(t.rank),
+  ],
+);
+
 export const sm5MvpModel = pgTable("sm5_mvp_model", {
   id: uuid("id").primaryKey().defaultRandom(),
   version: text("version").notNull().unique(),
