@@ -214,13 +214,44 @@ jobs:
 one-shot container, and without the profile a bare `up` would try to start and then restart it.
 No `env_file`: the job needs the database and nothing else, so the auth secrets are not passed.
 
-### Crontab (runner user, on the deploy host)
+### The schedule (on the deploy host)
+
+Runs as **the runner user**, not a personal account. It already owns the deploy directory and is
+in the `docker` group, so it needs no additional permissions — and a production job tied to a
+named human silently dies when that account is renamed or removed. There is no separate "cron
+user": cron runs each job as whoever owns the crontab, which is why the `/etc/cron.d` form below
+is preferred — it names the user explicitly and lives in a file somebody can find, unlike a
+per-user crontab buried in `/var/spool/cron`.
+
+Confirm the runner's actual username first:
+
+```bash
+stat -c '%U %G' /opt/lfstats-web
+```
+
+Create the log directory owned by that user. The setgid bit plus group-read lets an admin in the
+runner's group tail the log without sudo:
+
+```bash
+sudo mkdir -p /var/log/lfstats
+sudo chown <runner-user>:<runner-group> /var/log/lfstats
+sudo chmod 2750 /var/log/lfstats
+```
+
+`/etc/cron.d/lfstats-recalc-rating`, mode 644, owned by root, **not executable**. The filename
+must contain no dots or cron ignores it:
 
 ```cron
 # Rebuild the global player rankings nightly. ~22s including the bootstrap.
-30 8 * * * /usr/bin/flock -n /tmp/lfstats-recalc-rating.lock sh -c 'cd /opt/lfstats-web && docker compose pull -q jobs && docker compose run --rm jobs' >> /var/log/lfstats/recalc-rating.log 2>&1
+SHELL=/bin/sh
+PATH=/usr/local/bin:/usr/bin:/bin
+30 8 * * * <runner-user> /usr/bin/flock -n /tmp/lfstats-recalc-rating.lock sh -c 'cd /opt/lfstats-web && docker compose pull -q jobs && docker compose run --rm jobs' >> /var/log/lfstats/recalc-rating.log 2>&1
 ```
 
+- **The sixth field is the user** — that is the difference from a `crontab -e` entry, and pasting
+  one form into the other is the usual way this silently fails.
+- **`PATH` is set explicitly** because cron's default is minimal and does not reliably include
+  wherever `docker` lives.
 - **The `pull` is part of the schedule, not CI.** `docker compose run` reuses a cached `:latest`
   and would otherwise keep running whatever image the host first downloaded, indefinitely. The
   pull is a no-op when nothing has changed.
@@ -231,9 +262,7 @@ No `env_file`: the job needs the database and nothing else, so the auth secrets 
   idempotent (it replaces the whole board in one transaction), so an overlap would be harmless,
   but a lock is cheaper than reasoning about it later.
 - **Redirect to a log.** The script prints the window, game count, timing and top 15; with no
-  redirect that goes to cron's mail and is effectively lost. Create `/var/log/lfstats/` owned by
-  the runner user, and add logrotate if it matters.
-- The cron user must be in the docker group — the same requirement as the runner user.
+  redirect that goes to cron's mail and is effectively lost. Add logrotate if it matters.
 
 Verify it end to end before trusting the schedule:
 
