@@ -186,9 +186,15 @@ Published to `ghcr.io/zmaniacz/lfstats-jobs` by `.github/workflows/build-jobs.ym
 install steps in `apps/web/Dockerfile` and stops before the Next build. Its default command is
 the rating recompute; override the command to run any other script in the package.
 
-The workflow's second job **pulls but never starts** the image on the deploy host. Scheduling is
-host cron, not GitHub Actions — scheduled workflows on public repos are disabled automatically
-after 60 days without a commit, which would silently freeze the rankings during a quiet spell.
+That workflow **builds and pushes only** — it does not touch the deploy host. The cron entry
+below pulls the image immediately before running it, which keeps CI independent of host-side
+compose configuration. (An earlier version had the workflow pull onto the host; it failed on
+every push until the `jobs` service existed in the host compose file, and coupled a green build
+to manual host state for no real benefit.)
+
+Scheduling is host cron rather than a GitHub scheduled workflow: scheduled workflows on public
+repos are disabled automatically after 60 days without a commit, which would silently freeze the
+rankings during a quiet spell.
 
 ### `docker-compose.yml` — additional service
 
@@ -212,9 +218,12 @@ No `env_file`: the job needs the database and nothing else, so the auth secrets 
 
 ```cron
 # Rebuild the global player rankings nightly. ~22s including the bootstrap.
-30 8 * * * /usr/bin/flock -n /tmp/lfstats-recalc-rating.lock docker compose -f /opt/lfstats-web/docker-compose.yml run --rm jobs >> /var/log/lfstats/recalc-rating.log 2>&1
+30 8 * * * /usr/bin/flock -n /tmp/lfstats-recalc-rating.lock sh -c 'cd /opt/lfstats-web && docker compose pull -q jobs && docker compose run --rm jobs' >> /var/log/lfstats/recalc-rating.log 2>&1
 ```
 
+- **The `pull` is part of the schedule, not CI.** `docker compose run` reuses a cached `:latest`
+  and would otherwise keep running whatever image the host first downloaded, indefinitely. The
+  pull is a no-op when nothing has changed.
 - **08:30 UTC** is arbitrary but deliberately mid-morning UTC, which is overnight for the
   Australian and New Zealand centers that play the most games — it avoids recomputing while a
   session is still being ingested.
