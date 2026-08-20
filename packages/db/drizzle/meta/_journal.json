@@ -351,6 +351,13 @@
       "when": 1786747457659,
       "tag": "0049_rating_display_bands",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1787262707321,
+      "tag": "0050_no_scoring_competition_format",
+      "breakpoints": true
     }
   ]
 }

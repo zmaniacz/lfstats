@@ -514,37 +514,21 @@ export type GameDetail = {
   teams: GameDetailTeam[];
 };
 
-export async function getNightlyDetails(centerId: string, date: string): Promise<GameDetail[]> {
-  const gameRows = await db
-    .select({
-      id: game.id,
-      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
-      centerId: game.centerId,
-      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
-      competitionId: game.competitionId,
-      competitionName: sql<string | null>`null`,
-      description: game.description,
-      startTime: game.startTime,
-      centerName: center.name,
-      outcome: game.outcome,
-      scheduledDuration: game.scheduledDuration,
-      actualDuration: game.actualDuration,
-      exclude: game.exclude,
-      tdfFilename: game.tdfFilename,
-    })
-    .from(game)
-    .innerJoin(center, eq(game.centerId, center.id))
-    .where(
-      and(
-        eq(game.type, "sm5"),
-        eq(game.centerId, centerId),
-        sql`date(${game.startTime}) = ${date}::date`,
-        isNull(game.competitionId),
-        eq(game.exclude, false),
-      ),
-    )
-    .orderBy(desc(game.startTime));
+/**
+ * The `game` row every GameDetail list starts from — a GameDetail minus the two collections
+ * that buildGameDetails() fans out and attaches.
+ */
+type GameDetailListRow = Omit<GameDetail, "tags" | "teams">;
 
+/**
+ * Fans a set of already-selected game rows out into full GameDetails: teams, scorecards,
+ * MVP components, per-player hit interactions and tags, in one round trip each.
+ *
+ * Shared by every "list of fully-detailed games" query — the callers differ only in which
+ * games they select (a center's night, a competition's whole run), never in what a detailed
+ * game looks like.
+ */
+async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDetail[]> {
   if (gameRows.length === 0) return [];
 
   const gameIds = gameRows.map((r) => r.id);
@@ -886,7 +870,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       centerId: gameRow.centerId,
       centerSlug: gameRow.centerSlug,
       competitionId: gameRow.competitionId,
-      competitionName: null,
+      competitionName: gameRow.competitionName,
       description: gameRow.description,
       startTime: gameRow.startTime,
       centerName: gameRow.centerName,
@@ -899,6 +883,77 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
       teams: gameTeams,
     };
   });
+}
+
+/** Every non-competition SM5 game a center played on one date, in full detail. */
+export async function getNightlyDetails(centerId: string, date: string): Promise<GameDetail[]> {
+  const gameRows = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerId: game.centerId,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      competitionId: game.competitionId,
+      competitionName: sql<string | null>`null`,
+      description: game.description,
+      startTime: game.startTime,
+      centerName: center.name,
+      outcome: game.outcome,
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      exclude: game.exclude,
+      tdfFilename: game.tdfFilename,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .where(
+      and(
+        eq(game.type, "sm5"),
+        eq(game.centerId, centerId),
+        sql`date(${game.startTime}) = ${date}::date`,
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
+    .orderBy(desc(game.startTime));
+
+  return buildGameDetails(gameRows);
+}
+
+/**
+ * Every SM5 game assigned to a competition, in full detail, newest first.
+ *
+ * This is the competition-wide twin of getNightlyDetails(): a `format = 'none'` competition
+ * has no rounds or matches to slice by, so its whole run is presented as one flat list the
+ * same way a social night is.
+ */
+export async function getCompetitionGameDetails(competitionId: string): Promise<GameDetail[]> {
+  const gameRows = await db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      centerId: game.centerId,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+      competitionId: game.competitionId,
+      competitionName: competition.name,
+      description: game.description,
+      startTime: game.startTime,
+      centerName: center.name,
+      outcome: game.outcome,
+      scheduledDuration: game.scheduledDuration,
+      actualDuration: game.actualDuration,
+      exclude: game.exclude,
+      tdfFilename: game.tdfFilename,
+    })
+    .from(game)
+    .innerJoin(center, eq(game.centerId, center.id))
+    .innerJoin(competition, eq(game.competitionId, competition.id))
+    .where(
+      and(eq(game.type, "sm5"), eq(game.competitionId, competitionId), eq(game.exclude, false)),
+    )
+    .orderBy(desc(game.startTime));
+
+  return buildGameDetails(gameRows);
 }
 
 export async function getGameCenterId(id: string): Promise<string | null> {

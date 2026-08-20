@@ -36,6 +36,27 @@ type Props = {
   onSaved?: () => void;
 };
 
+/**
+ * Shown when an admin changes the format of an existing competition. Nothing is deleted
+ * either way — each format simply reads a different set of tables, so the ones the new
+ * format doesn't use go quiet rather than away, and switching back restores them.
+ */
+const FORMAT_CHANGE_WARNINGS: Record<CompetitionFormat, string> = {
+  team:
+    "Changing the format deletes nothing, but it does change how this competition is scored " +
+    "and displayed. Switching to Team leaves any player enrollments unused and restores the " +
+    "rounds and matches to the standings page.",
+  solo:
+    "Changing the format deletes nothing, but it does change how this competition is scored " +
+    "and displayed. Switching to Solo hides any existing rounds and matches from the standings " +
+    "page, and ranks enrolled players individually instead.",
+  none:
+    "Changing the format deletes nothing, but it does change how this competition is scored " +
+    "and displayed. Switching to No Scoring hides any rounds, matches, teams and enrollments: " +
+    "the standings page becomes a flat view of every game in the event. The games still count " +
+    "towards competitive stats.",
+};
+
 export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
@@ -108,11 +129,7 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
           </SelectContent>
         </Select>
         {competition && competition.format !== format && (
-          <p className="text-xs text-muted-foreground">
-            Changing the format deletes nothing, but it does change how this competition is scored
-            and displayed. Switching to Solo hides any existing rounds and matches from the
-            standings page; switching to Team leaves player enrollments unused.
-          </p>
+          <p className="text-xs text-muted-foreground">{FORMAT_CHANGE_WARNINGS[format]}</p>
         )}
       </div>
 

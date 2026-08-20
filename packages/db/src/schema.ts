@@ -40,10 +40,14 @@ export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "s
 /**
  * How a competition is scored, orthogonal to `type`. A `team` competition runs matches
  * inside rounds and derives standings from team results; a `solo` competition has no
- * matches at all and ranks individual players on their own scorecards. A solo league is
- * normally `type = 'competitive', format = 'solo'`.
+ * matches at all and ranks individual players on their own scorecards; a `none`
+ * competition is not scored here at all — scoring is maintained by a third party and
+ * LFstats is only the record of the scorecards, so it has no teams, rounds, matches or
+ * enrolments and is simply a collection of games. A solo league is normally
+ * `type = 'competitive', format = 'solo'`; a No Scoring event is still
+ * `type = 'competitive'`, so its games feed the all-competitive aggregate like any other.
  */
-export const competitionFormatEnum = pgEnum("competition_format", ["team", "solo"]);
+export const competitionFormatEnum = pgEnum("competition_format", ["team", "solo", "none"]);
 
 /**
  * Which bucket a competition sits in when browsing (`/competitions`). Independent of both

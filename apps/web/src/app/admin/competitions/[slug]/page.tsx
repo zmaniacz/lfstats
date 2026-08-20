@@ -12,6 +12,7 @@ import {
   getCompetitionRounds,
   getCompetitionUnassignedGamesForAdmin,
   getSoloCompetitionEnrollments,
+  hasMatchStructure,
   getCompetitionAssignedGamesForAdmin,
 } from "@lfstats/db";
 import { CompetitionDetailsCard } from "@/components/admin/CompetitionDetailsCard";
@@ -62,15 +63,17 @@ export default async function CompetitionDetailPage({
   if (!comp) notFound();
 
   const isSolo = comp.format === "solo";
+  // Solo and no-scoring competitions alike have no matches, so nothing is ever "assigned"
+  // and there is no roster or round structure to count. Only solo has enrolments — a
+  // no-scoring event has no participant list at all, just its games.
+  const hasMatches = hasMatchStructure(comp.format);
 
   const [unassignedGames, assignedGames, centers, teams, rounds, soloPlayers] = await Promise.all([
     getCompetitionUnassignedGamesForAdmin(comp.id),
-    // A solo competition has no matches, so nothing is ever "assigned" and there is no
-    // roster or round structure to count.
-    isSolo ? Promise.resolve([]) : getCompetitionAssignedGamesForAdmin(comp.id),
+    hasMatches ? getCompetitionAssignedGamesForAdmin(comp.id) : Promise.resolve([]),
     getCenterList(),
-    isSolo ? Promise.resolve([]) : getCompetitionTeams(comp.id),
-    isSolo ? Promise.resolve([]) : getCompetitionRounds(comp.id),
+    hasMatches ? getCompetitionTeams(comp.id) : Promise.resolve([]),
+    hasMatches ? getCompetitionRounds(comp.id) : Promise.resolve([]),
     isSolo ? getSoloCompetitionEnrollments(comp.id) : Promise.resolve([]),
   ]);
 
@@ -115,7 +118,7 @@ export default async function CompetitionDetailPage({
         </CardContent>
       </Card>
 
-      {comp.type === "competitive" && !isSolo && (
+      {comp.type === "competitive" && hasMatches && (
         <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardHeader>
@@ -160,15 +163,15 @@ export default async function CompetitionDetailPage({
       <Card>
         <CardHeader>
           <CardTitle>
-            {isSolo
-              ? `Games (${unassignedGames.length})`
-              : `Unassigned Games (${unassignedGames.length})`}
+            {hasMatches
+              ? `Unassigned Games (${unassignedGames.length})`
+              : `Games (${unassignedGames.length})`}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {unassignedGames.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {isSolo ? "No games in this competition." : "No unassigned games."}
+              {hasMatches ? "No unassigned games." : "No games in this competition."}
             </p>
           ) : (
             <Table>
@@ -209,7 +212,7 @@ export default async function CompetitionDetailPage({
         </CardContent>
       </Card>
 
-      {!isSolo && (
+      {hasMatches && (
         <Card>
           <CardHeader>
             <CardTitle>Assigned Games ({assignedGames.length})</CardTitle>

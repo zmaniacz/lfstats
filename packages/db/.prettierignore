@@ -1,0 +1,4 @@
+# Drizzle ORM generated artifacts. Mirrors the root .prettierignore entry, which
+# does not apply here: this package's `format` script runs prettier from packages/db,
+# so prettier never sees the repo-root ignore file.
+drizzle/

@@ -63,9 +63,15 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 
 - **Format is orthogonal to type.** `type` decides stat routing (competitive feeds the all-competitive
   aggregate; social does not). `format` decides scoring shape: a `team` competition runs matches inside
-  rounds, a `solo` competition ranks individual players and has no match structure at all. A solo league is
-  normally `type = 'competitive', format = 'solo'`, so it still appears in the competition picker and the
-  all-competitive aggregate. See [Solo Competitions](#solo-competitions).
+  rounds, a `solo` competition ranks individual players and has no match structure at all, and a `none`
+  competition is not scored here at all. A solo league is normally `type = 'competitive', format = 'solo'`,
+  so it still appears in the competition picker and the all-competitive aggregate. See
+  [Solo Competitions](#solo-competitions) and [No Scoring Competitions](#no-scoring-competitions).
+- **Only `team` has a match structure.** Both `solo` and `none` select their games straight off
+  `game.competition_id`, own no rounds/matches/teams, and never apply the pool/finals/mercenary
+  toggles. Code must therefore gate on `hasMatchStructure(format)` (exported from
+  `packages/db/src/queries/admin.ts`) rather than comparing against a single format value — a
+  `format !== 'solo'` test silently treats a no-scoring event as a tournament and returns nothing.
 - **Category is display-only, and orthogonal to both.** `category` says what kind of _event_ this
   is — `internationals`, `tournament` or `league` — and its only job is to group competitions into
   sections on the browse page. It never touches scoring or routing. See
@@ -87,22 +93,22 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 
 ### `competition`
 
-| Column                     | Type             | Notes                                                                                                                                      |
-| -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`                       | uuid PK          |                                                                                                                                            |
-| `name`                     | text             |                                                                                                                                            |
-| `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                   |
-| `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                   |
-| `format`                   | enum             | `"team"` (default) or `"solo"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive.  |
-| `category`                 | enum             | `"internationals"` \| `"tournament"` (default) \| `"league"`. **Display only** — see [Browsing Competitions](#browsing-competitions).      |
-| `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted. |
-| `host_center_id`           | uuid FK → center | nullable — null for a true multi-center competition                                                                                        |
-| `start_date`               | date             |                                                                                                                                            |
-| `end_date`                 | date             | nullable                                                                                                                                   |
-| `description`              | text             | nullable                                                                                                                                   |
-| `challonge_link`           | text             | nullable. Embedded bracket URL — this is how bracket structure is presented, since it is not modeled internally.                           |
-| `challonge_bracket_height` | integer          | nullable. Iframe height for the embed.                                                                                                     |
-| `created_at`               | timestamp        | defaults to now                                                                                                                            |
+| Column                     | Type             | Notes                                                                                                                                               |
+| -------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                       | uuid PK          |                                                                                                                                                     |
+| `name`                     | text             |                                                                                                                                                     |
+| `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                            |
+| `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                            |
+| `format`                   | enum             | `"team"` (default), `"solo"` or `"none"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive. |
+| `category`                 | enum             | `"internationals"` \| `"tournament"` (default) \| `"league"`. **Display only** — see [Browsing Competitions](#browsing-competitions).               |
+| `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted.          |
+| `host_center_id`           | uuid FK → center | nullable — null for a true multi-center competition                                                                                                 |
+| `start_date`               | date             |                                                                                                                                                     |
+| `end_date`                 | date             | nullable                                                                                                                                            |
+| `description`              | text             | nullable                                                                                                                                            |
+| `challonge_link`           | text             | nullable. Embedded bracket URL — this is how bracket structure is presented, since it is not modeled internally.                                    |
+| `challonge_bracket_height` | integer          | nullable. Iframe height for the embed.                                                                                                              |
+| `created_at`               | timestamp        | defaults to now                                                                                                                                     |
 
 ### `competition_team`
 
@@ -375,6 +381,57 @@ Solo standings themselves live in `packages/db/src/queries/competition-solo.ts`.
 
 `sm5_scorecard.is_mercenary` is only ever stamped by `assignGameToMatch`, which solo competitions
 never call, so the flag is uniformly `false` and is deliberately not filtered on.
+
+---
+
+## No Scoring Competitions
+
+A **no-scoring** competition (`format = 'none'`) is an event whose scoring is maintained by a third
+party. LFstats is the record of its scorecards and nothing else — there is no standing to compute,
+so none is computed. It has **no teams, rounds, pools, matches, mercenaries or enrolments**: it is
+simply the set of games carrying its `competition_id`.
+
+**It is still `type = 'competitive'`.** No Scoring describes where the scoring lives, not whether
+the games count. They feed the all-competitive aggregate, the competition picker, and the
+cross-center competitive stats exactly like any other competitive event. Nothing about routing
+changes; only the standings shape does.
+
+### Display
+
+`/standings` renders the same four blocks a social night does, flat across the whole event rather
+than broken out by day:
+
+1. every scorecard (`NightlyStatsTable`),
+2. the per-player summary (`NightlySummaryTable`),
+3. the medic-hits leaderboard,
+4. the game list.
+
+The one deliberate difference from the nightly view is that the summary table renders **without its
+▲/▼ trend icons**. Those compare a player against their lifetime _social_ average _at one center_
+(`getPlayerSocialAveragesByCenter`), which is not a meaningful baseline for a competitive event that
+may span several centers — so `NightlySummaryTable`'s `lifetimeAvgs` prop is optional and simply
+omitted here.
+
+There is no unassigned-games block: with no match slots to fill, every game in the event is
+"unassigned" by definition, so the block would just re-list the whole event.
+
+`GET /api/competitions/[slug]/standings` returns **404** with an explanatory message rather than an
+empty array, since neither standings shape applies.
+
+### Admin
+
+`/admin/competitions/[slug]` keeps only what such an event has: the details card, bulk assign, and
+the game list (titled "Games", not "Unassigned Games"). The Teams, Rounds and Enrolled Players cards
+are all hidden. Games arrive the usual two ways — bulk-assigned by center and date range, or filed
+at ingest by the competition-slug prefix on the S3 key.
+
+### Query routing
+
+`getCompetitionGameDetails` (`packages/db/src/queries/games.ts`) is the competition-wide twin of
+`getNightlyDetails`; both are thin wrappers over the shared `buildGameDetails` fan-out, differing
+only in which games they select. `leaderboardScopeConditions` and `getCompetitionPlayerStats` route
+`none` down the same match-free path as `solo`, except that the player universe comes from the
+scorecards themselves — there is no enrolment table to read.
 
 ---
 

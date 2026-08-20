@@ -10,6 +10,7 @@ import { MinGamesProvider } from "@/components/players/MinGamesContext";
 import { PlayersContent } from "@/components/players/PlayersContent";
 import { PlayersSkeleton } from "@/components/players/PlayersSkeleton";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
+import { hasMatchStructure } from "@lfstats/db";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
 export const metadata: Metadata = { title: "Players" };
@@ -83,8 +84,8 @@ export default async function PlayersPage({
         <LaserballStub feature="player rankings" />
       ) : (
         <MinGamesProvider enabled={!useCompetitionView}>
-          {/* Rounds/finals/mercs are match-structure concepts; solo competitions have none. */}
-          {useCompetitionView && ctx.competition && ctx.competition.format !== "solo" && (
+          {/* Rounds/finals/mercs are match-structure concepts; only a team competition has them. */}
+          {useCompetitionView && ctx.competition && hasMatchStructure(ctx.competition.format) && (
             <ScopeExtraToggles
               basePath="/players"
               competitionSlug={ctx.competition.slug}

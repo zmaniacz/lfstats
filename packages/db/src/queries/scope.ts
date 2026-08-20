@@ -3,6 +3,7 @@
 
 import { eq, isNull, isNotNull, sql, SQL } from "drizzle-orm";
 import { game } from "../schema";
+import type { CompetitionFormat } from "./admin";
 
 /**
  * Describes which slice of games a query should cover:
@@ -16,8 +17,8 @@ import { game } from "../schema";
  * `format` is optional and only meaningful alongside a specific `competitionId`. It does
  * not affect gameScopeConditions() — which already reads game.competition_id directly —
  * but the leaderboard helpers in competition-tournament.ts select competition games via
- * the match/round structure, and a solo competition has no matches. Omitting it therefore
- * keeps the existing team-shaped behaviour.
+ * the match/round structure, and only a `team` competition has matches. Omitting it
+ * therefore keeps the existing team-shaped behaviour.
  *
  * This is the single source of truth for the social/competition SQL split.
  * Pass the result of gameScopeConditions() into a query's `and(...)` where clause.
@@ -25,7 +26,7 @@ import { game } from "../schema";
 export type GameScopeFilter =
   | { scope: "all"; centerId?: string; dateFrom?: string; dateTo?: string }
   | { scope: "social"; centerId?: string; dateFrom?: string; dateTo?: string }
-  | { scope: "competition"; competitionId?: string; format?: "team" | "solo" };
+  | { scope: "competition"; competitionId?: string; format?: CompetitionFormat };
 
 function dateRangeConditions(filter: { dateFrom?: string; dateTo?: string }): SQL[] {
   const conditions: SQL[] = [];

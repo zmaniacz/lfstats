@@ -7,6 +7,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { AllStarContent } from "@/components/competitions/AllStarContent";
 import { AllStarSkeleton } from "@/components/competitions/AllStarSkeleton";
+import { hasMatchStructure } from "@lfstats/db";
 import { resolveFilterContext } from "@/lib/filter-context";
 
 export const metadata: Metadata = { title: "All-Star Rankings" };
@@ -62,8 +63,8 @@ export default async function AllStarPage({
         />
       </div>
 
-      {/* Rounds/finals/mercs are all match-structure concepts; a solo competition has none. */}
-      {activeComp.format !== "solo" && (
+      {/* Rounds/finals/mercs are all match-structure concepts; only a team competition has them. */}
+      {hasMatchStructure(activeComp.format) && (
         <ScopeExtraToggles
           basePath="/all-star"
           competitionSlug={activeComp.slug}

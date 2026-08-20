@@ -170,7 +170,12 @@ function aggregate(rows: NightlyScorecardRow[]): PlayerSummary[] {
 
 type Props = {
   rows: NightlyScorecardRow[];
-  lifetimeAvgs: Map<string, PlayerSocialAverages>;
+  /**
+   * Per-player lifetime averages driving the ▲/▼ trend icons. Optional: a no-scoring
+   * competition spans centers and non-social games, so it has no comparable baseline and
+   * omits it — TrendIndicator then renders nothing.
+   */
+  lifetimeAvgs?: Map<string, PlayerSocialAverages>;
 };
 
 export function NightlySummaryTable({ rows, lifetimeAvgs }: Props) {
@@ -292,7 +297,7 @@ export function NightlySummaryTable({ rows, lifetimeAvgs }: Props) {
                 </TableRow>
               ) : (
                 pageRows.map((s) => {
-                  const lt = s.playerId ? lifetimeAvgs.get(s.playerId) : undefined;
+                  const lt = s.playerId ? lifetimeAvgs?.get(s.playerId) : undefined;
                   return (
                     <TableRow key={s.playerId ?? `guest:${s.callsign}`}>
                       <TableCell className="font-medium">

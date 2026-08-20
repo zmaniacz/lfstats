@@ -11,6 +11,8 @@ import {
 import { RoundFilter } from "./RoundFilter";
 import { StandingsContent } from "@/components/competitions/StandingsContent";
 import { SoloStandingsContent } from "@/components/competitions/SoloStandingsContent";
+import { NoScoringContent } from "@/components/competitions/NoScoringContent";
+import { NightlySkeleton } from "@/components/nightly/NightlySkeleton";
 import { FinalsContent } from "@/components/competitions/FinalsContent";
 import { StandingsHeader } from "@/components/competitions/StandingsHeader";
 import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
@@ -56,6 +58,28 @@ export default async function StandingsPage({
   const isAdmin = roles.some(
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
+
+  // A no-scoring competition is scored by a third party; LFstats only holds the
+  // scorecards. There is nothing to stand anyone up in, so the page becomes a flat view of
+  // every game in the event — no rounds, tabs, finals, rosters or enrolments, and no
+  // unassigned-games block either, since every game in the event is unassigned by
+  // definition.
+  if (activeComp.format === "none") {
+    return (
+      <div className="p-6 space-y-6">
+        <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
+
+        <p className="text-muted-foreground text-sm">
+          This event&apos;s scoring is maintained elsewhere — LFstats is a record of its games and
+          scorecards only.
+        </p>
+
+        <Suspense key={activeComp.slug} fallback={<NightlySkeleton />}>
+          <NoScoringContent competitionId={activeId} />
+        </Suspense>
+      </div>
+    );
+  }
 
   // A solo competition has no rounds, matches or finals, so none of the tab/round
   // machinery below applies — `?round` and `?tab` are simply inert. In place of the

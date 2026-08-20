@@ -22,6 +22,7 @@ import {
 } from "../schema";
 import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
+import { hasMatchStructure } from "./admin";
 import type { CompetitionCategory, CompetitionFormat, CompetitionState } from "./admin";
 import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
@@ -2755,10 +2756,11 @@ function leaderboardScopeConditions(
 
   let gameSelect: SQL;
   if (scopeFilter.scope === "competition" && scopeFilter.competitionId) {
-    if (scopeFilter.format === "solo") {
+    if (scopeFilter.format && !hasMatchStructure(scopeFilter.format)) {
       // No matches or rounds: take every non-excluded game assigned to the competition.
+      // Covers both `solo` and `none` — neither has a match structure to select through.
       // Deliberately does not consult roundTypeSqlCondition — that returns null when both
-      // toggles are off, which would blank a solo leaderboard for no reason.
+      // toggles are off, which would blank such a leaderboard for no reason.
       gameSelect = sql`${sm5GameTeam.gameId} IN (
         SELECT g.id
         FROM game g
@@ -3883,50 +3885,76 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
     pictureVersion: number;
   };
 
+  /** The roster-less shape shared by the solo and no-scoring universes. */
+  const withoutTeam = (r: {
+    playerId: string;
+    iplId: string | null;
+    callsign: string;
+    rosterEntryId: string;
+  }): RosterEntry => ({
+    ...r,
+    teamName: "",
+    teamId: null,
+    teamHasLogo: false,
+    teamLogoVersion: 0,
+    hasProfilePicture: false,
+    pictureVersion: 0,
+  });
+
   const rosterRows: RosterEntry[] =
-    comp.format === "solo"
-      ? (
+    comp.format === "none"
+      ? // Nothing enrols in a no-scoring competition, so the player universe is simply
+        // everyone who has a scorecard in one of its games. `rosterEntryId` has no roster
+        // row to point at; the player id stands in as the stable key.
+        (
           await db
-            .select({
+            .selectDistinctOn([player.id], {
               playerId: player.id,
               iplId: player.iplId,
               callsign: player.currentCallsign,
-              rosterEntryId: competitionPlayer.id,
+              rosterEntryId: player.id,
             })
-            .from(competitionPlayer)
-            .innerJoin(player, eq(player.id, competitionPlayer.playerId))
-            .where(eq(competitionPlayer.competitionId, comp.id))
-            .orderBy(asc(player.currentCallsign))
-        ).map((r) => ({
-          ...r,
-          teamName: "",
-          teamId: null,
-          teamHasLogo: false,
-          teamLogoVersion: 0,
-          hasProfilePicture: false,
-          pictureVersion: 0,
-        }))
-      : await db
-          .selectDistinctOn([player.id], {
-            playerId: player.id,
-            iplId: player.iplId,
-            callsign: player.currentCallsign,
-            teamName: competitionTeam.name,
-            teamId: competitionTeam.id,
-            teamHasLogo: competitionTeam.hasLogo,
-            teamLogoVersion: competitionTeam.logoVersion,
-            rosterEntryId: competitionTeamPlayer.id,
-            hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
-            pictureVersion: competitionTeamPlayer.pictureVersion,
-          })
-          .from(competitionTeam)
-          .innerJoin(
-            competitionTeamPlayer,
-            eq(competitionTeamPlayer.competitionTeamId, competitionTeam.id),
-          )
-          .innerJoin(player, eq(player.id, competitionTeamPlayer.playerId))
-          .where(eq(competitionTeam.competitionId, comp.id))
-          .orderBy(player.id, asc(competitionTeamPlayer.isMercenary));
+            .from(sm5Scorecard)
+            .innerJoin(game, eq(game.id, sm5Scorecard.gameId))
+            .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+            .where(and(eq(game.competitionId, comp.id), eq(game.exclude, false)))
+            .orderBy(player.id)
+        ).map(withoutTeam)
+      : comp.format === "solo"
+        ? (
+            await db
+              .select({
+                playerId: player.id,
+                iplId: player.iplId,
+                callsign: player.currentCallsign,
+                rosterEntryId: competitionPlayer.id,
+              })
+              .from(competitionPlayer)
+              .innerJoin(player, eq(player.id, competitionPlayer.playerId))
+              .where(eq(competitionPlayer.competitionId, comp.id))
+              .orderBy(asc(player.currentCallsign))
+          ).map(withoutTeam)
+        : await db
+            .selectDistinctOn([player.id], {
+              playerId: player.id,
+              iplId: player.iplId,
+              callsign: player.currentCallsign,
+              teamName: competitionTeam.name,
+              teamId: competitionTeam.id,
+              teamHasLogo: competitionTeam.hasLogo,
+              teamLogoVersion: competitionTeam.logoVersion,
+              rosterEntryId: competitionTeamPlayer.id,
+              hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
+              pictureVersion: competitionTeamPlayer.pictureVersion,
+            })
+            .from(competitionTeam)
+            .innerJoin(
+              competitionTeamPlayer,
+              eq(competitionTeamPlayer.competitionTeamId, competitionTeam.id),
+            )
+            .innerJoin(player, eq(player.id, competitionTeamPlayer.playerId))
+            .where(eq(competitionTeam.competitionId, comp.id))
+            .orderBy(player.id, asc(competitionTeamPlayer.isMercenary));
 
   if (rosterRows.length === 0) return { [slug]: [], alltime: [] };
 
@@ -4120,20 +4148,19 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
       .groupBy(player.id, player.iplId, player.currentCallsign);
   }
 
-  // Solo competitions have no match structure, so the competition's games are simply the
-  // ones assigned to it. buildAggQuery already applies game.exclude = false.
-  const compScopeConds: SQL<unknown>[] =
-    comp.format === "solo"
-      ? [eq(game.competitionId, comp.id)]
-      : [
-          sql`${sm5GameTeam.gameId} IN (
+  // Solo and no-scoring competitions have no match structure, so the competition's games
+  // are simply the ones assigned to it. buildAggQuery already applies game.exclude = false.
+  const compScopeConds: SQL<unknown>[] = !hasMatchStructure(comp.format)
+    ? [eq(game.competitionId, comp.id)]
+    : [
+        sql`${sm5GameTeam.gameId} IN (
         SELECT cmg.game_id
         FROM competition_match_game cmg
         JOIN competition_match cm ON cm.id = cmg.match_id
         WHERE cm.competition_id = ${comp.id}
       )`,
-          eq(sm5Scorecard.isMercenary, false),
-        ];
+        eq(sm5Scorecard.isMercenary, false),
+      ];
 
   const [compRows, alltimeRows] = await Promise.all([
     buildAggQuery(compScopeConds),

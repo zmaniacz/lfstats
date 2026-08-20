@@ -14,7 +14,7 @@ import {
   removeGameFromMatch,
   getCompetitionById,
 } from "@lfstats/db";
-import type { CompetitionCategory } from "@lfstats/db";
+import type { CompetitionCategory, CompetitionFormat } from "@lfstats/db";
 import { redirect } from "next/navigation";
 
 const CATEGORIES: CompetitionCategory[] = ["internationals", "tournament", "league"];
@@ -28,14 +28,24 @@ function readCategory(formData: FormData): CompetitionCategory {
   return CATEGORIES.find((c) => c === raw) ?? "tournament";
 }
 
+const FORMATS: CompetitionFormat[] = ["team", "solo", "none"];
+
+/**
+ * Coerced rather than cast: an unrecognised value falls back to `team`, the same default
+ * the column carries.
+ */
+function readFormat(formData: FormData): CompetitionFormat {
+  const raw = formData.get("format");
+  return FORMATS.find((f) => f === raw) ?? "team";
+}
+
 export async function createCompetitionAction(formData: FormData) {
   const hostCenterId = (formData.get("hostCenterId") as string) || null;
   await requireCompetitionAccess(hostCenterId);
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
-  // Coerced rather than cast: anything other than an explicit "solo" is a team competition.
-  const format = formData.get("format") === "solo" ? "solo" : "team";
+  const format = readFormat(formData);
   const category = readCategory(formData);
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
@@ -71,8 +81,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
-  // Coerced rather than cast: anything other than an explicit "solo" is a team competition.
-  const format = formData.get("format") === "solo" ? "solo" : "team";
+  const format = readFormat(formData);
   const category = readCategory(formData);
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;

@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { COMPETITION_STATE_LABELS, competitionStateBadgeVariant } from "@/lib/competition-state";
+import { COMPETITION_FORMAT_BADGES } from "@/lib/competition-format";
 import {
   COMPETITION_CATEGORY_DESCRIPTIONS,
   COMPETITION_CATEGORY_LABELS,
@@ -43,7 +44,10 @@ function subtitle(competition: BrowsableCompetition): string | null {
   return description.toLowerCase() === competition.name.trim().toLowerCase() ? null : description;
 }
 
-/** "12 teams" / "34 players" — a team competition has no enrollments, and vice versa. */
+/**
+ * "12 teams" / "34 players" — a team competition has no enrollments, and vice versa. A
+ * no-scoring competition has neither, so its count is always 0 and this returns null.
+ */
 function participantLabel(competition: BrowsableCompetition): string | null {
   if (competition.participantCount === 0) return null;
   const noun = competition.format === "solo" ? "player" : "team";
@@ -95,7 +99,9 @@ function CompetitionTable({
                       <Settings className="h-4 w-4" />
                     </Link>
                   )}
-                  {competition.format === "solo" && <Badge variant="outline">Solo</Badge>}
+                  {COMPETITION_FORMAT_BADGES[competition.format] && (
+                    <Badge variant="outline">{COMPETITION_FORMAT_BADGES[competition.format]}</Badge>
+                  )}
                 </div>
                 {description && <p className="text-muted-foreground">{description}</p>}
               </TableCell>

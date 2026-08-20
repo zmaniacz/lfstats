@@ -203,6 +203,10 @@ For a **solo** competition (`competition.format = 'solo'`) the player list comes
 non-excluded game assigned to the competition. `team_name` is an empty string and `team_logo_url`
 is null for every row, since solo competitions have no teams.
 
+For a **no-scoring** competition (`competition.format = 'none'`) there is no roster of any kind, so
+the player list is every player holding a scorecard in one of the competition's non-excluded games.
+Game scoping and the empty `team_name` / null `team_logo_url` match the solo case.
+
 ## `GET /api/competitions/[slug]/schedule`
 
 Competition schedule (rounds/matches), keyed by competition slug. Backed by
@@ -213,6 +217,11 @@ doesn't match a competition.
 
 Competition standings/leaderboard, keyed by competition slug. `404` if the slug doesn't match a
 competition. **The response shape depends on `competition.format`.**
+
+`format = 'none'` — **`404`**, with
+`{ "error": "This competition has no standings; its scoring is maintained elsewhere." }`. A
+no-scoring competition is scored by a third party and has neither teams nor enrolments, so neither
+standings shape applies; the route says so rather than returning a misleading empty array.
 
 `format = 'team'` — team standings, backed by `getCompetitionStandingsData` in
 `packages/db/src/queries/competition-tournament.ts`: one row per team with match/game records,

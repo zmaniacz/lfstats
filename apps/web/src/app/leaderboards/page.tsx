@@ -9,6 +9,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { LaserballStub } from "@/components/laserball/LaserballStub";
+import { hasMatchStructure } from "@lfstats/db";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
 export const metadata: Metadata = { title: "Leaderboards" };
@@ -84,8 +85,8 @@ export default async function LeaderboardsPage({
         <LaserballStub feature="leaderboards" />
       ) : (
         <>
-          {/* Rounds/finals/mercs are match-structure concepts; solo competitions have none. */}
-          {specificCompetition && ctx.competition && ctx.competition.format !== "solo" && (
+          {/* Rounds/finals/mercs are match-structure concepts; only a team competition has them. */}
+          {specificCompetition && ctx.competition && hasMatchStructure(ctx.competition.format) && (
             <ScopeExtraToggles
               basePath="/leaderboards"
               competitionSlug={ctx.competition.slug}
