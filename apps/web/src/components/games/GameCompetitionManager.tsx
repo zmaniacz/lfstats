@@ -148,7 +148,7 @@ export function GameCompetitionManager({
             <SelectValue
               placeholder={
                 availableCompetitions.length === 0
-                  ? "No competitions available"
+                  ? "No Active Competitions"
                   : "Assign to competition…"
               }
             />

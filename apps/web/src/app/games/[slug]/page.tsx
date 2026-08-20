@@ -114,9 +114,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
   ] = await Promise.all([
     canEdit ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
-    canEdit
-      ? getCompetitionsByState(["preshow", "upcoming", "active", "completed"], { order: "desc" })
-      : Promise.resolve([]),
+    canEdit ? getCompetitionsByState(["active"], { order: "desc" }) : Promise.resolve([]),
     canEdit && game.competitionId
       ? getAvailableMatchesForGame(game.competitionId)
       : Promise.resolve([]),
