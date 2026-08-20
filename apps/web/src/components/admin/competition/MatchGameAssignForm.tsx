@@ -96,23 +96,23 @@ export function MatchGameAssignForm({
 
         <div className="space-y-1">
           <Label>Game</Label>
-          <Select value={gameId} onValueChange={handleGameChange}>
+          <Select
+            value={gameId}
+            onValueChange={handleGameChange}
+            disabled={unassignedGames.length === 0}
+          >
             <SelectTrigger className="w-72">
-              <SelectValue placeholder="Select game…" />
+              <SelectValue
+                placeholder={unassignedGames.length === 0 ? "No unassigned games" : "Select game…"}
+              />
             </SelectTrigger>
             <SelectContent>
-              {unassignedGames.length === 0 ? (
-                <SelectItem value="__none" disabled>
-                  No unassigned games
+              {unassignedGames.map((g) => (
+                <SelectItem key={g.id} value={g.id}>
+                  {formatGameName(g.description, g.startTime)} — {g.centerName} (
+                  {formatDateTime(g.startTime)})
                 </SelectItem>
-              ) : (
-                unassignedGames.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {formatGameName(g.description, g.startTime)} — {g.centerName} (
-                    {formatDateTime(g.startTime)})
-                  </SelectItem>
-                ))
-              )}
+              ))}
             </SelectContent>
           </Select>
         </div>

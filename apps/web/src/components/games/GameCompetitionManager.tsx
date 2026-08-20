@@ -139,22 +139,26 @@ export function GameCompetitionManager({
   if (!competitionId) {
     return (
       <div className="flex items-center gap-3 flex-wrap">
-        <Select value={selectedCompetitionId} onValueChange={setSelectedCompetitionId}>
+        <Select
+          value={selectedCompetitionId}
+          onValueChange={setSelectedCompetitionId}
+          disabled={availableCompetitions.length === 0}
+        >
           <SelectTrigger className="w-56">
-            <SelectValue placeholder="Assign to competition…" />
+            <SelectValue
+              placeholder={
+                availableCompetitions.length === 0
+                  ? "No competitions available"
+                  : "Assign to competition…"
+              }
+            />
           </SelectTrigger>
           <SelectContent>
-            {availableCompetitions.length === 0 ? (
-              <SelectItem value="__none" disabled>
-                No competitions available
+            {availableCompetitions.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
               </SelectItem>
-            ) : (
-              availableCompetitions.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))
-            )}
+            ))}
           </SelectContent>
         </Select>
         <Button

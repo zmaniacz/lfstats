@@ -171,23 +171,27 @@ export function LbMatchManager({
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1">
             <Label className="text-xs">Other half</Label>
-            <Select value={selectedCandidateId} onValueChange={handleCandidateChange}>
+            <Select
+              value={selectedCandidateId}
+              onValueChange={handleCandidateChange}
+              disabled={candidateGames.length === 0}
+            >
               <SelectTrigger className="w-72">
-                <SelectValue placeholder="Select the other game…" />
+                <SelectValue
+                  placeholder={
+                    candidateGames.length === 0
+                      ? "No eligible Laserball games at this center"
+                      : "Select the other game…"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {candidateGames.length === 0 ? (
-                  <SelectItem value="__none" disabled>
-                    No eligible Laserball games at this center
+                {candidateGames.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {formatDateTime(c.startTime)}
+                    {c.description ? ` — ${c.description}` : ""}
                   </SelectItem>
-                ) : (
-                  candidateGames.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {formatDateTime(c.startTime)}
-                      {c.description ? ` — ${c.description}` : ""}
-                    </SelectItem>
-                  ))
-                )}
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -285,23 +289,27 @@ export function LbMatchManager({
           <div className="flex items-end gap-3 flex-wrap">
             <div className="space-y-1">
               <Label className="text-xs">Overtime game</Label>
-              <Select value={selectedOtCandidateId} onValueChange={handleOtCandidateChange}>
+              <Select
+                value={selectedOtCandidateId}
+                onValueChange={handleOtCandidateChange}
+                disabled={otCandidateGames.length === 0}
+              >
                 <SelectTrigger className="w-72">
-                  <SelectValue placeholder="Select the overtime game…" />
+                  <SelectValue
+                    placeholder={
+                      otCandidateGames.length === 0
+                        ? "No eligible Laserball games at this center"
+                        : "Select the overtime game…"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {otCandidateGames.length === 0 ? (
-                    <SelectItem value="__none" disabled>
-                      No eligible Laserball games at this center
+                  {otCandidateGames.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {formatDateTime(c.startTime)}
+                      {c.description ? ` — ${c.description}` : ""}
                     </SelectItem>
-                  ) : (
-                    otCandidateGames.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {formatDateTime(c.startTime)}
-                        {c.description ? ` — ${c.description}` : ""}
-                      </SelectItem>
-                    ))
-                  )}
+                  ))}
                 </SelectContent>
               </Select>
             </div>
