@@ -9,10 +9,9 @@ import {
   type CompetitionMatchResult,
   type CompetitionRoundType,
 } from "@lfstats/db";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StandingsTable } from "@/components/competitions/StandingsTable";
-import { MatchCard } from "@/components/competitions/MatchCard";
+import { MatchCardSections, type MatchSection } from "@/components/competitions/MatchCardSections";
 
 function groupMatchesByRound(matchResults: CompetitionMatchResult[]) {
   const rounds = new Map<
@@ -66,6 +65,16 @@ export async function StandingsContent({
       }),
     );
 
+    const poolSections: MatchSection[] = poolData
+      .map(({ pool, matchResults }) => ({
+        key: pool.id,
+        title: pool.name,
+        matches: [...matchResults].sort(
+          (a, b) => a.roundNumber - b.roundNumber || a.matchNumber - b.matchNumber,
+        ),
+      }))
+      .filter((section) => section.matches.length > 0);
+
     return (
       <>
         <div className="grid gap-4 lg:grid-cols-2">
@@ -85,22 +94,7 @@ export async function StandingsContent({
           ))}
         </div>
 
-        {poolData.map(({ pool, matchResults }) => {
-          const matches = [...matchResults].sort(
-            (a, b) => a.roundNumber - b.roundNumber || a.matchNumber - b.matchNumber,
-          );
-          if (matches.length === 0) return null;
-          return (
-            <div key={pool.id} className="space-y-3">
-              <h3 className="text-lg font-semibold">{pool.name}</h3>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {matches.map((match) => (
-                  <MatchCard key={match.matchId} match={match} competitionSlug={competitionSlug} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <MatchCardSections sections={poolSections} competitionSlug={competitionSlug} />
       </>
     );
   }
@@ -123,21 +117,15 @@ export async function StandingsContent({
         </CardContent>
       </Card>
 
-      {sortedRounds.map((round) => (
-        <div key={round.roundName} className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">{round.roundName}</h3>
-            {round.roundMultiplier !== 1 && (
-              <Badge variant="outline">{round.roundMultiplier}× points</Badge>
-            )}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {round.matches.map((match) => (
-              <MatchCard key={match.matchId} match={match} competitionSlug={competitionSlug} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <MatchCardSections
+        sections={sortedRounds.map((round) => ({
+          key: round.roundName,
+          title: round.roundName,
+          multiplier: round.roundMultiplier,
+          matches: round.matches,
+        }))}
+        competitionSlug={competitionSlug}
+      />
     </>
   );
 }

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import { MatchCard } from "@/components/competitions/MatchCard";
+import { MatchCardSections } from "@/components/competitions/MatchCardSections";
 import { TeamWinsByColorChart } from "@/components/competitions/TeamWinsByColorChart";
 import { POSITIONS } from "@/lib/positions";
 import { formatMVP, formatScore } from "@/lib/format";
@@ -77,7 +77,8 @@ export default async function CompetitionTeamPage({
     getTeamGameParticipants(team.id),
     getCompetitionTeamPositionStats(team.id),
     getCompetitionTeamResultsByColor(team.id),
-    getCompetitionMatchResults(team.competitionId),
+    // "all" so finals matches sit alongside round play in the match list below.
+    getCompetitionMatchResults(team.competitionId, undefined, "all"),
   ]);
 
   const positionMap = new Map<
@@ -111,13 +112,21 @@ export default async function CompetitionTeamPage({
   const teamMatches = matchResults.filter((m) => m.team1Id === team.id || m.team2Id === team.id);
   const rounds = new Map<
     string,
-    { roundName: string; roundNumber: number; matches: CompetitionMatchResult[] }
+    {
+      roundId: string;
+      roundName: string;
+      roundNumber: number;
+      roundMultiplier: number;
+      matches: CompetitionMatchResult[];
+    }
   >();
   for (const match of teamMatches) {
     if (!rounds.has(match.roundId)) {
       rounds.set(match.roundId, {
+        roundId: match.roundId,
         roundName: match.roundName,
         roundNumber: match.roundNumber,
+        roundMultiplier: match.roundMultiplier,
         matches: [],
       });
     }
@@ -294,16 +303,15 @@ export default async function CompetitionTeamPage({
         </Card>
       </div>
 
-      {sortedRounds.map((round) => (
-        <div key={round.roundName} className="space-y-3">
-          <h3 className="text-lg font-semibold">{round.roundName}</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {round.matches.map((match) => (
-              <MatchCard key={match.matchId} match={match} competitionSlug={competition.slug} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <MatchCardSections
+        sections={sortedRounds.map((round) => ({
+          key: round.roundId,
+          title: round.roundName,
+          multiplier: round.roundMultiplier,
+          matches: round.matches,
+        }))}
+        competitionSlug={competition.slug}
+      />
     </div>
   );
 }

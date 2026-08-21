@@ -1849,13 +1849,16 @@ export async function getCompetitionMatchResults(
   competitionId: string,
   roundId?: string,
   // Defaults to every non-finals round type (finals are shown separately via FinalsContent).
-  roundTypes?: CompetitionRoundType | CompetitionRoundType[],
+  // Pass "all" for round play and finals together, as the team detail page does.
+  roundTypes?: CompetitionRoundType | CompetitionRoundType[] | "all",
   poolId?: string,
 ): Promise<CompetitionMatchResult[]> {
   const roundTypeCondition =
     roundTypes === undefined
       ? ne(competitionRound.type, "finals")
-      : inArray(competitionRound.type, Array.isArray(roundTypes) ? roundTypes : [roundTypes]);
+      : roundTypes === "all"
+        ? undefined
+        : inArray(competitionRound.type, Array.isArray(roundTypes) ? roundTypes : [roundTypes]);
   const gameRows = await db
     .select({
       matchId: competitionMatch.id,

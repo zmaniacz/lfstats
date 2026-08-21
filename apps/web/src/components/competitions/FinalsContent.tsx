@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { MatchCard } from "@/components/competitions/MatchCard";
+import { MatchCardSections } from "@/components/competitions/MatchCardSections";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCompetitionMatchResults, type CompetitionMatchResult } from "@lfstats/db";
 
@@ -70,16 +70,14 @@ export async function FinalsContent({
         </CardContent>
       </Card>
 
-      {sortedRounds.map((round) => (
-        <div key={round.roundName} className="space-y-3">
-          <h3 className="text-lg font-semibold">{round.roundName}</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {round.matches.map((match) => (
-              <MatchCard key={match.matchId} match={match} competitionSlug={competitionSlug} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <MatchCardSections
+        sections={sortedRounds.map((round) => ({
+          key: round.roundName,
+          title: round.roundName,
+          matches: round.matches,
+        }))}
+        competitionSlug={competitionSlug}
+      />
     </>
   );
 }
