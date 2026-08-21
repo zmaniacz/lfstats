@@ -46,6 +46,12 @@ export function formatMVP(n: number | null): string {
   return n.toFixed(3);
 }
 
+/** A per-game average of a counting stat — deacs, assists, medic hits. */
+export function formatAvg(n: number | null): string {
+  if (n === null) return EM_DASH;
+  return n.toFixed(2);
+}
+
 export function formatWinRate(wins: number, total: number): string {
   if (total === 0) return "— (0/0)";
   const pct = ((wins / total) * 100).toFixed(1);

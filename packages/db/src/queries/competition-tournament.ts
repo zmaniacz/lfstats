@@ -355,17 +355,40 @@ export async function getTeamGameParticipants(
   return rows;
 }
 
-export type CompetitionTeamPositionStat = {
+export type CompetitionTeamPlayerStat = {
   playerId: string;
-  position: number;
+  /** The position these stats cover, or null for the player's games across all positions. */
+  position: number | null;
   gamesPlayed: number;
   avgMvp: number;
   avgScore: number;
+  avgHitDiff: number;
+  avgMedicHits: number;
+  avgAccuracy: number;
+  avgDeactivations: number;
+  avgAssists: number;
+  avgTimesHit: number;
+  avgResets: number;
+  avgEliminations: number;
+  winRate: number;
+  survivalRate: number;
+  avgUptimePct: number | null;
+  avgPenalties: number;
 };
 
-export async function getCompetitionTeamPositionStats(
+/**
+ * Per-player stats for one competition team, at two grouping levels: one row per
+ * (player, position) plus a `position: null` rollup row per player.
+ *
+ * The rollup comes from GROUPING SETS rather than being re-weighted on the client so that
+ * every aggregate — including the ratio stats with a `nullif` denominator — is exact at both
+ * levels. `position` is NOT NULL in the data, so a null here unambiguously means "all
+ * positions". Only columns stored for every position are aggregated; see the Position-Specific
+ * Null Summary in docs/Scorecard_Table_Spec.md.
+ */
+export async function getCompetitionTeamPlayerStats(
   teamId: string,
-): Promise<CompetitionTeamPositionStat[]> {
+): Promise<CompetitionTeamPlayerStat[]> {
   const rows = await db
     .select({
       playerId: sm5Scorecard.playerId,
@@ -373,8 +396,23 @@ export async function getCompetitionTeamPositionStats(
       gamesPlayed: sql<number>`count(*)::int`,
       avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})::float`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})::float`,
+      avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})::float`,
+      avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})::float`,
+      avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})::float`,
+      avgDeactivations: sql<number>`avg(${sm5Scorecard.deactivatedOpponent})::float`,
+      avgAssists: sql<number>`avg(${sm5Scorecard.assists})::float`,
+      avgTimesHit: sql<number>`avg(${sm5Scorecard.timesHit})::float`,
+      avgResets: sql<number>`avg(${sm5Scorecard.resetOpponent})::float`,
+      avgEliminations: sql<number>`avg(${sm5Scorecard.eliminatedOpponent})::float`,
+      winRate: sql<number>`(count(*) filter (where ${sm5GameTeam.result} = 'win'))::float / count(*)`,
+      survivalRate: sql<number>`avg(case when ${sm5Scorecard.eliminated} then 0 else 1 end)::float`,
+      avgUptimePct: sql<
+        number | null
+      >`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
+      avgPenalties: sql<number>`avg(${sm5Scorecard.penalties})::float`,
     })
     .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
     .where(
       and(
         sql`${sm5Scorecard.playerId} IS NOT NULL`,
@@ -387,15 +425,18 @@ export async function getCompetitionTeamPositionStats(
         )`,
       ),
     )
-    .groupBy(sm5Scorecard.playerId, sm5Scorecard.position)
+    .groupBy(
+      sql`GROUPING SETS (
+        (${sm5Scorecard.playerId}, ${sm5Scorecard.position}),
+        (${sm5Scorecard.playerId})
+      )`,
+    )
     .orderBy(asc(sm5Scorecard.playerId), asc(sm5Scorecard.position));
 
   return rows.map((r) => ({
+    ...r,
     playerId: r.playerId!,
-    position: r.position,
-    gamesPlayed: r.gamesPlayed,
-    avgMvp: r.avgMvp,
-    avgScore: r.avgScore,
+    avgUptimePct: r.avgUptimePct === null ? null : Number(r.avgUptimePct),
   }));
 }
 
