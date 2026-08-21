@@ -10,29 +10,18 @@ import {
   getCompetitionTeamBySlug,
   getCompetitionTeamRoster,
   getTeamGameParticipants,
-  getCompetitionTeamPositionStats,
+  getCompetitionTeamPlayerStats,
   getCompetitionTeamResultsByColor,
   getCompetitionMatchResults,
   type CompetitionMatchResult,
 } from "@lfstats/db";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { MatchCardSections } from "@/components/competitions/MatchCardSections";
+import { TeamPlayerComparisonTable } from "@/components/competitions/TeamPlayerComparisonTable";
 import { TeamWinsByColorChart } from "@/components/competitions/TeamWinsByColorChart";
-import { POSITIONS } from "@/lib/positions";
-import { formatMVP, formatScore } from "@/lib/format";
-import { TriangleAlert, CircleAlert, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { auth } from "@/auth";
-
-const POSITION_IDS = [1, 2, 3, 4, 5];
 
 const getCompetition = cache(getCompetitionBySlug);
 const getCompetitionTeam = cache(getCompetitionTeamBySlug);
@@ -72,23 +61,14 @@ export default async function CompetitionTeamPage({
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
 
-  const [roster, unassigned, positionStats, resultsByColor, matchResults] = await Promise.all([
+  const [roster, unassigned, playerStats, resultsByColor, matchResults] = await Promise.all([
     getCompetitionTeamRoster(team.id),
     getTeamGameParticipants(team.id),
-    getCompetitionTeamPositionStats(team.id),
+    getCompetitionTeamPlayerStats(team.id),
     getCompetitionTeamResultsByColor(team.id),
     // "all" so finals matches sit alongside round play in the match list below.
     getCompetitionMatchResults(team.competitionId, undefined, "all"),
   ]);
-
-  const positionMap = new Map<
-    string,
-    Map<number, { gamesPlayed: number; avgMvp: number; avgScore: number }>
-  >();
-  for (const stat of positionStats) {
-    if (!positionMap.has(stat.playerId)) positionMap.set(stat.playerId, new Map());
-    positionMap.get(stat.playerId)!.set(stat.position, stat);
-  }
 
   const rosterRows = [
     ...roster.map((r) => ({
@@ -164,135 +144,16 @@ export default async function CompetitionTeamPage({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Roster</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {rosterRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No players have appeared for this team yet.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead rowSpan={2} className="align-bottom">
-                        Player
-                      </TableHead>
-                      <TableHead rowSpan={2} className="text-right align-bottom">
-                        Games
-                      </TableHead>
-                      {POSITION_IDS.map((p) => (
-                        <TableHead key={p} colSpan={3} className="text-center border-l">
-                          {POSITIONS[p]?.abbr}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    <TableRow>
-                      {POSITION_IDS.flatMap((p) => [
-                        <TableHead
-                          key={`${p}-gp`}
-                          className="text-right text-xs text-muted-foreground border-l"
-                        >
-                          GP
-                        </TableHead>,
-                        <TableHead
-                          key={`${p}-mvp`}
-                          className="text-right text-xs text-muted-foreground"
-                        >
-                          Avg MVP
-                        </TableHead>,
-                        <TableHead
-                          key={`${p}-score`}
-                          className="text-right text-xs text-muted-foreground"
-                        >
-                          Avg Score
-                        </TableHead>,
-                      ])}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rosterRows.map((r) => {
-                      const byPos = positionMap.get(r.playerId);
-                      return (
-                        <TableRow key={r.playerId}>
-                          <TableCell className="font-medium">
-                            {r.iplId !== null ? (
-                              <Link
-                                href={`/players/${r.iplId.replace(/^#/, "")}`}
-                                className="hover:underline inline-flex items-center gap-1.5"
-                              >
-                                {r.currentCallsign}
-                                {r.isMercenary && (
-                                  <TriangleAlert
-                                    className="h-3.5 w-3.5 text-amber-500"
-                                    aria-label="Mercenary"
-                                  />
-                                )}
-                                {r.isUnassigned && (
-                                  <CircleAlert
-                                    className="h-3.5 w-3.5 text-destructive"
-                                    aria-label="Unassigned"
-                                  />
-                                )}
-                              </Link>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5">
-                                {r.currentCallsign}
-                                {r.isMercenary && (
-                                  <TriangleAlert
-                                    className="h-3.5 w-3.5 text-amber-500"
-                                    aria-label="Mercenary"
-                                  />
-                                )}
-                                {r.isUnassigned && (
-                                  <CircleAlert
-                                    className="h-3.5 w-3.5 text-destructive"
-                                    aria-label="Unassigned"
-                                  />
-                                )}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">{r.gamesPlayed}</TableCell>
-                          {POSITION_IDS.flatMap((p) => {
-                            const stat = byPos?.get(p);
-                            return [
-                              <TableCell
-                                key={`${p}-gp`}
-                                className="text-right tabular-nums text-muted-foreground border-l"
-                              >
-                                {stat ? stat.gamesPlayed : "—"}
-                              </TableCell>,
-                              <TableCell key={`${p}-mvp`} className="text-right tabular-nums">
-                                {stat ? formatMVP(stat.avgMvp) : "—"}
-                              </TableCell>,
-                              <TableCell key={`${p}-score`} className="text-right tabular-nums">
-                                {stat ? formatScore(Math.round(stat.avgScore)) : "—"}
-                              </TableCell>,
-                            ];
-                          })}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <TriangleAlert className="h-3.5 w-3.5 text-amber-500" /> Mercenary
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <CircleAlert className="h-3.5 w-3.5 text-destructive" /> Not on official roster
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Roster</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamPlayerComparisonTable rows={rosterRows} stats={playerStats} />
+        </CardContent>
+      </Card>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Wins by Team Color</CardTitle>
