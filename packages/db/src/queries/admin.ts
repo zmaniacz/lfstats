@@ -227,7 +227,7 @@ export async function getCompetitionBySlug(slug: string): Promise<CompetitionDet
 }
 
 async function resolveCompetitionSlug(name: string, excludeId?: string): Promise<string> {
-  const base = slugify(name);
+  const base = slugify(name, "competition");
   return resolveUniqueSlug(base, async (candidate) => {
     const conditions = excludeId
       ? and(eq(competition.slug, candidate), ne(competition.id, excludeId))

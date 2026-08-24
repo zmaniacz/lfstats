@@ -223,7 +223,7 @@ async function resolveCompetitionTeamSlug(
   baseName: string,
   excludeId?: string,
 ): Promise<string> {
-  const base = slugify(baseName);
+  const base = slugify(baseName, "team");
   return resolveUniqueSlug(base, async (candidate) => {
     const conditions = excludeId
       ? and(

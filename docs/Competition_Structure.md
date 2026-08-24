@@ -581,9 +581,10 @@ other ways and refuses to proceed if either fails:
   number with NULL last, then by id, and renumbered 1..N. Rounds with zero matches are
   dropped.
 - **Team short names.** Legacy team names are free text with emoji and punctuation
-  (`🥞Stacked Team🥞`), while `slugify` only lowercases and swaps whitespace. Short names
-  are auto-derived and printed for review — correct them via `shortNames` in the config
-  or in the admin UI.
+  (`🥞Stacked Team🥞`). `slugify` folds anything outside `[a-z0-9_-]` away, but it
+  replaces it with underscores rather than words, so a raw name makes for an ugly slug.
+  Short names are auto-derived and printed for review — correct them via `shortNames`
+  in the config or in the admin UI.
 
 ### Penalties
 

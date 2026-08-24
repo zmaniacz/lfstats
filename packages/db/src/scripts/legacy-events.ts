@@ -131,10 +131,11 @@ const STOPWORDS = new Set([
  * Derives a starting-point `competition_team.short_name` from a legacy team name.
  *
  * Legacy team names are free text and include emoji and punctuation
- * ("🥞Stacked Team🥞", "Team JACKAL! JACKAL! IT'S A JACKAL!"), while `slugify` only
- * lowercases and swaps whitespace for underscores — so feeding the raw name through
- * would produce slugs with emoji in them. Every derived value is printed by the
- * migration for review; correct them via `shortNames` or the admin UI.
+ * ("🥞Stacked Team🥞", "Team JACKAL! JACKAL! IT'S A JACKAL!"). `slugify` folds those
+ * away safely, but it fills the gaps with underscores rather than words, so feeding
+ * the raw name straight through yields a technically valid but ugly slug. Every
+ * derived value is printed by the migration for review; correct them via
+ * `shortNames` or the admin UI.
  */
 export function deriveShortName(rawName: string): string {
   const ascii = rawName
