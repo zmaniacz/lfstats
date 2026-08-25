@@ -30,7 +30,10 @@ type SortColumn =
   | "gamesPlayed"
   | "totalMedicHitsNonResup"
   | "avgMedicHitsNonResup"
-  | "gamesPlayedNonResup";
+  | "gamesPlayedNonResup"
+  | "totalMedicHitsResup"
+  | "avgMedicHitsResup"
+  | "gamesPlayedResup";
 
 type SortState = { column: SortColumn; dir: "asc" | "desc" };
 
@@ -50,6 +53,12 @@ function getSortValue(item: PlayerMedicHitsItem, col: SortColumn): string | numb
       return item.avgMedicHitsNonResup ?? -1;
     case "gamesPlayedNonResup":
       return item.gamesPlayedNonResup;
+    case "totalMedicHitsResup":
+      return item.totalMedicHitsResup ?? -1;
+    case "avgMedicHitsResup":
+      return item.avgMedicHitsResup ?? -1;
+    case "gamesPlayedResup":
+      return item.gamesPlayedResup;
   }
 }
 
@@ -165,6 +174,15 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
               <SortableHead column="gamesPlayedNonResup" sort={sort} onSort={handleSort}>
                 Games Played (Non-Resup)
               </SortableHead>
+              <SortableHead column="totalMedicHitsResup" sort={sort} onSort={handleSort}>
+                Total Medic Hits (Resup)
+              </SortableHead>
+              <SortableHead column="avgMedicHitsResup" sort={sort} onSort={handleSort}>
+                Avg Medic Hits (Resup)
+              </SortableHead>
+              <SortableHead column="gamesPlayedResup" sort={sort} onSort={handleSort}>
+                Games Played (Resup)
+              </SortableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -189,12 +207,19 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
                   <TableCell className="tabular-nums">
                     {formatScore(p.gamesPlayedNonResup)}
                   </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatScore(p.totalMedicHitsResup)}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatHitDiff(p.avgMedicHitsResup)}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{formatScore(p.gamesPlayedResup)}</TableCell>
                 </TableRow>
               );
             })}
             {pageRows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                   {search ? "No players match the search." : "No players found."}
                 </TableCell>
               </TableRow>

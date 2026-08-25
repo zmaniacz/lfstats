@@ -3233,6 +3233,13 @@ export async function getCompetitionMedicHitsLeaderboard(
         number | null
       >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} in (1, 2, 3))::float`,
       gamesPlayedNonResup: sql<number>`count(*) filter (where ${sm5Scorecard.position} in (1, 2, 3))::int`,
+      totalMedicHitsResup: sql<
+        number | null
+      >`sum(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} in (4, 5))::int`,
+      avgMedicHitsResup: sql<
+        number | null
+      >`avg(${sm5Scorecard.medicHits}) filter (where ${sm5Scorecard.position} in (4, 5))::float`,
+      gamesPlayedResup: sql<number>`count(*) filter (where ${sm5Scorecard.position} in (4, 5))::int`,
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5Scorecard.teamId, sm5GameTeam.id))
@@ -3251,6 +3258,9 @@ export async function getCompetitionMedicHitsLeaderboard(
       r.totalMedicHitsNonResup !== null ? Number(r.totalMedicHitsNonResup) : null,
     avgMedicHitsNonResup: r.avgMedicHitsNonResup !== null ? Number(r.avgMedicHitsNonResup) : null,
     gamesPlayedNonResup: Number(r.gamesPlayedNonResup),
+    totalMedicHitsResup: r.totalMedicHitsResup !== null ? Number(r.totalMedicHitsResup) : null,
+    avgMedicHitsResup: r.avgMedicHitsResup !== null ? Number(r.avgMedicHitsResup) : null,
+    gamesPlayedResup: Number(r.gamesPlayedResup),
   }));
 }
 

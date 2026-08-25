@@ -279,6 +279,9 @@ export type PlayerMedicHitsItem = {
   totalMedicHitsNonResup: number | null;
   avgMedicHitsNonResup: number | null;
   gamesPlayedNonResup: number;
+  totalMedicHitsResup: number | null;
+  avgMedicHitsResup: number | null;
+  gamesPlayedResup: number;
 };
 
 export type PlayerOverallAverages = {

@@ -7,8 +7,9 @@ import type { GameDetail, PlayerMedicHitsItem } from "@lfstats/db";
 /**
  * Rolls a flat list of scorecard rows up into the medic-hits leaderboard shape.
  *
- * Resup positions (Ammo and Medic) get their own non-resup split, since a Scout/Heavy/
- * Commander medic-hit total is the interesting number and resup games would dilute it.
+ * Games are also split by resup role: a Scout/Heavy/Commander medic-hit total is the
+ * interesting number on its own, since resup games would dilute it, and the Ammo/Medic
+ * total is worth seeing separately rather than only folded into the overall figure.
  * Shared by the nightly view and the no-scoring competition view, which present the same
  * leaderboard over different slices of games.
  */
@@ -34,10 +35,13 @@ export function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsIte
   return Array.from(map.values())
     .map(({ iplId, callsign, entries }) => {
       const nonResup = entries.filter((r) => [1, 2, 3].includes(r.player.position));
+      const resup = entries.filter((r) => [4, 5].includes(r.player.position));
       const totalMedicHits = entries.reduce((s, r) => s + r.player.medicHits, 0);
       const gamesPlayed = entries.length;
       const totalMedicHitsNonResup =
         nonResup.length > 0 ? nonResup.reduce((s, r) => s + r.player.medicHits, 0) : null;
+      const totalMedicHitsResup =
+        resup.length > 0 ? resup.reduce((s, r) => s + r.player.medicHits, 0) : null;
       return {
         iplId,
         callsign,
@@ -48,6 +52,9 @@ export function deriveMedicHits(rows: NightlyScorecardRow[]): PlayerMedicHitsIte
         avgMedicHitsNonResup:
           nonResup.length > 0 ? (totalMedicHitsNonResup as number) / nonResup.length : null,
         gamesPlayedNonResup: nonResup.length,
+        totalMedicHitsResup,
+        avgMedicHitsResup: resup.length > 0 ? (totalMedicHitsResup as number) / resup.length : null,
+        gamesPlayedResup: resup.length,
       };
     })
     .sort((a, b) => b.totalMedicHits - a.totalMedicHits);
