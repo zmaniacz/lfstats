@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { PlayerMedicHitsItem } from "@lfstats/db";
 import { useMinGames } from "@/components/players/MinGamesContext";
+import { STICKY_CALLSIGN_COL } from "@/lib/table-styles";
 import {
   Table,
   TableBody,
@@ -66,18 +67,20 @@ function SortableHead({
   column,
   sort,
   onSort,
+  className,
   children,
 }: {
   column: SortColumn;
   sort: SortState;
   onSort: (col: SortColumn) => void;
+  className?: string;
   children: React.ReactNode;
 }) {
   const isActive = sort.column === column;
   const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 
   return (
-    <TableHead>
+    <TableHead className={className}>
       <button
         className="flex items-center gap-1 hover:text-foreground transition-colors"
         onClick={() => onSort(column)}
@@ -152,8 +155,13 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
 
         <Table>
           <TableHeader>
-            <TableRow>
-              <SortableHead column="callsign" sort={sort} onSort={handleSort}>
+            <TableRow className="group">
+              <SortableHead
+                column="callsign"
+                sort={sort}
+                onSort={handleSort}
+                className={STICKY_CALLSIGN_COL}
+              >
                 Callsign
               </SortableHead>
               <SortableHead column="totalMedicHits" sort={sort} onSort={handleSort}>
@@ -189,8 +197,8 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
             {pageRows.map((p) => {
               const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
               return (
-                <TableRow key={p.iplId}>
-                  <TableCell>
+                <TableRow key={p.iplId} className="group">
+                  <TableCell className={STICKY_CALLSIGN_COL}>
                     <Link href={`/players/${iplIdForUrl}`} className="hover:underline font-medium">
                       {p.callsign}
                     </Link>

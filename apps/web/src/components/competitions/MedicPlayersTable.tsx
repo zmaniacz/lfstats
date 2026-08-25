@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { formatHitDiff, formatMVP, formatPct, formatScore, formatWinRate } from "@/lib/format";
 import { useMinGames } from "@/components/players/MinGamesContext";
+import { STICKY_CALLSIGN_COL } from "@/lib/table-styles";
 import type { CompetitionMedicPlayer } from "@lfstats/db";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
@@ -160,102 +161,98 @@ export function MedicPlayersTable({ players }: { players: CompetitionMedicPlayer
           }}
           className="max-w-xs"
         />
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="sticky left-0 bg-background z-10">Callsign</TableHead>
-                <SortableHead column="winRate" sort={sort} onSort={handleSort}>
-                  Win Rate
-                </SortableHead>
-                <SortableHead column="avgScore" sort={sort} onSort={handleSort}>
-                  Avg Score
-                </SortableHead>
-                <SortableHead column="totalScore" sort={sort} onSort={handleSort}>
-                  Total Score
-                </SortableHead>
-                <SortableHead column="avgMvp" sort={sort} onSort={handleSort}>
-                  Avg MVP
-                </SortableHead>
-                <SortableHead column="totalMvp" sort={sort} onSort={handleSort}>
-                  Total MVP
-                </SortableHead>
-                <SortableHead column="avgAccuracy" sort={sort} onSort={handleSort}>
-                  Avg Accuracy
-                </SortableHead>
-                <SortableHead column="avgHitDiff" sort={sort} onSort={handleSort}>
-                  Avg Hit Diff
-                </SortableHead>
-                <SortableHead column="avgUptime" sort={sort} onSort={handleSort}>
-                  Avg Uptime
-                </SortableHead>
-                <SortableHead column="avgMedicHits" sort={sort} onSort={handleSort}>
-                  Avg Medic Hits
-                </SortableHead>
-                <SortableHead column="avgLifeBoost" sort={sort} onSort={handleSort}>
-                  Avg Boosts
-                </SortableHead>
-                <SortableHead column="avgResuppliesGiven" sort={sort} onSort={handleSort}>
-                  Avg Resupplies
-                </SortableHead>
-                <SortableHead column="avgDoubleResuppliesGiven" sort={sort} onSort={handleSort}>
-                  Avg Doubles
-                </SortableHead>
-                <SortableHead column="survivalRate" sort={sort} onSort={handleSort}>
-                  Survival Rate
-                </SortableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageRows.map((p) => {
-                const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
-                return (
-                  <TableRow key={p.playerId}>
-                    <TableCell className="sticky left-0 bg-background z-10 font-medium">
-                      <Link href={`/players/${iplIdForUrl}`} className="hover:underline">
-                        {p.callsign}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatWinRate(p.wins, p.totalGames)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatScore(Math.round(p.avgScore))}
-                    </TableCell>
-                    <TableCell className="tabular-nums">{formatScore(p.totalScore)}</TableCell>
-                    <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
-                    <TableCell className="tabular-nums">{formatMVP(p.totalMvp)}</TableCell>
-                    <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
-                    <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
-                    <TableCell className="tabular-nums">{formatPct(p.avgUptime)}</TableCell>
-                    <TableCell className="tabular-nums">{p.avgMedicHits.toFixed(2)}</TableCell>
-                    <TableCell className="tabular-nums">
-                      {p.avgLifeBoost !== null ? p.avgLifeBoost.toFixed(2) : "—"}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {p.avgResuppliesGiven !== null ? p.avgResuppliesGiven.toFixed(2) : "—"}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {p.avgDoubleResuppliesGiven !== null
-                        ? p.avgDoubleResuppliesGiven.toFixed(2)
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="tabular-nums">{formatPct(p.survivalRate)}</TableCell>
-                  </TableRow>
-                );
-              })}
-              {pageRows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
-                    {search
-                      ? "No players match the search."
-                      : "No player data for this competition."}
+        <Table>
+          <TableHeader>
+            <TableRow className="group">
+              <TableHead className={STICKY_CALLSIGN_COL}>Callsign</TableHead>
+              <SortableHead column="winRate" sort={sort} onSort={handleSort}>
+                Win Rate
+              </SortableHead>
+              <SortableHead column="avgScore" sort={sort} onSort={handleSort}>
+                Avg Score
+              </SortableHead>
+              <SortableHead column="totalScore" sort={sort} onSort={handleSort}>
+                Total Score
+              </SortableHead>
+              <SortableHead column="avgMvp" sort={sort} onSort={handleSort}>
+                Avg MVP
+              </SortableHead>
+              <SortableHead column="totalMvp" sort={sort} onSort={handleSort}>
+                Total MVP
+              </SortableHead>
+              <SortableHead column="avgAccuracy" sort={sort} onSort={handleSort}>
+                Avg Accuracy
+              </SortableHead>
+              <SortableHead column="avgHitDiff" sort={sort} onSort={handleSort}>
+                Avg Hit Diff
+              </SortableHead>
+              <SortableHead column="avgUptime" sort={sort} onSort={handleSort}>
+                Avg Uptime
+              </SortableHead>
+              <SortableHead column="avgMedicHits" sort={sort} onSort={handleSort}>
+                Avg Medic Hits
+              </SortableHead>
+              <SortableHead column="avgLifeBoost" sort={sort} onSort={handleSort}>
+                Avg Boosts
+              </SortableHead>
+              <SortableHead column="avgResuppliesGiven" sort={sort} onSort={handleSort}>
+                Avg Resupplies
+              </SortableHead>
+              <SortableHead column="avgDoubleResuppliesGiven" sort={sort} onSort={handleSort}>
+                Avg Doubles
+              </SortableHead>
+              <SortableHead column="survivalRate" sort={sort} onSort={handleSort}>
+                Survival Rate
+              </SortableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pageRows.map((p) => {
+              const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
+              return (
+                <TableRow key={p.playerId} className="group">
+                  <TableCell className={`font-medium ${STICKY_CALLSIGN_COL}`}>
+                    <Link href={`/players/${iplIdForUrl}`} className="hover:underline">
+                      {p.callsign}
+                    </Link>
                   </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatWinRate(p.wins, p.totalGames)}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatScore(Math.round(p.avgScore))}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{formatScore(p.totalScore)}</TableCell>
+                  <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
+                  <TableCell className="tabular-nums">{formatMVP(p.totalMvp)}</TableCell>
+                  <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
+                  <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
+                  <TableCell className="tabular-nums">{formatPct(p.avgUptime)}</TableCell>
+                  <TableCell className="tabular-nums">{p.avgMedicHits.toFixed(2)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {p.avgLifeBoost !== null ? p.avgLifeBoost.toFixed(2) : "—"}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {p.avgResuppliesGiven !== null ? p.avgResuppliesGiven.toFixed(2) : "—"}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {p.avgDoubleResuppliesGiven !== null
+                      ? p.avgDoubleResuppliesGiven.toFixed(2)
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{formatPct(p.survivalRate)}</TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              );
+            })}
+            {pageRows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
+                  {search ? "No players match the search." : "No player data for this competition."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {filtered.length === players.length

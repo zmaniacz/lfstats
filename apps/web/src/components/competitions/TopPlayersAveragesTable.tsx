@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { formatHitDiff, formatMVP, formatPct, formatWinRate } from "@/lib/format";
 import { useMinGames } from "@/components/players/MinGamesContext";
+import { STICKY_CALLSIGN_COL } from "@/lib/table-styles";
 import type { CompetitionTopPlayer, PositionStats } from "@lfstats/db";
 import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import Link from "next/link";
@@ -238,117 +239,110 @@ export function TopPlayersAveragesTable({ players }: { players: CompetitionTopPl
           }}
           className="max-w-xs"
         />
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead rowSpan={2} className="align-bottom sticky left-0 bg-background z-10">
-                  Callsign
+        <Table>
+          <TableHeader>
+            <TableRow className="group">
+              <TableHead rowSpan={2} className={`align-bottom ${STICKY_CALLSIGN_COL}`}>
+                Callsign
+              </TableHead>
+              <SortableHead column="avgMvp" sort={sort} onSort={handleSort} rowSpan={2}>
+                Avg MVP
+              </SortableHead>
+              <SortableHead column="mvpPerMinute" sort={sort} onSort={handleSort} rowSpan={2}>
+                MVP / min
+              </SortableHead>
+              <SortableHead column="totalMvp" sort={sort} onSort={handleSort} rowSpan={2}>
+                Total MVP
+              </SortableHead>
+              <SortableHead column="avgAccuracy" sort={sort} onSort={handleSort} rowSpan={2}>
+                Avg Accuracy
+              </SortableHead>
+              <SortableHead column="avgHitDiff" sort={sort} onSort={handleSort} rowSpan={2}>
+                Avg Hit Diff
+              </SortableHead>
+              <SortableHead column="winRate" sort={sort} onSort={handleSort} rowSpan={2}>
+                Win Rate
+              </SortableHead>
+              {POSITIONS.map((pos) => (
+                <TableHead key={pos.id} colSpan={3} className="text-center">
+                  {pos.label}
                 </TableHead>
-                <SortableHead column="avgMvp" sort={sort} onSort={handleSort} rowSpan={2}>
-                  Avg MVP
-                </SortableHead>
-                <SortableHead column="mvpPerMinute" sort={sort} onSort={handleSort} rowSpan={2}>
-                  MVP / min
-                </SortableHead>
-                <SortableHead column="totalMvp" sort={sort} onSort={handleSort} rowSpan={2}>
-                  Total MVP
-                </SortableHead>
-                <SortableHead column="avgAccuracy" sort={sort} onSort={handleSort} rowSpan={2}>
-                  Avg Accuracy
-                </SortableHead>
-                <SortableHead column="avgHitDiff" sort={sort} onSort={handleSort} rowSpan={2}>
-                  Avg Hit Diff
-                </SortableHead>
-                <SortableHead column="winRate" sort={sort} onSort={handleSort} rowSpan={2}>
-                  Win Rate
-                </SortableHead>
-                {POSITIONS.map((pos) => (
-                  <TableHead key={pos.id} colSpan={3} className="text-center">
-                    {pos.label}
-                  </TableHead>
-                ))}
-              </TableRow>
-              <TableRow>
-                {/* overall cols handled by rowSpan above + SortableHead rows */}
-                {POSITIONS.map((pos) => (
-                  <Fragment key={pos.id}>
-                    <SortableHead column={`p${pos.id}_avgMvp`} sort={sort} onSort={handleSort}>
-                      <span className="pl-1 text-xs">Avg MVP</span>
-                    </SortableHead>
-                    <SortableHead column={`p${pos.id}_avgAccuracy`} sort={sort} onSort={handleSort}>
-                      <span className="text-xs">Accuracy</span>
-                    </SortableHead>
-                    <SortableHead column={`p${pos.id}_winRate`} sort={sort} onSort={handleSort}>
-                      <span className="text-xs">Win Rate</span>
-                    </SortableHead>
-                  </Fragment>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageRows.map((p) => {
-                const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
-                return (
-                  <TableRow key={p.playerId}>
-                    <TableCell className="sticky left-0 bg-background z-10">
-                      <Link
-                        href={`/players/${iplIdForUrl}`}
-                        className="hover:underline font-medium"
-                      >
-                        {p.callsign}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
-                    <TableCell className="tabular-nums">{formatMVP(p.mvpPerMinute)}</TableCell>
-                    <TableCell className="tabular-nums">{formatMVP(p.totalMvp)}</TableCell>
-                    <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
-                    <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatWinRate(p.wins, p.totalGames)}
-                    </TableCell>
-                    {POSITIONS.map((pos) => {
-                      const s: PositionStats | undefined = p.byPosition[pos.id];
-                      return s ? (
-                        <Fragment key={pos.id}>
-                          <TableCell className="tabular-nums text-center border-l">
-                            {s.avgMvp !== null ? formatMVP(s.avgMvp) : "—"}
-                          </TableCell>
-                          <TableCell className="tabular-nums text-center">
-                            {s.avgAccuracy !== null ? formatPct(s.avgAccuracy) : "—"}
-                          </TableCell>
-                          <TableCell className="tabular-nums text-center">
-                            {formatWinRate(s.wins, s.totalGames)}
-                          </TableCell>
-                        </Fragment>
-                      ) : (
-                        <Fragment key={pos.id}>
-                          <TableCell className="text-center text-muted-foreground border-l">
-                            —
-                          </TableCell>
-                          <TableCell className="text-center text-muted-foreground">—</TableCell>
-                          <TableCell className="text-center text-muted-foreground">—</TableCell>
-                        </Fragment>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })}
-              {pageRows.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={7 + POSITIONS.length * 3}
-                    className="text-center text-muted-foreground py-8"
-                  >
-                    {search
-                      ? "No players match the search."
-                      : "No player data for this competition."}
+              ))}
+            </TableRow>
+            <TableRow>
+              {/* overall cols handled by rowSpan above + SortableHead rows */}
+              {POSITIONS.map((pos) => (
+                <Fragment key={pos.id}>
+                  <SortableHead column={`p${pos.id}_avgMvp`} sort={sort} onSort={handleSort}>
+                    <span className="pl-1 text-xs">Avg MVP</span>
+                  </SortableHead>
+                  <SortableHead column={`p${pos.id}_avgAccuracy`} sort={sort} onSort={handleSort}>
+                    <span className="text-xs">Accuracy</span>
+                  </SortableHead>
+                  <SortableHead column={`p${pos.id}_winRate`} sort={sort} onSort={handleSort}>
+                    <span className="text-xs">Win Rate</span>
+                  </SortableHead>
+                </Fragment>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pageRows.map((p) => {
+              const iplIdForUrl = p.iplId.startsWith("#") ? p.iplId.slice(1) : p.iplId;
+              return (
+                <TableRow key={p.playerId} className="group">
+                  <TableCell className={STICKY_CALLSIGN_COL}>
+                    <Link href={`/players/${iplIdForUrl}`} className="hover:underline font-medium">
+                      {p.callsign}
+                    </Link>
                   </TableCell>
+                  <TableCell className="tabular-nums">{formatMVP(p.avgMvp)}</TableCell>
+                  <TableCell className="tabular-nums">{formatMVP(p.mvpPerMinute)}</TableCell>
+                  <TableCell className="tabular-nums">{formatMVP(p.totalMvp)}</TableCell>
+                  <TableCell className="tabular-nums">{formatPct(p.avgAccuracy)}</TableCell>
+                  <TableCell className="tabular-nums">{formatHitDiff(p.avgHitDiff)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatWinRate(p.wins, p.totalGames)}
+                  </TableCell>
+                  {POSITIONS.map((pos) => {
+                    const s: PositionStats | undefined = p.byPosition[pos.id];
+                    return s ? (
+                      <Fragment key={pos.id}>
+                        <TableCell className="tabular-nums text-center border-l">
+                          {s.avgMvp !== null ? formatMVP(s.avgMvp) : "—"}
+                        </TableCell>
+                        <TableCell className="tabular-nums text-center">
+                          {s.avgAccuracy !== null ? formatPct(s.avgAccuracy) : "—"}
+                        </TableCell>
+                        <TableCell className="tabular-nums text-center">
+                          {formatWinRate(s.wins, s.totalGames)}
+                        </TableCell>
+                      </Fragment>
+                    ) : (
+                      <Fragment key={pos.id}>
+                        <TableCell className="text-center text-muted-foreground border-l">
+                          —
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">—</TableCell>
+                        <TableCell className="text-center text-muted-foreground">—</TableCell>
+                      </Fragment>
+                    );
+                  })}
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              );
+            })}
+            {pageRows.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={7 + POSITIONS.length * 3}
+                  className="text-center text-muted-foreground py-8"
+                >
+                  {search ? "No players match the search." : "No player data for this competition."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {filtered.length === players.length
