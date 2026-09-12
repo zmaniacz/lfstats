@@ -766,9 +766,12 @@ export async function getNewTeamIdsByIndex(gameId: string) {
 }
 
 export async function getGameIdsForReingest() {
+  // Forfeit placeholders are created with an empty tdfFilename and have no TDF
+  // to rebuild from — fetching the empty key returns the bucket listing.
   return db
     .select({ id: game.id, tdfFilename: game.tdfFilename })
     .from(game)
+    .where(ne(game.tdfFilename, ""))
     .orderBy(game.startTime);
 }
 
