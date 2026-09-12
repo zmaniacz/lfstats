@@ -513,7 +513,7 @@ When a player has a hardware restart mid-game, the TDF sometimes writes entity-e
 
 Applies remaining pending boosts accumulated from team boosts that fired while a player was in state_3 or state_2:
 
-- **Lives:** applied earliest-first; patches only the final snapshot (mid-game replay accuracy is handled by the actor-lookahead during simulation)
+- **Lives:** applied earliest-first; retroactively propagated through all state snapshots from the boost's event index. The actor-lookahead in `checkElimination` only rescues players whose lives reach 0, so a player who never runs out would otherwise show a short lives count for the rest of the replay and jump at the final snapshot
 - **Shots:** applied latest-first (most recent pending boost is most likely to have applied closest to a state transition); retroactively propagated through all state snapshots from the boost's event index
 
 ### Post-Simulation: `applyEntityEnds`

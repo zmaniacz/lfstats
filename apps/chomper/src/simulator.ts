@@ -445,16 +445,20 @@ class Simulator {
       const boosts = this.pendingBoosts.get(entityId);
       if (!boosts?.length) continue;
 
-      // Lives: apply earliest-first and patch the final snapshot only (replay
-      // accuracy for lives during downtime is handled by checkElimination).
+      // Lives: apply earliest-first and retroactively propagate through all
+      // snapshots from each boost's eventIndex. A player who never hits 0 lives
+      // is never rescued by checkElimination, so without this the replay would
+      // run short for the rest of the game and jump at the final snapshot.
+      const livesBoosts = boosts
+        .filter((b) => b.type === "lives")
+        .sort((a, b) => a.eventIndex - b.eventIndex);
+
       let livesGap = stats.livesLeft - ps.lives;
-      if (livesGap > 0) {
-        for (const b of boosts.filter((b) => b.type === "lives")) {
-          const apply = Math.min(b.amount, livesGap);
-          ps.lives += apply;
-          livesGap -= apply;
-          if (livesGap === 0) break;
-        }
+      for (const b of livesBoosts) {
+        if (livesGap <= 0) break;
+        const apply = Math.min(b.amount, livesGap);
+        this.applyRetroactiveBoost(ps, "lives", b.eventIndex, apply);
+        livesGap -= apply;
       }
       const finalSnap = ps.stateSnapshots[ps.stateSnapshots.length - 1];
       if (finalSnap) {
@@ -473,27 +477,30 @@ class Simulator {
       for (const b of shotBoosts) {
         if (shotsGap <= 0) break;
         const apply = Math.min(b.amount, shotsGap);
-        this.applyRetroactiveShotsBoost(ps, b.eventIndex, apply);
+        this.applyRetroactiveBoost(ps, "shots", b.eventIndex, apply);
         shotsGap -= apply;
       }
     }
   }
 
-  // Add `delta` shots to every state snapshot at or after `fromEventIndex` and
-  // to ps.shots, capped at maxShots. Used by reconcilePendingBoosts to place a
-  // resolved pending boost at the correct point in the replay history.
-  private applyRetroactiveShotsBoost(
+  // Add `delta` lives or shots to every state snapshot at or after
+  // `fromEventIndex` and to ps, capped at the position maximum. Used by
+  // reconcilePendingBoosts to place a resolved pending boost at the correct
+  // point in the replay history.
+  private applyRetroactiveBoost(
     ps: PlayerSimState,
+    field: "lives" | "shots",
     fromEventIndex: number,
     delta: number,
   ): void {
-    const max = POSITION_STATS[ps.position]!.maxShots;
+    const stats = POSITION_STATS[ps.position]!;
+    const max = field === "lives" ? stats.maxLives : stats.maxShots;
     for (const snap of ps.stateSnapshots) {
       if (snap.eventIndex >= fromEventIndex) {
-        snap.shots = Math.min(snap.shots + delta, max);
+        snap[field] = Math.min(snap[field] + delta, max);
       }
     }
-    ps.shots = Math.min(ps.shots + delta, max);
+    ps[field] = Math.min(ps[field] + delta, max);
   }
 
   private applyEntityEnds(): void {
