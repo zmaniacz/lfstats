@@ -28,6 +28,7 @@ import {
   formatScore,
 } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
+import { getTdfArchiveUrl } from "@/lib/tdf";
 import {
   getGameVideosForGames,
   getLbGameDetailBySlug,
@@ -174,6 +175,28 @@ export default async function LaserballGameDetailPage({
             {game.centerName} · {formatDateTime(game.startTime)} · {formatMs(game.actualDuration)}
           </p>
         )}
+        <p className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+          {(matchDetail
+            ? matchDetail.halves.map((h) => ({
+                key: h.gameId,
+                label: halfLabel(h.half),
+                tdfFilename: h.tdfFilename,
+              }))
+            : [{ key: game.id, label: null, tdfFilename: game.tdfFilename }]
+          ).map(({ key, label, tdfFilename }) => (
+            <span key={key}>
+              {label && `${label}: `}
+              <a
+                href={getTdfArchiveUrl(tdfFilename)}
+                className="hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {tdfFilename}
+              </a>
+            </span>
+          ))}
+        </p>
         <div className="flex items-center gap-2 flex-wrap">
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         </div>

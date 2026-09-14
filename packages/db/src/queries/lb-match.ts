@@ -33,6 +33,7 @@ export type LbMatchHalf = {
   gameOutcome: string;
   gameExcluded: boolean;
   actualDuration: number;
+  tdfFilename: string;
   side1: LbMatchHalfSide;
   side2: LbMatchHalfSide;
 };
@@ -90,6 +91,7 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
       gameOutcome: game.outcome,
       gameExcluded: game.exclude,
       actualDuration: game.actualDuration,
+      tdfFilename: game.tdfFilename,
       side1GameTeamId: lbMatchGame.side1GameTeamId,
       side2GameTeamId: lbMatchGame.side2GameTeamId,
     })
@@ -125,6 +127,7 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
       gameOutcome: r.gameOutcome,
       gameExcluded: r.gameExcluded,
       actualDuration: r.actualDuration,
+      tdfFilename: r.tdfFilename,
       side1: {
         gameTeamId: r.side1GameTeamId,
         name: side1?.name ?? "",
