@@ -50,6 +50,30 @@ function gameSortKey(p: CompetitionTeamPenaltyRecord): string {
   return `${String(p.roundNumber).padStart(3, "0")}-${String(p.matchNumber).padStart(3, "0")}-${String(p.gameNumber).padStart(3, "0")}`;
 }
 
+function SortHead({
+  col,
+  sortKey,
+  sortDir,
+  onSort,
+  children,
+}: {
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: "asc" | "desc";
+  onSort: (col: SortKey) => void;
+  children: React.ReactNode;
+}) {
+  const Icon = sortKey !== col ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => onSort(col)}>
+      <span className="inline-flex items-center">
+        {children}
+        <Icon className={`size-3 ml-1 ${sortKey !== col ? "opacity-40" : ""}`} />
+      </span>
+    </TableHead>
+  );
+}
+
 export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }: Props) {
   const [items, setItems] = useState(penalties);
   const [search, setSearch] = useState("");
@@ -138,28 +162,7 @@ export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }:
     }
   }
 
-  function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ArrowUpDown className="size-3 ml-1 opacity-40" />;
-    return sortDir === "asc" ? (
-      <ArrowUp className="size-3 ml-1" />
-    ) : (
-      <ArrowDown className="size-3 ml-1" />
-    );
-  }
-
-  function SortHead({ col, children }: { col: SortKey; children: React.ReactNode }) {
-    return (
-      <TableHead
-        className="cursor-pointer select-none whitespace-nowrap"
-        onClick={() => toggleSort(col)}
-      >
-        <span className="inline-flex items-center">
-          {children}
-          <SortIcon col={col} />
-        </span>
-      </TableHead>
-    );
-  }
+  const sortProps = { sortKey, sortDir, onSort: toggleSort };
 
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">No team penalties recorded.</p>;
@@ -178,12 +181,22 @@ export function TeamPenaltyTable({ competitionId, penalties, canEdit, actions }:
         <Table>
           <TableHeader>
             <TableRow>
-              <SortHead col="game">Game</SortHead>
-              <SortHead col="teamName">Team</SortHead>
-              <SortHead col="startTime">Started</SortHead>
-              <SortHead col="type">Type</SortHead>
+              <SortHead {...sortProps} col="game">
+                Game
+              </SortHead>
+              <SortHead {...sortProps} col="teamName">
+                Team
+              </SortHead>
+              <SortHead {...sortProps} col="startTime">
+                Started
+              </SortHead>
+              <SortHead {...sortProps} col="type">
+                Type
+              </SortHead>
               <TableHead>Description</TableHead>
-              <SortHead col="scoreValue">Score</SortHead>
+              <SortHead {...sortProps} col="scoreValue">
+                Score
+              </SortHead>
               {canEdit && <TableHead />}
             </TableRow>
           </TableHeader>

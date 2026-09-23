@@ -20,7 +20,7 @@ import { STICKY_CALLSIGN_COL } from "@/lib/table-styles";
 import type { CompetitionHeavyPlayer } from "@lfstats/db";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 const PAGE_SIZE = 10;
 
@@ -100,9 +100,12 @@ export function HeavyPlayersTable({ players }: { players: CompetitionHeavyPlayer
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
+  // Back to page 1 when the min-games filter changes (adjust-during-render, not an effect)
+  const [pageMinGames, setPageMinGames] = useState(minGames);
+  if (pageMinGames !== minGames) {
+    setPageMinGames(minGames);
     setPage(1);
-  }, [minGames]);
+  }
 
   function handleSort(col: SortColumn) {
     setSort((prev) =>
