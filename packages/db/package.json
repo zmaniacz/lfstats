@@ -26,14 +26,14 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.1106.0",
+    "@aws-sdk/client-secrets-manager": "^3.1137.0",
     "drizzle-orm": "latest",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.6.2",
     "drizzle-kit": "latest",
-    "tsx": "^4.23.11",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }

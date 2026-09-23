@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { PlayerMedicHitsItem } from "@lfstats/db";
@@ -98,9 +98,12 @@ export function MedicHitsLeaderboardTable({ players }: { players: PlayerMedicHit
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
+  // Back to page 1 when the min-games filter changes (adjust-during-render, not an effect)
+  const [pageMinGames, setPageMinGames] = useState(minGames);
+  if (pageMinGames !== minGames) {
+    setPageMinGames(minGames);
     setPage(1);
-  }, [minGames]);
+  }
 
   function handleSort(col: SortColumn) {
     setSort((prev) =>

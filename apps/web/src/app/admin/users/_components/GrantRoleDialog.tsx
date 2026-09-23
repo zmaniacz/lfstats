@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,11 +62,15 @@ export function GrantRoleDialog({
   const [isPending, setIsPending] = useState(false);
 
   // Reset form when the dialog opens with a (possibly different) preselected user
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevPreselectedUser, setPrevPreselectedUser] = useState(preselectedUser);
+  if (prevOpen !== open || prevPreselectedUser !== preselectedUser) {
+    setPrevOpen(open);
+    setPrevPreselectedUser(preselectedUser);
     setUserId(preselectedUser?.id ?? "");
     setRole("");
     setCenterId("");
-  }, [preselectedUser, open]);
+  }
 
   const needsCenter = role !== "" && ROLES_REQUIRING_CENTER.includes(role as GrantableRole);
 

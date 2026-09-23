@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useId, useEffect } from "react";
+import { useState, useId } from "react";
 import {
   DndContext,
   closestCenter,
@@ -260,9 +260,12 @@ export function SortableMatchList({
   const [isPending, setIsPending] = useState(false);
   const dndId = useId();
 
-  useEffect(() => {
+  // Re-sync local order when the server sends a new list (adjust-during-render, not an effect)
+  const [prevInitialMatches, setPrevInitialMatches] = useState(initialMatches);
+  if (prevInitialMatches !== initialMatches) {
+    setPrevInitialMatches(initialMatches);
     setMatches(initialMatches);
-  }, [initialMatches]);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
