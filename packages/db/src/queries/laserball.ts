@@ -45,7 +45,10 @@ export type LbGameListItem = {
 
 function buildLbGameListConditions(filters: LbGameListFilters): SQL[] {
   const conditions: SQL[] = [eq(game.type, "lb")];
-  if (filters.scopeFilter) conditions.push(...gameScopeConditions(filters.scopeFilter));
+  // A game list, not an aggregate: excluded games stay listed.
+  if (filters.scopeFilter) {
+    conditions.push(...gameScopeConditions(filters.scopeFilter, { includeExcluded: true }));
+  }
   return conditions;
 }
 
@@ -125,7 +128,7 @@ export async function getLbPlayerWinLoss(
       and(
         eq(lbScorecard.playerId, playerId),
         eq(lbGameTeam.isNeutral, false),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+        ...gameScopeConditions(scopeFilter),
       ),
     )
     .groupBy(lbGameTeam.result);
@@ -179,7 +182,8 @@ export async function getLbPlayerGames(
     .where(
       and(
         eq(lbScorecard.playerId, playerId),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+        // Excluded games are dropped here too: this list also feeds the player's charts.
+        ...gameScopeConditions(scopeFilter),
       ),
     )
     .orderBy(desc(game.startTime));

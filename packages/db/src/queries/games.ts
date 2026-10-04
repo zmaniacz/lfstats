@@ -58,7 +58,8 @@ function buildGameListConditions(filters: GameListFilters): SQL[] {
   // SM5 games only — Laserball lives in the same `game` table (type = "lb").
   const conditions: SQL[] = [eq(game.type, "sm5")];
   if (filters.scopeFilter) {
-    conditions.push(...gameScopeConditions(filters.scopeFilter));
+    // A game list, not an aggregate: excluded games stay listed.
+    conditions.push(...gameScopeConditions(filters.scopeFilter, { includeExcluded: true }));
   }
   if (filters.centerId) {
     conditions.push(eq(game.centerId, filters.centerId));

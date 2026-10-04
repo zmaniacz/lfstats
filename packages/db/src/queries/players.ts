@@ -96,7 +96,7 @@ export async function getPlayerResultsByColor(
       and(
         eq(sm5Scorecard.playerId, playerId),
         eq(sm5GameTeam.isNeutral, false),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+        ...gameScopeConditions(scopeFilter),
       ),
     )
     .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
@@ -127,12 +127,7 @@ export async function getPlayerAvgMvpByPosition(
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(
-      and(
-        eq(sm5Scorecard.playerId, playerId),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
-      ),
-    )
+    .where(and(eq(sm5Scorecard.playerId, playerId), ...gameScopeConditions(scopeFilter)))
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -145,7 +140,7 @@ export async function getPlayerAvgMvpByPosition(
 export async function getGlobalAvgMvpByPosition(
   scopeFilter?: GameScopeFilter,
 ): Promise<PositionAvgMvp[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -178,12 +173,7 @@ export async function getPlayerMvpBoxPlot(
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(
-      and(
-        eq(sm5Scorecard.playerId, playerId),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
-      ),
-    )
+    .where(and(eq(sm5Scorecard.playerId, playerId), ...gameScopeConditions(scopeFilter)))
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -213,12 +203,7 @@ export async function getPlayerAvgScoreByPosition(
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(
-      and(
-        eq(sm5Scorecard.playerId, playerId),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
-      ),
-    )
+    .where(and(eq(sm5Scorecard.playerId, playerId), ...gameScopeConditions(scopeFilter)))
     .groupBy(sm5Scorecard.position)
     .orderBy(sm5Scorecard.position);
 
@@ -231,7 +216,7 @@ export async function getPlayerAvgScoreByPosition(
 export async function getGlobalAvgScoreByPosition(
   scopeFilter?: GameScopeFilter,
 ): Promise<PositionAvgScore[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -409,7 +394,8 @@ export async function getPlayerGames(
     .where(
       and(
         eq(sm5Scorecard.playerId, playerId),
-        ...(scopeFilter ? gameScopeConditions(scopeFilter) : []),
+        // Excluded games are dropped here too: this list also feeds the player's charts.
+        ...gameScopeConditions(scopeFilter),
       ),
     )
     .orderBy(desc(game.startTime));
@@ -536,9 +522,7 @@ export async function getPlayerHeadToHead(
         eq(rev.targetScorecardId, sm5GamePlayerInteraction.scorecardId),
       ),
     )
-    .where(
-      and(eq(mainSc.playerId, playerId), ...(scopeFilter ? gameScopeConditions(scopeFilter) : [])),
-    )
+    .where(and(eq(mainSc.playerId, playerId), ...gameScopeConditions(scopeFilter)))
     .groupBy(
       tgtPlayer.id,
       tgtPlayer.iplId,

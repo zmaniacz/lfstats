@@ -39,8 +39,30 @@ function dateRangeConditions(filter: { dateFrom?: string; dateTo?: string }): SQ
   return conditions;
 }
 
-export function gameScopeConditions(filter: GameScopeFilter): SQL[] {
+export type GameScopeOptions = {
+  /**
+   * Keep `game.exclude = true` rows. Only for game *lists*, where excluded games stay
+   * visible (they are stored, replayable and badged on the game page). Never set this
+   * for an aggregate, average, count or leaderboard — see docs/Competition_Structure.md
+   * "Routing precedence": an excluded game is removed from every aggregate.
+   */
+  includeExcluded?: boolean;
+};
+
+/**
+ * WHERE conditions for a scope. Always includes `game.exclude = false` unless
+ * `includeExcluded` is set, so every scoped aggregate drops excluded games by default.
+ * `filter` may be omitted (no scope narrowing) and still yields the exclude condition.
+ */
+export function gameScopeConditions(
+  filter: GameScopeFilter | undefined,
+  options: GameScopeOptions = {},
+): SQL[] {
   const conditions: SQL[] = [];
+  if (!options.includeExcluded) {
+    conditions.push(eq(game.exclude, false));
+  }
+  if (!filter) return conditions;
   switch (filter.scope) {
     case "social":
       conditions.push(isNull(game.competitionId));
