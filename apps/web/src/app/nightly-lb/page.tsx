@@ -27,6 +27,9 @@ export default async function NightlyLbPage({
   searchParams: Promise<{ center?: string; date?: string }>;
 }) {
   const { center: centerSlugParam, date } = await searchParams;
+  // Async server component: renders once per request, so there are no re-renders for an
+  // impure call to destabilise.
+  // eslint-disable-next-line react/purity
   const today = new Date().toISOString().split("T")[0];
 
   const [centers, cookieStore] = await Promise.all([getCenterList(), cookies()]);

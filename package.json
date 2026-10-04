@@ -23,9 +23,9 @@
   },
   "devDependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^17.5.1",
-    "oxlint": "^1.85.0",
-    "prettier": "^3.9.8",
+    "lint-staged": "^17.6.0",
+    "oxlint": "^1.86.0",
+    "prettier": "^3.9.9",
     "turbo": "latest",
     "typescript": "^7.0.2"
   }
