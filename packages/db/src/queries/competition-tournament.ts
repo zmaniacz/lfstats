@@ -413,9 +413,11 @@ export async function getCompetitionTeamPlayerStats(
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(game, eq(game.id, sm5Scorecard.gameId))
     .where(
       and(
         sql`${sm5Scorecard.playerId} IS NOT NULL`,
+        eq(game.exclude, false),
         sql`${sm5Scorecard.teamId} IN (
           SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
                       ELSE cmg.team2_game_team_id END
@@ -460,13 +462,16 @@ export async function getCompetitionTeamResultsByColor(
     .from(sm5GameTeam)
     .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
     .where(
-      sql`${sm5GameTeam.id} IN (
-        SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
-                    ELSE cmg.team2_game_team_id END
-        FROM competition_match cm
-        JOIN competition_match_game cmg ON cmg.match_id = cm.id
-        WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
-      )`,
+      and(
+        eq(game.exclude, false),
+        sql`${sm5GameTeam.id} IN (
+          SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
+                      ELSE cmg.team2_game_team_id END
+          FROM competition_match cm
+          JOIN competition_match_game cmg ON cmg.match_id = cm.id
+          WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
+        )`,
+      ),
     )
     .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
     .orderBy(desc(sm5GameTeam.result), asc(sm5GameTeam.colourEnum), desc(game.outcome));
@@ -1754,11 +1759,14 @@ export async function getCompetitionStandings(
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(
       and(
         eq(competitionMatch.competitionId, competitionId),
+        // An excluded game left in a match slot counts as not yet reported.
+        eq(game.exclude, false),
         roundId ? eq(competitionMatch.roundId, roundId) : ne(competitionRound.type, "finals"),
         poolId ? eq(competitionMatch.poolId, poolId) : undefined,
       ),
@@ -1932,7 +1940,9 @@ export async function getCompetitionMatchResults(
     .from(competitionMatch)
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
     .leftJoin(competitionMatchGame, eq(competitionMatchGame.matchId, competitionMatch.id))
-    .leftJoin(game, eq(game.id, competitionMatchGame.gameId))
+    // Excluded games join as null, so their slot reads as unreported (skipped below) and
+    // match points agree with getCompetitionStandings().
+    .leftJoin(game, and(eq(game.id, competitionMatchGame.gameId), eq(game.exclude, false)))
     .leftJoin(center, eq(center.id, game.centerId))
     .leftJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .leftJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)

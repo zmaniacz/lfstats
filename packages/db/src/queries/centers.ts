@@ -56,7 +56,7 @@ export async function getCenterList(): Promise<CenterListItem[]> {
 export async function getCenterPositionStats(
   scopeFilter?: GameScopeFilter,
 ): Promise<CenterPositionStat[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       centerId: center.id,
@@ -156,7 +156,7 @@ export async function getCenterGameCount(
   id: string,
   scopeFilter?: GameScopeFilter,
 ): Promise<number> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const [row] = await db
     .select({ count: count(game.id) })
     .from(game)
@@ -175,7 +175,7 @@ export async function getCenterWinsByColor(
   id: string,
   scopeFilter?: GameScopeFilter,
 ): Promise<WinsByColorItem[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       colourEnum: sm5GameTeam.colourEnum,
@@ -216,7 +216,7 @@ export type MvpBoxPlotItem = {
 export async function getGlobalMvpBoxPlot(
   scopeFilter?: GameScopeFilter,
 ): Promise<MvpBoxPlotItem[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -246,7 +246,7 @@ export async function getCenterMvpBoxPlot(
   id: string,
   scopeFilter?: GameScopeFilter,
 ): Promise<MvpBoxPlotItem[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -281,7 +281,7 @@ export type MvpComponentItem = {
 export async function getGlobalMvpComponents(
   scopeFilter?: GameScopeFilter,
 ): Promise<MvpComponentItem[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
@@ -319,7 +319,7 @@ export async function getCenterMvpComponents(
   id: string,
   scopeFilter?: GameScopeFilter,
 ): Promise<MvpComponentItem[]> {
-  const conditions = scopeFilter ? gameScopeConditions(scopeFilter) : [];
+  const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,

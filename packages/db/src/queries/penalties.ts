@@ -75,7 +75,9 @@ export type CompetitionPenaltyRecord = PenaltyRecord & {
 export async function getPenalties(
   scopeFilter: GameScopeFilter,
 ): Promise<CompetitionPenaltyRecord[]> {
-  const scopeConditions = gameScopeConditions(scopeFilter);
+  // A record list that admins edit from, not an aggregate: penalties on excluded games
+  // stay listed so they can still be reviewed and rescinded.
+  const scopeConditions = gameScopeConditions(scopeFilter, { includeExcluded: true });
   return db
     .select({
       id: sm5GamePenalty.id,
@@ -292,7 +294,9 @@ export type CompetitionTeamPenaltyRecord = TeamPenaltyRecord & {
 export async function getTeamPenalties(
   scopeFilter: GameScopeFilter,
 ): Promise<CompetitionTeamPenaltyRecord[]> {
-  const scopeConditions = gameScopeConditions(scopeFilter);
+  // A record list that admins edit from, not an aggregate: penalties on excluded games
+  // stay listed so they can still be reviewed and rescinded.
+  const scopeConditions = gameScopeConditions(scopeFilter, { includeExcluded: true });
   return db
     .select({
       id: sm5GameTeamPenalty.id,
