@@ -182,8 +182,8 @@ export async function getLbPlayerGames(
     .where(
       and(
         eq(lbScorecard.playerId, playerId),
-        // The player's game list: excluded games stay listed.
-        ...gameScopeConditions(scopeFilter, { includeExcluded: true }),
+        // Excluded games are dropped here too: this list also feeds the player's charts.
+        ...gameScopeConditions(scopeFilter),
       ),
     )
     .orderBy(desc(game.startTime));

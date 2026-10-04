@@ -394,8 +394,8 @@ export async function getPlayerGames(
     .where(
       and(
         eq(sm5Scorecard.playerId, playerId),
-        // The player's game list: excluded games stay listed.
-        ...gameScopeConditions(scopeFilter, { includeExcluded: true }),
+        // Excluded games are dropped here too: this list also feeds the player's charts.
+        ...gameScopeConditions(scopeFilter),
       ),
     )
     .orderBy(desc(game.startTime));
