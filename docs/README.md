@@ -17,6 +17,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | Change Laserball ingestion specifically    | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
 | Run or debug the ingestion tests           | [chomper-design.md](chomper-design.md#test-suite)                              |
 | Add or change a public API route           | [API.md](API.md)                                                               |
+| Work on the query API or MCP server        | [Query_API_Spec.md](Query_API_Spec.md)                                         |
 | Understand who can do what in the app      | [Role_Spec.md](Role_Spec.md)                                                   |
 | Deploy the web app, or debug a build       | [build-and-deploy.md](build-and-deploy.md)                                     |
 
@@ -59,6 +60,8 @@ Specifications and design docs for the LFstats monorepo. Start here.
 ### Application
 
 - **[API.md](API.md)** — public API routes, response shapes, auth, and conventions for new routes.
+- **[Query_API_Spec.md](Query_API_Spec.md)** — draft spec for the analytics query API and the MCP
+  server built on it: shared scope object, metric registry, endpoints, limits.
 - **[Role_Spec.md](Role_Spec.md)** — the `superAdmin` / `admin` / `centerAdmin` / `uploader`
   hierarchy, center scoping, and the permission matrix.
 
