@@ -297,9 +297,9 @@ over all positions quietly becomes "per commander game". To prevent that:
 
 The Bradley–Terry rating ([Player_Rating.md](Player_Rating.md)) is a precomputed global number, so
 it is **not** a scope-able metric. Applying `scope` to it would suggest a "rating at Loveland" that
-does not exist. `player_stats` returns it as a separate `rating` block, and `leaderboard` can use it
-as a sort key only with an empty scope. With any other scope, sorting by it is a `400` that points
-to `avg_mvp` or `win_rate`.
+does not exist. `player_stats` returns it as a separate `rating` block. A `leaderboard` sorted by
+rating (empty scope only) is deferred: the site's rankings page already answers "who is ranked
+highest", and `sort_by: "rating"` is currently an `invalid_metric`.
 
 ---
 
@@ -341,22 +341,27 @@ can call it as the `describe` tool when unsure.
         "id": "avg_mvp",
         "label": "Average MVP",
         "definition": "…",
-        "game_types": ["sm5"],
+        "game_type": "sm5",
         "positions": "all",
         "unit": "points",
         "higher_is_better": true,
       },
     ],
+    "defaults": { "min_games": 10, "leaderboard_limit": 10 },
     "limits": {
+      "resolve_max_queries": 10,
+      "resolve_max_matches": 5,
       "leaderboard_max_limit": 100,
-      "player_stats_max_players": 10,
-      "search_games_max_limit": 100,
+      "leaderboard_max_metrics": 10,
+      "leaderboard_max_min_games": 1000,
+      "rate_limit_per_minute": 60,
+      "rate_limit_per_day": 2000,
     },
   },
 }
 ```
 
-Cache for one hour.
+The catalog also lists `game_kinds` and `team_results`. It needs no database access.
 
 ---
 
@@ -384,10 +389,12 @@ Turns names into ids. Use it before any query that names a player, center or com
         "matches": [
           {
             "ipl_id": "#1234567",
+            "member_id": "4-19-24329", // null if never recorded
             "callsign": "SHRAPNEL",
-            "matched_on": "current_callsign", // current_callsign | previous_callsign | ipl_id | member_id
-            "home_center": "4-19", // center with the most games
-            "games_played": 1873,
+            // current_callsign | previous_callsign | ipl_id | member_id | similar_callsign
+            "matched_on": "current_callsign",
+            "home_center": { "slug": "4-19", "name": "Loveland" }, // center with the most games
+            "games_played": 1873, // SM5 + Laserball, non-excluded
             "last_played": "2026-09-28",
           },
         ],
@@ -395,14 +402,29 @@ Turns names into ids. Use it before any query that names a player, center or com
       {
         "query": "zen",
         "status": "ambiguous",
-        "matches": [/* up to 5, best first */],
+        // up to 5, best first; fuzzy matches add "similarity": 0–1
+        "matches": [/* … */],
+      },
+      {
+        "query": "9-9-99999",
+        "status": "not_found",
+        "matches": [],
+        "hint": "Member ids are only recorded for players seen in newer game files…",
       },
     ],
     "centers": [
       {
         "query": "loveland",
         "status": "unique",
-        "matches": [{ "slug": "4-19", "name": "Loveland", "city": "Loveland", "country": "USA" }],
+        "matches": [
+          {
+            "slug": "4-19",
+            "name": "Loveland",
+            "short_name": "LOV",
+            "city": null,
+            "country": null,
+          },
+        ],
       },
     ],
     "competitions": [
@@ -412,11 +434,14 @@ Turns names into ids. Use it before any query that names a player, center or com
         "matches": [
           {
             "slug": "internationals_2026",
-            "name": "…",
+            "name": "Internationals 2026",
+            "type": "competitive",
             "format": "team",
             "category": "internationals",
+            "state": "completed",
             "start_date": "2026-06-12",
             "end_date": "2026-06-15",
+            "host_center": "4-19",
           },
         ],
       },
@@ -427,17 +452,24 @@ Turns names into ids. Use it before any query that names a player, center or com
 
 **Matching order:**
 
-1. Exact id or slug. For players this means an exact `ipl_id` (with or without `#`) **or** an
-   exact `player.member_id` (`4-3-1137`). A query matching the `^\d+-\d+-\d+$` shape is treated
-   as a member id first.
-2. Case-insensitive exact match on the current callsign or name.
-3. Exact match on a previous callsign (`player_callsign_history`).
-4. Trigram similarity, using the `pg_trgm` extension (new; needs a migration and GIN indexes on
+1. Exact id or slug. A player query starting with `#` is an IPL id. One shaped like `^\d+-\d+-\d+$`
+   is a member id. A center query shaped like `^\d+-\d+$` is a slug. A competition query is
+   compared with the slug exactly.
+2. Exact name, ignoring case and surrounding whitespace: the current callsign; the center's name,
+   short name or city; the competition's name, or its slug with `_` read as spaces.
+3. Exact previous callsign (`player_callsign_history`), players only.
+   A player query that looks like an IPL id typed without its `#` (4–10 letters and digits) is
+   tried as `#query` only after steps 2 and 3 find nothing, so a real callsign always wins.
+4. Trigram similarity via `pg_trgm` (migration `0052`, which adds GIN trigram indexes on
    `player.current_callsign`, `player_callsign_history.callsign`, `center.name` and
-   `competition.name`).
+   `competition.name`). The cutoff is 0.3, or 0.2 for queries of 5 characters or fewer, because
+   short names have so few trigrams that one typo drops them under 0.3 ("Brw" vs "Brew" scores
+   0.29). It is applied with `SET LOCAL` so the `%` operator, and its index, still apply.
 
-A match from steps 1–3 that is unique is `unique`. Otherwise all candidates above a similarity
-threshold are returned as `ambiguous`, ordered by similarity and then by `games_played`.
+Matching stops at the first step with any result. Exactly one match from steps 1–3 is `unique`.
+Several matches, or any match from step 4, are `ambiguous`: even a single close fuzzy match is
+returned for the user to confirm. Fuzzy matches are ordered by similarity, then by
+`games_played`. A `not_found` result carries a `hint`.
 
 **The tool description must tell the model:** when the status is `ambiguous`, ask the user which
 one they mean (using `home_center` and `last_played` to tell candidates apart). Do not pick one.
@@ -496,10 +528,11 @@ Ranks players by one metric within a scope. This is the draft's `leaderboard_sli
     {
       "rank": 1,
       "ipl_id": "#1234567",
+      "member_id": "4-19-24329",
       "callsign": "SHRAPNEL",
       "position": null, // set when group_by_position = true
+      "avg_mvp": 14.21, // sort_by first, then games, then metrics
       "games": 48,
-      "avg_mvp": 14.21,
       "win_rate": 0.6875,
       "avg_accuracy": 0.412,
       "percentiles": { "avg_accuracy": 0.93 },
@@ -511,9 +544,17 @@ Ranks players by one metric within a scope. This is the draft's `leaderboard_sli
       "include_mercenary_games": true,
       "date_range": { "from": "2025-10-04", "to": "2026-10-04" },
     },
+    "qualify_scope": null, // the merged qualifying scope, when `qualify` is given
+    "qualify_min_games": null,
+    "sort": { "by": "avg_mvp", "order": "desc" },
+    "min_games": 10,
     "population": 37, // players meeting min_games and qualify — the denominator for rank and percentiles
+    "offset": 0,
     "metrics": { "…": "…" },
-    "links": { "web": "https://lfstats.com/centers/4-23?…" },
+    "row_count": 1,
+    "truncated": true, // more ranked players beyond this page
+    "warnings": [],
+    "data_as_of": "2026-09-28T21:14:02",
   },
 }
 ```
@@ -551,8 +592,14 @@ Ranks players by one metric within a scope. This is the draft's `leaderboard_sli
   population.
 - **`group_by_position: true`** returns one row per (player, position) and applies `min_games` per
   row. It answers questions like "best scouts and best heavies in one list".
-- **The callsign is `player.current_callsign`**, not the callsign used at the time. The response is
-  about people, not about scorecards.
+- **The callsign is `player.current_callsign`**, trimmed, not the callsign used at the time. The
+  response is about people, not about scorecards.
+- **A position-specific `sort_by`** (e.g. `avg_nukes_detonated`) narrows the ranked population to
+  the metric's positions. `games` and `min_games` then count only those games, and `meta.scope`
+  shows the narrowed positions, with a warning. Otherwise medics would be ranked on nulls.
+- **`links.web`** is not implemented yet: site leaderboard URLs depend on filter cookies, so there
+  is no stable link to give.
+- **Laserball** leaderboards return `invalid_scope` until the Laserball metrics phase.
 
 ---
 
@@ -996,13 +1043,19 @@ from the registry, so in practice only this document can fall out of date.
 
 ## Implementation plan
 
+Phases 1 and 2 are done. Phase 1 deviated from the plan in one way: its tests check the generated
+SQL rather than running against fixture games, because there is no test database. Parity checks
+against the live database cover the rest.
+
 1. **Foundations.** Add zod. Add `api_key.scopes`, the key check, the rate limiter and the request log. Create `analytics/scope.ts` (scope → SQL, preset resolution, the
    mercenary/excluded defaults). Create `analytics/metrics.ts` with the v1 SM5 catalog. Set up the
    read-only role, pool and `statement_timeout`. Unit-test scope → SQL against fixture games,
    including the `social`-type competition edge case and inclusive date bounds.
-2. **`catalog`, `resolve`, `leaderboard`.** The `pg_trgm` and `member_id` index migration. Check `leaderboard` against
-   the site: a 4-23 medic leaderboard over the same scope must match
-   `getCompetitionTopPlayersByPosition` and the center page to the last decimal.
+2. **`catalog`, `resolve`, `leaderboard`.** The `pg_trgm` and `member_id` index migration. Check
+   `leaderboard` against the site: a 4-23 medic leaderboard over the same scope must match
+   `getCompetitionTopPlayersByPosition` and the center page to the last decimal. _Done: it matches
+   `getCompetitionMedicPlayers` for 4-23 social (126 players, all-time; 92, last 365 days) and
+   `getCompetitionTopPlayers` for a team competition (33 players), on games and average MVP._
 3. **`player_stats`** with `position` and `period` breakdowns, the baseline, and head-to-head.
 4. **`search_games` and `games/{slug}`.**
 5. **The MCP endpoint at `/mcp`.** Tools are generated from the zod schemas. Evaluate with a fixed
@@ -1023,6 +1076,5 @@ Settled 2026-10-04:
 
 ## Open questions
 
-- **Member id coverage.** How many active players still have a null `member_id` because they have
-  only been seen in pre-2.006 files? If it is many, a backfill from a newer roster source may be
-  worth doing.
+- **Member id coverage.** As of 2026-10-04, 786 of 1,583 players have a `member_id`. Is a backfill
+  from a newer roster source worth doing?

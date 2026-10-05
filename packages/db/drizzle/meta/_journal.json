@@ -365,6 +365,13 @@
       "when": 1791158491967,
       "tag": "0051_query_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791159452062,
+      "tag": "0052_query_api_resolve_indexes",
+      "breakpoints": true
     }
   ]
 }

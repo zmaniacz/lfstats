@@ -133,3 +133,90 @@ export const ScopeOverrideSchema = z
   })
   .describe("Fields here replace the base scope's; null removes a filter.");
 export type ScopeOverride = z.infer<typeof ScopeOverrideSchema>;
+
+// ---------------------------------------------------------------------------
+// Endpoint request schemas
+// ---------------------------------------------------------------------------
+
+export const QUERY_LIMITS = {
+  resolve_max_queries: 10,
+  resolve_max_matches: 5,
+  leaderboard_max_limit: 100,
+  leaderboard_max_metrics: 10,
+  leaderboard_max_min_games: 1000,
+} as const;
+
+export const CatalogRequestSchema = z.strictObject({});
+
+const resolveList = (what: string) =>
+  z
+    .array(z.string().trim().min(1))
+    .min(1)
+    .max(QUERY_LIMITS.resolve_max_queries)
+    .optional()
+    .describe(what);
+
+export const ResolveRequestSchema = z
+  .strictObject({
+    players: resolveList(
+      "Player callsigns (current or previous), IPL ids ('#1234567') or member ids ('4-3-1137').",
+    ),
+    centers: resolveList("Center names, short names, cities or slugs ('4-23')."),
+    competitions: resolveList("Competition names or slugs."),
+  })
+  .refine((r) => r.players || r.centers || r.competitions, {
+    message: "Give at least one of players, centers or competitions.",
+  })
+  .describe(
+    "Turns names into ids. Call this before any query that names a player, center or competition. If a result is 'ambiguous', ask the user which one they mean.",
+  );
+export type ResolveRequest = z.infer<typeof ResolveRequestSchema>;
+
+const metricId = z.string().min(1).describe("A metric id from the catalog, e.g. 'avg_mvp'.");
+const minGames = z.int().min(1).max(QUERY_LIMITS.leaderboard_max_min_games);
+
+export const LeaderboardRequestSchema = z
+  .strictObject({
+    scope: ScopeSchema.optional(),
+    sort_by: metricId.describe("Metric to rank by."),
+    order: z
+      .enum(["asc", "desc"])
+      .nullable()
+      .optional()
+      .describe("Default: best first, from the metric's higher_is_better."),
+    min_games: minGames
+      .optional()
+      .describe("Minimum games in `scope` to be ranked. Default 10. Mention it when answering."),
+    qualify: z
+      .strictObject({
+        min_games: minGames.describe("Minimum games in the qualifying scope."),
+        scope: ScopeOverrideSchema.optional(),
+      })
+      .optional()
+      .describe(
+        "Extra eligibility rule over a different scope, e.g. 'among players with at least 20 games in the last year'. qualify.scope is merged over `scope`.",
+      ),
+    limit: z
+      .int()
+      .min(1)
+      .max(QUERY_LIMITS.leaderboard_max_limit)
+      .optional()
+      .describe("Default 10."),
+    offset: z.int().min(0).optional(),
+    metrics: z
+      .array(metricId)
+      .max(QUERY_LIMITS.leaderboard_max_metrics)
+      .optional()
+      .describe("Extra metric columns. sort_by and games are always included."),
+    percentiles: z
+      .array(metricId)
+      .max(QUERY_LIMITS.leaderboard_max_metrics)
+      .optional()
+      .describe("Metrics (from sort_by or metrics) to also report as a 0–1 percentile, 1 = best."),
+    group_by_position: z
+      .boolean()
+      .optional()
+      .describe("SM5 only. One row per (player, position) instead of per player."),
+  })
+  .describe("Ranks players by one metric within a scope.");
+export type LeaderboardRequest = z.infer<typeof LeaderboardRequestSchema>;

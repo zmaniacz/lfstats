@@ -218,6 +218,34 @@ export const SM5_METRICS: readonly Sm5Metric[] = [
   }),
 ];
 
+/**
+ * Names models and people commonly use for a metric. Only ever used to suggest the real id
+ * in an error, never accepted silently: the model should learn the real id and the
+ * definition that comes with it. SM5 has no kill/death stat, so "kd" maps to hit_diff.
+ */
+const SM5_METRIC_ALIASES: Record<string, string> = {
+  kd: "avg_hit_diff",
+  kdr: "avg_hit_diff",
+  kd_ratio: "avg_hit_diff",
+  kill_death_ratio: "avg_hit_diff",
+  hit_diff: "avg_hit_diff",
+  hitdiff: "avg_hit_diff",
+  mvp: "avg_mvp",
+  mvp_points: "avg_mvp",
+  average_mvp: "avg_mvp",
+  accuracy: "avg_accuracy",
+  acc: "avg_accuracy",
+  score: "avg_score",
+  winrate: "win_rate",
+  win_pct: "win_rate",
+  win_percentage: "win_rate",
+  games_played: "games",
+  kills: "avg_eliminations",
+  eliminations: "avg_eliminations",
+  uptime: "avg_uptime_pct",
+  nukes: "avg_nukes_detonated",
+};
+
 // Laserball metrics land with the Laserball phase of the implementation plan.
 export const LB_METRICS: readonly LbMetric[] = [];
 
@@ -232,12 +260,15 @@ export function getMetric(gameType: GameType, id: string, field: string): Metric
   if (found) return found;
 
   const ids = metrics.map((m) => m.id);
+  const alias = gameType === "sm5" ? SM5_METRIC_ALIASES[id.toLowerCase()] : undefined;
   const otherType = registry(gameType === "sm5" ? "lb" : "sm5").some((m) => m.id === id);
   throw new QueryApiError("invalid_metric", `Unknown ${gameType} metric '${id}'.`, {
     field,
-    hint: otherType
-      ? `'${id}' is a ${gameType === "sm5" ? "Laserball" : "SM5"} metric; check scope.game_type.`
-      : `${suggestionPrefix(id, ids)}Valid metrics are listed by the catalog.`,
+    hint: alias
+      ? `Did you mean '${alias}'? ${metrics.find((m) => m.id === alias)!.definition}`
+      : otherType
+        ? `'${id}' is a ${gameType === "sm5" ? "Laserball" : "SM5"} metric; check scope.game_type.`
+        : `${suggestionPrefix(id, ids)}Valid metrics are listed by the catalog.`,
     validValues: ids,
   });
 }

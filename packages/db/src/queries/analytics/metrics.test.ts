@@ -112,6 +112,25 @@ describe("getMetric", () => {
     );
   });
 
+  it("maps common names to the real metric, with its definition", () => {
+    assert.throws(
+      () => getMetric("sm5", "kd_ratio", "sort_by"),
+      (err: QueryApiError) =>
+        /Did you mean 'avg_hit_diff'\? Mean of per-game hit_diff/.test(err.hint!),
+    );
+  });
+
+  it("only aliases to ids that exist", async () => {
+    const { SM5_METRICS: metrics } = await import("./metrics");
+    const ids = new Set(metrics.map((m) => m.id));
+    for (const alias of ["kd", "mvp", "accuracy", "winrate", "kills", "uptime", "nukes"]) {
+      assert.throws(
+        () => getMetric("sm5", alias, "f"),
+        (err: QueryApiError) => ids.has(/'([a-z_]+)'/.exec(err.hint!)![1]!),
+      );
+    }
+  });
+
   it("suggests ids containing the input", () => {
     assert.throws(
       () => getMetric("sm5", "mvp", "sort_by"),
