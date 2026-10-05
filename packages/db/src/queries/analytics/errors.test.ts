@@ -44,6 +44,17 @@ describe("QueryApiError", () => {
   });
 });
 
+describe("QueryApiError candidates", () => {
+  it("includes per-input candidates in the body for ambiguous players", () => {
+    const err = new QueryApiError("ambiguous_player", "Not sure.", {
+      field: "players",
+      candidates: { Shadow: [{ ipl_id: "#a" }, { ipl_id: "#b" }] },
+    });
+    assert.equal(err.status, 400);
+    assert.deepEqual(err.toBody().candidates, { Shadow: [{ ipl_id: "#a" }, { ipl_id: "#b" }] });
+  });
+});
+
 describe("mapDatabaseError", () => {
   it("turns a statement timeout into query_timeout", () => {
     assert.equal(mapDatabaseError({ code: "57014" })?.code, "query_timeout");

@@ -514,7 +514,9 @@ export async function getPlayerStats(req: PlayerStatsRequest, today: string) {
       dataAsOf: latest,
       extra: {
         ...(renamed.length > 0 && {
-          resolved_players: Object.fromEntries(renamed.map((p) => [p.input, p.iplId])),
+          resolved_players: Object.fromEntries(
+            renamed.map((p) => [p.input, { ipl_id: p.iplId, matched_on: p.matchedOn }]),
+          ),
         }),
         breakdown: dims,
         ...(dims.includes("period") && { period }),

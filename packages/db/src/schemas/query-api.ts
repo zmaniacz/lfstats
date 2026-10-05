@@ -232,18 +232,18 @@ export const PLAYER_STATS_LIMITS = {
   max_cells: 500,
 } as const;
 
-const playerId = z
+const playerRef = z
   .string()
   .trim()
   .min(1)
   .describe(
-    "An IPL id ('#1234567') or member id ('4-3-1137'). Use resolve to turn a callsign into one.",
+    "A callsign (current or previous), IPL id ('#1234567') or member id ('4-3-1137'). If a callsign matches more than one player, or only approximately, the request fails with ambiguous_player and the candidates: ask the user which one, then retry with its ipl_id.",
   );
 
 export const PlayerStatsRequestSchema = z
   .strictObject({
     players: z
-      .array(playerId)
+      .array(playerRef)
       .min(1)
       .max(PLAYER_STATS_LIMITS.max_players)
       .describe("1–10 players to report on side by side."),

@@ -17,6 +17,7 @@ export type QueryApiErrorCode =
   | "invalid_scope"
   | "too_many_items"
   | "player_not_found"
+  | "ambiguous_player"
   | "center_not_found"
   | "competition_not_found"
   | "game_not_found"
@@ -36,6 +37,7 @@ const STATUS_BY_CODE: Record<QueryApiErrorCode, number> = {
   invalid_scope: 400,
   too_many_items: 400,
   player_not_found: 404,
+  ambiguous_player: 400,
   center_not_found: 404,
   competition_not_found: 404,
   game_not_found: 404,
@@ -52,6 +54,8 @@ export type QueryApiErrorBody = {
   hint?: string;
   valid_values?: string[];
   retry_after_seconds?: number;
+  /** Per-input candidate lists, for ambiguous or unmatched names. */
+  candidates?: Record<string, unknown[]>;
 };
 
 export class QueryApiError extends Error {
@@ -61,6 +65,7 @@ export class QueryApiError extends Error {
   readonly hint?: string;
   readonly validValues?: string[];
   readonly retryAfterSeconds?: number;
+  readonly candidates?: Record<string, unknown[]>;
 
   constructor(
     code: QueryApiErrorCode,
@@ -70,6 +75,7 @@ export class QueryApiError extends Error {
       hint?: string;
       validValues?: readonly string[];
       retryAfterSeconds?: number;
+      candidates?: Record<string, unknown[]>;
     } = {},
   ) {
     super(message);
@@ -80,6 +86,7 @@ export class QueryApiError extends Error {
     this.hint = details.hint;
     this.validValues = details.validValues ? [...details.validValues] : undefined;
     this.retryAfterSeconds = details.retryAfterSeconds;
+    this.candidates = details.candidates;
   }
 
   toBody(): QueryApiErrorBody {
@@ -92,6 +99,7 @@ export class QueryApiError extends Error {
       ...(this.retryAfterSeconds !== undefined && {
         retry_after_seconds: this.retryAfterSeconds,
       }),
+      ...(this.candidates !== undefined && { candidates: this.candidates }),
     };
   }
 }

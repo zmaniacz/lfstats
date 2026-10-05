@@ -429,71 +429,65 @@ export type IdentifiedPlayer = {
   iplId: string;
   memberId: string | null;
   callsign: string;
+  matchedOn: PlayerMatchedOn;
 };
 
 /**
- * Turns the ids an endpoint was given (IPL id with or without '#', or member id) into
- * players, in input order. Callsigns are rejected rather than guessed at: that is what
- * resolve is for, and it can report ambiguity.
+ * Turns the players an endpoint was given — callsigns, IPL ids or member ids — into
+ * players, in input order, using the same matching as resolve.
+ *
+ * Only a certain match is used: an id, or a callsign (current or previous) that matches
+ * exactly one player. Anything else is reported back instead of guessed, so the model
+ * can ask the user. Every problem input is collected into one error, so one question
+ * covers them all:
+ *  - ambiguous (several exact matches, or fuzzy matches only) → 400 ambiguous_player,
+ *    with the candidates for each input
+ *  - nothing at all → 404 player_not_found
  */
 export async function identifyPlayers(
   inputs: readonly string[],
   field: string,
 ): Promise<IdentifiedPlayer[]> {
-  const db = getAnalyticsDb();
-  const results: IdentifiedPlayer[] = [];
-  for (const input of inputs) {
-    let where: SQL;
-    if (input.startsWith("#")) where = eq(player.iplId, input);
-    else if (MEMBER_ID.test(input)) where = eq(player.memberId, input);
-    else if (BARE_IPL_ID.test(input)) where = eq(player.iplId, `#${input}`);
-    else {
-      throw new QueryApiError("player_not_found", `'${input}' is not an IPL id or member id.`, {
-        field,
-        hint: "Call resolve with the callsign first, then pass the ipl_id it returns.",
-      });
-    }
+  const results = await Promise.all(inputs.map((input) => resolvePlayer(input)));
 
-    const rows = await db
-      .select({
-        id: player.id,
-        iplId: player.iplId,
-        memberId: player.memberId,
-        callsign: player.currentCallsign,
-      })
-      .from(player)
-      .where(where)
-      .limit(2);
-
-    if (rows.length === 0) {
-      const bare = !input.startsWith("#") && !MEMBER_ID.test(input);
-      throw new QueryApiError(
-        "player_not_found",
-        bare
-          ? `'${input}' is not a known IPL id. If it is a callsign, resolve it first.`
-          : `No player with id '${input}'.`,
-        {
-          field,
-          hint: MEMBER_ID.test(input)
-            ? "Member ids are only recorded for players seen in newer game files. Call resolve with the callsign instead."
-            : "Call resolve with the callsign to find the right ipl_id.",
-        },
-      );
-    }
-    if (rows.length > 1) {
-      throw new QueryApiError("invalid_request", `Member id '${input}' matches several players.`, {
+  const ambiguous = results.filter((r) => r.status === "ambiguous");
+  if (ambiguous.length > 0) {
+    throw new QueryApiError(
+      "ambiguous_player",
+      `Not sure which player is meant by ${ambiguous.map((r) => `'${r.query}'`).join(", ")}.`,
+      {
         field,
-        hint: `Use one of their IPL ids instead: ${rows.map((r) => r.iplId).join(", ")}.`,
-      });
-    }
-    const p = rows[0]!;
-    results.push({
-      input,
-      id: p.id,
-      iplId: p.iplId,
-      memberId: p.memberId,
-      callsign: p.callsign.trim(),
-    });
+        hint: "Ask the user which player they mean (home_center, games_played and last_played help tell them apart), then retry with that player's ipl_id.",
+        candidates: Object.fromEntries(ambiguous.map((r) => [r.query, r.matches])),
+      },
+    );
   }
-  return results;
+
+  const missing = results.filter((r) => r.status === "not_found");
+  if (missing.length > 0) {
+    throw new QueryApiError(
+      "player_not_found",
+      `No player matches ${missing.map((r) => `'${r.query}'`).join(", ")}.`,
+      { field, hint: missing[0]!.hint },
+    );
+  }
+
+  const iplIds = results.map((r) => r.matches[0]!.ipl_id);
+  const rows = await getAnalyticsDb()
+    .select({ id: player.id, iplId: player.iplId })
+    .from(player)
+    .where(inArray(player.iplId, iplIds));
+  const idByIpl = new Map(rows.map((r) => [r.iplId, r.id]));
+
+  return results.map((r) => {
+    const m = r.matches[0]!;
+    return {
+      input: r.query,
+      id: idByIpl.get(m.ipl_id)!,
+      iplId: m.ipl_id,
+      memberId: m.member_id,
+      callsign: m.callsign,
+      matchedOn: m.matched_on,
+    };
+  });
 }
