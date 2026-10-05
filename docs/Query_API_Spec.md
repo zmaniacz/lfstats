@@ -816,11 +816,12 @@ name the field and say how to fix it.
 
 | Status | `code`                                                                                                           |
 | ------ | ---------------------------------------------------------------------------------------------------------------- |
-| 401    | `missing_api_key`, `invalid_api_key`, `insufficient_scope`                                                       |
+| 401    | `missing_api_key`, `invalid_api_key`                                                                             |
+| 403    | `insufficient_scope` (the key exists but lacks `query:read`)                                                     |
 | 400    | `invalid_request`, `unknown_field`, `invalid_metric`, `metric_not_applicable`, `invalid_scope`, `too_many_items` |
 | 404    | `player_not_found`, `center_not_found`, `competition_not_found`, `game_not_found`                                |
 | 422    | `scope_too_broad` (see [Limits](#limits-and-safety))                                                             |
-| 429    | `rate_limited` (includes `retry_after_seconds`)                                                                  |
+| 429    | `rate_limited`, `server_busy` (both include `retry_after_seconds` and a `Retry-After` header)                    |
 | 504    | `query_timeout`                                                                                                  |
 
 `did you mean` suggestions use Levenshtein distance against the catalog's ids and enum values.
@@ -832,20 +833,26 @@ error-message redaction does not apply. Still, never return raw database error t
 
 ## Limits and safety
 
-- **Read-only database role.** The analytics queries run on a dedicated pool that connects as a
-  Postgres role with `SELECT` only. The registry's SQL fragments are code, not user input, and every
-  value is parameterised. No endpoint accepts raw SQL.
+- **Read-only database role.** The analytics queries run on a dedicated pool
+  (`packages/db/src/queries/analytics/pool.ts`) that connects with `QUERY_DATABASE_URL`, which
+  should name the `SELECT`-only role created by `packages/db/sql/query-readonly-role.sql`. The pool
+  also sets `default_transaction_read_only` and `statement_timeout` as session startup parameters,
+  so it stays read-only and time-limited even when it falls back to `DATABASE_URL`. The registry's
+  SQL fragments are code, not user input, and every value is parameterised. No endpoint accepts raw
+  SQL.
 - **`statement_timeout = 5s`** on that pool. A timeout returns a `504 query_timeout` whose hint
   suggests narrowing the scope.
 - **Row caps:** `leaderboard.limit ≤ 100`, `search_games.limit ≤ 100`, `player_stats.players ≤ 10`,
   `resolve` lists ≤ 10 each, `breakdown` ≤ 2 dimensions.
 - **`scope_too_broad`:** `player_stats` with `breakdown: ["period"]`, `period: "month"` and
   `all_time` across 10 players could return thousands of cells. The cap is 500 cells per request.
-- **Rate limit:** per API key, default 60 requests/minute and 2,000/day, configurable per key.
-  Each request is logged with the key id, endpoint, duration and row count, so a misbehaving
+- **Rate limit:** per API key, default 60 requests/minute and 2,000/day, overridable per key
+  (`api_key.rate_limit_per_minute` / `rate_limit_per_day`). Counters are fixed windows held in
+  memory, which is enough for a single web process; several replicas would need a shared store.
+  Each request, including rate-limited ones, is logged to `api_request_log` with the key id, endpoint, duration and row count, so a misbehaving
   client can be found and its key revoked.
-- **Concurrency:** at most 4 analytics queries run at once across all keys (pool size). Further
-  requests wait up to 2 s and then get a `429`. This protects the site's own traffic on a
+- **Concurrency:** at most 4 requests use the analytics pool at once across all keys (pool size).
+  Further requests wait up to 2 s and then get a `429 server_busy`. This protects the site's own traffic on a
   single small server.
 - **Caching:** responses are deterministic for a given body plus `data_as_of`. Cache them keyed on
   a hash of the normalised request body with a short TTL (5 minutes), and invalidate on ingest if

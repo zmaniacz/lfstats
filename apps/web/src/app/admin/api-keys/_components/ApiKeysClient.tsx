@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -24,7 +25,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import type { ApiKeyListing } from "@lfstats/db";
+import type { ApiKeyListing, ApiKeyScope } from "@lfstats/db";
+
+// Listed here rather than imported as a value: @lfstats/db is server-only.
+const SCOPE_OPTIONS: { scope: ApiKeyScope; label: string; description: string }[] = [
+  {
+    scope: "video:write",
+    label: "Post videos",
+    description: "Attach game and POV video links (POST /api/videos).",
+  },
+  {
+    scope: "query:read",
+    label: "Query stats",
+    description: "Run analytics queries through the query API and MCP server.",
+  },
+];
 
 type Props = {
   keys: ApiKeyListing[];
@@ -37,18 +52,20 @@ type Props = {
 export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
+  const [scopes, setScopes] = useState<ApiKeyScope[]>([]);
   const [isPending, setIsPending] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate() {
-    if (!name.trim()) return;
+    if (!name.trim() || scopes.length === 0) return;
     setIsPending(true);
     setError(null);
     try {
       const formData = new FormData();
       formData.set("name", name.trim());
+      for (const scope of scopes) formData.append("scopes", scope);
       const result = await createAction(formData);
       if (!result.ok) {
         // Keep the dialog open so the reason stays visible.
@@ -57,6 +74,7 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
       }
       setCreateOpen(false);
       setName("");
+      setScopes([]);
       // Shown once — the plaintext is not recoverable after this dialog closes.
       setNewKey(result.plaintext);
     } finally {
@@ -82,8 +100,9 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        Keys let external tools post game and player POV video links. They grant write access across
-        every center, so issue them sparingly and revoke unused keys.
+        Keys let external tools post game and player POV video links, or query stats through the
+        query API. They work across every center, so issue them sparingly, grant only the
+        permissions a tool needs, and revoke unused keys.
       </p>
 
       {keys.length === 0 ? (
@@ -94,6 +113,7 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Prefix</TableHead>
+              <TableHead>Permissions</TableHead>
               <TableHead>Created by</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Last used</TableHead>
@@ -112,6 +132,13 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
                   )}
                 </TableCell>
                 <TableCell className="font-mono text-xs">{k.keyPrefix}…</TableCell>
+                <TableCell className="space-x-1">
+                  {k.scopes.map((scope) => (
+                    <Badge key={scope} variant="secondary" className="font-mono text-xs">
+                      {scope}
+                    </Badge>
+                  ))}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {k.createdByEmail ?? "—"}
                 </TableCell>
@@ -161,8 +188,32 @@ export function ApiKeysClient({ keys, createAction, revokeAction }: Props) {
                 placeholder="e.g. OBS Capture Tool"
               />
             </div>
+            <div className="space-y-3">
+              <Label>Permissions</Label>
+              {SCOPE_OPTIONS.map((opt) => (
+                <div key={opt.scope} className="flex items-start gap-3">
+                  <Switch
+                    id={`scope-${opt.scope}`}
+                    checked={scopes.includes(opt.scope)}
+                    onCheckedChange={(checked) =>
+                      setScopes((prev) =>
+                        checked ? [...prev, opt.scope] : prev.filter((s) => s !== opt.scope),
+                      )
+                    }
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor={`scope-${opt.scope}`}>{opt.label}</Label>
+                    <p className="text-xs text-muted-foreground">{opt.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button onClick={handleCreate} disabled={isPending || !name.trim()} className="w-full">
+            <Button
+              onClick={handleCreate}
+              disabled={isPending || !name.trim() || scopes.length === 0}
+              className="w-full"
+            >
               {isPending ? "Creating…" : "Create Key"}
             </Button>
           </div>

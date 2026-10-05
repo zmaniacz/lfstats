@@ -6,10 +6,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./lib/team-logos": "./src/lib/team-logos.ts",
-    "./lib/player-pictures": "./src/lib/player-pictures.ts"
+    "./lib/player-pictures": "./src/lib/player-pictures.ts",
+    "./analytics": "./src/analytics.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -28,7 +30,8 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.1146.0",
     "drizzle-orm": "latest",
-    "postgres": "^3.4.9"
+    "postgres": "^3.4.9",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

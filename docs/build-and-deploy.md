@@ -165,6 +165,12 @@ networks:
 
 Single `web` service. Pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. The web and Postgres containers share an external Docker network (`lfstats`) so `DATABASE_URL` points directly to the `db` service name — no host NAT involved. Publishes 3000 to the host so Traefik on a separate host can reach it.
 
+Optional: `QUERY_DATABASE_URL` points the query API's analytics pool at a `SELECT`-only role
+(created once with `packages/db/sql/query-readonly-role.sql`), e.g.
+`postgres://lfstats_query:${QUERY_DB_PASSWORD}@db:5432/lfstats_modern`. Without it the pool uses
+`DATABASE_URL` but still forces read-only transactions and a 5 s statement timeout. See
+[Query_API_Spec.md](Query_API_Spec.md#limits-and-safety).
+
 Auth-related env vars: `AUTH_TRUST_HOST=true` and explicit `AUTH_URL=https://modern.lfstats.com` because Traefik terminates TLS and forwards plain HTTP — Auth.js needs to trust the forwarded headers and know its real public URL.
 
 ### `.env` (on the deploy host, never committed)
