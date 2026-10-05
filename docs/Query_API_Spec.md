@@ -1052,8 +1052,11 @@ error-message redaction does not apply. Still, never return raw database error t
 ### Tools
 
 There is one tool per endpoint. Tool names are `lfstats_<endpoint>`. Each `inputSchema` is the
-endpoint's zod schema converted with `z.toJSONSchema`. Each description is written for the model
-and appends the catalog's metric list.
+endpoint's zod schema converted with `z.toJSONSchema` (input side, closed objects). Each
+description is written for the model, and the ranking tools' descriptions append the catalog's
+metric list. Definitions, descriptions and the server instructions live in
+`packages/db/src/queries/analytics/tools.ts`, so they are unit-tested and sit next to the queries
+they describe. `apps/web/src/lib/mcp/server.ts` only wires them into the MCP SDK.
 
 | Tool                   | Endpoint             |
 | ---------------------- | -------------------- |
@@ -1064,22 +1067,45 @@ and appends the catalog's metric list.
 | `lfstats_search_games` | `POST /search_games` |
 | `lfstats_game_detail`  | `GET /games/{slug}`  |
 
+`lfstats_game_detail` takes `{ slug, include_penalties?, include_mvp_components? }` with real
+booleans, where the HTTP route takes the slug in the path and flags in the query string.
+
 Every tool is annotated `readOnlyHint: true`, `openWorldHint: false`.
 
 The `/mcp` endpoint requires the same `Authorization: Bearer lfs_…` header with a `query:read`
 key. MCP clients send it as a configured header. OAuth for MCP is out of scope for v1.
 
+**Transport.** Streamable HTTP in **stateless JSON mode** (`WebStandardStreamableHTTPServerTransport`,
+no session id, `enableJsonResponse`). Every HTTP request gets a fresh server, so nothing is held in
+memory between requests. GET and DELETE are answered by the transport, since there are no SSE
+streams or sessions to close.
+
+**Shared behaviour with the HTTP API.**
+
+- The key check and rate limit apply per HTTP request. That includes protocol messages
+  (`initialize`, `tools/list`), so a client session costs a few requests before its first tool
+  call.
+- Missing, bad or revoked keys get a plain `401` JSON error with `WWW-Authenticate: Bearer`, not a
+  JSON-RPC error.
+- Each tool call is validated with the same zod schema and `fromZodError` messages.
+- Each tool call runs in the same concurrency slot.
+- Each tool call is logged to `api_request_log` as `mcp:<tool name>`.
+- A failed call returns `isError: true` with the same `{ "error": { … } }` body as the HTTP API,
+  including `ambiguous_player` candidates.
+- Results are compact JSON text, `{ data, meta }`.
+
 ### Server instructions (sent on initialize)
 
-> LFstats records Space Marines 5 (SM5) and Laserball laser tag games. Players are identified by
-> callsign, centers ("sites") by name. Pass player callsigns straight to the tools. Call
-> `lfstats_resolve` first for centers and competitions, which the tools take as slugs. If a name is
-> `ambiguous`, or a tool returns `ambiguous_player`, ask the user which player they mean, using
-> the candidates' home center and game counts, then retry with that player's `ipl_id`. Never pick
-> one yourself.
-> Positions are commander, heavy, scout, ammo and medic. "MVP" means the per-game MVP points
-> score. When answering, state the date range, scope and number of games from `meta`. Treat fewer
-> than ~10 games as a small sample and say so. Link to `meta.links.web` or `web_url` when present.
+The text is `MCP_INSTRUCTIONS` in `tools.ts`. In summary:
+
+- Pass player callsigns straight to the tools.
+- Resolve centers and competitions to slugs first.
+- On `ambiguous` or `ambiguous_player`, ask the user, never pick.
+- Use `date_range.preset` for relative dates.
+- State the scope, game counts and warnings from `meta`.
+- Flag samples under ~10 games, and mention `min_games` on leaderboards.
+- Link `web_url`.
+- Only SM5 is supported so far.
 
 ### Resources
 
@@ -1182,7 +1208,7 @@ from the registry, so in practice only this document can fall out of date.
 
 ## Implementation plan
 
-Phases 1–4 are done. Phase 1 deviated from the plan in one way: its tests check the generated
+Phases 1–5 are done. Phase 1 deviated from the plan in one way: its tests check the generated
 SQL rather than running against fixture games, because there is no test database. Parity checks
 against the live database cover the rest.
 
@@ -1207,7 +1233,10 @@ against the live database cover the rest.
    sum to the stored MVP._
 5. **The MCP endpoint at `/mcp`.** Tools are generated from the zod schemas. Evaluate with a fixed
    set of ~30 real questions and check that the tool calls and answers are correct. Include
-   ambiguous names, impossible scopes and small samples.
+   ambiguous names, impossible scopes and small samples. _Done. See
+   [Query_API_Eval.md](Query_API_Eval.md): 29 pass, 1 gap (competition winners need a standings
+   tool). The eval scripts the tool calls from the descriptions, so a live-model eval through a
+   real MCP client is still to do once deployed._
 6. **Laserball metrics.**
 7. Add the routes to [API.md](API.md) as they ship.
 

@@ -16,3 +16,4 @@ export * from "./queries/analytics/resolve";
 export * from "./queries/analytics/leaderboard";
 export * from "./queries/analytics/player-stats";
 export * from "./queries/analytics/games";
+export * from "./queries/analytics/tools";

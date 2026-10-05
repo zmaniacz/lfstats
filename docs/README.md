@@ -4,22 +4,23 @@ Specifications and design docs for the LFstats monorepo. Start here.
 
 ## Which doc do I need?
 
-| I want to…                                 | Read                                                                           |
-| ------------------------------------------ | ------------------------------------------------------------------------------ |
-| Understand a raw `.tdf` game log           | [TDF_Spec.md](TDF_Spec.md)                                                     |
-| Understand a Laserball `.tdf`              | [Laserball_TDF_Spec.md](Laserball_TDF_Spec.md) (a delta — read TDF_Spec first) |
-| Look up a database table or column         | [Core_Schema.md](Core_Schema.md)                                               |
-| Look up an SM5 per-player stat             | [Scorecard_Table_Spec.md](Scorecard_Table_Spec.md)                             |
-| Look up a Laserball per-player stat        | [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md)         |
-| Work on tournaments, standings, or rosters | [Competition_Structure.md](Competition_Structure.md)                           |
-| Change the global player ranking           | [Player_Rating.md](Player_Rating.md)                                           |
-| Change how TDFs are parsed or simulated    | [chomper-design.md](chomper-design.md)                                         |
-| Change Laserball ingestion specifically    | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
-| Run or debug the ingestion tests           | [chomper-design.md](chomper-design.md#test-suite)                              |
-| Add or change a public API route           | [API.md](API.md)                                                               |
-| Work on the query API or MCP server        | [Query_API_Spec.md](Query_API_Spec.md)                                         |
-| Understand who can do what in the app      | [Role_Spec.md](Role_Spec.md)                                                   |
-| Deploy the web app, or debug a build       | [build-and-deploy.md](build-and-deploy.md)                                     |
+| I want to…                                  | Read                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------ |
+| Understand a raw `.tdf` game log            | [TDF_Spec.md](TDF_Spec.md)                                                     |
+| Understand a Laserball `.tdf`               | [Laserball_TDF_Spec.md](Laserball_TDF_Spec.md) (a delta — read TDF_Spec first) |
+| Look up a database table or column          | [Core_Schema.md](Core_Schema.md)                                               |
+| Look up an SM5 per-player stat              | [Scorecard_Table_Spec.md](Scorecard_Table_Spec.md)                             |
+| Look up a Laserball per-player stat         | [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md)         |
+| Work on tournaments, standings, or rosters  | [Competition_Structure.md](Competition_Structure.md)                           |
+| Change the global player ranking            | [Player_Rating.md](Player_Rating.md)                                           |
+| Change how TDFs are parsed or simulated     | [chomper-design.md](chomper-design.md)                                         |
+| Change Laserball ingestion specifically     | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
+| Run or debug the ingestion tests            | [chomper-design.md](chomper-design.md#test-suite)                              |
+| Add or change a public API route            | [API.md](API.md)                                                               |
+| Work on the query API or MCP server         | [Query_API_Spec.md](Query_API_Spec.md)                                         |
+| See how the MCP tools answer real questions | [Query_API_Eval.md](Query_API_Eval.md)                                         |
+| Understand who can do what in the app       | [Role_Spec.md](Role_Spec.md)                                                   |
+| Deploy the web app, or debug a build        | [build-and-deploy.md](build-and-deploy.md)                                     |
 
 ---
 
@@ -62,6 +63,8 @@ Specifications and design docs for the LFstats monorepo. Start here.
 - **[API.md](API.md)** — public API routes, response shapes, auth, and conventions for new routes.
 - **[Query_API_Spec.md](Query_API_Spec.md)** — draft spec for the analytics query API and the MCP
   server built on it: shared scope object, metric registry, endpoints, limits.
+- **[Query_API_Eval.md](Query_API_Eval.md)** — 30 real questions run through the MCP server, with
+  checks, results and findings.
 - **[Role_Spec.md](Role_Spec.md)** — the `superAdmin` / `admin` / `centerAdmin` / `uploader`
   hierarchy, center scoping, and the permission matrix.
 
