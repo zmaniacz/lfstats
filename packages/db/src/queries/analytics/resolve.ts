@@ -13,6 +13,7 @@ import {
 } from "../../schema";
 import type { ResolveRequest } from "../../schemas/query-api";
 import { QUERY_LIMITS } from "../../schemas/query-api";
+import { QueryApiError } from "./errors";
 import { getAnalyticsDb } from "./pool";
 
 // POST /resolve (docs/Query_API_Spec.md): names → ids. Matching runs in order and stops at
@@ -416,4 +417,83 @@ export async function resolveNames(request: ResolveRequest) {
       ...(request.competitions && { competitions }),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Player identifiers in other endpoints
+// ---------------------------------------------------------------------------
+
+export type IdentifiedPlayer = {
+  input: string;
+  id: string;
+  iplId: string;
+  memberId: string | null;
+  callsign: string;
+};
+
+/**
+ * Turns the ids an endpoint was given (IPL id with or without '#', or member id) into
+ * players, in input order. Callsigns are rejected rather than guessed at: that is what
+ * resolve is for, and it can report ambiguity.
+ */
+export async function identifyPlayers(
+  inputs: readonly string[],
+  field: string,
+): Promise<IdentifiedPlayer[]> {
+  const db = getAnalyticsDb();
+  const results: IdentifiedPlayer[] = [];
+  for (const input of inputs) {
+    let where: SQL;
+    if (input.startsWith("#")) where = eq(player.iplId, input);
+    else if (MEMBER_ID.test(input)) where = eq(player.memberId, input);
+    else if (BARE_IPL_ID.test(input)) where = eq(player.iplId, `#${input}`);
+    else {
+      throw new QueryApiError("player_not_found", `'${input}' is not an IPL id or member id.`, {
+        field,
+        hint: "Call resolve with the callsign first, then pass the ipl_id it returns.",
+      });
+    }
+
+    const rows = await db
+      .select({
+        id: player.id,
+        iplId: player.iplId,
+        memberId: player.memberId,
+        callsign: player.currentCallsign,
+      })
+      .from(player)
+      .where(where)
+      .limit(2);
+
+    if (rows.length === 0) {
+      const bare = !input.startsWith("#") && !MEMBER_ID.test(input);
+      throw new QueryApiError(
+        "player_not_found",
+        bare
+          ? `'${input}' is not a known IPL id. If it is a callsign, resolve it first.`
+          : `No player with id '${input}'.`,
+        {
+          field,
+          hint: MEMBER_ID.test(input)
+            ? "Member ids are only recorded for players seen in newer game files. Call resolve with the callsign instead."
+            : "Call resolve with the callsign to find the right ipl_id.",
+        },
+      );
+    }
+    if (rows.length > 1) {
+      throw new QueryApiError("invalid_request", `Member id '${input}' matches several players.`, {
+        field,
+        hint: `Use one of their IPL ids instead: ${rows.map((r) => r.iplId).join(", ")}.`,
+      });
+    }
+    const p = rows[0]!;
+    results.push({
+      input,
+      id: p.id,
+      iplId: p.iplId,
+      memberId: p.memberId,
+      callsign: p.callsign.trim(),
+    });
+  }
+  return results;
 }

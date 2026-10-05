@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { and, sql } from "drizzle-orm";
-import { game } from "../../schema";
+import { center, game } from "../../schema";
 import type { GameType } from "../../schemas/query-api";
 import { getMetric, metricCatalogEntry } from "./metrics";
 import { getAnalyticsDb } from "./pool";
@@ -19,6 +19,11 @@ import { describeScope, scopeGameConditions, type ResolvedScope } from "./scope"
 export function localTimestampSql(column: unknown) {
   return sql<string>`to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS')`;
 }
+
+export const centerSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`;
+
+/** The public game slug (docs/API.md "Game slugs"). Needs `center` joined to `game`. */
+export const gameSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`;
 
 /** Start time of the newest game in scope, or null if the scope has no games. */
 export async function dataAsOf(scope: ResolvedScope): Promise<string | null> {

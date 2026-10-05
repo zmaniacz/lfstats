@@ -220,3 +220,70 @@ export const LeaderboardRequestSchema = z
   })
   .describe("Ranks players by one metric within a scope.");
 export type LeaderboardRequest = z.infer<typeof LeaderboardRequestSchema>;
+
+export const BREAKDOWNS = ["position", "period", "center", "game_kind"] as const;
+export type Breakdown = (typeof BREAKDOWNS)[number];
+export const PERIODS = ["month", "quarter", "year"] as const;
+export type Period = (typeof PERIODS)[number];
+
+export const PLAYER_STATS_LIMITS = {
+  max_players: 10,
+  max_breakdowns: 2,
+  max_cells: 500,
+} as const;
+
+const playerId = z
+  .string()
+  .trim()
+  .min(1)
+  .describe(
+    "An IPL id ('#1234567') or member id ('4-3-1137'). Use resolve to turn a callsign into one.",
+  );
+
+export const PlayerStatsRequestSchema = z
+  .strictObject({
+    players: z
+      .array(playerId)
+      .min(1)
+      .max(PLAYER_STATS_LIMITS.max_players)
+      .describe("1–10 players to report on side by side."),
+    scope: ScopeSchema.optional(),
+    metrics: z
+      .array(metricId)
+      .min(1)
+      .max(QUERY_LIMITS.leaderboard_max_metrics)
+      .optional()
+      .describe(
+        "Default: games, win_rate, avg_mvp, avg_score, avg_accuracy, avg_hit_diff. games is always included.",
+      ),
+    breakdown: z
+      .array(z.enum(BREAKDOWNS))
+      .max(PLAYER_STATS_LIMITS.max_breakdowns)
+      .optional()
+      .describe("Split each player's stats by up to two of: position, period, center, game_kind."),
+    period: z
+      .enum(PERIODS)
+      .optional()
+      .describe("Bucket size when breakdown includes 'period'. Default 'year'."),
+    head_to_head: z
+      .boolean()
+      .optional()
+      .describe(
+        "Exactly 2 players: their record as teammates and as opponents, and tags landed on each other. Uses the scope's game filters only.",
+      ),
+    include_rating: z
+      .boolean()
+      .optional()
+      .describe("Include each player's global rating (not scoped). Default true."),
+    include_baseline: z
+      .boolean()
+      .optional()
+      .describe("Include the same metrics averaged over everyone else in scope. Default true."),
+    baseline_min_games: minGames
+      .optional()
+      .describe("Games a player needs in a cell to count toward the baseline. Default 10."),
+  })
+  .describe(
+    "Stats for 1–10 named players over the same scope, for 'how is X doing' and 'compare X and Y'.",
+  );
+export type PlayerStatsRequest = z.infer<typeof PlayerStatsRequestSchema>;
