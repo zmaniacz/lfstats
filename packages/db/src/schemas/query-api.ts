@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { z } from "zod";
-import { competitionRoundTypeEnum, teamResultEnum } from "../schema";
+import { competitionRoundTypeEnum, gameOutcomeEnum, teamResultEnum } from "../schema";
 
 // Request schemas for the query API (docs/Query_API_Spec.md). Each schema is the single
 // source for HTTP body validation, the published JSON Schema and the MCP tool inputSchema,
@@ -287,3 +287,84 @@ export const PlayerStatsRequestSchema = z
     "Stats for 1–10 named players over the same scope, for 'how is X doing' and 'compare X and Y'.",
   );
 export type PlayerStatsRequest = z.infer<typeof PlayerStatsRequestSchema>;
+
+export const GAME_OUTCOMES = gameOutcomeEnum.enumValues;
+export const SEARCH_GAMES_SORTS = [
+  "start_time_desc",
+  "start_time_asc",
+  "margin_asc",
+  "margin_desc",
+] as const;
+export const SEARCH_GAMES_FIELDS = [
+  "start_time",
+  "center",
+  "competition",
+  "outcome",
+  "margin",
+  "teams",
+  "excluded",
+  "web_url",
+] as const;
+export const SEARCH_GAMES_LIMITS = { max_limit: 100, default_limit: 20, max_players: 10 } as const;
+
+export const SearchGamesRequestSchema = z
+  .strictObject({
+    scope: ScopeSchema.optional().describe(
+      "Game filters. positions and team_result need `players` and then apply to those players' scorecards; include_mercenary_games is ignored.",
+    ),
+    players: z
+      .strictObject({
+        include: z
+          .array(playerRef)
+          .min(1)
+          .max(SEARCH_GAMES_LIMITS.max_players)
+          .describe("Players who must have played (callsigns, IPL ids or member ids)."),
+        match: z
+          .enum(["all", "any"])
+          .optional()
+          .describe("'all' (default): every listed player played. 'any': at least one did."),
+        relation: z
+          .enum(["any", "teammates", "opponents"])
+          .optional()
+          .describe("Exactly 2 players: require them on the same team, or opposing teams."),
+      })
+      .optional(),
+    min_margin: z
+      .int()
+      .min(0)
+      .optional()
+      .describe("Minimum gap between the top two teams' effective scores."),
+    max_margin: z.int().min(0).optional().describe("Maximum gap, e.g. 1000 for close games."),
+    outcomes: z
+      .array(z.enum(GAME_OUTCOMES))
+      .min(1)
+      .optional()
+      .describe("game.outcome values. Default: all except aborted."),
+    sort: z.enum(SEARCH_GAMES_SORTS).optional().describe("Default start_time_desc (newest first)."),
+    limit: z.int().min(1).max(SEARCH_GAMES_LIMITS.max_limit).optional().describe("Default 20."),
+    cursor: z.string().min(1).optional().describe("meta.next_cursor from the previous page."),
+    fields: z
+      .array(z.enum(SEARCH_GAMES_FIELDS))
+      .min(1)
+      .optional()
+      .describe("Which fields to return; game_slug always is. Default: all."),
+    include_rosters: z
+      .boolean()
+      .optional()
+      .describe(
+        "Add each team's players (callsign, position, score, MVP). Needs 'teams' in fields.",
+      ),
+  })
+  .describe("Finds games and returns compact summaries; follow up with game_detail for one game.");
+export type SearchGamesRequest = z.infer<typeof SearchGamesRequestSchema>;
+
+/** Query-string booleans arrive as text. */
+const queryFlag = z.stringbool().optional();
+
+export const GameDetailRequestSchema = z
+  .strictObject({
+    include_penalties: queryFlag.describe("Default true."),
+    include_mvp_components: queryFlag.describe("Per-player MVP breakdown. Default false."),
+  })
+  .describe("One game with every player's stats.");
+export type GameDetailRequest = z.infer<typeof GameDetailRequestSchema>;

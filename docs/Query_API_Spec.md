@@ -486,7 +486,7 @@ Each list holds at most 10 queries.
 Users name players by **callsign** far more often than by id. Many also know their member id
 (`{country}-{site}-{member}`, e.g. `4-3-1137`, the number on their membership card), but few know
 their IPL id. So every field that takes a player (`player_stats.players`,
-`search_games.players.ipl_ids`, and later additions) accepts any of the three. Each value goes
+`search_games.players.include`, and later additions) accepts any of the three. Each value goes
 through the same matching as `resolve`:
 
 - **Certain match** — an id, or a callsign (current or previous) that exactly matches one player:
@@ -788,9 +788,9 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
   "scope": { "competitions": ["internationals_2026"], "round_types": ["finals"] },
   "players": {
     // optional
-    "ipl_ids": ["#1234567", "#7654321"],
-    "match": "all", // "all" | "any"
-    "relation": "opponents", // "any" | "teammates" | "opponents"; teammates/opponents need exactly 2 ids
+    "include": ["shrapnel", "#7654321"], // up to 10 callsigns, IPL ids or member ids
+    "match": "all", // "all" (default) | "any"
+    "relation": "opponents", // "any" (default) | "teammates" | "opponents"; the last two need exactly 2 players
   },
   "max_margin": 1000, // effective-score gap between the top two non-neutral teams
   "min_margin": null,
@@ -844,20 +844,47 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
       "web_url": "https://lfstats.com/games/4-19-20260614193012",
     },
   ],
-  "meta": { "next_cursor": "eyJ0IjoiMjAyNi0wNi0xNFQxOTozMDoxMiJ9", "…": "…" },
+  "meta": {
+    "scope": { "…": "…" },
+    "resolved_players": { "shrapnel": { "ipl_id": "#1234567", "matched_on": "current_callsign" } },
+    "sort": "margin_asc",
+    "total_matches": 7, // every game matching the filters, across all pages
+    "row_count": 1,
+    "truncated": true, // more pages follow
+    "next_cursor": "eyJzIjoibWFyZ2luX2FzYyIsInYiOiI2NDAiLCJpZCI6Ii4uLiJ9",
+    "warnings": [],
+    "data_as_of": "2026-09-28T21:14:02",
+  },
 }
 ```
 
 - **`effective_score`** = `score + elimination_bonus + penalty_score`, as defined in
   [Core_Schema.md](Core_Schema.md). The margin is computed from effective scores.
-- **`fields`** is a projection. `game_slug` is always returned. Omitting `fields` returns the
-  default set shown above.
+- **`fields`** is a projection over `start_time`, `center`, `competition`, `outcome`, `margin`,
+  `teams`, `excluded` and `web_url`. `game_slug` is always returned. Omitting `fields` returns all
+  of them.
+- **`teams`** lists non-neutral teams, best effective score first, each with `name`,
+  `colour_enum`, `competition_team`, `score`, `elimination_bonus`, `penalty_score`,
+  `effective_score`, `result` and `eliminated`. `include_rosters: true` (which needs `teams`) adds
+  `players: [{ ipl_id, callsign, position, score, mvp, is_mercenary }]` to each team, highest score
+  first. Guests have a null `ipl_id`.
+- **`total_matches`** counts every matching game, so "how many times did X and Y play each
+  other?" is one call with `limit: 1`.
 - **`competition_team`** is the competition team name, joined through
   `competition_match_game.team{1,2}_game_team_id`. It is `null` for social games.
 - **`scope.positions`** and **`scope.team_result`** filter scorecards, not games. Both are a `400`
   here unless `players` is set, in which case they apply to those players, as in "games where X
-  played medic and lost".
-- **Pagination** is keyset pagination on `(sort key, game.id)`, with an opaque cursor.
+  played medic and lost". `scope.include_mercenary_games` does not apply to games and is ignored,
+  with a warning.
+- **`players.match: "all"`** requires every listed player to have played; `"any"` requires at
+  least one. `relation` adds a same-team or opposing-team requirement for exactly two players.
+  Players are matched by name as described in [Player identifiers](#player-identifiers).
+- **`outcomes`** defaults to every outcome except `aborted`. Aborted games are excluded at ingest
+  anyway, unless `scope.include_excluded` is set.
+- **Pagination** is keyset pagination on `(sort key, game.id)`, with an opaque cursor. A cursor
+  only works with the `sort` that produced it. Sorting by margin leaves out games with fewer than
+  two scored teams, with a warning.
+- **Laserball** returns `invalid_scope` until the Laserball phase.
 
 #### Teams and colours
 
@@ -872,8 +899,9 @@ green team" wording belongs to the client, not the API.
 One game with full per-player stats. It extends the roster-only `GET /api/games/[slug]` with each
 scorecard's stats.
 
-Query parameters: `metrics` (comma-separated scorecard columns or registry ids, default a standard
-set), `include_penalties` (default `true`), `include_mvp_components` (default `false`).
+Query parameters: `include_penalties` (default `true`) and `include_mvp_components` (default
+`false`), as `true`/`false`. The draft's `metrics` parameter was dropped: the response carries
+the full standard stat set, which is small enough for one game.
 
 ```jsonc
 {
@@ -928,8 +956,27 @@ set), `include_penalties` (default `true`), `include_mvp_components` (default `f
 }
 ```
 
-Guests appear with `ipl_id: null`, as in the existing route. Excluded games resolve, but carry
-`"excluded": true` so the model does not quote them as typical.
+Implemented details:
+
+- **Header:** `game_slug`, `game_type`, `start_time`, `center`, `competition` (with round and
+  match when scheduled, otherwise `null` for those parts), `outcome`, `excluded`, `description`,
+  `scheduled_length` and `actual_length` (`m:ss`), `tdf_url`, `web_url`.
+- **Teams** are the same objects as in `search_games`, each with every player's `ipl_id`,
+  `callsign`, `position`, `is_mercenary`, `score`, `mvp`, `accuracy`, `hit_diff`, `shots_fired`,
+  `shots_hit`, `times_hit`, `missiles_hit`, `times_hit_by_missile`, `medic_hits`,
+  `eliminations`, `assists`, `nukes_detonated`, `nukes_canceled`, `rapid_fire`,
+  `resupplies_given`, `lives_left`, `shots_left`, `eliminated`, `uptime_pct` and `penalties`.
+  Position-specific stats are `null` where the position has no such ability.
+  `include_mvp_components` adds `mvp_components: { component: points }` under the model that
+  produced the stored `mvp`.
+- **Penalties** list player penalties (`ipl_id`, `callsign`) and team penalties (`team`) together,
+  each with `type`, `description`, `score_value`, `mvp_value` (null for team penalties), `time`
+  and `rescinded`.
+- **Guests** appear with `ipl_id: null`, as in the existing route.
+- **Excluded games** still resolve, but carry `"excluded": true` and a warning so the model does
+  not quote them as typical.
+- **Laserball** game slugs return `invalid_request`, pointing to `GET /api/games/{slug}` for the
+  roster.
 
 ---
 
@@ -1135,7 +1182,7 @@ from the registry, so in practice only this document can fall out of date.
 
 ## Implementation plan
 
-Phases 1–3 are done. Phase 1 deviated from the plan in one way: its tests check the generated
+Phases 1–4 are done. Phase 1 deviated from the plan in one way: its tests check the generated
 SQL rather than running against fixture games, because there is no test database. Parity checks
 against the live database cover the rest.
 
@@ -1153,7 +1200,11 @@ against the live database cover the rest.
    per-position average MVP matches `getPlayerAvgMvpByPosition`; the baseline matches an
    independent per-player average from `leaderboard` (98 players, equal to 9 decimals); and
    head-to-head game counts match direct SQL._
-4. **`search_games` and `games/{slug}`.**
+4. **`search_games` and `games/{slug}`.** _Done. Checked against the live database: margins
+   equal the effective-score gap; paging with `limit: 7` reproduces a single `limit: 100` query
+   with no gaps or duplicates under both sorts; teammate and opponent counts match
+   `player_stats` head-to-head; a positions-and-result search matches direct SQL; MVP components
+   sum to the stored MVP._
 5. **The MCP endpoint at `/mcp`.** Tools are generated from the zod schemas. Evaluate with a fixed
    set of ~30 real questions and check that the tool calls and answers are correct. Include
    ambiguous names, impossible scopes and small samples.

@@ -461,6 +461,8 @@ the rest of this API. Requests are rate limited per key and logged to `api_reque
 | `POST /api/query/v1/resolve`      | Player, center and competition names → ids                    |
 | `POST /api/query/v1/leaderboard`  | Rank players by one metric within a scope                     |
 | `POST /api/query/v1/player_stats` | 1–10 players side by side: breakdowns, baseline, head-to-head |
+| `POST /api/query/v1/search_games` | Find games by scope, players, margin and outcome              |
+| `GET /api/query/v1/games/{slug}`  | One game with every player's stats and penalties              |
 
 Routes live in `apps/web/src/app/api/query/v1/**/route.ts` and share the pipeline in
 `apps/web/src/lib/query-api/handler.ts`. Query logic is in `packages/db/src/queries/analytics/`,

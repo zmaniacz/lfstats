@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./lib/team-logos": "./src/lib/team-logos.ts",
     "./lib/player-pictures": "./src/lib/player-pictures.ts",
-    "./analytics": "./src/analytics.ts"
+    "./analytics": "./src/analytics.ts",
+    "./lib/tdf": "./src/lib/tdf.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
