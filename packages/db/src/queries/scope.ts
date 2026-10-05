@@ -28,7 +28,7 @@ export type GameScopeFilter =
   | { scope: "social"; centerId?: string; dateFrom?: string; dateTo?: string }
   | { scope: "competition"; competitionId?: string; format?: CompetitionFormat };
 
-function dateRangeConditions(filter: { dateFrom?: string; dateTo?: string }): SQL[] {
+export function dateRangeConditions(filter: { dateFrom?: string; dateTo?: string }): SQL[] {
   const conditions: SQL[] = [];
   if (filter.dateFrom) {
     conditions.push(sql`${game.startTime} >= ${filter.dateFrom}::date`);

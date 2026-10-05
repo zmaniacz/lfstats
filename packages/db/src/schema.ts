@@ -1286,7 +1286,15 @@ export const userFavoritePlayer = pgTable(
 // API Access (service credentials for external tools)
 // ---------------------------------------------------------------------------
 
-// Global keys — not center-scoped. Any valid key may write for any center.
+/**
+ * What an API key may do. A key holds a set of these; each route checks for the one it
+ * needs, so a video-upload key cannot run analytics queries and a query key cannot post
+ * videos. See docs/Query_API_Spec.md.
+ */
+export const API_KEY_SCOPES = ["video:write", "query:read"] as const;
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+
+// Global keys — not center-scoped. Any valid key may act for any center.
 export const apiKey = pgTable("api_key", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -1300,7 +1308,33 @@ export const apiKey = pgTable("api_key", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   revokedAt: timestamp("revoked_at"),
   lastUsedAt: timestamp("last_used_at"),
+  // Existing keys predate scopes and were all video-upload keys, hence the default.
+  scopes: text("scopes").array().$type<ApiKeyScope[]>().notNull().default(["video:write"]),
+  // Per-key overrides of the query API rate limits; null = the server default.
+  rateLimitPerMinute: integer("rate_limit_per_minute"),
+  rateLimitPerDay: integer("rate_limit_per_day"),
 });
+
+/**
+ * One row per query API request, so a misbehaving client can be identified and its key
+ * revoked. Written after the response is computed, never on the request's critical path.
+ */
+export const apiRequestLog = pgTable(
+  "api_request_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    apiKeyId: uuid("api_key_id")
+      .notNull()
+      .references(() => apiKey.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    status: integer("status").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    rowCount: integer("row_count"),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("api_request_log_key_created_idx").on(t.apiKeyId, t.createdAt)],
+);
 
 // ---------------------------------------------------------------------------
 // Game Videos (YouTube links, game-level or player POV)

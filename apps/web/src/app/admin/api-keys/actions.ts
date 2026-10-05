@@ -3,11 +3,11 @@
 
 "use server";
 
-import { createApiKey, revokeApiKey } from "@lfstats/db";
+import { API_KEY_SCOPES, createApiKey, revokeApiKey, type ApiKeyScope } from "@lfstats/db";
 import { refresh, revalidatePath } from "next/cache";
 import { requireSuperAdmin } from "@/lib/auth-guards";
 
-// API keys grant write access across every center, so both actions below are
+// API keys grant access across every center, so both actions below are
 // superAdmin-only. These checks are the real boundary: a Server Action is an
 // independently invocable POST endpoint, reachable whether or not the caller
 // can render the page that normally triggers it.
@@ -25,7 +25,11 @@ export async function createApiKeyAction(formData: FormData): Promise<CreateApiK
   const name = ((formData.get("name") as string) || "").trim();
   if (!name) return { ok: false, error: "Name is required" };
 
-  const { plaintext } = await createApiKey(name, session.user.id);
+  const requested = formData.getAll("scopes");
+  const scopes = API_KEY_SCOPES.filter((s) => requested.includes(s)) as ApiKeyScope[];
+  if (scopes.length === 0) return { ok: false, error: "Select at least one permission" };
+
+  const { plaintext } = await createApiKey(name, session.user.id, scopes);
   revalidatePath("/admin/api-keys");
   refresh();
   return { ok: true, plaintext };

@@ -4,7 +4,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../client";
-import { apiKey, authUser } from "../schema";
+import { apiKey, apiRequestLog, authUser, type ApiKeyScope } from "../schema";
 
 // All API-key crypto lives in this file so hashing exists in exactly one place.
 // Callers pass plaintext in and never see a hash.
@@ -22,6 +22,15 @@ export type ApiKeyListing = {
   createdByEmail: string | null;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
+  scopes: ApiKeyScope[];
+};
+
+export type AuthenticatedApiKey = {
+  id: string;
+  name: string;
+  scopes: ApiKeyScope[];
+  rateLimitPerMinute: number | null;
+  rateLimitPerDay: number | null;
 };
 
 function hashKey(plaintext: string): string {
@@ -35,6 +44,7 @@ function hashKey(plaintext: string): string {
 export async function createApiKey(
   name: string,
   createdByUserId: string,
+  scopes: ApiKeyScope[],
 ): Promise<{ id: string; plaintext: string }> {
   const plaintext = KEY_PREFIX + randomBytes(32).toString("base64url");
   const [row] = await db
@@ -44,6 +54,7 @@ export async function createApiKey(
       keyHash: hashKey(plaintext),
       keyPrefix: plaintext.slice(0, PREFIX_DISPLAY_LENGTH),
       createdByUserId,
+      scopes,
     })
     .returning({ id: apiKey.id });
 
@@ -53,12 +64,19 @@ export async function createApiKey(
 /**
  * Resolves a plaintext key to its row, rejecting revoked keys. Touches
  * lastUsedAt so an unused key can be identified before revoking it.
+ *
+ * Does not check scopes — the caller knows which scope its route needs and
+ * must check `scopes` itself.
  */
-export async function authenticateApiKey(
-  plaintext: string,
-): Promise<{ id: string; name: string } | null> {
+export async function authenticateApiKey(plaintext: string): Promise<AuthenticatedApiKey | null> {
   const [row] = await db
-    .select({ id: apiKey.id, name: apiKey.name })
+    .select({
+      id: apiKey.id,
+      name: apiKey.name,
+      scopes: apiKey.scopes,
+      rateLimitPerMinute: apiKey.rateLimitPerMinute,
+      rateLimitPerDay: apiKey.rateLimitPerDay,
+    })
     .from(apiKey)
     .where(and(eq(apiKey.keyHash, hashKey(plaintext)), isNull(apiKey.revokedAt)));
 
@@ -78,6 +96,7 @@ export async function listApiKeys(): Promise<ApiKeyListing[]> {
       createdByEmail: authUser.email,
       lastUsedAt: apiKey.lastUsedAt,
       revokedAt: apiKey.revokedAt,
+      scopes: apiKey.scopes,
     })
     .from(apiKey)
     .leftJoin(authUser, eq(authUser.id, apiKey.createdByUserId))
@@ -86,4 +105,24 @@ export async function listApiKeys(): Promise<ApiKeyListing[]> {
 
 export async function revokeApiKey(id: string): Promise<void> {
   await db.update(apiKey).set({ revokedAt: new Date() }).where(eq(apiKey.id, id));
+}
+
+export type ApiRequestLogEntry = {
+  apiKeyId: string;
+  endpoint: string;
+  status: number;
+  durationMs: number;
+  rowCount?: number | null;
+  errorCode?: string | null;
+};
+
+export async function logApiRequest(entry: ApiRequestLogEntry): Promise<void> {
+  await db.insert(apiRequestLog).values({
+    apiKeyId: entry.apiKeyId,
+    endpoint: entry.endpoint,
+    status: entry.status,
+    durationMs: entry.durationMs,
+    rowCount: entry.rowCount ?? null,
+    errorCode: entry.errorCode ?? null,
+  });
 }

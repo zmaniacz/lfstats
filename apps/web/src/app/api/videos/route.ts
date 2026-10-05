@@ -13,8 +13,8 @@ import {
 import { revalidatePath } from "next/cache";
 import { parseYoutubeLink } from "@/lib/youtube";
 
-// Unlike the rest of /api (unauthenticated GETs), POST here requires an API key.
-// Keys are global: any valid key may write for any center.
+// Unlike the rest of /api (unauthenticated GETs), POST here requires an API key
+// holding the `video:write` scope. Keys are global: any such key may write for any center.
 
 type PostBody = {
   game_slug?: unknown;
@@ -56,6 +56,12 @@ export async function POST(request: Request) {
   const key = await authenticateApiKey(token);
   if (!key) {
     return NextResponse.json({ error: "Invalid or revoked API key" }, { status: 401 });
+  }
+  if (!key.scopes.includes("video:write")) {
+    return NextResponse.json(
+      { error: "This API key does not have the video:write permission" },
+      { status: 403 },
+    );
   }
 
   let body: PostBody;

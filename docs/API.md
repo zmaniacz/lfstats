@@ -286,7 +286,8 @@ with it. The `Bearer` prefix is matched **case-sensitively**, so send it capital
 above; a lowercase `bearer` is rejected with `401 Missing API key`. (The header _name_ is
 case-insensitive, as usual.)
 
-Keys are global — a valid key may post for any center. Keys can be revoked, after which they are
+The key must hold the `video:write` permission, chosen when the key is created. A valid key without
+it is rejected with `403`. Keys are global — a permitted key may post for any center. Keys can be revoked, after which they are
 rejected immediately.
 
 ### Request body
@@ -381,6 +382,7 @@ on the game, so it can't clobber a second arena cam or another player's POV foot
 | `200`  | Video already existed — updated (`"updated": true`) or unchanged               |
 | `400`  | Missing/invalid field, unparseable YouTube URL, or malformed JSON body         |
 | `401`  | Missing, unknown, or revoked API key                                           |
+| `403`  | API key lacks the `video:write` permission                                     |
 | `404`  | Game not found, or `ipl_id` belongs to a player with no scorecard in that game |
 
 ```json
