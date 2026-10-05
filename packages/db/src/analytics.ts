@@ -10,3 +10,7 @@ export * from "./queries/analytics/metrics";
 export * from "./queries/analytics/pool";
 export * from "./queries/analytics/scope";
 export * from "./queries/analytics/rate-limit";
+export * from "./queries/analytics/meta";
+export * from "./queries/analytics/catalog";
+export * from "./queries/analytics/resolve";
+export * from "./queries/analytics/leaderboard";

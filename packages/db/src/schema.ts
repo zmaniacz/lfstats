@@ -98,16 +98,29 @@ export const center = pgTable(
     countryName: text("country_name"),
     timezone: text("timezone"),
   },
-  (t) => [unique().on(t.countryCode, t.siteCode)],
+  (t) => [
+    unique().on(t.countryCode, t.siteCode),
+    // Trigram index for the query API's fuzzy name lookup (resolve). Needs pg_trgm.
+    index("center_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops")),
+  ],
 );
 
-export const player = pgTable("player", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  iplId: text("ipl_id").notNull().unique(),
-  memberId: text("member_id"),
-  currentCallsign: text("current_callsign").notNull(),
-  firstSeenAt: timestamp("first_seen_at").notNull(),
-});
+export const player = pgTable(
+  "player",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    iplId: text("ipl_id").notNull().unique(),
+    memberId: text("member_id"),
+    currentCallsign: text("current_callsign").notNull(),
+    firstSeenAt: timestamp("first_seen_at").notNull(),
+  },
+  (t) => [
+    // Not unique: nothing guarantees it, and the query API treats a shared member id as
+    // ambiguous rather than picking one.
+    index("player_member_id_idx").on(t.memberId),
+    index("player_current_callsign_trgm_idx").using("gin", t.currentCallsign.op("gin_trgm_ops")),
+  ],
+);
 
 export const playerCallsignHistory = pgTable(
   "player_callsign_history",
@@ -120,7 +133,10 @@ export const playerCallsignHistory = pgTable(
     firstSeenAt: timestamp("first_seen_at").notNull(),
     lastSeenAt: timestamp("last_seen_at").notNull(),
   },
-  (t) => [unique().on(t.playerId, t.callsign)],
+  (t) => [
+    unique().on(t.playerId, t.callsign),
+    index("player_callsign_history_callsign_trgm_idx").using("gin", t.callsign.op("gin_trgm_ops")),
+  ],
 );
 
 export const battlesuit = pgTable(
@@ -231,22 +247,26 @@ export const sm5MvpModel = pgTable("sm5_mvp_model", {
 // Game Organization Tables
 // ---------------------------------------------------------------------------
 
-export const competition = pgTable("competition", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  type: competitionTypeEnum("type").notNull(),
-  format: competitionFormatEnum("format").notNull().default("team"),
-  category: competitionCategoryEnum("category").notNull().default("tournament"),
-  state: competitionStateEnum("state").notNull().default("active"),
-  hostCenterId: uuid("host_center_id").references(() => center.id),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date"),
-  description: text("description"),
-  challongeLink: text("challonge_link"),
-  challongeBracketHeight: integer("challonge_bracket_height"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const competition = pgTable(
+  "competition",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    type: competitionTypeEnum("type").notNull(),
+    format: competitionFormatEnum("format").notNull().default("team"),
+    category: competitionCategoryEnum("category").notNull().default("tournament"),
+    state: competitionStateEnum("state").notNull().default("active"),
+    hostCenterId: uuid("host_center_id").references(() => center.id),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date"),
+    description: text("description"),
+    challongeLink: text("challonge_link"),
+    challongeBracketHeight: integer("challonge_bracket_height"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("competition_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops"))],
+);
 
 export const competitionTeam = pgTable(
   "competition_team",

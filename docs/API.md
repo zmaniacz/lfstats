@@ -446,6 +446,27 @@ unset. Both count from the start of the video. `youtube_url` is the URL exactly 
 
 ---
 
+## Query API — `/api/query/v1/*`
+
+Analytics endpoints for open-ended questions, built for an MCP server and other LLM clients. Fully
+specified in [Query_API_Spec.md](Query_API_Spec.md); this is only an index.
+
+**Every route needs an API key with the `query:read` permission** (`401`/`403` otherwise), unlike
+the rest of this API. Requests are rate limited per key and logged to `api_request_log`. Errors are
+`{ "error": { "code", "message", "field?", "hint?", "valid_values?" } }`.
+
+| Route                            | Purpose                                     |
+| -------------------------------- | ------------------------------------------- |
+| `GET /api/query/v1/catalog`      | Metrics, filter values, defaults and limits |
+| `POST /api/query/v1/resolve`     | Player, center and competition names → ids  |
+| `POST /api/query/v1/leaderboard` | Rank players by one metric within a scope   |
+
+Routes live in `apps/web/src/app/api/query/v1/**/route.ts` and share the pipeline in
+`apps/web/src/lib/query-api/handler.ts`. Query logic is in `packages/db/src/queries/analytics/`,
+exported as `@lfstats/db/analytics`.
+
+---
+
 ## Conventions for new routes
 
 - Default to no auth — every route here is public except `POST /api/videos`, which needs a
