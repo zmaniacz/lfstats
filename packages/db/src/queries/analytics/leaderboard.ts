@@ -16,7 +16,8 @@ import {
   resolveScope,
   scopeGameConditions,
   scopeScorecardConditions,
-  SM5_SOURCE,
+  sourceFor,
+  type ScorecardSource,
   type ResolvedScope,
 } from "./scope";
 
@@ -50,8 +51,7 @@ function narrowToMetricPositions(scope: ResolvedScope, metric: MetricDef): Resol
 }
 
 /** Players with at least `minGames` games in the qualifying scope. */
-function qualifiedPlayersSql(scope: ResolvedScope, minGames: number): SQL {
-  const src = SM5_SOURCE;
+function qualifiedPlayersSql(scope: ResolvedScope, src: ScorecardSource, minGames: number): SQL {
   // Uncorrelated: the inner FROM shadows the outer tables of the same name.
   return sql`${src.sc.playerId} in (
     select ${src.sc.playerId} from ${src.sc}
@@ -73,16 +73,16 @@ export async function getLeaderboard(req: LeaderboardRequest, today: string) {
   const scopeInput = req.scope ?? {};
   const normalized = normalizeScope(scopeInput, today);
 
-  if (normalized.game_type === "lb") {
-    throw new QueryApiError("invalid_scope", "Laserball leaderboards are not available yet.", {
-      field: "scope.game_type",
-      hint: "Only SM5 metrics exist so far. Remove scope.game_type or set it to 'sm5'.",
+  const gameType = normalized.game_type;
+  if (gameType === "lb" && req.group_by_position) {
+    throw new QueryApiError("invalid_request", "Laserball has no positions to group by.", {
+      field: "group_by_position",
     });
   }
 
-  const sortMetric = getMetric("sm5", req.sort_by, "sort_by");
+  const sortMetric = getMetric(gameType, req.sort_by, "sort_by");
   const metricIds = dedupe([sortMetric.id, "games", ...(req.metrics ?? [])]);
-  const metrics = metricIds.map((id) => getMetric("sm5", id, "metrics"));
+  const metrics = metricIds.map((id) => getMetric(gameType, id, "metrics"));
 
   const percentileIds = dedupe(req.percentiles ?? []);
   const strayPercentile = percentileIds.find((id) => !metricIds.includes(id));
@@ -119,27 +119,27 @@ export async function getLeaderboard(req: LeaderboardRequest, today: string) {
   const byPosition = req.group_by_position ?? false;
   const descending = (req.order ?? (sortMetric.higher_is_better ? "desc" : "asc")) === "desc";
 
-  const src = SM5_SOURCE;
+  const src = sourceFor(gameType);
   const conditions = [
     ...scopeGameConditions(scope),
     ...scopeScorecardConditions(scope, src),
     identifiedPlayerCondition(src),
   ];
   if (qualify && qualifyScope)
-    conditions.push(qualifiedPlayersSql(qualifyScope, qualify.min_games));
+    conditions.push(qualifiedPlayersSql(qualifyScope, src, qualify.min_games));
 
   const metricColumns = sql.join(
     metrics.map((m) => sql`${metricSql(m, src)} as ${sql.identifier(m.id)}`),
     sql`, `,
   );
-  const groupBy = byPosition
-    ? sql`${src.sc.playerId}, ${src.sc.position}`
-    : sql`${src.sc.playerId}`;
-  const positionColumn = byPosition ? sql`${src.sc.position}` : sql`null::int`;
+  // Only SM5 has positions; group_by_position was rejected above for Laserball.
+  const position = src.kind === "sm5" && byPosition ? src.sc.position : null;
+  const groupBy = position ? sql`${src.sc.playerId}, ${position}` : sql`${src.sc.playerId}`;
+  const positionColumn = position ? sql`${position}` : sql`null::int`;
 
   const sortCol = sql.identifier(sortMetric.id);
   const percentileColumns = percentileIds.map((id) => {
-    const m = getMetric("sm5", id, "percentiles");
+    const m = getMetric(gameType, id, "percentiles");
     const col = sql.identifier(id);
     // Oriented so 1.0 is always best.
     const dir = m.higher_is_better ? sql`asc` : sql`desc`;

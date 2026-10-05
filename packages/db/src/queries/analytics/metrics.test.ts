@@ -10,6 +10,7 @@ import {
   getMetric,
   getMetricCatalog,
   metricSql,
+  LB_METRICS,
   SM5_METRICS,
 } from "./metrics";
 import { LB_SOURCE, SM5_SOURCE } from "./scope";
@@ -160,5 +161,54 @@ describe("checkMetricPositions", () => {
 
   it("stays quiet when the scope already matches", () => {
     assert.equal(checkMetricPositions(nukes, ["commander"], "sort_by"), null);
+  });
+});
+
+describe("Laserball metrics", () => {
+  it("covers the Laserball catalog in the spec, all position-free", () => {
+    const ids = new Set(LB_METRICS.map((m) => m.id));
+    for (const id of [
+      "games",
+      "wins",
+      "win_rate",
+      "avg_goals",
+      "total_goals",
+      "avg_assists",
+      "avg_steals",
+      "avg_blocks",
+      "avg_clears",
+      "avg_passes",
+      "avg_possession_ms",
+    ]) {
+      assert.ok(ids.has(id), `missing ${id}`);
+    }
+    assert.ok(LB_METRICS.every((m) => m.positions === "all"));
+  });
+
+  it("builds SQL against the Laserball tables", () => {
+    for (const m of LB_METRICS) {
+      const { sql } = dialect.sqlToQuery(metricSql(m, LB_SOURCE));
+      assert.doesNotMatch(sql, /sm5_/, m.id);
+    }
+    const { sql } = dialect.sqlToQuery(metricSql(getMetric("lb", "avg_assists", "f"), LB_SOURCE));
+    assert.equal(sql, '(avg(("lb_scorecard"."assists1" + "lb_scorecard"."assists2")::float8))');
+  });
+
+  it("points an SM5 id used on Laserball, and vice versa, at the game type", () => {
+    assert.throws(
+      () => getMetric("lb", "avg_mvp", "sort_by"),
+      (err: QueryApiError) => /SM5 metric; check scope.game_type/.test(err.hint!),
+    );
+    assert.throws(
+      () => getMetric("sm5", "avg_goals", "sort_by"),
+      (err: QueryApiError) => /Laserball metric; check scope.game_type/.test(err.hint!),
+    );
+  });
+
+  it("maps common Laserball names to metrics", () => {
+    assert.throws(
+      () => getMetric("lb", "steals", "sort_by"),
+      (err: QueryApiError) => /Did you mean 'avg_steals'/.test(err.hint!),
+    );
   });
 });

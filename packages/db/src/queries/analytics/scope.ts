@@ -280,6 +280,11 @@ export type ScorecardSource = Sm5Source | LbSource;
 export const SM5_SOURCE: Sm5Source = { kind: "sm5", sc: sm5Scorecard, team: sm5GameTeam };
 export const LB_SOURCE: LbSource = { kind: "lb", sc: lbScorecard, team: lbGameTeam };
 
+/** The scorecard and team tables for a game type. */
+export function sourceFor(gameType: GameType): ScorecardSource {
+  return gameType === "sm5" ? SM5_SOURCE : LB_SOURCE;
+}
+
 /** Game-level conditions over the `game` table. */
 export function scopeGameConditions(scope: ResolvedScope): SQL[] {
   const conditions: SQL[] = [eq(game.type, scope.game_type)];
