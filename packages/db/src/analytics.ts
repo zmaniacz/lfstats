@@ -14,3 +14,4 @@ export * from "./queries/analytics/meta";
 export * from "./queries/analytics/catalog";
 export * from "./queries/analytics/resolve";
 export * from "./queries/analytics/leaderboard";
+export * from "./queries/analytics/player-stats";

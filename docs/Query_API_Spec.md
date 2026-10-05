@@ -35,9 +35,11 @@ directly over HTTP.
 4. **Answers show their assumptions.** Each response echoes the resolved scope, such as "last
    year" turned into concrete dates. It also returns metric definitions and sample sizes, so the
    assistant can say what it measured rather than guess.
-5. **Names are resolved explicitly.** People ask about callsigns and center names. The database
-   keys on IPL ids and slugs. A dedicated `resolve` step turns names into ids and reports
-   ambiguity, instead of every endpoint guessing.
+5. **Names are resolved explicitly, never guessed.** People ask about callsigns and center names,
+   and callsigns are how users will mostly name players. The database keys on IPL ids and slugs.
+   Every field that takes a player accepts a callsign directly and uses the same matching as
+   `resolve`. A certain match is used. Anything uncertain comes back as an error listing the
+   candidates, so the model asks the user instead of picking one.
 6. **Same numbers as the website.** Each metric uses the same SQL as the matching site leaderboard,
    so a chat answer matches the page it would link to.
 
@@ -367,7 +369,10 @@ The catalog also lists `game_kinds` and `team_results`. It needs no database acc
 
 ### `POST /resolve`
 
-Turns names into ids. Use it before any query that names a player, center or competition.
+Turns names into ids. Centers and competitions must be passed to other endpoints as slugs, so
+resolve those first. Players can be passed by callsign directly (see
+[Player identifiers](#player-identifiers)), but `resolve` is still the way to look a player up or
+to show the user candidates before querying.
 
 ```jsonc
 // request
@@ -478,13 +483,62 @@ Each list holds at most 10 queries.
 
 #### Player identifiers
 
-Many players know their member id (`{country}-{site}-{member}`, e.g. `4-3-1137`, the number on
-their membership card) but not their IPL id. Member ids are therefore accepted in two places:
+Users name players by **callsign** far more often than by id. Many also know their member id
+(`{country}-{site}-{member}`, e.g. `4-3-1137`, the number on their membership card), but few know
+their IPL id. So every field that takes a player (`player_stats.players`,
+`search_games.players.ipl_ids`, and later additions) accepts any of the three. Each value goes
+through the same matching as `resolve`:
 
-- `resolve`, which reports `matched_on: "member_id"`.
-- Any field that takes a player: `player_stats.players`, `search_games.players.ipl_ids`, and later
-  additions. The server normalises each one to an `ipl_id` before querying, and `meta` echoes the
-  mapping (`"resolved_players": { "4-3-1137": "#1234567" }`) so the model can confirm it.
+- **Certain match** — an id, or a callsign (current or previous) that exactly matches one player:
+  used. `meta.resolved_players` echoes the mapping, e.g.
+  `{ "brew": { "ipl_id": "#kzWkJy", "matched_on": "current_callsign" } }`, so the model can confirm
+  who it reported on.
+- **Uncertain** — several exact matches (two players called "Shadow"), or only fuzzy matches
+  ("Brw", or "Mr Jo Gangle" for "Mr Jo Gangles"): the request fails with `400 ambiguous_player`.
+  The error's `candidates` holds each uncertain input's matches, in the same shape as `resolve`
+  returns them. The model asks the user which player they mean and retries with that `ipl_id`.
+  Every uncertain input in a request is reported in one error, so one question covers them all.
+- **No match** — `404 player_not_found`, with a hint.
+
+```jsonc
+{
+  "error": {
+    "code": "ambiguous_player",
+    "message": "Not sure which player is meant by 'Shadow', 'Brw'.",
+    "field": "players",
+    "hint": "Ask the user which player they mean (home_center, games_played and last_played help tell them apart), then retry with that player's ipl_id.",
+    "candidates": {
+      "Shadow": [
+        {
+          "ipl_id": "#XdgrSnG",
+          "callsign": "Shadow",
+          "matched_on": "current_callsign",
+          "home_center": { "slug": "3-3", "name": "…" },
+          "games_played": 79,
+          "…": "…",
+        },
+        {
+          "ipl_id": "#xkTZLHL",
+          "callsign": "Shadow",
+          "matched_on": "current_callsign",
+          "home_center": { "slug": "4-19", "name": "Loveland" },
+          "games_played": 1,
+          "…": "…",
+        },
+      ],
+      "Brw": [
+        {
+          "ipl_id": "#kzWkJy",
+          "callsign": "Brew",
+          "matched_on": "similar_callsign",
+          "similarity": 0.286,
+          "…": "…",
+        },
+      ],
+    },
+  },
+}
+```
 
 Caveats from [Core_Schema.md](Core_Schema.md) that the implementation must handle:
 
@@ -610,14 +664,16 @@ Y".
 
 ```jsonc
 {
-  "players": ["#1234567", "#7654321"],
+  "players": ["shrapnel", "4-19-24329"], // callsigns, IPL ids or member ids
   "scope": { "centers": ["4-19"], "date_range": { "preset": "last_365_days" } },
-  "metrics": ["games", "win_rate", "avg_mvp", "avg_accuracy", "avg_hit_diff"], // default: a standard set
-  "breakdown": ["position"], // any of: "position", "period", "center", "game_kind"; max 2
-  "period": "quarter", // with breakdown "period": "month" | "quarter" | "year"
-  "head_to_head": true, // only valid with exactly 2 players
-  "include_rating": true,
-  "baseline_min_games": 10, // players need this many games in a cell to count toward the baseline
+  // default: games, win_rate, avg_mvp, avg_score, avg_accuracy, avg_hit_diff (games always included)
+  "metrics": ["win_rate", "avg_mvp", "avg_accuracy", "avg_hit_diff"],
+  "breakdown": ["position"], // up to 2 of: "position", "period", "center", "game_kind"
+  "period": "quarter", // only with breakdown "period": "month" | "quarter" | "year" (default)
+  "head_to_head": true, // only with exactly 2 distinct players
+  "include_rating": true, // default true
+  "include_baseline": true, // default true
+  "baseline_min_games": 10, // games a player needs in a cell to count toward the baseline
 }
 ```
 
@@ -627,6 +683,7 @@ Y".
     "players": [
       {
         "ipl_id": "#1234567",
+        "member_id": "4-19-1137",
         "callsign": "SHRAPNEL",
         "overall": {
           "games": 212,
@@ -639,19 +696,27 @@ Y".
           { "position": "commander", "games": 80, "win_rate": 0.61, "avg_mvp": 13.4, "…": "…" },
           { "position": "scout", "games": 74, "…": "…" },
         ],
+        // null when the player is not in the current global ranking
         "rating": {
           "rank": 14,
+          "of": 171, // players in the ranking
           "rating": 1.21,
           "standard_error": 0.08,
+          "rating_group": 9,
           "games_played": 640,
+          "wins": 371,
+          "losses": 262,
+          "draws": 7,
           "window_start": "2025-10-04",
+          "window_end": "2026-10-04",
           "model_version": "bt-1",
         },
       },
     ],
     "baseline": {
       // everyone else in the same scope — the requested players are excluded
-      "overall": { "players": 41, "avg_mvp": 8.7, "avg_accuracy": 0.34, "…": "…" },
+      "min_games": 10,
+      "overall": { "players": 41, "games": 63.2, "avg_mvp": 8.7, "avg_accuracy": 0.34, "…": "…" },
       "breakdown": [{ "position": "commander", "players": 18, "avg_mvp": 10.2, "…": "…" }],
     },
     "head_to_head": {
@@ -660,32 +725,56 @@ Y".
       "as_opponents": {
         "games": 25,
         "record": { "#1234567": 14, "#7654321": 10, "draws": 1 }, // wins of each player's team
-        "avg_mvp": { "#1234567": 12.8, "#7654321": 11.1 }, // in those 25 games only
+        "avg_mvp": { "#1234567": 12.8, "#7654321": 11.1 }, // in those 25 games only; null if 0
         "direct": {
-          "#1234567": { "shots_hit": 214, "missile_hits": 6 },
-          "#7654321": { "shots_hit": 188, "missile_hits": 3 },
+          "#1234567": { "shots_hit": 214, "deactivations": 160, "missile_hits": 6 },
+          "#7654321": { "shots_hit": 188, "deactivations": 131, "missile_hits": 3 },
         },
       },
       "recent_games": ["4-19-20260928201533", "…"], // up to 10 slugs, newest first
     },
   },
+  "meta": {
+    "scope": { "…": "…" },
+    "resolved_players": { "4-19-24329": "#7654321" }, // only when a member id or bare id was given
+    "breakdown": ["position"],
+    "metrics": { "…": "…" },
+    "row_count": 2,
+    "truncated": false,
+    "warnings": [],
+    "data_as_of": "2026-09-28T21:14:02",
+  },
 }
 ```
 
+- **Breakdown cells** are labelled as `position` (a position name), `period` (`"2026"`, `"2026-Q3"`
+  or `"2026-07"`), `center` (`{ slug, name }`) and `game_kind` (`"social"`, `"competitive"`, or
+  `"social_competition"` for a game in a social-type competition). Cells with zero games are
+  omitted, and cells are sorted by their labels.
 - **`baseline`** is included because a number without context ("11.9 average MVP") can't be
   interpreted. It holds the same metrics over **every other player** in the same scope and
   breakdown cell. The requested players are always excluded, so a comparison is never measured
   against itself. That matters most in small populations such as one competition. Values are
-  computed per player and then averaged, so frequent players do not dominate. Only players with at
-  least `baseline_min_games` games in that cell count, and each cell reports how many did
-  (`players`). Since it excludes all requested players, there is one baseline per request, not one
-  per player.
-- **`head_to_head.direct`** comes from `sm5_game_player_interaction`, summed over opponent games:
-  the tags each player landed on the other. It is SM5 only and `null` for Laserball.
-- **A player with no games in scope** is returned with `overall.games = 0` and a warning. It is not
-  a `404`, because "X hasn't played at Loveland this year" is a valid answer.
-- **An unknown `ipl_id` or member id** is a `404` that names the bad id.
-- **`breakdown` cells** with zero games are omitted.
+  computed per player and then averaged, so frequent players do not dominate. `games` in the
+  baseline is therefore the average games per counted player. Only players with at least
+  `baseline_min_games` games in that cell count, and each cell reports how many did (`players`).
+  Since it excludes all requested players, there is one baseline per request, not one per player.
+- **`rating`** is the global Bradley–Terry ranking from the active model. It ignores `scope`, and a
+  warning says so whenever a player has none.
+- **`head_to_head`** applies the scope's **game** filters only: centers, competitions, game kind,
+  round types, dates and excluded games. `positions`, `team_result` and `include_mercenary_games`
+  would have to apply to both players at once, which has no sensible meaning for a matchup. A
+  warning appears when they are set. `direct` comes from `sm5_game_player_interaction`, summed over
+  their games as opponents: the tags each player landed on the other. It is SM5 only.
+- **A player with no games in scope** is returned with `overall.games = 0`, null metrics and a
+  warning. It is not a `404`, because "X hasn't played at Loveland this year" is a valid answer.
+  Fewer than 10 games gets a small-sample warning.
+- **Players are matched** as described in [Player identifiers](#player-identifiers):
+  `400 ambiguous_player` with candidates when uncertain, and `404 player_not_found` when nothing
+  matches. The same player given twice (e.g. by callsign and by member id) is reported once.
+- **`scope_too_broad`** (`422`) fires when the players' breakdown would exceed 500 cells, e.g.
+  monthly × position over all time for several players.
+- **Laserball** returns `invalid_scope` until the Laserball metrics phase.
 
 ---
 
@@ -861,15 +950,15 @@ Guests appear with `ipl_id: null`, as in the existing route. Excluded games reso
 Error messages are read by a model, which reacts to them on its next call. Each error should
 name the field and say how to fix it.
 
-| Status | `code`                                                                                                           |
-| ------ | ---------------------------------------------------------------------------------------------------------------- |
-| 401    | `missing_api_key`, `invalid_api_key`                                                                             |
-| 403    | `insufficient_scope` (the key exists but lacks `query:read`)                                                     |
-| 400    | `invalid_request`, `unknown_field`, `invalid_metric`, `metric_not_applicable`, `invalid_scope`, `too_many_items` |
-| 404    | `player_not_found`, `center_not_found`, `competition_not_found`, `game_not_found`                                |
-| 422    | `scope_too_broad` (see [Limits](#limits-and-safety))                                                             |
-| 429    | `rate_limited`, `server_busy` (both include `retry_after_seconds` and a `Retry-After` header)                    |
-| 504    | `query_timeout`                                                                                                  |
+| Status | `code`                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 401    | `missing_api_key`, `invalid_api_key`                                                                                                                     |
+| 403    | `insufficient_scope` (the key exists but lacks `query:read`)                                                                                             |
+| 400    | `ambiguous_player` (with `candidates`), `invalid_request`, `unknown_field`, `invalid_metric`, `metric_not_applicable`, `invalid_scope`, `too_many_items` |
+| 404    | `player_not_found`, `center_not_found`, `competition_not_found`, `game_not_found`                                                                        |
+| 422    | `scope_too_broad` (see [Limits](#limits-and-safety))                                                                                                     |
+| 429    | `rate_limited`, `server_busy` (both include `retry_after_seconds` and a `Retry-After` header)                                                            |
+| 504    | `query_timeout`                                                                                                                                          |
 
 `did you mean` suggestions use Levenshtein distance against the catalog's ids and enum values.
 
@@ -936,8 +1025,11 @@ key. MCP clients send it as a configured header. OAuth for MCP is out of scope f
 ### Server instructions (sent on initialize)
 
 > LFstats records Space Marines 5 (SM5) and Laserball laser tag games. Players are identified by
-> callsign, centers ("sites") by name. **Always call `lfstats_resolve` first** for any named player,
-> center or competition. If a name resolves as `ambiguous`, ask the user which one they mean.
+> callsign, centers ("sites") by name. Pass player callsigns straight to the tools. Call
+> `lfstats_resolve` first for centers and competitions, which the tools take as slugs. If a name is
+> `ambiguous`, or a tool returns `ambiguous_player`, ask the user which player they mean, using
+> the candidates' home center and game counts, then retry with that player's `ipl_id`. Never pick
+> one yourself.
 > Positions are commander, heavy, scout, ammo and medic. "MVP" means the per-game MVP points
 > score. When answering, state the date range, scope and number of games from `meta`. Treat fewer
 > than ~10 games as a small sample and say so. Link to `meta.links.web` or `web_url` when present.
@@ -1043,7 +1135,7 @@ from the registry, so in practice only this document can fall out of date.
 
 ## Implementation plan
 
-Phases 1 and 2 are done. Phase 1 deviated from the plan in one way: its tests check the generated
+Phases 1–3 are done. Phase 1 deviated from the plan in one way: its tests check the generated
 SQL rather than running against fixture games, because there is no test database. Parity checks
 against the live database cover the rest.
 
@@ -1057,6 +1149,10 @@ against the live database cover the rest.
    `getCompetitionMedicPlayers` for 4-23 social (126 players, all-time; 92, last 365 days) and
    `getCompetitionTopPlayers` for a team competition (33 players), on games and average MVP._
 3. **`player_stats`** with `position` and `period` breakdowns, the baseline, and head-to-head.
+   _Done, with `center` and `game_kind` breakdowns as well. Checked against the live database:
+   per-position average MVP matches `getPlayerAvgMvpByPosition`; the baseline matches an
+   independent per-player average from `leaderboard` (98 players, equal to 9 decimals); and
+   head-to-head game counts match direct SQL._
 4. **`search_games` and `games/{slug}`.**
 5. **The MCP endpoint at `/mcp`.** Tools are generated from the zod schemas. Evaluate with a fixed
    set of ~30 real questions and check that the tool calls and answers are correct. Include
@@ -1073,6 +1169,9 @@ Settled 2026-10-04:
   scope ("at least 20 games in the last year").
 - **The baseline excludes the requested players.**
 - **Guests are not searchable.** Member ids (`4-3-1137`) are accepted wherever a player is.
+- **Callsigns are accepted wherever a player is** (2026-10-05). Callsigns are how users will
+  mostly name players. A certain match is used. Anything uncertain is returned as
+  `ambiguous_player` for the model to confirm with the user.
 
 ## Open questions
 

@@ -13,6 +13,7 @@ import {
 } from "../../schema";
 import type { ResolveRequest } from "../../schemas/query-api";
 import { QUERY_LIMITS } from "../../schemas/query-api";
+import { QueryApiError } from "./errors";
 import { getAnalyticsDb } from "./pool";
 
 // POST /resolve (docs/Query_API_Spec.md): names → ids. Matching runs in order and stops at
@@ -416,4 +417,77 @@ export async function resolveNames(request: ResolveRequest) {
       ...(request.competitions && { competitions }),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Player identifiers in other endpoints
+// ---------------------------------------------------------------------------
+
+export type IdentifiedPlayer = {
+  input: string;
+  id: string;
+  iplId: string;
+  memberId: string | null;
+  callsign: string;
+  matchedOn: PlayerMatchedOn;
+};
+
+/**
+ * Turns the players an endpoint was given — callsigns, IPL ids or member ids — into
+ * players, in input order, using the same matching as resolve.
+ *
+ * Only a certain match is used: an id, or a callsign (current or previous) that matches
+ * exactly one player. Anything else is reported back instead of guessed, so the model
+ * can ask the user. Every problem input is collected into one error, so one question
+ * covers them all:
+ *  - ambiguous (several exact matches, or fuzzy matches only) → 400 ambiguous_player,
+ *    with the candidates for each input
+ *  - nothing at all → 404 player_not_found
+ */
+export async function identifyPlayers(
+  inputs: readonly string[],
+  field: string,
+): Promise<IdentifiedPlayer[]> {
+  const results = await Promise.all(inputs.map((input) => resolvePlayer(input)));
+
+  const ambiguous = results.filter((r) => r.status === "ambiguous");
+  if (ambiguous.length > 0) {
+    throw new QueryApiError(
+      "ambiguous_player",
+      `Not sure which player is meant by ${ambiguous.map((r) => `'${r.query}'`).join(", ")}.`,
+      {
+        field,
+        hint: "Ask the user which player they mean (home_center, games_played and last_played help tell them apart), then retry with that player's ipl_id.",
+        candidates: Object.fromEntries(ambiguous.map((r) => [r.query, r.matches])),
+      },
+    );
+  }
+
+  const missing = results.filter((r) => r.status === "not_found");
+  if (missing.length > 0) {
+    throw new QueryApiError(
+      "player_not_found",
+      `No player matches ${missing.map((r) => `'${r.query}'`).join(", ")}.`,
+      { field, hint: missing[0]!.hint },
+    );
+  }
+
+  const iplIds = results.map((r) => r.matches[0]!.ipl_id);
+  const rows = await getAnalyticsDb()
+    .select({ id: player.id, iplId: player.iplId })
+    .from(player)
+    .where(inArray(player.iplId, iplIds));
+  const idByIpl = new Map(rows.map((r) => [r.iplId, r.id]));
+
+  return results.map((r) => {
+    const m = r.matches[0]!;
+    return {
+      input: r.query,
+      id: idByIpl.get(m.ipl_id)!,
+      iplId: m.ipl_id,
+      memberId: m.member_id,
+      callsign: m.callsign,
+      matchedOn: m.matched_on,
+    };
+  });
 }
