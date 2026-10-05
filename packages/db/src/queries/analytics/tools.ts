@@ -36,7 +36,7 @@ How to use these tools:
 - Relative dates: use scope.date_range.preset (last_30_days, last_90_days, last_365_days, this_year, last_year, all_time) rather than computing dates.
 - When answering, state the scope you used from meta.scope (dates, centers, positions), the number of games, and any meta.warnings. Treat fewer than ~10 games as a small sample and say so. Leaderboards only rank players with at least min_games games (default 10) — mention it.
 - Link to web_url when present.
-- Only SM5 is supported so far; Laserball queries return an error.`;
+- Two game types: SM5 (the default) and Laserball. For Laserball questions set scope.game_type to "lb" and use the Laserball metrics (goals, assists, steals, blocks, …). Laserball has no positions, MVP, penalties or global rating.`;
 
 export type McpTool = {
   name: string;
@@ -48,10 +48,12 @@ export type McpTool = {
 };
 
 function metricList(): string {
-  return getMetricCatalog()
-    .filter((m) => m.game_type === "sm5")
-    .map((m) => `${m.id}${m.positions === "all" ? "" : ` (${m.positions.join("/")} only)`}`)
-    .join(", ");
+  const ids = (gameType: "sm5" | "lb") =>
+    getMetricCatalog()
+      .filter((m) => m.game_type === gameType)
+      .map((m) => `${m.id}${m.positions === "all" ? "" : ` (${m.positions.join("/")} only)`}`)
+      .join(", ");
+  return `SM5 — ${ids("sm5")}. Laserball (scope.game_type "lb") — ${ids("lb")}`;
 }
 
 /** game_detail takes the slug as an argument, and booleans as booleans, unlike the HTTP GET. */
@@ -106,7 +108,7 @@ export function mcpTools(): McpTool[] {
       name: "lfstats_game_detail",
       title: "Game detail",
       description:
-        "One game in full: teams, every player's stats, penalties, and optionally how each player's MVP points were earned. Takes a game slug from lfstats_search_games or a game page URL.",
+        "One game in full: teams, every player's stats, penalties, and optionally how each player's MVP points were earned. Laserball games return goals, steals, blocks and the like, plus the other half when the game is part of a two-half match. Takes a game slug from lfstats_search_games or a game page URL.",
       schema: GameDetailToolSchema,
       run: ({ slug, ...options }: z.infer<typeof GameDetailToolSchema>) =>
         getGameDetail(slug, options),

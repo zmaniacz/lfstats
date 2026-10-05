@@ -246,8 +246,133 @@ const SM5_METRIC_ALIASES: Record<string, string> = {
   nukes: "avg_nukes_detonated",
 };
 
-// Laserball metrics land with the Laserball phase of the implementation plan.
-export const LB_METRICS: readonly LbMetric[] = [];
+/** Laserball has no positions, so every metric applies to every player. */
+function lb(def: Omit<LbMetric, "game_type" | "positions">): LbMetric {
+  return { ...def, positions: ALL, game_type: "lb" };
+}
+
+function lbAvg(
+  id: string,
+  label: string,
+  definition: string,
+  column: (src: LbSource) => SQL | AnyColumn,
+  opts: { unit?: MetricUnit; higher_is_better?: boolean } = {},
+): LbMetric {
+  return lb({
+    id,
+    label,
+    definition,
+    unit: opts.unit ?? "count",
+    higher_is_better: opts.higher_is_better ?? true,
+    agg: "avg",
+    expr: (src) => sql`${column(src)}`,
+  });
+}
+
+// Laserball stats are a port of the European reference implementation; see
+// docs/Laserball_Scorecard_Table_Spec.md for each column. The site has no Laserball
+// aggregates yet, so these follow the SM5 convention: the mean of per-game values.
+export const LB_METRICS: readonly LbMetric[] = [
+  lb({
+    id: "games",
+    label: "Games",
+    definition: "Number of Laserball scorecards (games played) in scope.",
+    unit: "count",
+    higher_is_better: true,
+    agg: "count",
+  }),
+  lb({
+    id: "wins",
+    label: "Wins",
+    definition: "Games where the player's team result was a win.",
+    unit: "count",
+    higher_is_better: true,
+    agg: "count",
+    where: (src) => eq(src.team.result, "win"),
+  }),
+  lb({
+    id: "win_rate",
+    label: "Win rate",
+    definition: "wins / games, as a fraction. Draws count as games but not wins.",
+    unit: "fraction",
+    higher_is_better: true,
+    agg: "rate",
+    expr: (src) => sql`${src.team.result} = 'win'`,
+  }),
+  lbAvg("avg_goals", "Average goals", "Mean goals scored per game.", (s) => s.sc.goals),
+  lb({
+    id: "total_goals",
+    label: "Total goals",
+    definition: "Goals scored across all games in scope.",
+    unit: "count",
+    higher_is_better: true,
+    agg: "sum",
+    expr: (src) => sql`${src.sc.goals}`,
+  }),
+  lbAvg(
+    "avg_assists",
+    "Average assists",
+    "Mean assists per game: first plus second assists (assists1 + assists2), the last two passers before a goal.",
+    (s) => sql`${s.sc.assists1} + ${s.sc.assists2}`,
+  ),
+  lbAvg(
+    "avg_steals",
+    "Average steals",
+    "Mean steals (taking the ball from an opponent) per game.",
+    (s) => s.sc.stealsDone,
+  ),
+  lbAvg(
+    "avg_steals_received",
+    "Average times stolen from",
+    "Mean times this player lost the ball to a steal per game.",
+    (s) => s.sc.stealsReceived,
+    { higher_is_better: false },
+  ),
+  lbAvg(
+    "avg_blocks",
+    "Average blocks",
+    "Mean blocks on active opponents per game.",
+    (s) => s.sc.blocksDone,
+  ),
+  lbAvg("avg_clears", "Average clears", "Mean clears thrown per game.", (s) => s.sc.clearsDone),
+  lbAvg(
+    "avg_failed_clears",
+    "Average failed clears",
+    "Mean failed clears per game, de-duplicated within a respawn-adjusted cooldown (failed_clears_calc).",
+    (s) => s.sc.failedClearsCalc,
+    { higher_is_better: false },
+  ),
+  lbAvg(
+    "avg_clutch_saves",
+    "Average clutch saves",
+    "Mean clutch saves per game: a clear within 3s of being blocked, or a block within 3s of clearing.",
+    (s) => s.sc.clutchSaves,
+  ),
+  lbAvg("avg_passes", "Average passes", "Mean passes thrown per game.", (s) => s.sc.passesDone),
+  lbAvg(
+    "avg_possession_ms",
+    "Average possession time",
+    "Mean time holding the ball per game, in milliseconds.",
+    (s) => s.sc.possessionTimeMs,
+    { unit: "ms" },
+  ),
+];
+
+const LB_METRIC_ALIASES: Record<string, string> = {
+  goals: "avg_goals",
+  scoring: "avg_goals",
+  assists: "avg_assists",
+  steals: "avg_steals",
+  blocks: "avg_blocks",
+  clears: "avg_clears",
+  passes: "avg_passes",
+  possession: "avg_possession_ms",
+  possession_time: "avg_possession_ms",
+  turnovers: "avg_steals_received",
+  winrate: "win_rate",
+  win_pct: "win_rate",
+  games_played: "games",
+};
 
 function registry(gameType: GameType): readonly MetricDef[] {
   return gameType === "sm5" ? SM5_METRICS : LB_METRICS;
@@ -260,7 +385,7 @@ export function getMetric(gameType: GameType, id: string, field: string): Metric
   if (found) return found;
 
   const ids = metrics.map((m) => m.id);
-  const alias = gameType === "sm5" ? SM5_METRIC_ALIASES[id.toLowerCase()] : undefined;
+  const alias = (gameType === "sm5" ? SM5_METRIC_ALIASES : LB_METRIC_ALIASES)[id.toLowerCase()];
   const otherType = registry(gameType === "sm5" ? "lb" : "sm5").some((m) => m.id === id);
   throw new QueryApiError("invalid_metric", `Unknown ${gameType} metric '${id}'.`, {
     field,
@@ -307,7 +432,9 @@ export function metricSql(metric: MetricDef, src: ScorecardSource): SQL {
   if (metric.game_type !== src.kind) {
     throw new Error(`Metric ${metric.id} is ${metric.game_type}, source is ${src.kind}`);
   }
-  // The pairing is checked above; TypeScript cannot narrow the two unions together.
+  // The pairing is checked above; TypeScript cannot narrow the two unions together, so
+  // the builder is written once against the SM5 shape. Laserball metrics never reach the
+  // position filter (their positions are always "all").
   const m = metric as Sm5Metric;
   const s = src as Sm5Source;
 

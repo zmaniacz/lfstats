@@ -279,10 +279,36 @@ The registry fixes one aggregation per metric, chosen to match the website:
 
 ### v1 catalog — Laserball
 
-`games`, `wins`, `win_rate`, `avg_goals`, `total_goals`, `avg_assists` (`assists1 + assists2`),
-`avg_steals`, `avg_blocks`, `avg_clears`, `avg_passes`, `avg_possession_ms`. Laserball has no
-positions, so every metric applies to every player
-([Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md)).
+Select with `scope.game_type: "lb"`. Laserball has no positions, so every metric applies to every
+player. The columns are defined in
+[Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md). The site has no Laserball
+aggregates to match, so these follow the SM5 convention: the mean of per-game values.
+
+| id                    | Definition                                                                    |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `games`               | Number of Laserball scorecards in scope                                       |
+| `wins`                | Games where the player's team won                                             |
+| `win_rate`            | `wins / games`                                                                |
+| `avg_goals`           | Mean `goals`                                                                  |
+| `total_goals`         | Sum of `goals`                                                                |
+| `avg_assists`         | Mean `assists1 + assists2` (the last two passers before a goal)               |
+| `avg_steals`          | Mean `steals_done`                                                            |
+| `avg_steals_received` | Mean `steals_received` (times the ball was stolen from them; lower is better) |
+| `avg_blocks`          | Mean `blocks_done`                                                            |
+| `avg_clears`          | Mean `clears_done`                                                            |
+| `avg_failed_clears`   | Mean `failed_clears_calc` (lower is better)                                   |
+| `avg_clutch_saves`    | Mean `clutch_saves`                                                           |
+| `avg_passes`          | Mean `passes_done`                                                            |
+| `avg_possession_ms`   | Mean `possession_time_ms`                                                     |
+
+Common names (`goals`, `steals`, `turnovers`, `possession`, …) map to these ids in error hints, as
+for SM5. Using an SM5 id on Laserball, or the reverse, gets a hint to check `scope.game_type`.
+
+**Not available for Laserball**, because the data doesn't exist:
+
+- MVP and the global rating. `player_stats` omits `rating`, with a warning if it was requested.
+- Positions: `scope.positions`, `group_by_position` and the `position` breakdown are errors.
+- Penalties, elimination bonuses and mercenaries. `include_mercenary_games` resolves to `null`.
 
 ### Position-specific metrics
 
@@ -653,7 +679,8 @@ Ranks players by one metric within a scope. This is the draft's `leaderboard_sli
   shows the narrowed positions, with a warning. Otherwise medics would be ranked on nulls.
 - **`links.web`** is not implemented yet: site leaderboard URLs depend on filter cookies, so there
   is no stable link to give.
-- **Laserball** leaderboards return `invalid_scope` until the Laserball metrics phase.
+- **Laserball:** set `scope.game_type: "lb"` and use the Laserball metrics. `group_by_position`
+  is an error.
 
 ---
 
@@ -774,7 +801,10 @@ Y".
   matches. The same player given twice (e.g. by callsign and by member id) is reported once.
 - **`scope_too_broad`** (`422`) fires when the players' breakdown would exceed 500 cells, e.g.
   monthly × position over all time for several players.
-- **Laserball** returns `invalid_scope` until the Laserball metrics phase.
+- **Laserball** (`scope.game_type: "lb"`) defaults to games, win rate, goals, assists, steals
+  and blocks. It has no `position` breakdown and no rating. Head-to-head reports average goals
+  instead of MVP in their games as opponents (`as_opponents.avg_goals`), and `direct` holds the
+  steals and blocks each player made on the other, from `lb_game_player_interaction`.
 
 ---
 
@@ -884,7 +914,11 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
 - **Pagination** is keyset pagination on `(sort key, game.id)`, with an opaque cursor. A cursor
   only works with the `sort` that produced it. Sorting by margin leaves out games with fewer than
   two scored teams, with a warning.
-- **Laserball** returns `invalid_scope` until the Laserball phase.
+- **Laserball** (`scope.game_type: "lb"`):
+  - Margins are goal differences.
+  - Teams carry only `name`, `colour_enum`, `score` and `result`.
+  - Rosters list `goals`, `assists`, `steals` and `blocks`.
+  - `web_url` points at `/laserball/games/{slug}`.
 
 #### Teams and colours
 
@@ -975,8 +1009,15 @@ Implemented details:
 - **Guests** appear with `ipl_id: null`, as in the existing route.
 - **Excluded games** still resolve, but carry `"excluded": true` and a warning so the model does
   not quote them as typical.
-- **Laserball** game slugs return `invalid_request`, pointing to `GET /api/games/{slug}` for the
-  roster.
+- **Laserball** games return:
+  - Teams with goal totals.
+  - Each player's `goals`, `assists`, `passes`, `steals`, `steals_received`, `blocks`,
+    `blocks_received`, `clears`, `failed_clears`, `clutch_saves`, `possession_ms` and
+    `time_played_ms`.
+  - `match: { half, other_half: { half, game_slug } }` when the game is one half of a linked
+    Laserball match, otherwise `null`.
+
+  There are no penalties or MVP components.
 
 ---
 
@@ -1105,7 +1146,7 @@ The text is `MCP_INSTRUCTIONS` in `tools.ts`. In summary:
 - State the scope, game counts and warnings from `meta`.
 - Flag samples under ~10 games, and mention `min_games` on leaderboards.
 - Link `web_url`.
-- Only SM5 is supported so far.
+- SM5 is the default; Laserball needs `scope.game_type: "lb"` and its own metrics.
 
 ### Resources
 
@@ -1208,7 +1249,7 @@ from the registry, so in practice only this document can fall out of date.
 
 ## Implementation plan
 
-Phases 1–5 are done. Phase 1 deviated from the plan in one way: its tests check the generated
+All six phases are done. Phase 1 deviated from the plan in one way: its tests check the generated
 SQL rather than running against fixture games, because there is no test database. Parity checks
 against the live database cover the rest.
 
@@ -1237,7 +1278,11 @@ against the live database cover the rest.
    [Query_API_Eval.md](Query_API_Eval.md): 29 pass, 1 gap (competition winners need a standings
    tool). The eval scripts the tool calls from the descriptions, so a live-model eval through a
    real MCP client is still to do once deployed._
-6. **Laserball metrics.**
+6. **Laserball metrics.** _Done, across all four query endpoints and the MCP tools. Checked
+   against the live database: a Loveland goals leaderboard matches direct SQL; head-to-head
+   counts for the two most frequent co-players match SQL (189 together, 106 as teammates), and
+   the teammates search agrees; search margins equal goal differences; players' goals add up
+   to the team score in game detail. SM5 results from earlier phases are unchanged._
 7. Add the routes to [API.md](API.md) as they ship.
 
 ## Decisions

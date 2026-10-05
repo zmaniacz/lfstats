@@ -422,11 +422,25 @@ await q(22, "What does hit diff mean?", async () => {
   return { verdict: ok(!!m), answer: m.definition };
 });
 
-await q(23, "Who scores the most goals in Laserball?", async () => {
-  const r = await call("lfstats_leaderboard", { scope: { game_type: "lb" }, sort_by: "avg_goals" });
+await q(23, "Who scores the most goals in Laserball at Loveland?", async () => {
+  const r = await call("lfstats_leaderboard", {
+    scope: { game_type: "lb", centers: ["4-19"] },
+    sort_by: "avg_goals",
+    limit: 3,
+  });
+  const top =
+    await pg`select p.ipl_id, avg(s.goals)::float8 g from lb_scorecard s join game g on g.id=s.game_id join center c on c.id=g.center_id join player p on p.id=s.player_id
+    where g.exclude=false and g.type='lb' and c.country_code=4 and c.site_code=19 group by p.ipl_id having count(*)>=10 order by g desc limit 3`;
+  const same = r.body.data.every(
+    (row: any, i: number) =>
+      row.ipl_id === top[i]!.ipl_id && Math.abs(row.avg_goals - top[i]!.g) < 1e-9,
+  );
   return {
-    verdict: ok(r.isError && r.body.error.code === "invalid_scope"),
-    answer: `Correctly unsupported: ${r.body.error.message}`,
+    verdict: ok(!r.isError && same),
+    answer:
+      r.body.data
+        .map((x: any) => `${x.callsign} ${fmt(x.avg_goals)} goals/game (${x.games}g)`)
+        .join("; ") + ` — matches SQL: ${same}`,
   };
 });
 

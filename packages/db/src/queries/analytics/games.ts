@@ -13,6 +13,9 @@ import {
   competitionRound,
   competitionTeam,
   game,
+  lbGameTeam,
+  lbMatchGame,
+  lbScorecard,
   sm5GamePenalty,
   sm5GameTeam,
   sm5GameTeamPenalty,
@@ -24,6 +27,7 @@ import {
   SEARCH_GAMES_FIELDS,
   SEARCH_GAMES_LIMITS,
   type GameDetailRequest,
+  type GameType,
   type SearchGamesRequest,
 } from "../../schemas/query-api";
 import { QueryApiError } from "./errors";
@@ -35,18 +39,19 @@ import {
   resolveScope,
   scopeGameConditions,
   scopeScorecardConditions,
-  SM5_SOURCE,
+  sourceFor,
+  type ScorecardSource,
   type ResolvedScope,
 } from "./scope";
 
-// POST /search_games and GET /games/{slug} (docs/Query_API_Spec.md). SM5 only for now.
+// POST /search_games and GET /games/{slug} (docs/Query_API_Spec.md), for SM5 and Laserball.
 
 export function siteUrl(): string {
   return process.env.LFSTATS_SITE_URL ?? "https://lfstats.com";
 }
 
-export function gameWebUrl(slug: string): string {
-  return `${siteUrl()}/games/${slug}`;
+export function gameWebUrl(slug: string, gameType: GameType = "sm5"): string {
+  return `${siteUrl()}${gameType === "lb" ? "/laserball/games" : "/games"}/${slug}`;
 }
 
 const positionName = (code: number) => POSITIONS[code - 1] ?? null;
@@ -58,8 +63,10 @@ function clock(ms: number | null): string | null {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-/** Score plus elimination bonus plus (negative) penalties: what decides the game. */
+/** Score plus elimination bonus plus (negative) penalties: what decides an SM5 game. */
 const effectiveScoreSql = sql<number>`(coalesce(${sm5GameTeam.score}, 0) + coalesce(${sm5GameTeam.eliminationBonus}, 0) + coalesce(${sm5GameTeam.penaltyScore}, 0))::int`;
+/** Laserball has no bonus or penalties: the score is the goals. */
+const lbScoreSql = sql<number>`coalesce(${lbGameTeam.score}, 0)::int`;
 
 // ---------------------------------------------------------------------------
 // Shared lookups
@@ -143,29 +150,52 @@ type TeamRow = {
 };
 
 /** Non-neutral teams per game, best effective score first. */
-async function teamsFor(gameIds: string[]): Promise<Map<string, TeamRow[]>> {
-  const rows = await getAnalyticsDb()
-    .select({
-      id: sm5GameTeam.id,
-      gameId: sm5GameTeam.gameId,
-      name: sm5GameTeam.name,
-      colourEnum: sm5GameTeam.colourEnum,
-      score: sm5GameTeam.score,
-      eliminationBonus: sm5GameTeam.eliminationBonus,
-      penaltyScore: sm5GameTeam.penaltyScore,
-      effective: effectiveScoreSql,
-      result: sm5GameTeam.result,
-      eliminated: sm5GameTeam.eliminated,
-    })
-    .from(sm5GameTeam)
-    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
-    .orderBy(desc(effectiveScoreSql), asc(sm5GameTeam.tdfTeamIndex));
+async function teamsFor(gameType: GameType, gameIds: string[]): Promise<Map<string, TeamRow[]>> {
+  const db = getAnalyticsDb();
+  const rows: TeamRow[] =
+    gameType === "sm5"
+      ? await db
+          .select({
+            id: sm5GameTeam.id,
+            gameId: sm5GameTeam.gameId,
+            name: sm5GameTeam.name,
+            colourEnum: sm5GameTeam.colourEnum,
+            score: sm5GameTeam.score,
+            eliminationBonus: sm5GameTeam.eliminationBonus,
+            penaltyScore: sm5GameTeam.penaltyScore,
+            effective: effectiveScoreSql,
+            result: sm5GameTeam.result,
+            eliminated: sm5GameTeam.eliminated,
+          })
+          .from(sm5GameTeam)
+          .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
+          .orderBy(desc(effectiveScoreSql), asc(sm5GameTeam.tdfTeamIndex))
+      : await db
+          .select({
+            id: lbGameTeam.id,
+            gameId: lbGameTeam.gameId,
+            name: lbGameTeam.name,
+            colourEnum: lbGameTeam.colourEnum,
+            score: lbGameTeam.score,
+            eliminationBonus: sql<null>`null`,
+            penaltyScore: sql<null>`null`,
+            effective: lbScoreSql,
+            result: lbGameTeam.result,
+            eliminated: sql<null>`null`,
+          })
+          .from(lbGameTeam)
+          .where(and(inArray(lbGameTeam.gameId, gameIds), eq(lbGameTeam.isNeutral, false)))
+          .orderBy(desc(lbScoreSql), asc(lbGameTeam.tdfTeamIndex));
   const byGame = new Map<string, TeamRow[]>();
   for (const r of rows) byGame.set(r.gameId, [...(byGame.get(r.gameId) ?? []), r]);
   return byGame;
 }
 
-function teamJson(t: TeamRow, competitionTeams: Map<string, string | null>) {
+function teamJson(t: TeamRow, competitionTeams: Map<string, string | null>, gameType: GameType) {
+  if (gameType === "lb") {
+    // Laserball teams have only a goal total and a result.
+    return { name: t.name, colour_enum: t.colourEnum, score: t.score, result: t.result };
+  }
   return {
     name: t.name,
     colour_enum: t.colourEnum,
@@ -203,18 +233,24 @@ function decodeCursor(raw: string, sort: SortKey): Cursor {
   });
 }
 
-/** Gap between the top two non-neutral teams' effective scores; null with fewer than two. */
-const marginCte = sql`
-  select ${sm5GameTeam.gameId} as game_id,
-    (array_agg(${effectiveScoreSql} order by ${effectiveScoreSql} desc))[1]
-      - (array_agg(${effectiveScoreSql} order by ${effectiveScoreSql} desc))[2] as margin
-  from ${sm5GameTeam}
-  where ${sm5GameTeam.isNeutral} = false
-  group by ${sm5GameTeam.gameId}`;
+/**
+ * Gap between the top two non-neutral teams' scores (effective scores for SM5, goals for
+ * Laserball); null with fewer than two teams.
+ */
+function marginCte(gameType: GameType): SQL {
+  const team = gameType === "sm5" ? sm5GameTeam : lbGameTeam;
+  const score = gameType === "sm5" ? effectiveScoreSql : lbScoreSql;
+  return sql`
+    select ${team.gameId} as game_id,
+      (array_agg(${score} order by ${score} desc))[1]
+        - (array_agg(${score} order by ${score} desc))[2] as margin
+    from ${team}
+    where ${team.isNeutral} = false
+    group by ${team.gameId}`;
+}
 
 /** A scorecard for one of `playerIds` in the outer game, meeting the scope's scorecard filters. */
-function playedSql(scope: ResolvedScope, playerIds: string[]): SQL {
-  const src = SM5_SOURCE;
+function playedSql(scope: ResolvedScope, src: ScorecardSource, playerIds: string[]): SQL {
   return sql`exists (select 1 from ${src.sc}
     inner join ${src.team} on ${src.team.id} = ${src.sc.teamId}
     where ${and(
@@ -224,22 +260,25 @@ function playedSql(scope: ResolvedScope, playerIds: string[]): SQL {
     )})`;
 }
 
-function relationSql(a: IdentifiedPlayer, b: IdentifiedPlayer, sameTeam: boolean): SQL {
+function relationSql(
+  gameType: GameType,
+  a: IdentifiedPlayer,
+  b: IdentifiedPlayer,
+  sameTeam: boolean,
+): SQL {
+  const sc = gameType === "sm5" ? sm5Scorecard : lbScorecard;
   // Aliases spelled out: a drizzle alias() inside a raw sql template renders only its
   // alias name, without the `table AS alias` it needs in FROM.
-  return sql`exists (select 1 from ${sm5Scorecard} rel_a
-      inner join ${sm5Scorecard} rel_b on rel_b.game_id = rel_a.game_id
+  return sql`exists (select 1 from ${sc} rel_a
+      inner join ${sc} rel_b on rel_b.game_id = rel_a.game_id
     where rel_a.game_id = ${game.id} and rel_a.player_id = ${a.id} and rel_b.player_id = ${b.id}
       and ${sameTeam ? sql`rel_a.team_id = rel_b.team_id` : sql`rel_a.team_id <> rel_b.team_id`})`;
 }
 
 export async function searchGames(req: SearchGamesRequest, today: string) {
   const normalized = normalizeScope(req.scope ?? {}, today);
-  if (normalized.game_type === "lb") {
-    throw new QueryApiError("invalid_scope", "Laserball game search is not available yet.", {
-      field: "scope.game_type",
-    });
-  }
+  const gameType = normalized.game_type;
+  const src = sourceFor(gameType);
   if (!req.players && (normalized.positions || normalized.team_result)) {
     throw new QueryApiError(
       "invalid_scope",
@@ -295,16 +334,19 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
   if (req.max_margin !== undefined) conditions.push(sql`m.margin <= ${req.max_margin}`);
   if (byMargin) conditions.push(sql`m.margin is not null`);
   if (unique.length > 0) {
-    if (match === "all") for (const p of unique) conditions.push(playedSql(scope, [p.id]));
-    else
+    if (match === "all") {
+      for (const p of unique) conditions.push(playedSql(scope, src, [p.id]));
+    } else {
       conditions.push(
         playedSql(
           scope,
+          src,
           unique.map((p) => p.id),
         ),
       );
+    }
     if (relation !== "any") {
-      conditions.push(relationSql(unique[0]!, unique[1]!, relation === "teammates"));
+      conditions.push(relationSql(gameType, unique[0]!, unique[1]!, relation === "teammates"));
     }
   }
   const filtered = and(...conditions);
@@ -326,7 +368,7 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
   const db = getAnalyticsDb();
   const [rows, [total], latest] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
-      with m as (${marginCte})
+      with m as (${marginCte(gameType)})
       select ${game.id} as id, ${gameSlugSql} as slug,
         ${localTimestampSql(game.startTime)} as start_time, ${keyText} as sort_key,
         ${game.outcome} as outcome, ${game.exclude} as excluded, m.margin as margin,
@@ -338,7 +380,7 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
       order by ${keyExpr} ${dir}, ${game.id} ${dir}
       limit ${limit + 1}`),
     db.execute<{ n: number }>(sql`
-      with m as (${marginCte})
+      with m as (${marginCte(gameType)})
       select count(*)::int as n from ${game} left join m on m.game_id = ${game.id}
       where ${filtered}`),
     dataAsOf(scope),
@@ -350,12 +392,12 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
 
   const needTeams = fields.has("teams");
   const [teams, comps, rosters] = await Promise.all([
-    needTeams && gameIds.length > 0 ? teamsFor(gameIds) : new Map<string, TeamRow[]>(),
+    needTeams && gameIds.length > 0 ? teamsFor(gameType, gameIds) : new Map<string, TeamRow[]>(),
     (needTeams || fields.has("competition")) && gameIds.length > 0
       ? competitionInfo(gameIds)
       : { byGame: new Map<string, CompetitionInfo>(), competitionTeamByGameTeam: new Map() },
     req.include_rosters && gameIds.length > 0
-      ? rostersFor(gameIds)
+      ? rostersFor(gameType, gameIds)
       : new Map<string, RosterRow[]>(),
   ]);
 
@@ -370,12 +412,12 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
     if (fields.has("margin")) out.margin = r.margin === null ? null : Number(r.margin);
     if (needTeams) {
       out.teams = (teams.get(id) ?? []).map((t) => ({
-        ...teamJson(t, comps.competitionTeamByGameTeam),
+        ...teamJson(t, comps.competitionTeamByGameTeam, gameType),
         ...(req.include_rosters && { players: rosters.get(t.id) ?? [] }),
       }));
     }
     if (fields.has("excluded")) out.excluded = r.excluded;
-    if (fields.has("web_url")) out.web_url = gameWebUrl(slug);
+    if (fields.has("web_url")) out.web_url = gameWebUrl(slug, gameType);
     return out;
   });
 
@@ -383,7 +425,7 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
   const warnings: string[] = [];
   if (byMargin)
     warnings.push("Games with fewer than two scored teams are left out when sorting by margin.");
-  if (req.scope?.include_mercenary_games !== undefined) {
+  if (gameType === "sm5" && req.scope?.include_mercenary_games !== undefined) {
     warnings.push("include_mercenary_games does not apply to search_games and was ignored.");
   }
   const renamed = (players ?? []).filter((p) => p.input !== p.iplId);
@@ -416,44 +458,68 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
   };
 }
 
-type RosterRow = {
-  ipl_id: string | null;
-  callsign: string;
-  position: string | null;
-  score: number;
-  mvp: number;
-  is_mercenary: boolean;
-};
+type RosterRow = Record<string, unknown> & { ipl_id: string | null; callsign: string };
 
-/** Compact rosters per team id, highest score first. Guests have a null ipl_id. */
-async function rostersFor(gameIds: string[]): Promise<Map<string, RosterRow[]>> {
-  const rows = await getAnalyticsDb()
-    .select({
-      teamId: sm5Scorecard.teamId,
-      iplId: sm5Scorecard.iplId,
-      callsign: sm5Scorecard.callsign,
-      position: sm5Scorecard.position,
-      score: sm5Scorecard.score,
-      mvp: sm5Scorecard.mvpPoints,
-      isMercenary: sm5Scorecard.isMercenary,
-    })
-    .from(sm5Scorecard)
-    .where(inArray(sm5Scorecard.gameId, gameIds))
-    .orderBy(desc(sm5Scorecard.score));
+/** Compact rosters per team id, best first. Guests have a null ipl_id. */
+async function rostersFor(
+  gameType: GameType,
+  gameIds: string[],
+): Promise<Map<string, RosterRow[]>> {
+  const db = getAnalyticsDb();
+  const rows: { teamId: string; row: RosterRow }[] =
+    gameType === "sm5"
+      ? (
+          await db
+            .select({
+              teamId: sm5Scorecard.teamId,
+              iplId: sm5Scorecard.iplId,
+              callsign: sm5Scorecard.callsign,
+              position: sm5Scorecard.position,
+              score: sm5Scorecard.score,
+              mvp: sm5Scorecard.mvpPoints,
+              isMercenary: sm5Scorecard.isMercenary,
+            })
+            .from(sm5Scorecard)
+            .where(inArray(sm5Scorecard.gameId, gameIds))
+            .orderBy(desc(sm5Scorecard.score))
+        ).map((r) => ({
+          teamId: r.teamId,
+          row: {
+            ipl_id: r.iplId,
+            callsign: r.callsign.trim(),
+            position: positionName(r.position),
+            score: r.score,
+            mvp: r.mvp,
+            is_mercenary: r.isMercenary,
+          },
+        }))
+      : (
+          await db
+            .select({
+              teamId: lbScorecard.teamId,
+              iplId: lbScorecard.iplId,
+              callsign: lbScorecard.callsign,
+              goals: lbScorecard.goals,
+              assists: sql<number>`${lbScorecard.assists1} + ${lbScorecard.assists2}`,
+              steals: lbScorecard.stealsDone,
+              blocks: lbScorecard.blocksDone,
+            })
+            .from(lbScorecard)
+            .where(inArray(lbScorecard.gameId, gameIds))
+            .orderBy(desc(lbScorecard.goals), desc(lbScorecard.stealsDone))
+        ).map((r) => ({
+          teamId: r.teamId,
+          row: {
+            ipl_id: r.iplId,
+            callsign: r.callsign.trim(),
+            goals: r.goals,
+            assists: r.assists,
+            steals: r.steals,
+            blocks: r.blocks,
+          },
+        }));
   const byTeam = new Map<string, RosterRow[]>();
-  for (const r of rows) {
-    byTeam.set(r.teamId, [
-      ...(byTeam.get(r.teamId) ?? []),
-      {
-        ipl_id: r.iplId,
-        callsign: r.callsign.trim(),
-        position: positionName(r.position),
-        score: r.score,
-        mvp: r.mvp,
-        is_mercenary: r.isMercenary,
-      },
-    ]);
-  }
+  for (const { teamId, row } of rows) byTeam.set(teamId, [...(byTeam.get(teamId) ?? []), row]);
   return byTeam;
 }
 
@@ -500,16 +566,11 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
       hint: "Use search_games to find the game.",
     });
   }
-  if (g.type !== "sm5") {
-    throw new QueryApiError("invalid_request", "Laserball game detail is not available yet.", {
-      field: "slug",
-      hint: `GET /api/games/${slug} returns the roster of any game.`,
-    });
-  }
+  if (g.type === "lb") return lbGameDetail(g);
 
   const sc = sm5Scorecard;
   const [teams, comps, scorecards, penalties, teamPenalties, components] = await Promise.all([
-    teamsFor([g.id]),
+    teamsFor("sm5", [g.id]),
     competitionInfo([g.id]),
     db
       .select({
@@ -651,7 +712,7 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
       scheduled_length: clock(g.scheduled),
       actual_length: clock(g.actual),
       teams: (teams.get(g.id) ?? []).map((t) => ({
-        ...teamJson(t, comps.competitionTeamByGameTeam),
+        ...teamJson(t, comps.competitionTeamByGameTeam, "sm5"),
         players: playersFor(t.id),
       })),
       ...((req.include_penalties ?? true) && {
@@ -681,7 +742,121 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
         ],
       }),
       tdf_url: getTdfArchiveUrl(g.tdfFilename),
-      web_url: gameWebUrl(g.slug),
+      web_url: gameWebUrl(g.slug, "sm5"),
+    },
+    meta: {
+      warnings: g.exclude
+        ? [
+            "This game is excluded from all aggregates (aborted or excluded by an admin); don't treat it as typical.",
+          ]
+        : [],
+    },
+  };
+}
+
+type GameHeader = {
+  id: string;
+  slug: string;
+  type: string;
+  startTime: string;
+  outcome: string;
+  exclude: boolean;
+  description: string | null;
+  scheduled: number;
+  actual: number;
+  tdfFilename: string;
+  centerSlug: string;
+  centerName: string;
+};
+
+/**
+ * A Laserball game: goal totals, every player's stats, and, when the game is one half of a
+ * linked match, the other half. Laserball has no penalties or MVP.
+ */
+async function lbGameDetail(g: GameHeader) {
+  const db = getAnalyticsDb();
+  const sc = lbScorecard;
+  const other = alias(lbMatchGame, "other");
+  const [teams, scorecards, [half]] = await Promise.all([
+    teamsFor("lb", [g.id]),
+    db
+      .select({
+        teamId: sc.teamId,
+        iplId: sc.iplId,
+        callsign: sc.callsign,
+        goals: sc.goals,
+        assists: sql<number>`${sc.assists1} + ${sc.assists2}`,
+        passes: sc.passesDone,
+        steals: sc.stealsDone,
+        stealsReceived: sc.stealsReceived,
+        blocks: sc.blocksDone,
+        blocksReceived: sc.blocksReceived,
+        clears: sc.clearsDone,
+        failedClears: sc.failedClearsCalc,
+        clutchSaves: sc.clutchSaves,
+        possessionMs: sc.possessionTimeMs,
+        timePlayedMs: sc.timePlayedMs,
+      })
+      .from(sc)
+      .where(eq(sc.gameId, g.id))
+      .orderBy(desc(sc.goals), desc(sc.stealsDone)),
+    db
+      .select({
+        half: lbMatchGame.half,
+        otherHalf: other.half,
+        otherSlug: gameSlugSql,
+      })
+      .from(lbMatchGame)
+      .leftJoin(
+        other,
+        and(eq(other.matchId, lbMatchGame.matchId), sql`${other.gameId} <> ${lbMatchGame.gameId}`),
+      )
+      .leftJoin(game, eq(game.id, other.gameId))
+      .leftJoin(center, eq(center.id, game.centerId))
+      .where(eq(lbMatchGame.gameId, g.id)),
+  ]);
+
+  return {
+    data: {
+      game_slug: g.slug,
+      game_type: g.type,
+      start_time: g.startTime,
+      center: { slug: g.centerSlug, name: g.centerName },
+      outcome: g.outcome,
+      excluded: g.exclude,
+      description: g.description,
+      scheduled_length: clock(g.scheduled),
+      actual_length: clock(g.actual),
+      // A Laserball match is two halves with sides swapped; null when not linked.
+      match: half
+        ? {
+            half: half.half,
+            other_half: half.otherSlug ? { half: half.otherHalf, game_slug: half.otherSlug } : null,
+          }
+        : null,
+      teams: (teams.get(g.id) ?? []).map((t) => ({
+        ...teamJson(t, new Map(), "lb"),
+        players: scorecards
+          .filter((s) => s.teamId === t.id)
+          .map((s) => ({
+            ipl_id: s.iplId,
+            callsign: s.callsign.trim(),
+            goals: s.goals,
+            assists: s.assists,
+            passes: s.passes,
+            steals: s.steals,
+            steals_received: s.stealsReceived,
+            blocks: s.blocks,
+            blocks_received: s.blocksReceived,
+            clears: s.clears,
+            failed_clears: s.failedClears,
+            clutch_saves: s.clutchSaves,
+            possession_ms: s.possessionMs,
+            time_played_ms: s.timePlayedMs,
+          })),
+      })),
+      tdf_url: getTdfArchiveUrl(g.tdfFilename),
+      web_url: gameWebUrl(g.slug, "lb"),
     },
     meta: {
       warnings: g.exclude

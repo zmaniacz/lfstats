@@ -8,6 +8,9 @@ import {
   competition,
   game,
   playerRating,
+  lbGamePlayerInteraction,
+  lbGameTeam,
+  lbScorecard,
   sm5GamePlayerInteraction,
   sm5GameTeam,
   sm5RatingModel,
@@ -17,6 +20,7 @@ import {
   PLAYER_STATS_LIMITS,
   POSITIONS,
   type Breakdown,
+  type GameType,
   type Period,
   type PlayerStatsRequest,
 } from "../../schemas/query-api";
@@ -31,13 +35,22 @@ import {
   resolveScope,
   scopeGameConditions,
   scopeScorecardConditions,
-  SM5_SOURCE,
+  sourceFor,
+  type ScorecardSource,
   type ResolvedScope,
 } from "./scope";
 
 // POST /player_stats (docs/Query_API_Spec.md): 1–10 named players over one scope, with
 // optional breakdowns, a baseline of everyone else, global ratings and head-to-head.
 
+export const DEFAULT_LB_PLAYER_STATS_METRICS = [
+  "games",
+  "win_rate",
+  "avg_goals",
+  "avg_assists",
+  "avg_steals",
+  "avg_blocks",
+] as const;
 export const DEFAULT_PLAYER_STATS_METRICS = [
   "games",
   "win_rate",
@@ -72,10 +85,11 @@ const PERIOD_FORMAT: Record<Period, string> = {
 };
 
 /** SQL for one breakdown dimension, evaluated per scorecard. */
-function dimensionSql(dim: Breakdown, period: Period): SQL {
-  const src = SM5_SOURCE;
+function dimensionSql(dim: Breakdown, period: Period, src: ScorecardSource): SQL {
   switch (dim) {
     case "position":
+      // Rejected for Laserball before any SQL is built.
+      if (src.kind !== "sm5") throw new Error("position breakdown is SM5 only");
       return sql`${src.sc.position}`;
     case "period":
       // The format is a constant from this file, never user input.
@@ -122,6 +136,7 @@ function metricValues(row: Row, metrics: readonly MetricDef[]): MetricValues {
 // ---------------------------------------------------------------------------
 
 type AggregateOptions = {
+  src: ScorecardSource;
   scope: ResolvedScope;
   metrics: readonly MetricDef[];
   dims: readonly Breakdown[];
@@ -131,8 +146,10 @@ type AggregateOptions = {
 
 /** One row per (player, cell): the metrics over that player's scorecards in the cell. */
 function perPlayerSql(opts: AggregateOptions, having?: SQL): SQL {
-  const src = SM5_SOURCE;
-  const dimColumns = opts.dims.map((d) => sql`, ${dimensionSql(d, opts.period)} as ${dimAlias(d)}`);
+  const src = opts.src;
+  const dimColumns = opts.dims.map(
+    (d) => sql`, ${dimensionSql(d, opts.period, src)} as ${dimAlias(d)}`,
+  );
   const metricColumns = opts.metrics.map(
     (m) => sql`, ${metricSql(m, src)} as ${sql.identifier(m.id)}`,
   );
@@ -231,25 +248,59 @@ async function ratings(playerIds: string[]) {
 
 type Record3 = { games: number; wins: number; draws: number; losses: number };
 
-async function headToHead(scope: ResolvedScope, pa: IdentifiedPlayer, pb: IdentifiedPlayer) {
+type SharedGame = {
+  slug: string;
+  sameTeam: boolean;
+  resultA: string | null;
+  resultB: string | null;
+  /** The per-game headline stat: MVP for SM5, goals for Laserball. */
+  perfA: number;
+  perfB: number;
+};
+
+/** Every game both players have a scorecard in, newest first, within the game-level scope. */
+async function sharedGames(
+  gameType: GameType,
+  gameConditions: SQL[],
+  pa: IdentifiedPlayer,
+  pb: IdentifiedPlayer,
+): Promise<SharedGame[]> {
   const db = getAnalyticsDb();
-  const a = alias(sm5Scorecard, "a");
-  const b = alias(sm5Scorecard, "b");
-  const ta = alias(sm5GameTeam, "ta");
-  const tb = alias(sm5GameTeam, "tb");
-
-  // Game-level scope only: position, team_result and mercenary filters would have to
-  // apply to both players at once, which has no sensible meaning for a matchup.
-  const gameConditions = scopeGameConditions(scope);
-
-  const shared = await db
+  if (gameType === "sm5") {
+    const a = alias(sm5Scorecard, "a");
+    const b = alias(sm5Scorecard, "b");
+    const ta = alias(sm5GameTeam, "ta");
+    const tb = alias(sm5GameTeam, "tb");
+    return db
+      .select({
+        slug: gameSlugSql,
+        sameTeam: sql<boolean>`${a.teamId} = ${b.teamId}`,
+        resultA: ta.result,
+        resultB: tb.result,
+        perfA: a.mvpPoints,
+        perfB: b.mvpPoints,
+      })
+      .from(a)
+      .innerJoin(b, and(eq(b.gameId, a.gameId), eq(b.playerId, pb.id)))
+      .innerJoin(game, eq(game.id, a.gameId))
+      .innerJoin(center, eq(center.id, game.centerId))
+      .innerJoin(ta, eq(ta.id, a.teamId))
+      .innerJoin(tb, eq(tb.id, b.teamId))
+      .where(and(eq(a.playerId, pa.id), ...gameConditions))
+      .orderBy(desc(game.startTime));
+  }
+  const a = alias(lbScorecard, "a");
+  const b = alias(lbScorecard, "b");
+  const ta = alias(lbGameTeam, "ta");
+  const tb = alias(lbGameTeam, "tb");
+  return db
     .select({
       slug: gameSlugSql,
       sameTeam: sql<boolean>`${a.teamId} = ${b.teamId}`,
       resultA: ta.result,
       resultB: tb.result,
-      mvpA: a.mvpPoints,
-      mvpB: b.mvpPoints,
+      perfA: a.goals,
+      perfB: b.goals,
     })
     .from(a)
     .innerJoin(b, and(eq(b.gameId, a.gameId), eq(b.playerId, pb.id)))
@@ -259,38 +310,88 @@ async function headToHead(scope: ResolvedScope, pa: IdentifiedPlayer, pb: Identi
     .innerJoin(tb, eq(tb.id, b.teamId))
     .where(and(eq(a.playerId, pa.id), ...gameConditions))
     .orderBy(desc(game.startTime));
+}
 
-  const src = alias(sm5Scorecard, "src");
-  const tgt = alias(sm5Scorecard, "tgt");
-  const direct = await db
+/**
+ * What each player did directly to the other across their games as opponents: tags for
+ * SM5, steals and blocks for Laserball. Keyed by player id.
+ */
+async function directInteractions(
+  gameType: GameType,
+  gameConditions: SQL[],
+  ids: [string, string],
+): Promise<Map<string, Record<string, number>>> {
+  const db = getAnalyticsDb();
+  if (gameType === "sm5") {
+    const i = sm5GamePlayerInteraction;
+    const src = alias(sm5Scorecard, "src");
+    const tgt = alias(sm5Scorecard, "tgt");
+    const rows = await db
+      .select({
+        playerId: src.playerId,
+        shots_hit: sql<number>`sum(${i.shotsHit})::int`,
+        deactivations: sql<number>`sum(${i.shotDeactivations})::int`,
+        missile_hits: sql<number>`sum(${i.missileHits})::int`,
+      })
+      .from(i)
+      .innerJoin(src, eq(src.id, i.scorecardId))
+      .innerJoin(tgt, eq(tgt.id, i.targetScorecardId))
+      .innerJoin(game, eq(game.id, i.gameId))
+      .where(
+        and(
+          inArray(src.playerId, ids),
+          inArray(tgt.playerId, ids),
+          sql`${src.playerId} <> ${tgt.playerId}`,
+          sql`${src.teamId} <> ${tgt.teamId}`,
+          ...gameConditions,
+        ),
+      )
+      .groupBy(src.playerId);
+    return new Map(rows.map(({ playerId, ...stats }) => [String(playerId), stats]));
+  }
+  const i = lbGamePlayerInteraction;
+  const src = alias(lbScorecard, "src");
+  const tgt = alias(lbScorecard, "tgt");
+  const rows = await db
     .select({
       playerId: src.playerId,
-      shotsHit: sql<number>`sum(${sm5GamePlayerInteraction.shotsHit})::int`,
-      deactivations: sql<number>`sum(${sm5GamePlayerInteraction.shotDeactivations})::int`,
-      missileHits: sql<number>`sum(${sm5GamePlayerInteraction.missileHits})::int`,
+      steals: sql<number>`sum(${i.steals})::int`,
+      blocks: sql<number>`sum(${i.blocks})::int`,
     })
-    .from(sm5GamePlayerInteraction)
-    .innerJoin(src, eq(src.id, sm5GamePlayerInteraction.scorecardId))
-    .innerJoin(tgt, eq(tgt.id, sm5GamePlayerInteraction.targetScorecardId))
-    .innerJoin(game, eq(game.id, sm5GamePlayerInteraction.gameId))
+    .from(i)
+    .innerJoin(src, eq(src.id, i.scorecardId))
+    .innerJoin(tgt, eq(tgt.id, i.targetScorecardId))
+    .innerJoin(game, eq(game.id, i.gameId))
     .where(
       and(
-        inArray(src.playerId, [pa.id, pb.id]),
-        inArray(tgt.playerId, [pa.id, pb.id]),
+        inArray(src.playerId, ids),
+        inArray(tgt.playerId, ids),
         sql`${src.playerId} <> ${tgt.playerId}`,
         sql`${src.teamId} <> ${tgt.teamId}`,
         ...gameConditions,
       ),
     )
     .groupBy(src.playerId);
+  return new Map(rows.map(({ playerId, ...stats }) => [String(playerId), stats]));
+}
+
+async function headToHead(scope: ResolvedScope, pa: IdentifiedPlayer, pb: IdentifiedPlayer) {
+  // Game-level scope only: position, team_result and mercenary filters would have to
+  // apply to both players at once, which has no sensible meaning for a matchup.
+  const gameConditions = scopeGameConditions(scope);
+  const gameType = scope.game_type;
+  const [shared, direct] = await Promise.all([
+    sharedGames(gameType, gameConditions, pa, pb),
+    directInteractions(gameType, gameConditions, [pa.id, pb.id]),
+  ]);
 
   const teammates: Record3 = { games: 0, wins: 0, draws: 0, losses: 0 };
   let opponentGames = 0;
   let winsA = 0;
   let winsB = 0;
   let draws = 0;
-  let mvpA = 0;
-  let mvpB = 0;
+  let perfA = 0;
+  let perfB = 0;
   for (const g of shared) {
     if (g.sameTeam) {
       teammates.games++;
@@ -299,23 +400,19 @@ async function headToHead(scope: ResolvedScope, pa: IdentifiedPlayer, pb: Identi
       else if (g.resultA === "loss") teammates.losses++;
     } else {
       opponentGames++;
-      mvpA += g.mvpA;
-      mvpB += g.mvpB;
+      perfA += g.perfA;
+      perfB += g.perfB;
       if (g.resultA === "win") winsA++;
       else if (g.resultB === "win") winsB++;
       else if (g.resultA === "draw") draws++;
     }
   }
 
-  const directBy = new Map(direct.map((d) => [d.playerId, d]));
-  const tags = (p: IdentifiedPlayer) => {
-    const d = directBy.get(p.id);
-    return {
-      shots_hit: d?.shotsHit ?? 0,
-      deactivations: d?.deactivations ?? 0,
-      missile_hits: d?.missileHits ?? 0,
-    };
-  };
+  const empty: Record<string, number> =
+    gameType === "sm5"
+      ? { shots_hit: 0, deactivations: 0, missile_hits: 0 }
+      : { steals: 0, blocks: 0 };
+  const perfKey = gameType === "sm5" ? "avg_mvp" : "avg_goals";
 
   return {
     games_together: shared.length,
@@ -323,12 +420,16 @@ async function headToHead(scope: ResolvedScope, pa: IdentifiedPlayer, pb: Identi
     as_opponents: {
       games: opponentGames,
       record: { [pa.iplId]: winsA, [pb.iplId]: winsB, draws },
-      avg_mvp:
+      // MVP (SM5) or goals (Laserball) per game, in their games as opponents only.
+      [perfKey]:
         opponentGames === 0
           ? null
-          : { [pa.iplId]: mvpA / opponentGames, [pb.iplId]: mvpB / opponentGames },
-      // Tags each player landed on the other, across their games as opponents.
-      direct: { [pa.iplId]: tags(pa), [pb.iplId]: tags(pb) },
+          : { [pa.iplId]: perfA / opponentGames, [pb.iplId]: perfB / opponentGames },
+      // What each player did to the other across their games as opponents.
+      direct: {
+        [pa.iplId]: direct.get(pa.id) ?? empty,
+        [pb.iplId]: direct.get(pb.id) ?? empty,
+      },
     },
     recent_games: shared.slice(0, RECENT_GAMES).map((g) => g.slug),
   };
@@ -344,14 +445,16 @@ function dedupe<T>(values: readonly T[]): T[] {
 
 export async function getPlayerStats(req: PlayerStatsRequest, today: string) {
   const normalized = normalizeScope(req.scope ?? {}, today);
-  if (normalized.game_type === "lb") {
-    throw new QueryApiError("invalid_scope", "Laserball player stats are not available yet.", {
-      field: "scope.game_type",
-      hint: "Only SM5 metrics exist so far. Remove scope.game_type or set it to 'sm5'.",
-    });
-  }
+  const gameType = normalized.game_type;
+  const src = sourceFor(gameType);
 
   const dims = dedupe(req.breakdown ?? []);
+  if (gameType === "lb" && dims.includes("position")) {
+    throw new QueryApiError("invalid_request", "Laserball has no positions to break down by.", {
+      field: "breakdown",
+      hint: "Use period, center or game_kind.",
+    });
+  }
   if (req.period && !dims.includes("period")) {
     throw new QueryApiError("invalid_request", "period only applies with breakdown 'period'.", {
       field: "period",
@@ -360,8 +463,10 @@ export async function getPlayerStats(req: PlayerStatsRequest, today: string) {
   }
   const period = req.period ?? DEFAULT_PERIOD;
 
-  const metricIds = dedupe(["games", ...(req.metrics ?? DEFAULT_PLAYER_STATS_METRICS)]);
-  const metrics = metricIds.map((id) => getMetric("sm5", id, "metrics"));
+  const defaults =
+    gameType === "sm5" ? DEFAULT_PLAYER_STATS_METRICS : DEFAULT_LB_PLAYER_STATS_METRICS;
+  const metricIds = dedupe(["games", ...(req.metrics ?? defaults)]);
+  const metrics = metricIds.map((id) => getMetric(gameType, id, "metrics"));
   const warnings: string[] = [];
   for (const m of metrics) {
     const w = checkMetricPositions(m, normalized.positions, "metrics");
@@ -382,9 +487,11 @@ export async function getPlayerStats(req: PlayerStatsRequest, today: string) {
     });
   }
 
-  const base = { scope, metrics, period };
-  const mine = inArray(SM5_SOURCE.sc.playerId, ids);
-  const others = notInArray(SM5_SOURCE.sc.playerId, ids);
+  const base = { src, scope, metrics, period };
+  const mine = inArray(src.sc.playerId, ids);
+  const others = notInArray(src.sc.playerId, ids);
+  // The global rating is an SM5 model; there is no Laserball rating.
+  const includeRating = gameType === "sm5" && (req.include_rating ?? true);
   const includeBaseline = req.include_baseline ?? true;
   const baselineMin = req.baseline_min_games ?? DEFAULT_BASELINE_MIN_GAMES;
 
@@ -410,7 +517,7 @@ export async function getPlayerStats(req: PlayerStatsRequest, today: string) {
       includeBaseline && dims.length > 0
         ? baselineAggregates({ ...base, dims, playerCondition: others }, baselineMin)
         : null,
-      (req.include_rating ?? true) ? ratings(ids) : null,
+      includeRating ? ratings(ids) : null,
       req.head_to_head ? headToHead(scope, unique[0]!, unique[1]!) : null,
       dataAsOf(scope),
       dims.includes("center")
@@ -491,6 +598,9 @@ export async function getPlayerStats(req: PlayerStatsRequest, today: string) {
     ...(h2h && { head_to_head: h2h }),
   };
 
+  if (gameType === "lb" && req.include_rating) {
+    warnings.push("There is no Laserball rating; the global rating covers SM5 only.");
+  }
   if (ratingInfo && unique.some((p) => !ratingInfo.byPlayer.has(p.id))) {
     warnings.push(
       "rating is null for players not in the current global ranking (too few recent games). The rating ignores scope.",
