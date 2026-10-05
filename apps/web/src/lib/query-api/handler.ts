@@ -72,7 +72,14 @@ export type QueryHandlerResult = {
   rowCount?: number;
 };
 
-export type QueryHandlerContext = { key: AuthenticatedApiKey; request: Request };
+export type QueryHandlerContext = {
+  key: AuthenticatedApiKey;
+  request: Request;
+  /** Dynamic route segments, e.g. `{ slug }` for games/[slug]. */
+  params: Record<string, string>;
+};
+
+type RouteContext = { params?: Promise<Record<string, string | string[]>> };
 
 function errorResponse(err: QueryApiError): NextResponse {
   const headers: Record<string, string> = {};
@@ -80,8 +87,9 @@ function errorResponse(err: QueryApiError): NextResponse {
   return NextResponse.json({ error: err.toBody() }, { status: err.status, headers });
 }
 
+/** POST: the JSON body. GET: the query string, as an object of strings. */
 async function readBody(request: Request): Promise<unknown> {
-  if (request.method === "GET") return {};
+  if (request.method === "GET") return Object.fromEntries(new URL(request.url).searchParams);
   const text = await request.text();
   if (text.trim() === "") return {};
   try {
@@ -99,8 +107,8 @@ export function queryApiRoute<S extends z.ZodType>(
   endpoint: string,
   schema: S,
   handler: (input: z.infer<S>, ctx: QueryHandlerContext) => Promise<QueryHandlerResult>,
-): (request: Request) => Promise<NextResponse> {
-  return async (request: Request) => {
+): (request: Request, context?: RouteContext) => Promise<NextResponse> {
+  return async (request: Request, context?: RouteContext) => {
     const started = performance.now();
     let key: AuthenticatedApiKey | null = null;
     let status = 200;
@@ -115,9 +123,13 @@ export function queryApiRoute<S extends z.ZodType>(
       const parsed = schema.safeParse(await readBody(request));
       if (!parsed.success) throw fromZodError(parsed.error);
 
+      const rawParams = (await context?.params) ?? {};
+      const params = Object.fromEntries(
+        Object.entries(rawParams).map(([k, v]) => [k, Array.isArray(v) ? v.join("/") : v]),
+      );
       const authorizedKey = key;
       const result = await withAnalyticsSlot(() =>
-        handler(parsed.data, { key: authorizedKey, request }),
+        handler(parsed.data, { key: authorizedKey, request, params }),
       );
       rowCount = result.rowCount;
       return NextResponse.json(result.body);
