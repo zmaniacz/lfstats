@@ -7,6 +7,8 @@ import { parseTdf, ParseError, RejectionError } from "./parser.js";
 import { simulate, runConsistencyCheck } from "./simulator.js";
 import { simulateLaserball } from "./laserball/simulator.js";
 import { LASERBALL_MISSION_TYPE } from "./laserball/types.js";
+import { isNeutralTeam } from "./teams.js";
+import type { ParsedTeam } from "./types.js";
 
 const demoDir = resolve(import.meta.dirname, "../../../demo_files");
 const lbDir = join(demoDir, "laserball");
@@ -47,6 +49,32 @@ for (const dir of [demoDir, lbDir]) {
 function looksLikeHtml(buf: Buffer): boolean {
   const head = buf.subarray(0, 64).toString("latin1").toLowerCase();
   return head.includes("<!doctype html") || head.includes("<html") || head.includes("<head");
+}
+
+// Neutral detection must not depend on the (center-localized) team name. These
+// run regardless of what is in demo_files/.
+{
+  const team = (index: number, desc: string, colourEnum: number): ParsedTeam => ({
+    index,
+    desc,
+    colourEnum,
+    colourDesc: "",
+    colourRgb: null,
+  });
+  const czech = [team(0, "Orange Team", 8), team(1, "Blue Team", 4), team(2, "Neutrální", 0)];
+  const unlisted = [team(0, "Rot", 1), team(1, "Grün", 2), team(2, "Neutre", 0)];
+  const colourNone = [team(0, "Team Turkey", 0), team(1, "Red", 1), team(2, "Neutral", 0)];
+  const cases: [string, boolean][] = [
+    ["Czech Neutral is neutral", isNeutralTeam(czech[2]!, czech)],
+    ["Czech real team is not neutral", !isNeutralTeam(czech[0]!, czech)],
+    ["unlisted-language Neutral is neutral", isNeutralTeam(unlisted[2]!, unlisted)],
+    ["colour-None real team is not neutral", !isNeutralTeam(colourNone[0]!, colourNone)],
+  ];
+  const broken = cases.filter(([, ok]) => !ok).map(([name]) => name);
+  if (broken.length > 0) {
+    console.error(`FAIL [neutral detection] ${broken.join("; ")}`);
+    process.exit(1);
+  }
 }
 
 console.log(`Running ingest on ${entries.length} TDF files...\n`);
@@ -149,6 +177,36 @@ for (const { file, path: filePath } of entries) {
   }
 
   const simResult = simulate(parsed);
+
+  // Invariant: exactly one Neutral team, the last one, with colour-enum 0 (TDF_Spec
+  // line type 2), holding no players and given no result. Catches a localized
+  // Neutral name ("Neutrální") being scored as a third team that lost.
+  const neutralViolations: string[] = [];
+  const teams = parsed.teams;
+  const neutralTeams = teams.filter((t) => isNeutralTeam(t, teams));
+  const lastTeamIndex = Math.max(...teams.map((t) => t.index));
+  if (neutralTeams.length !== 1 || neutralTeams[0]!.index !== lastTeamIndex) {
+    neutralViolations.push(
+      `expected one Neutral team at index ${lastTeamIndex}, got [${neutralTeams.map((t) => `${t.index}:${t.desc}`).join(", ")}]`,
+    );
+  }
+  for (const t of teams) {
+    const neutral = isNeutralTeam(t, teams);
+    if (neutral !== (t.colourEnum === 0)) {
+      neutralViolations.push(
+        `team ${t.index} "${t.desc}" colour-enum ${t.colourEnum}, neutral=${neutral}`,
+      );
+    }
+    const result = simResult.teams.find((st) => st.tdfTeamIndex === t.index)?.result ?? null;
+    if (neutral && result !== null) {
+      neutralViolations.push(`Neutral team ${t.index} "${t.desc}" got result ${result}`);
+    }
+  }
+  for (const [id, ps] of simResult.playerStats) {
+    const t = teams.find((pt) => pt.index === ps.teamIndex);
+    if (t && isNeutralTeam(t, teams)) neutralViolations.push(`player ${id} is on the Neutral team`);
+  }
+
   const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
   const { discrepancies, ghostShots, warnings } = runConsistencyCheck(
     simResult.playerStats,
@@ -179,9 +237,13 @@ for (const { file, path: filePath } of entries) {
 
   const debugOut = {
     consistencyCheck: {
-      passed: discrepancies.length === 0 && eliminationViolations.length === 0,
+      passed:
+        discrepancies.length === 0 &&
+        eliminationViolations.length === 0 &&
+        neutralViolations.length === 0,
       discrepancies,
       eliminationViolations,
+      neutralViolations,
       ghostShots,
       warnings,
     },
@@ -204,10 +266,18 @@ for (const { file, path: filePath } of entries) {
 
   writeFileSync(debugPath, JSON.stringify(debugOut, null, 2));
 
-  if (discrepancies.length === 0 && eliminationViolations.length === 0) {
+  if (
+    discrepancies.length === 0 &&
+    eliminationViolations.length === 0 &&
+    neutralViolations.length === 0
+  ) {
     console.log(`PASS ${file}`);
     passes.push(file);
     passed++;
+  } else if (neutralViolations.length > 0) {
+    console.error(`FAIL [neutral team] ${file}`);
+    failures.push({ file, reason: JSON.stringify(neutralViolations, null, 2) });
+    failed++;
   } else if (eliminationViolations.length > 0) {
     console.error(`FAIL [dropped elimination] ${file}`);
     failures.push({
