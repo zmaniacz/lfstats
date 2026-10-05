@@ -23,6 +23,7 @@ import {
 import type { ParsedTdf, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
 import type { MvpRow } from "./mvp.js";
+import { isNeutralTeam } from "./teams.js";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -104,8 +105,7 @@ export async function ingest(
         return {
           gameId,
           tdfTeamIndex: team.index,
-          isNeutral:
-            team.desc.toLowerCase() === "neutral" || team.desc.toLowerCase() === "neutral team",
+          isNeutral: isNeutralTeam(team, parsed.teams),
           name: team.desc,
           colourEnum: team.colourEnum,
           colourRgb: team.colourRgb,

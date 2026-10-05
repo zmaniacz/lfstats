@@ -12,6 +12,7 @@ import type {
   SimulatedGame,
 } from "./types.js";
 import { POSITION, POSITION_STATS } from "./types.js";
+import { isNeutralTeam } from "./teams.js";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -1577,8 +1578,8 @@ class Simulator {
     if (!aTeam || !bTeam) return false;
     return (
       a.teamIndex !== b.teamIndex &&
-      !aTeam.desc.toLowerCase().includes("neutral") &&
-      !bTeam.desc.toLowerCase().includes("neutral")
+      !isNeutralTeam(aTeam, this.parsed.teams) &&
+      !isNeutralTeam(bTeam, this.parsed.teams)
     );
   }
 
@@ -1586,11 +1587,9 @@ class Simulator {
     return a.teamIndex === b.teamIndex;
   }
 
-  private isNeutralTeam(teamIndex: number): boolean {
+  private isNeutralTeamIndex(teamIndex: number): boolean {
     const team = this.parsed.teams[teamIndex];
-    return (
-      !team || team.desc.toLowerCase() === "neutral" || team.desc.toLowerCase() === "neutral team"
-    );
+    return !team || isNeutralTeam(team, this.parsed.teams);
   }
 
   private getTeammates(ps: PlayerSimState): PlayerSimState[] {
@@ -2664,7 +2663,7 @@ class Simulator {
     const isAborted = this.missionEndTime === 0 && playerEntityEnds.length > 0;
 
     const anyEliminated = [...teamEliminated.entries()].some(
-      ([ti, e]) => e && !this.isNeutralTeam(ti),
+      ([ti, e]) => e && !this.isNeutralTeamIndex(ti),
     );
 
     const scores = [...teamScores.values()];
@@ -2681,7 +2680,9 @@ class Simulator {
     }
 
     // Find winning team(s)
-    const competingTeamIndices = [...teamScores.keys()].filter((ti) => !this.isNeutralTeam(ti));
+    const competingTeamIndices = [...teamScores.keys()].filter(
+      (ti) => !this.isNeutralTeamIndex(ti),
+    );
 
     let maxScore = -Infinity;
     for (const ti of competingTeamIndices) {
@@ -2691,7 +2692,7 @@ class Simulator {
     }
 
     const teams: SimTeam[] = this.parsed.teams.map((team) => {
-      if (this.isNeutralTeam(team.index)) {
+      if (this.isNeutralTeamIndex(team.index)) {
         return {
           tdfTeamIndex: team.index,
           score: null,
