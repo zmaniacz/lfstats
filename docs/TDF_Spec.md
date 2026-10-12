@@ -336,13 +336,13 @@ Resupply tags do not consume the Medic's shots. Shots are only used on misses, o
 2	index	desc	colour-enum	colour-desc	colour-rgb
 ```
 
-| Field         | Type           | Description                                                                                                                                                                                                                         |
-| ------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `index`       | integer        | Zero-based position of the team within this game. Used to associate entities with their team via the `team` field on line type `3`.                                                                                                 |
-| `desc`        | string         | Human-readable team name as configured by the center (e.g. "Red Team", "Green Team"). The name `Neutral` is reserved for the non-player entity team and will always appear last.                                                    |
-| `colour-enum` | integer        | Canonical color identifier. Present in all TDF versions. Maps to a fixed lookup table (see below).                                                                                                                                  |
-| `colour-desc` | string         | Human-readable color name derived from `colour-enum`. Present in all known TDF versions. When absent, derive from the `colour-enum` lookup table.                                                                                   |
-| `colour-rgb`  | string \| null | Hex RGB color value for display purposes (e.g. `#FF0000`). Stored and used for rendering team colors in the UI. Added in `2.004` — absent in `2.003` and earlier. When absent, use a hardcoded default RGB value per `colour-enum`. |
+| Field         | Type           | Description                                                                                                                                                                                                                                                                                             |
+| ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index`       | integer        | Zero-based position of the team within this game. Used to associate entities with their team via the `team` field on line type `3`.                                                                                                                                                                     |
+| `desc`        | string         | Human-readable team name as configured by the center (e.g. "Red Team", "Green Team"). The non-player entity team is usually named `Neutral`, but the name is localized by the center (e.g. Czech `Neutrální`) — identify it structurally: it is always the last entry and has `colour-enum` `0` (None). |
+| `colour-enum` | integer        | Canonical color identifier. Present in all TDF versions. Maps to a fixed lookup table (see below).                                                                                                                                                                                                      |
+| `colour-desc` | string         | Human-readable color name derived from `colour-enum`. Present in all known TDF versions. When absent, derive from the `colour-enum` lookup table.                                                                                                                                                       |
+| `colour-rgb`  | string \| null | Hex RGB color value for display purposes (e.g. `#FF0000`). Stored and used for rendering team colors in the UI. Added in `2.004` — absent in `2.003` and earlier. When absent, use a hardcoded default RGB value per `colour-enum`.                                                                     |
 
 **Colour enum lookup table:**
 
@@ -360,7 +360,7 @@ Resupply tags do not consume the Medic's shots. Shots are only used on misses, o
 **Notes:**
 
 - SM5 games currently always have exactly 2 competing teams plus the Neutral team, but the schema should not assume a fixed team count — 3 or more competing team variants are possible.
-- The `Neutral` team (always the last entry) is not a competing team. It exists to group non-player entities such as in-arena targets and referees.
+- The `Neutral` team (always the last entry, always `colour-enum` `0`) is not a competing team. Chomper detects it by those two properties, not by name (`apps/chomper/src/teams.ts`). It exists to group non-player entities such as in-arena targets and referees.
 - `colour-enum` is the authoritative color identifier. `colour-desc` and `colour-rgb` are supplementary and must be derived from the enum lookup when absent in older files.
 - Team `index` is game-scoped — it has no meaning outside the context of a single game.
 

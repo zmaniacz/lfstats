@@ -1,5 +1,5 @@
 {
-  "id": "bc46d009-497e-4284-ac0e-89ae99c63ae1",
+  "id": "27e75c49-936e-4984-b170-0b6de0cc56e2",
   "prevId": "bbf49fd2-29e9-404d-96c3-356d9bb70190",
   "version": "7",
   "dialect": "postgresql",
@@ -83,25 +83,25 @@
         "api_key_created_by_user_id_auth_user_id_fk": {
           "name": "api_key_created_by_user_id_auth_user_id_fk",
           "tableFrom": "api_key",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "created_by_user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "api_key_key_hash_unique": {
           "name": "api_key_key_hash_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "key_hash"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -181,24 +181,24 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "api_request_log_api_key_id_api_key_id_fk": {
           "name": "api_request_log_api_key_id_api_key_id_fk",
           "tableFrom": "api_request_log",
-          "tableTo": "api_key",
           "columnsFrom": [
             "api_key_id"
           ],
+          "tableTo": "api_key",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -290,24 +290,24 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "auth_account_user_id_auth_user_id_fk": {
           "name": "auth_account_user_id_auth_user_id_fk",
           "tableFrom": "auth_account",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {
@@ -352,15 +352,15 @@
         "auth_session_user_id_auth_user_id_fk": {
           "name": "auth_session_user_id_auth_user_id_fk",
           "tableFrom": "auth_session",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -410,10 +410,10 @@
       "uniqueConstraints": {
         "auth_user_email_unique": {
           "name": "auth_user_email_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -494,26 +494,26 @@
         "battlesuit_center_id_center_id_fk": {
           "name": "battlesuit_center_id_center_id_fk",
           "tableFrom": "battlesuit",
-          "tableTo": "center",
           "columnsFrom": [
             "center_id"
           ],
+          "tableTo": "center",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "battlesuit_center_id_name_unique": {
           "name": "battlesuit_center_id_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "center_id",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -588,9 +588,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "gin",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {},
@@ -598,11 +598,11 @@
       "uniqueConstraints": {
         "center_country_code_site_code_unique": {
           "name": "center_country_code_site_code_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "country_code",
             "site_code"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -689,9 +689,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "chomper_job_status_idx": {
           "name": "chomper_job_status_idx",
@@ -704,24 +704,24 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "chomper_job_game_id_game_id_fk": {
           "name": "chomper_job_game_id_game_id_fk",
           "tableFrom": "chomper_job",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -841,34 +841,34 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "gin",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "competition_host_center_id_center_id_fk": {
           "name": "competition_host_center_id_center_id_fk",
           "tableFrom": "competition",
-          "tableTo": "center",
           "columnsFrom": [
             "host_center_id"
           ],
+          "tableTo": "center",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_slug_unique": {
           "name": "competition_slug_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "slug"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -954,87 +954,87 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "competition_match_competition_id_competition_id_fk": {
           "name": "competition_match_competition_id_competition_id_fk",
           "tableFrom": "competition_match",
-          "tableTo": "competition",
           "columnsFrom": [
             "competition_id"
           ],
+          "tableTo": "competition",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_match_round_id_competition_round_id_fk": {
           "name": "competition_match_round_id_competition_round_id_fk",
           "tableFrom": "competition_match",
-          "tableTo": "competition_round",
           "columnsFrom": [
             "round_id"
           ],
+          "tableTo": "competition_round",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_match_pool_id_competition_pool_id_fk": {
           "name": "competition_match_pool_id_competition_pool_id_fk",
           "tableFrom": "competition_match",
-          "tableTo": "competition_pool",
           "columnsFrom": [
             "pool_id"
           ],
+          "tableTo": "competition_pool",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         },
         "competition_match_team1_id_competition_team_id_fk": {
           "name": "competition_match_team1_id_competition_team_id_fk",
           "tableFrom": "competition_match",
-          "tableTo": "competition_team",
           "columnsFrom": [
             "team1_id"
           ],
+          "tableTo": "competition_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "competition_match_team2_id_competition_team_id_fk": {
           "name": "competition_match_team2_id_competition_team_id_fk",
           "tableFrom": "competition_match",
-          "tableTo": "competition_team",
           "columnsFrom": [
             "team2_id"
           ],
+          "tableTo": "competition_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_match_round_id_match_number_unique": {
           "name": "competition_match_round_id_match_number_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "round_id",
             "match_number"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1088,72 +1088,72 @@
         "competition_match_game_match_id_competition_match_id_fk": {
           "name": "competition_match_game_match_id_competition_match_id_fk",
           "tableFrom": "competition_match_game",
-          "tableTo": "competition_match",
           "columnsFrom": [
             "match_id"
           ],
+          "tableTo": "competition_match",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_match_game_game_id_game_id_fk": {
           "name": "competition_match_game_game_id_game_id_fk",
           "tableFrom": "competition_match_game",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_match_game_team1_game_team_id_sm5_game_team_id_fk": {
           "name": "competition_match_game_team1_game_team_id_sm5_game_team_id_fk",
           "tableFrom": "competition_match_game",
-          "tableTo": "sm5_game_team",
           "columnsFrom": [
             "team1_game_team_id"
           ],
+          "tableTo": "sm5_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "competition_match_game_team2_game_team_id_sm5_game_team_id_fk": {
           "name": "competition_match_game_team2_game_team_id_sm5_game_team_id_fk",
           "tableFrom": "competition_match_game",
-          "tableTo": "sm5_game_team",
           "columnsFrom": [
             "team2_game_team_id"
           ],
+          "tableTo": "sm5_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_match_game_match_id_game_number_unique": {
           "name": "competition_match_game_match_id_game_number_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "match_id",
             "game_number"
-          ]
+          ],
+          "nullsNotDistinct": false
         },
         "competition_match_game_game_id_unique": {
           "name": "competition_match_game_game_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1210,48 +1210,48 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "competition_player_competition_id_competition_id_fk": {
           "name": "competition_player_competition_id_competition_id_fk",
           "tableFrom": "competition_player",
-          "tableTo": "competition",
           "columnsFrom": [
             "competition_id"
           ],
+          "tableTo": "competition",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_player_player_id_player_id_fk": {
           "name": "competition_player_player_id_player_id_fk",
           "tableFrom": "competition_player",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_player_competition_id_player_id_unique": {
           "name": "competition_player_competition_id_player_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "competition_id",
             "player_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1301,26 +1301,26 @@
         "competition_pool_round_id_competition_round_id_fk": {
           "name": "competition_pool_round_id_competition_round_id_fk",
           "tableFrom": "competition_pool",
-          "tableTo": "competition_round",
           "columnsFrom": [
             "round_id"
           ],
+          "tableTo": "competition_round",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_pool_round_id_name_unique": {
           "name": "competition_pool_round_id_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "round_id",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1383,26 +1383,26 @@
         "competition_round_competition_id_competition_id_fk": {
           "name": "competition_round_competition_id_competition_id_fk",
           "tableFrom": "competition_round",
-          "tableTo": "competition",
           "columnsFrom": [
             "competition_id"
           ],
+          "tableTo": "competition",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_round_competition_id_round_number_unique": {
           "name": "competition_round_competition_id_round_number_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "competition_id",
             "round_number"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1458,61 +1458,61 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "competition_round_team_pool_round_id_competition_round_id_fk": {
           "name": "competition_round_team_pool_round_id_competition_round_id_fk",
           "tableFrom": "competition_round_team_pool",
-          "tableTo": "competition_round",
           "columnsFrom": [
             "round_id"
           ],
+          "tableTo": "competition_round",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_round_team_pool_team_id_competition_team_id_fk": {
           "name": "competition_round_team_pool_team_id_competition_team_id_fk",
           "tableFrom": "competition_round_team_pool",
-          "tableTo": "competition_team",
           "columnsFrom": [
             "team_id"
           ],
+          "tableTo": "competition_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_round_team_pool_pool_id_competition_pool_id_fk": {
           "name": "competition_round_team_pool_pool_id_competition_pool_id_fk",
           "tableFrom": "competition_round_team_pool",
-          "tableTo": "competition_pool",
           "columnsFrom": [
             "pool_id"
           ],
+          "tableTo": "competition_pool",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_round_team_pool_round_id_team_id_unique": {
           "name": "competition_round_team_pool_round_id_team_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "round_id",
             "team_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1581,34 +1581,34 @@
         "competition_team_competition_id_competition_id_fk": {
           "name": "competition_team_competition_id_competition_id_fk",
           "tableFrom": "competition_team",
-          "tableTo": "competition",
           "columnsFrom": [
             "competition_id"
           ],
+          "tableTo": "competition",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_team_competition_id_name_unique": {
           "name": "competition_team_competition_id_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "competition_id",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         },
         "competition_team_competition_id_slug_unique": {
           "name": "competition_team_competition_id_slug_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "competition_id",
             "slug"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1679,48 +1679,48 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "competition_team_player_competition_team_id_competition_team_id_fk": {
           "name": "competition_team_player_competition_team_id_competition_team_id_fk",
           "tableFrom": "competition_team_player",
-          "tableTo": "competition_team",
           "columnsFrom": [
             "competition_team_id"
           ],
+          "tableTo": "competition_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "competition_team_player_player_id_player_id_fk": {
           "name": "competition_team_player_player_id_player_id_fk",
           "tableFrom": "competition_team_player",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "competition_team_player_competition_team_id_player_id_unique": {
           "name": "competition_team_player_competition_team_id_player_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "competition_team_id",
             "player_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1813,9 +1813,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "game_competition_id_idx": {
           "name": "game_competition_id_idx",
@@ -1828,48 +1828,48 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "game_center_id_center_id_fk": {
           "name": "game_center_id_center_id_fk",
           "tableFrom": "game",
-          "tableTo": "center",
           "columnsFrom": [
             "center_id"
           ],
+          "tableTo": "center",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "game_competition_id_competition_id_fk": {
           "name": "game_competition_id_competition_id_fk",
           "tableFrom": "game",
-          "tableTo": "competition",
           "columnsFrom": [
             "competition_id"
           ],
+          "tableTo": "competition",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "game_center_id_start_time_unique": {
           "name": "game_center_id_start_time_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "center_id",
             "start_time"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -1936,50 +1936,50 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "game_referee_game_id_game_id_fk": {
           "name": "game_referee_game_id_game_id_fk",
           "tableFrom": "game_referee",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "game_referee_player_id_player_id_fk": {
           "name": "game_referee_player_id_player_id_fk",
           "tableFrom": "game_referee",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "game_referee_battlesuit_id_battlesuit_id_fk": {
           "name": "game_referee_battlesuit_id_battlesuit_id_fk",
           "tableFrom": "game_referee",
-          "tableTo": "battlesuit",
           "columnsFrom": [
             "battlesuit_id"
           ],
+          "tableTo": "battlesuit",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2043,26 +2043,26 @@
         "game_tag_center_id_center_id_fk": {
           "name": "game_tag_center_id_center_id_fk",
           "tableFrom": "game_tag",
-          "tableTo": "center",
           "columnsFrom": [
             "center_id"
           ],
+          "tableTo": "center",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "game_tag_center_id_name_unique": {
           "name": "game_tag_center_id_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "center_id",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -2118,48 +2118,48 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "game_tag_assignment_game_id_game_id_fk": {
           "name": "game_tag_assignment_game_id_game_id_fk",
           "tableFrom": "game_tag_assignment",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "game_tag_assignment_tag_id_game_tag_id_fk": {
           "name": "game_tag_assignment_tag_id_game_tag_id_fk",
           "tableFrom": "game_tag_assignment",
-          "tableTo": "game_tag",
           "columnsFrom": [
             "tag_id"
           ],
+          "tableTo": "game_tag",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "game_tag_assignment_game_id_tag_id_unique": {
           "name": "game_tag_assignment_game_id_tag_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id",
             "tag_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -2258,9 +2258,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "game_video_player_id_idx": {
           "name": "game_video_player_id_idx",
@@ -2273,75 +2273,75 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "game_video_game_id_game_id_fk": {
           "name": "game_video_game_id_game_id_fk",
           "tableFrom": "game_video",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "game_video_player_id_player_id_fk": {
           "name": "game_video_player_id_player_id_fk",
           "tableFrom": "game_video",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "game_video_created_by_user_id_auth_user_id_fk": {
           "name": "game_video_created_by_user_id_auth_user_id_fk",
           "tableFrom": "game_video",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "created_by_user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "game_video_created_by_api_key_id_api_key_id_fk": {
           "name": "game_video_created_by_api_key_id_api_key_id_fk",
           "tableFrom": "game_video",
-          "tableTo": "api_key",
           "columnsFrom": [
             "created_by_api_key_id"
           ],
+          "tableTo": "api_key",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "game_video_game_id_player_id_youtube_video_id_unique": {
           "name": "game_video_game_id_player_id_youtube_video_id_unique",
-          "nullsNotDistinct": true,
           "columns": [
             "game_id",
             "player_id",
             "youtube_video_id"
-          ]
+          ],
+          "nullsNotDistinct": true
         }
       },
       "policies": {},
@@ -2408,9 +2408,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_game_event_actor_sc_idx": {
           "name": "lb_game_event_actor_sc_idx",
@@ -2423,9 +2423,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_game_event_target_sc_idx": {
           "name": "lb_game_event_target_sc_idx",
@@ -2438,50 +2438,50 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "lb_game_event_game_id_game_id_fk": {
           "name": "lb_game_event_game_id_game_id_fk",
           "tableFrom": "lb_game_event",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_game_event_actor_scorecard_id_lb_scorecard_id_fk": {
           "name": "lb_game_event_actor_scorecard_id_lb_scorecard_id_fk",
           "tableFrom": "lb_game_event",
-          "tableTo": "lb_scorecard",
           "columnsFrom": [
             "actor_scorecard_id"
           ],
+          "tableTo": "lb_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_game_event_target_scorecard_id_lb_scorecard_id_fk": {
           "name": "lb_game_event_target_scorecard_id_lb_scorecard_id_fk",
           "tableFrom": "lb_game_event",
-          "tableTo": "lb_scorecard",
           "columnsFrom": [
             "target_scorecard_id"
           ],
+          "tableTo": "lb_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -2550,9 +2550,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_gpi_target_scorecard_id_idx": {
           "name": "lb_gpi_target_scorecard_id_idx",
@@ -2565,62 +2565,62 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "lb_game_player_interaction_game_id_game_id_fk": {
           "name": "lb_game_player_interaction_game_id_game_id_fk",
           "tableFrom": "lb_game_player_interaction",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_game_player_interaction_scorecard_id_lb_scorecard_id_fk": {
           "name": "lb_game_player_interaction_scorecard_id_lb_scorecard_id_fk",
           "tableFrom": "lb_game_player_interaction",
-          "tableTo": "lb_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "lb_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_gpi_tgt_scorecard_id_fk": {
           "name": "lb_gpi_tgt_scorecard_id_fk",
           "tableFrom": "lb_game_player_interaction",
-          "tableTo": "lb_scorecard",
           "columnsFrom": [
             "target_scorecard_id"
           ],
+          "tableTo": "lb_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "lb_game_player_interaction_unique": {
           "name": "lb_game_player_interaction_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id",
             "scorecard_id",
             "target_scorecard_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -2781,9 +2781,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_game_player_state_event_id_idx": {
           "name": "lb_game_player_state_event_id_idx",
@@ -2796,9 +2796,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_game_player_state_scorecard_id_idx": {
           "name": "lb_game_player_state_scorecard_id_idx",
@@ -2811,61 +2811,61 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "lb_game_player_state_game_id_game_id_fk": {
           "name": "lb_game_player_state_game_id_game_id_fk",
           "tableFrom": "lb_game_player_state",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_game_player_state_event_id_lb_game_event_id_fk": {
           "name": "lb_game_player_state_event_id_lb_game_event_id_fk",
           "tableFrom": "lb_game_player_state",
-          "tableTo": "lb_game_event",
           "columnsFrom": [
             "event_id"
           ],
+          "tableTo": "lb_game_event",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_game_player_state_scorecard_id_lb_scorecard_id_fk": {
           "name": "lb_game_player_state_scorecard_id_lb_scorecard_id_fk",
           "tableFrom": "lb_game_player_state",
-          "tableTo": "lb_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "lb_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "lb_game_player_state_event_id_scorecard_id_unique": {
           "name": "lb_game_player_state_event_id_scorecard_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "event_id",
             "scorecard_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -2938,26 +2938,26 @@
         "lb_game_team_game_id_game_id_fk": {
           "name": "lb_game_team_game_id_game_id_fk",
           "tableFrom": "lb_game_team",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "lb_game_team_game_id_tdf_team_index_unique": {
           "name": "lb_game_team_game_id_tdf_team_index_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id",
             "tdf_team_index"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -3051,81 +3051,81 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "lb_match_game_match_id_lb_match_id_fk": {
           "name": "lb_match_game_match_id_lb_match_id_fk",
           "tableFrom": "lb_match_game",
-          "tableTo": "lb_match",
           "columnsFrom": [
             "match_id"
           ],
+          "tableTo": "lb_match",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_match_game_game_id_game_id_fk": {
           "name": "lb_match_game_game_id_game_id_fk",
           "tableFrom": "lb_match_game",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_match_game_side1_game_team_id_lb_game_team_id_fk": {
           "name": "lb_match_game_side1_game_team_id_lb_game_team_id_fk",
           "tableFrom": "lb_match_game",
-          "tableTo": "lb_game_team",
           "columnsFrom": [
             "side1_game_team_id"
           ],
+          "tableTo": "lb_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "lb_match_game_side2_game_team_id_lb_game_team_id_fk": {
           "name": "lb_match_game_side2_game_team_id_lb_game_team_id_fk",
           "tableFrom": "lb_match_game",
-          "tableTo": "lb_game_team",
           "columnsFrom": [
             "side2_game_team_id"
           ],
+          "tableTo": "lb_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "lb_match_game_match_id_half_unique": {
           "name": "lb_match_game_match_id_half_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "match_id",
             "half"
-          ]
+          ],
+          "nullsNotDistinct": false
         },
         "lb_match_game_game_id_unique": {
           "name": "lb_match_game_game_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -3462,9 +3462,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_scorecard_team_id_idx": {
           "name": "lb_scorecard_team_id_idx",
@@ -3477,9 +3477,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_scorecard_player_id_idx": {
           "name": "lb_scorecard_player_id_idx",
@@ -3492,9 +3492,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_scorecard_battlesuit_id_idx": {
           "name": "lb_scorecard_battlesuit_id_idx",
@@ -3507,9 +3507,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "lb_scorecard_ipl_id_idx": {
           "name": "lb_scorecard_ipl_id_idx",
@@ -3522,63 +3522,63 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "lb_scorecard_game_id_game_id_fk": {
           "name": "lb_scorecard_game_id_game_id_fk",
           "tableFrom": "lb_scorecard",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_scorecard_player_id_player_id_fk": {
           "name": "lb_scorecard_player_id_player_id_fk",
           "tableFrom": "lb_scorecard",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "lb_scorecard_team_id_lb_game_team_id_fk": {
           "name": "lb_scorecard_team_id_lb_game_team_id_fk",
           "tableFrom": "lb_scorecard",
-          "tableTo": "lb_game_team",
           "columnsFrom": [
             "team_id"
           ],
+          "tableTo": "lb_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "lb_scorecard_battlesuit_id_battlesuit_id_fk": {
           "name": "lb_scorecard_battlesuit_id_battlesuit_id_fk",
           "tableFrom": "lb_scorecard",
-          "tableTo": "battlesuit",
           "columnsFrom": [
             "battlesuit_id"
           ],
+          "tableTo": "battlesuit",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3635,9 +3635,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "player_current_callsign_trgm_idx": {
           "name": "player_current_callsign_trgm_idx",
@@ -3651,9 +3651,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "gin",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {},
@@ -3661,10 +3661,10 @@
       "uniqueConstraints": {
         "player_ipl_id_unique": {
           "name": "player_ipl_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "ipl_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -3720,35 +3720,35 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "gin",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "player_callsign_history_player_id_player_id_fk": {
           "name": "player_callsign_history_player_id_player_id_fk",
           "tableFrom": "player_callsign_history",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "player_callsign_history_player_id_callsign_unique": {
           "name": "player_callsign_history_player_id_callsign_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "player_id",
             "callsign"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -3858,48 +3858,48 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "player_rating_player_id_player_id_fk": {
           "name": "player_rating_player_id_player_id_fk",
           "tableFrom": "player_rating",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "player_rating_rating_model_id_sm5_rating_model_id_fk": {
           "name": "player_rating_rating_model_id_sm5_rating_model_id_fk",
           "tableFrom": "player_rating",
-          "tableTo": "sm5_rating_model",
           "columnsFrom": [
             "rating_model_id"
           ],
+          "tableTo": "sm5_rating_model",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "player_rating_player_id_rating_model_id_unique": {
           "name": "player_rating_player_id_rating_model_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "player_id",
             "rating_model_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -3978,9 +3978,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_event_actor_sc_idx": {
           "name": "sm5_game_event_actor_sc_idx",
@@ -3993,9 +3993,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_event_target_sc_idx": {
           "name": "sm5_game_event_target_sc_idx",
@@ -4008,9 +4008,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_event_actor_gt_idx": {
           "name": "sm5_game_event_actor_gt_idx",
@@ -4023,9 +4023,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_event_target_gt_idx": {
           "name": "sm5_game_event_target_gt_idx",
@@ -4038,76 +4038,76 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_game_event_game_id_game_id_fk": {
           "name": "sm5_game_event_game_id_game_id_fk",
           "tableFrom": "sm5_game_event",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_event_actor_scorecard_id_sm5_scorecard_id_fk": {
           "name": "sm5_game_event_actor_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_event",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "actor_scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_event_actor_game_target_id_sm5_game_target_id_fk": {
           "name": "sm5_game_event_actor_game_target_id_sm5_game_target_id_fk",
           "tableFrom": "sm5_game_event",
-          "tableTo": "sm5_game_target",
           "columnsFrom": [
             "actor_game_target_id"
           ],
+          "tableTo": "sm5_game_target",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_event_target_scorecard_id_sm5_scorecard_id_fk": {
           "name": "sm5_game_event_target_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_event",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "target_scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_event_target_game_target_id_sm5_game_target_id_fk": {
           "name": "sm5_game_event_target_game_target_id_sm5_game_target_id_fk",
           "tableFrom": "sm5_game_event",
-          "tableTo": "sm5_game_target",
           "columnsFrom": [
             "target_game_target_id"
           ],
+          "tableTo": "sm5_game_target",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -4204,9 +4204,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_penalty_game_id_idx": {
           "name": "sm5_game_penalty_game_id_idx",
@@ -4219,9 +4219,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_penalty_referee_id_idx": {
           "name": "sm5_game_penalty_referee_id_idx",
@@ -4234,50 +4234,50 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_game_penalty_game_id_game_id_fk": {
           "name": "sm5_game_penalty_game_id_game_id_fk",
           "tableFrom": "sm5_game_penalty",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_penalty_referee_id_game_referee_id_fk": {
           "name": "sm5_game_penalty_referee_id_game_referee_id_fk",
           "tableFrom": "sm5_game_penalty",
-          "tableTo": "game_referee",
           "columnsFrom": [
             "referee_id"
           ],
+          "tableTo": "game_referee",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         },
         "sm5_game_penalty_scorecard_id_sm5_scorecard_id_fk": {
           "name": "sm5_game_penalty_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_penalty",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -4360,9 +4360,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_gpi_target_scorecard_id_idx": {
           "name": "sm5_gpi_target_scorecard_id_idx",
@@ -4375,62 +4375,62 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_game_player_interaction_game_id_game_id_fk": {
           "name": "sm5_game_player_interaction_game_id_game_id_fk",
           "tableFrom": "sm5_game_player_interaction",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_player_interaction_scorecard_id_sm5_scorecard_id_fk": {
           "name": "sm5_game_player_interaction_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_player_interaction",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_gpi_tgt_scorecard_id_fk": {
           "name": "sm5_gpi_tgt_scorecard_id_fk",
           "tableFrom": "sm5_game_player_interaction",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "target_scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sm5_game_player_interaction_unique": {
           "name": "sm5_game_player_interaction_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id",
             "scorecard_id",
             "target_scorecard_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -4570,9 +4570,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_player_state_scorecard_id_idx": {
           "name": "sm5_game_player_state_scorecard_id_idx",
@@ -4585,168 +4585,63 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_game_player_state_game_id_game_id_fk": {
           "name": "sm5_game_player_state_game_id_game_id_fk",
           "tableFrom": "sm5_game_player_state",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_player_state_event_id_sm5_game_event_id_fk": {
           "name": "sm5_game_player_state_event_id_sm5_game_event_id_fk",
           "tableFrom": "sm5_game_player_state",
-          "tableTo": "sm5_game_event",
           "columnsFrom": [
             "event_id"
           ],
+          "tableTo": "sm5_game_event",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_player_state_scorecard_id_sm5_scorecard_id_fk": {
           "name": "sm5_game_player_state_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_game_player_state",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sm5_game_player_state_event_id_scorecard_id_unique": {
           "name": "sm5_game_player_state_event_id_scorecard_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "event_id",
             "scorecard_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.sm5_game_player_step": {
-      "name": "sm5_game_player_step",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "game_id": {
-          "name": "game_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scorecard_id": {
-          "name": "scorecard_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "time": {
-          "name": "time",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "delta": {
-          "name": "delta",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "total": {
-          "name": "total",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "sm5_game_player_step_sc_time_idx": {
-          "name": "sm5_game_player_step_sc_time_idx",
-          "columns": [
-            {
-              "expression": "game_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scorecard_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "time",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "sm5_game_player_step_game_id_game_id_fk": {
-          "name": "sm5_game_player_step_game_id_game_id_fk",
-          "tableFrom": "sm5_game_player_step",
-          "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "sm5_game_player_step_scorecard_id_sm5_scorecard_id_fk": {
-          "name": "sm5_game_player_step_scorecard_id_sm5_scorecard_id_fk",
-          "tableFrom": "sm5_game_player_step",
-          "tableTo": "sm5_scorecard",
-          "columnsFrom": [
-            "scorecard_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -4799,61 +4694,61 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_game_target_game_id_game_id_fk": {
           "name": "sm5_game_target_game_id_game_id_fk",
           "tableFrom": "sm5_game_target",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_target_target_id_target_id_fk": {
           "name": "sm5_game_target_target_id_target_id_fk",
           "tableFrom": "sm5_game_target",
-          "tableTo": "target",
           "columnsFrom": [
             "target_id"
           ],
+          "tableTo": "target",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sm5_game_target_game_team_id_sm5_game_team_id_fk": {
           "name": "sm5_game_target_game_team_id_sm5_game_team_id_fk",
           "tableFrom": "sm5_game_target",
-          "tableTo": "sm5_game_team",
           "columnsFrom": [
             "game_team_id"
           ],
+          "tableTo": "sm5_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sm5_game_target_game_id_target_id_unique": {
           "name": "sm5_game_target_game_id_target_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id",
             "target_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -4909,9 +4804,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_gtd_scorecard_id_idx": {
           "name": "sm5_gtd_scorecard_id_idx",
@@ -4924,37 +4819,37 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_gtd_game_target_id_fk": {
           "name": "sm5_gtd_game_target_id_fk",
           "tableFrom": "sm5_game_target_destruction",
-          "tableTo": "sm5_game_target",
           "columnsFrom": [
             "game_target_id"
           ],
+          "tableTo": "sm5_game_target",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_gtd_scorecard_id_fk": {
           "name": "sm5_gtd_scorecard_id_fk",
           "tableFrom": "sm5_game_target_destruction",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -5047,26 +4942,26 @@
         "sm5_game_team_game_id_game_id_fk": {
           "name": "sm5_game_team_game_id_game_id_fk",
           "tableFrom": "sm5_game_team",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sm5_game_team_game_id_tdf_team_index_unique": {
           "name": "sm5_game_team_game_id_tdf_team_index_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "game_id",
             "tdf_team_index"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -5154,9 +5049,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_team_penalty_game_id_idx": {
           "name": "sm5_game_team_penalty_game_id_idx",
@@ -5169,9 +5064,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_game_team_penalty_referee_id_idx": {
           "name": "sm5_game_team_penalty_referee_id_idx",
@@ -5184,50 +5079,50 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_game_team_penalty_game_id_game_id_fk": {
           "name": "sm5_game_team_penalty_game_id_game_id_fk",
           "tableFrom": "sm5_game_team_penalty",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_team_penalty_game_team_id_sm5_game_team_id_fk": {
           "name": "sm5_game_team_penalty_game_team_id_sm5_game_team_id_fk",
           "tableFrom": "sm5_game_team_penalty",
-          "tableTo": "sm5_game_team",
           "columnsFrom": [
             "game_team_id"
           ],
+          "tableTo": "sm5_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_game_team_penalty_referee_id_game_referee_id_fk": {
           "name": "sm5_game_team_penalty_referee_id_game_referee_id_fk",
           "tableFrom": "sm5_game_team_penalty",
-          "tableTo": "game_referee",
           "columnsFrom": [
             "referee_id"
           ],
+          "tableTo": "game_referee",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
@@ -5284,10 +5179,10 @@
       "uniqueConstraints": {
         "sm5_mvp_model_version_unique": {
           "name": "sm5_mvp_model_version_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "version"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -5342,10 +5237,10 @@
       "uniqueConstraints": {
         "sm5_rating_model_version_unique": {
           "name": "sm5_rating_model_version_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "version"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -5863,9 +5758,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_scorecard_team_id_idx": {
           "name": "sm5_scorecard_team_id_idx",
@@ -5878,9 +5773,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_scorecard_player_id_idx": {
           "name": "sm5_scorecard_player_id_idx",
@@ -5893,9 +5788,9 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         },
         "sm5_scorecard_ipl_id_idx": {
           "name": "sm5_scorecard_ipl_id_idx",
@@ -5908,76 +5803,76 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "sm5_scorecard_game_id_game_id_fk": {
           "name": "sm5_scorecard_game_id_game_id_fk",
           "tableFrom": "sm5_scorecard",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_scorecard_player_id_player_id_fk": {
           "name": "sm5_scorecard_player_id_player_id_fk",
           "tableFrom": "sm5_scorecard",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sm5_scorecard_team_id_sm5_game_team_id_fk": {
           "name": "sm5_scorecard_team_id_sm5_game_team_id_fk",
           "tableFrom": "sm5_scorecard",
-          "tableTo": "sm5_game_team",
           "columnsFrom": [
             "team_id"
           ],
+          "tableTo": "sm5_game_team",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_scorecard_battlesuit_id_battlesuit_id_fk": {
           "name": "sm5_scorecard_battlesuit_id_battlesuit_id_fk",
           "tableFrom": "sm5_scorecard",
-          "tableTo": "battlesuit",
           "columnsFrom": [
             "battlesuit_id"
           ],
+          "tableTo": "battlesuit",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "sm5_scorecard_mvp_model_id_sm5_mvp_model_id_fk": {
           "name": "sm5_scorecard_mvp_model_id_sm5_mvp_model_id_fk",
           "tableFrom": "sm5_scorecard",
-          "tableTo": "sm5_mvp_model",
           "columnsFrom": [
             "mvp_model_id"
           ],
+          "tableTo": "sm5_mvp_model",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6033,40 +5928,40 @@
         "sm5_scorecard_mvp_scorecard_id_sm5_scorecard_id_fk": {
           "name": "sm5_scorecard_mvp_scorecard_id_sm5_scorecard_id_fk",
           "tableFrom": "sm5_scorecard_mvp",
-          "tableTo": "sm5_scorecard",
           "columnsFrom": [
             "scorecard_id"
           ],
+          "tableTo": "sm5_scorecard",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sm5_scorecard_mvp_mvp_model_id_sm5_mvp_model_id_fk": {
           "name": "sm5_scorecard_mvp_mvp_model_id_sm5_mvp_model_id_fk",
           "tableFrom": "sm5_scorecard_mvp",
-          "tableTo": "sm5_mvp_model",
           "columnsFrom": [
             "mvp_model_id"
           ],
+          "tableTo": "sm5_mvp_model",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sm5_scorecard_mvp_scorecard_id_mvp_model_id_component_unique": {
           "name": "sm5_scorecard_mvp_scorecard_id_mvp_model_id_component_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "scorecard_id",
             "mvp_model_id",
             "component"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -6108,26 +6003,26 @@
         "target_center_id_center_id_fk": {
           "name": "target_center_id_center_id_fk",
           "tableFrom": "target",
-          "tableTo": "center",
           "columnsFrom": [
             "center_id"
           ],
+          "tableTo": "center",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "target_center_id_hardware_id_unique": {
           "name": "target_center_id_hardware_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "center_id",
             "hardware_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -6176,39 +6071,39 @@
         "user_favorite_game_user_id_auth_user_id_fk": {
           "name": "user_favorite_game_user_id_auth_user_id_fk",
           "tableFrom": "user_favorite_game",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "user_favorite_game_game_id_game_id_fk": {
           "name": "user_favorite_game_game_id_game_id_fk",
           "tableFrom": "user_favorite_game",
-          "tableTo": "game",
           "columnsFrom": [
             "game_id"
           ],
+          "tableTo": "game",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "user_favorite_game_user_id_game_id_unique": {
           "name": "user_favorite_game_user_id_game_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id",
             "game_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -6257,39 +6152,39 @@
         "user_favorite_player_user_id_auth_user_id_fk": {
           "name": "user_favorite_player_user_id_auth_user_id_fk",
           "tableFrom": "user_favorite_player",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "user_favorite_player_player_id_player_id_fk": {
           "name": "user_favorite_player_player_id_player_id_fk",
           "tableFrom": "user_favorite_player",
-          "tableTo": "player",
           "columnsFrom": [
             "player_id"
           ],
+          "tableTo": "player",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "user_favorite_player_user_id_player_id_unique": {
           "name": "user_favorite_player_user_id_player_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id",
             "player_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -6332,40 +6227,40 @@
         "user_roles_user_id_auth_user_id_fk": {
           "name": "user_roles_user_id_auth_user_id_fk",
           "tableFrom": "user_roles",
-          "tableTo": "auth_user",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "auth_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "user_roles_center_id_center_id_fk": {
           "name": "user_roles_center_id_center_id_fk",
           "tableFrom": "user_roles",
-          "tableTo": "center",
           "columnsFrom": [
             "center_id"
           ],
+          "tableTo": "center",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "user_roles_user_id_role_center_id_unique": {
           "name": "user_roles_user_id_role_center_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id",
             "role",
             "center_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -6470,10 +6365,10 @@
     }
   },
   "schemas": {},
+  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
-  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},
