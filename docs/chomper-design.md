@@ -454,7 +454,7 @@ For 2.005+ files, `triggerStateTransition()` is a no-op — all transitions come
   - Record snapshot
 
 → state 0:
-  - Accumulate downtime: deactivationCause = 'resupply' → resupplyDowntime; else → otherDowntime
+  - Book the down period (see Uptime and Downtime): deactivationCause = 'resupply' → resupplyDowntime; else → otherDowntime
   - Set state = 0, stateEnteredAt = timestamp
   - hitPoints carry over (may be damaged from state 2 hits)
   - Record snapshot
@@ -649,8 +649,9 @@ Track `receivedAmmoResupplyThisCycle` and `receivedLivesResupplyThisCycle` per p
 ### Uptime and Downtime
 
 - Uptime is accumulated at game end (or player elimination): sum `(endTime - stateEnteredAt)` for all periods in state 0
-- On each transition to state 0: `duration = currentTimestamp - stateEnteredAt(state 3)`; route to `resupplyDowntime` if cause was resupply, else `otherDowntime`
-- Invariant: `uptime + resupplyDowntime + otherDowntime = player.endTime - missionStartTime`
+- A down period runs from leaving state 0 to returning to it, and is tracked by `downtimeSince`, not `state3EnteredAt`. A re-deactivation in state 2 restarts the 4 s timer (`state3EnteredAt`) but continues the same down period.
+- Down time is booked to `resupplyDowntime` if the cause was resupply, else `otherDowntime`. It is booked on return to state 0, on re-entry to state 3, at game end, and at elimination or kick while down. When a deactivation changes the cause mid-period (for example a hit after a resupply), the time before it stays with the old cause.
+- Invariant: `uptime + resupplyDowntime + otherDowntime = player.endTime - max(missionStartTime, joinTime)`, where `endTime` is mission end or elimination. The test suite asserts this for every player except restart-merged and kicked ones.
 
 ### Score
 

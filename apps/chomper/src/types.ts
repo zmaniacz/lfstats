@@ -161,6 +161,7 @@ export interface PlayerSimState {
   state: 0 | 2 | 3;
   stateEnteredAt: number;
   state3EnteredAt: number | null; // when the current downtime period started (state 3 entry)
+  downtimeSince: number | null; // start of the downtime not yet booked to resupply/other downtime
   lastTransitionToActiveAt: number | null; // when the player last transitioned to state_0; null = never been down
   hitPoints: number;
   lives: number;
