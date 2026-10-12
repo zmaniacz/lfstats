@@ -172,6 +172,25 @@ Next.js requires one name per dynamic segment and the parent route uses the slug
 `getGameReplayData` in `packages/db/src/queries/games.ts`. Returns `404` with
 `{ "error": "Not found" }` for an unknown `gameId`.
 
+## `GET /api/games/[gameId]/players/[scorecardId]/timeline`
+
+One SM5 player's activity over a game, for the expandable timeline on the game view's scoreboard.
+It returns:
+
+- the score, lives and shots series;
+- the running step total, or `null` when the TDF carried no step lines;
+- downtime spans, each classified `resupply` or `down`;
+- missile and nuke markers.
+
+Keyed by internal `gameId` and `scorecardId` (UUIDs). Defined in
+`apps/web/src/app/api/games/[game]/players/[scorecard]/timeline/route.ts`, backed by
+`getPlayerTimeline` in `packages/db/src/queries/games.ts`. Returns `404` with
+`{ "error": "Not found" }` when the scorecard isn't in that game.
+
+Downtime spans run from a player's first deactivation to their reactivation. They can add up to
+more than the scorecard's `resupply_downtime` + `other_downtime`, because the simulator restarts
+its downtime clock when a player is re-deactivated during state 2.
+
 ## `GET /api/laserball/games/[gameId]/replay`
 
 Laserball equivalent of the above — backed by `getLbGameReplayData` in
