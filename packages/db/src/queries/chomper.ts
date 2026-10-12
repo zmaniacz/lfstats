@@ -19,6 +19,7 @@ import {
   sm5GamePlayerInteraction,
   sm5GameEvent,
   sm5GamePlayerState,
+  sm5GamePlayerStep,
   sm5ScorecardMvp,
   chomperJob,
   sm5MvpModel,
@@ -310,6 +311,17 @@ export async function insertGamePlayerStates(
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
     await tx.insert(sm5GamePlayerState).values(rows.slice(i, i + CHUNK));
+  }
+}
+
+export async function insertGamePlayerSteps(
+  tx: Tx,
+  rows: (typeof sm5GamePlayerStep.$inferInsert)[],
+) {
+  if (rows.length === 0) return;
+  const CHUNK = 1000;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await tx.insert(sm5GamePlayerStep).values(rows.slice(i, i + CHUNK));
   }
 }
 

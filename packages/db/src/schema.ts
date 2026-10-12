@@ -12,6 +12,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -892,6 +893,28 @@ export const sm5GamePlayerState = pgTable(
     index("sm5_game_player_state_sc_time_idx").on(t.gameId, t.scorecardId, t.time),
     index("sm5_game_player_state_scorecard_id_idx").on(t.scorecardId),
   ],
+);
+
+// Step-tracker activity (TDF line type 10), one row per hardware step report.
+// Reports arrive roughly every 1.3s while a player is moving and not at all
+// while idle, so the timeline has gaps by design. `total` is the running sum
+// of `delta` per scorecard, re-accumulated at ingest so it stays continuous
+// across mid-game vest restarts. Only files that carry line type 10 have rows.
+export const sm5GamePlayerStep = pgTable(
+  "sm5_game_player_step",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    scorecardId: uuid("scorecard_id")
+      .notNull()
+      .references(() => sm5Scorecard.id, { onDelete: "cascade" }),
+    time: integer("time").notNull(), // ms since mission start
+    delta: smallint("delta").notNull(),
+    total: integer("total").notNull(),
+  },
+  (t) => [index("sm5_game_player_step_sc_time_idx").on(t.gameId, t.scorecardId, t.time)],
 );
 
 // ---------------------------------------------------------------------------

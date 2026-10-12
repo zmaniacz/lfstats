@@ -10,7 +10,17 @@ import type {
   ParsedEntityEnd,
   ParsedSm5Stats,
   ParsedPlayerState,
+  ParsedResourceDelta,
+  ParsedStep,
+  ResourceKind,
 } from "./types.js";
+
+// Resource line types (lives/shots/missiles running totals).
+const RESOURCE_LINE_KINDS: Record<string, ResourceKind> = {
+  "11": "lives",
+  "12": "shots",
+  "13": "missiles",
+};
 
 export class ParseError extends Error {
   constructor(message: string) {
@@ -47,6 +57,8 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
   const entityEnds: ParsedEntityEnd[] = [];
   const sm5Stats: ParsedSm5Stats[] = [];
   const playerStateLog: ParsedPlayerState[] = [];
+  const resourceLog: ParsedResourceDelta[] = [];
+  const stepLog: ParsedStep[] = [];
 
   for (const line of lines) {
     // Schema comment line — update column list for the following line type.
@@ -102,6 +114,17 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
           playerStateLog.push(parseLine9(fields));
         }
         break;
+      case "10":
+        stepLog.push(parseDeltaLine(fields, schemaColumns.get("10") ?? []));
+        break;
+      case "11":
+      case "12":
+      case "13":
+        resourceLog.push({
+          ...parseDeltaLine(fields, schemaColumns.get(lineType) ?? []),
+          kind: RESOURCE_LINE_KINDS[lineType]!,
+        });
+        break;
       // Ignore unknown line types
     }
   }
@@ -119,6 +142,16 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
   // table lets the simulator resolve the correct state by event timestamp.
   const entityRouting = buildEntityRouting(entities, sm5Stats, entityEnds);
 
+  // Resource lines (11/12/13) arrived without a file-version bump, so detect
+  // them by content: every schema must be declared and every player must have
+  // an initial lives line. Anything partial falls back to inference.
+  const livesSeeded = new Set(resourceLog.filter((r) => r.kind === "lives").map((r) => r.entity));
+  meta.hasResourceLog =
+    ["11", "12", "13"].every((t) => schemaColumns.has(t)) &&
+    playerEntities.length > 0 &&
+    playerEntities.every((e) => livesSeeded.has(e.originalId));
+  meta.hasStepLog = schemaColumns.has("10");
+
   return {
     meta,
     teams,
@@ -128,6 +161,8 @@ export function parseTdf(buffer: Buffer): ParsedTdf {
     entityEnds,
     sm5Stats: mergeDuplicateSm5Stats(sm5Stats),
     playerStateLog,
+    resourceLog: meta.hasResourceLog ? resourceLog : [],
+    stepLog,
     entityRouting,
   };
 }
@@ -356,6 +391,8 @@ function parseLine0(fields: string[]): ParsedTdf["meta"] {
     penaltyDeclared: false, // true once line 1 supplies the column (2.003+)
     missionType: 0,
     missionDesc: "",
+    hasResourceLog: false, // set after all lines are read
+    hasStepLog: false,
   };
 }
 
@@ -452,6 +489,17 @@ function parseLine5(fields: string[]): ParsedScore {
     old: parseInt(fields[3] ?? "0", 10),
     delta: parseInt(fields[4] ?? "0", 10),
     new: parseInt(fields[5] ?? "0", 10),
+  };
+}
+
+// Line types 10-13 share the shape `type time entity delta new`.
+function parseDeltaLine(fields: string[], columns: string[]): ParsedStep {
+  const col = makeColReader(fields, columns);
+  return {
+    time: parseInt(col("time") ?? fields[1] ?? "0", 10),
+    entity: col("entity") ?? fields[2] ?? "",
+    delta: parseInt(col("delta") ?? fields[3] ?? "0", 10),
+    value: parseInt(col("new") ?? fields[4] ?? "0", 10),
   };
 }
 

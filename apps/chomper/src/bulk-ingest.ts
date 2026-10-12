@@ -267,7 +267,11 @@ async function processKey(key: string): Promise<void> {
 
   // 6. Consistency check
   const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-  const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+  const { discrepancies } = runConsistencyCheck(
+    simResult.playerStats,
+    sm5StatsById,
+    simResult.resourceLog,
+  );
   if (discrepancies.length > 0) {
     const reason = `Consistency check failed:\n${JSON.stringify(discrepancies, null, 2)}`;
     log(`FAIL [consistency] ${key}`);

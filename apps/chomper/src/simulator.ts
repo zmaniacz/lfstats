@@ -3,8 +3,11 @@
 
 import type {
   ParsedEntity,
+  ParsedResourceDelta,
   ParsedTdf,
   PlayerSimState,
+  ResourceKind,
+  ResourceLogResult,
   SimEvent,
   SimPenalty,
   SimTargetDestruction,
@@ -15,6 +18,13 @@ import { POSITION, POSITION_STATS } from "./types.js";
 import { isNeutralTeam } from "./teams.js";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
+
+// Resource lines (11/12/13) are written within a few ms of the event that
+// caused them, sometimes before it and sometimes after depending on the event
+// type, so they are matched by time window rather than by line order. The
+// 2026 sample corpus never exceeds 2ms; 5 leaves headroom without reaching
+// the next event of the same player.
+const RESOURCE_SKEW_MS = 5;
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -117,6 +127,20 @@ class Simulator {
   // don't eliminate a player who is supposed to survive the game.
   private tdfFinalLives = new Map<string, number>();
 
+  // Logged resources (modern files): lives/shots/missiles come from line types
+  // 11/12/13 instead of being inferred. The cursor consumes them in time order;
+  // the per-entity index answers "what delta landed on this player at this
+  // event" for stats that depend on the size of the change.
+  private readonly loggedResources: boolean;
+  private resourceLog: ParsedResourceDelta[] = [];
+  private resourcePointer = 0;
+  private resourceDeltasByEntity = new Map<string, ParsedResourceDelta[]>();
+  private resourceWarnings: string[] = [];
+
+  // Step deltas (line type 10) per internal entity ID. Not simulated — passed
+  // through to the ingester for the activity timeline.
+  private stepsById = new Map<string, Array<{ time: number; delta: number }>>();
+
   // Mission time
   private missionStartTime = 0;
   private missionEndTime = 0;
@@ -131,6 +155,7 @@ class Simulator {
 
   constructor(parsed: ParsedTdf) {
     this.parsed = parsed;
+    this.loggedResources = parsed.meta.hasResourceLog;
   }
 
   run(): SimulatedGame {
@@ -142,6 +167,7 @@ class Simulator {
     this.resolveGenerationIds();
     this.stripPenaltyDeductionsFromScores();
     this.buildEntityMaps();
+    this.buildResourceIndex();
     this.initPlayerStates();
     this.initInteractionMap();
     // Sort entity-ends by time so advanceClock can process them in order.
@@ -162,6 +188,8 @@ class Simulator {
         const prev = this.lastActorEventTime.get(event.actor) ?? -1;
         if (event.time > prev) this.lastActorEventTime.set(event.actor, event.time);
       }
+      // The remaining tables only feed lives/shots inference.
+      if (this.loggedResources) continue;
       // Track deactivating hits received per player (0206 = 1 life, 0306 = 2 lives).
       const target = event.target;
       if (target && this.playerStates.has(target)) {
@@ -199,7 +227,7 @@ class Simulator {
     //            hit all non-eliminated opponents regardless of current state, so
     //            a player deactivated moments before a second nuke still takes the
     //            hit even though no new state_3 entry appears in the log.
-    {
+    if (!this.loggedResources) {
       const nukeDetonations = this.parsed.events.filter((e) => e.type === "0405");
       const nukeEvents = nukeDetonations.map((e) => e.time);
 
@@ -265,7 +293,9 @@ class Simulator {
     // boost entry for every teammate who is in state_0 at the time it fires.
     // Used by checkElimination to correctly compute livesNeeded without
     // over-applying pending boosts for future direct 0512 gains.
-    if (this.parsed.playerStateLog.length > 0) {
+    if (this.loggedResources) {
+      // Logged resources name every boost recipient — nothing to infer.
+    } else if (this.parsed.playerStateLog.length > 0) {
       // Index section-9 state log by entity for fast state-at-time lookups.
       const stateHistoryByEntity = new Map<string, Array<{ time: number; state: number }>>();
       for (const entry of this.parsed.playerStateLog) {
@@ -339,7 +369,7 @@ class Simulator {
 
     // Build authoritative shots reference before the main loop so that
     // pending boost amounts for state-3 players use hardware-correct shots.
-    this.buildShotsReference();
+    if (!this.loggedResources) this.buildShotsReference();
 
     // Walk all events in order
     for (const event of this.parsed.events) {
@@ -530,7 +560,8 @@ class Simulator {
         // value like the exitType 04 / no-entity-end paths below — otherwise
         // a resupply landing after the last recorded snapshot (e.g. right
         // before an early abort) would be silently dropped from the result.
-        const tdfLives = this.tdfFinalLives.get(end.id) ?? 0;
+        // Logged resources already hold the kick-time value.
+        const tdfLives = this.loggedResources ? ps.lives : (this.tdfFinalLives.get(end.id) ?? 0);
         ps.lives = tdfLives;
         ps.isEliminated = true;
         if (ps.eliminatedAt === null) ps.eliminatedAt = end.time;
@@ -743,6 +774,12 @@ class Simulator {
     }
 
     target.stateSnapshots.push(...source.stateSnapshots);
+
+    const sourceSteps = this.stepsById.get(sourceId);
+    if (sourceSteps) {
+      this.stepsById.set(targetId, [...(this.stepsById.get(targetId) ?? []), ...sourceSteps]);
+      this.stepsById.delete(sourceId);
+    }
 
     // The later period's snapshots are kept either way — those events happened
     // and the replay rows hang off them. But for an eliminated player they end on
@@ -1109,6 +1146,12 @@ class Simulator {
       }
     }
 
+    for (const entry of [...this.parsed.resourceLog, ...this.parsed.stepLog]) {
+      if (this.generationRouter.has(entry.entity)) {
+        entry.entity = this.resolveAtTime(entry.entity, entry.time);
+      }
+    }
+
     // Entity-ends are matched by order, not time, because they can arrive after
     // the next generation has already started. detectAndFixStatSwaps() corrects
     // any cases where the TDF writes entity-ends in the reverse of generation order.
@@ -1224,9 +1267,9 @@ class Simulator {
         state3EnteredAt: null,
         lastTransitionToActiveAt: null,
         hitPoints: stats.hitPoints,
-        lives: stats.initialLives,
-        shots: stats.initialShots,
-        missiles: stats.initialMissiles,
+        lives: this.initialResource(entity.id, "lives") ?? stats.initialLives,
+        shots: this.initialResource(entity.id, "shots") ?? stats.initialShots,
+        missiles: this.initialResource(entity.id, "missiles") ?? stats.initialMissiles,
         sp: 0,
         isRapidFire: false,
         rapidFireStartedAt: null,
@@ -1312,6 +1355,52 @@ class Simulator {
     }
   }
 
+  // Indexes the resource log by entity (after generation routing) and splits
+  // out the step log. Called before initPlayerStates so the entity-start lines
+  // can seed initial values.
+  private buildResourceIndex(): void {
+    for (const step of this.parsed.stepLog) {
+      const arr = this.stepsById.get(step.entity) ?? [];
+      arr.push({ time: step.time, delta: step.delta });
+      this.stepsById.set(step.entity, arr);
+    }
+    if (!this.loggedResources) return;
+
+    this.resourceLog = [...this.parsed.resourceLog].sort((a, b) => a.time - b.time);
+    for (const entry of this.resourceLog) {
+      const arr = this.resourceDeltasByEntity.get(entry.entity) ?? [];
+      arr.push(entry);
+      this.resourceDeltasByEntity.set(entry.entity, arr);
+    }
+  }
+
+  // The value carried by an entity's first line of this kind (the entity-start
+  // line), or null for inferred files and players without one.
+  private initialResource(entityId: string, kind: ResourceKind): number | null {
+    if (!this.loggedResources) return null;
+    const first = this.resourceDeltasByEntity.get(entityId)?.find((r) => r.kind === kind);
+    return first ? first.value - first.delta : null;
+  }
+
+  // The logged delta of this kind on an entity closest to `time`, restricted to
+  // the given sign, within RESOURCE_SKEW_MS. 0 when nothing matches.
+  private loggedDeltaAt(entityId: string, kind: ResourceKind, time: number, sign: 1 | -1): number {
+    let best: ParsedResourceDelta | null = null;
+    for (const r of this.resourceDeltasByEntity.get(entityId) ?? []) {
+      if (r.time > time + RESOURCE_SKEW_MS) break;
+      if (r.kind !== kind || Math.sign(r.delta) !== sign) continue;
+      if (time - r.time > RESOURCE_SKEW_MS) continue;
+      if (!best || Math.abs(r.time - time) < Math.abs(best.time - time)) best = r;
+    }
+    return best ? best.delta : 0;
+  }
+
+  // Applies an inferred lives/shots/missiles change. A no-op for files with
+  // logged resources, whose values only ever come from the resource cursor.
+  private setResource(ps: PlayerSimState, kind: ResourceKind, value: number): void {
+    if (!this.loggedResources) ps[kind] = value;
+  }
+
   private initInteractionMap(): void {
     const ids = [...this.playerStates.keys()];
     for (const actorId of ids) {
@@ -1352,11 +1441,32 @@ class Simulator {
       ) {
         const entry = this.parsed.playerStateLog[this.stateLogPointer]!;
         this.stateLogPointer++;
+        // A resupply or nuke writes its resource line a few ms after the state
+        // change it causes; take it first so the transition's snapshot shows it.
+        this.consumeResources(entry.time + RESOURCE_SKEW_MS);
         this.applyExplicitStateTransition(entry.time, entry.entity, entry.state as 0 | 2 | 3);
       }
     } else {
       // pre-2.005 synthetic transitions
       this.fireSyntheticTransitions(T);
+    }
+
+    // Logged resources: take every line up to the skew window, so the values a
+    // handler reads at T already include the deltas the hardware wrote for it.
+    this.consumeResources(T + RESOURCE_SKEW_MS);
+  }
+
+  // Advances the logged-resource cursor through `upTo`, setting each player's
+  // value to the line's running total. A no-op for inferred files.
+  private consumeResources(upTo: number): void {
+    while (
+      this.resourcePointer < this.resourceLog.length &&
+      this.resourceLog[this.resourcePointer]!.time <= upTo
+    ) {
+      const entry = this.resourceLog[this.resourcePointer]!;
+      this.resourcePointer++;
+      const ps = this.playerStates.get(entry.entity);
+      if (ps) ps[entry.kind] = entry.value;
     }
   }
 
@@ -1656,7 +1766,13 @@ class Simulator {
     //       because they returned to state_0 before being hit. Without rescue,
     //       these players are prematurely eliminated and miss subsequent events
     //       (e.g. a 0510 ammo boost that fires 20 s after the nuke).
-    if (provablyAlive || hasPendingLives) {
+    // Logged lives are the hardware's own count: 0 means eliminated, no rescue.
+    if (this.loggedResources && provablyAlive) {
+      this.resourceWarnings.push(
+        `${target.entityId} logged lives reached 0 at ${time} but the player acts again at ${lastActor}`,
+      );
+    }
+    if (!this.loggedResources && (provablyAlive || hasPendingLives)) {
       if (boosts?.length) {
         const entityEndT = this.entityEndTimeById.get(target.entityId) ?? Infinity;
         const tdfFinalLives = this.tdfFinalLives.get(target.entityId) ?? 0;
@@ -1907,7 +2023,7 @@ class Simulator {
         break;
       case "0301": // Missile Gen Miss — missile consumed, no hit stats
       case "0304": // Missile Miss — missile consumed, no hit stats
-        if (actor) actor.missiles = Math.max(0, actor.missiles - 1);
+        if (actor) this.setResource(actor, "missiles", Math.max(0, actor.missiles - 1));
         break;
       case "0303":
         if (actor) this.handle0303(actor, time, eventIndex, targetId);
@@ -1998,7 +2114,7 @@ class Simulator {
 
   // 0201 — Miss
   private handle0201(actor: PlayerSimState, eventIndex: number): void {
-    if (actor.position !== POSITION.AMMO) actor.shots--;
+    if (actor.position !== POSITION.AMMO) this.setResource(actor, "shots", actor.shots - 1);
     actor.shotsFired++;
     if (actor.isRapidFire) {
       actor.shotsFiredDuringRapid++;
@@ -2012,7 +2128,7 @@ class Simulator {
   private handle0209(target: PlayerSimState, time: number, eventIndex: number): void {
     if (target.isEliminated) return;
     this.handleNukeCancel(null, target);
-    target.lives--;
+    this.setResource(target, "lives", target.lives - 1);
     this.checkElimination(null, target, time, false);
     target.deactivationCause = "other";
     this.triggerStateTransition(target, 3, time);
@@ -2023,7 +2139,7 @@ class Simulator {
 
   // 0203 — Target Hit (non-final)
   private handle0203(actor: PlayerSimState, _time: number, eventIndex: number): void {
-    if (actor.position !== POSITION.AMMO) actor.shots--;
+    if (actor.position !== POSITION.AMMO) this.setResource(actor, "shots", actor.shots - 1);
     actor.shotsFired++;
     actor.shotsHit++;
     if (actor.isRapidFire) {
@@ -2040,7 +2156,7 @@ class Simulator {
     eventIndex: number,
     targetHardwareId: string | null,
   ): void {
-    if (actor.position !== POSITION.AMMO) actor.shots--;
+    if (actor.position !== POSITION.AMMO) this.setResource(actor, "shots", actor.shots - 1);
     actor.shotsFired++;
     actor.shotsHit++;
     actor.targetsDestroyed++;
@@ -2069,7 +2185,7 @@ class Simulator {
     isDeactivating: boolean,
     eventIndex: number,
   ): void {
-    if (actor.position !== POSITION.AMMO) actor.shots--;
+    if (actor.position !== POSITION.AMMO) this.setResource(actor, "shots", actor.shots - 1);
     actor.shotsFired++;
     actor.shotsHit++;
     target.timesHit++;
@@ -2147,7 +2263,7 @@ class Simulator {
       if (isOpponent) actor.deactivatedOpponent++;
       else if (isFriendly) actor.deactivatedTeam++;
 
-      target.lives--;
+      this.setResource(target, "lives", target.lives - 1);
       this.checkElimination(actor, target, time, false);
 
       // Award assists (before clearing the window)
@@ -2182,7 +2298,7 @@ class Simulator {
     actor.missileHits++;
     actor.targetsDestroyed++;
     this.earnSp(actor, 5);
-    actor.missiles = Math.max(0, actor.missiles - 1);
+    this.setResource(actor, "missiles", Math.max(0, actor.missiles - 1));
     this.recordSnapshot(actor, eventIndex);
 
     if (targetHardwareId) {
@@ -2210,8 +2326,10 @@ class Simulator {
     // Compute actual lives removed before decrementing — a missile removes 2
     // lives, but if the target only has 1 life the actual removal is 1. TDF
     // medicHits tracks damage dealt (not hit count), so we record both.
-    const livesRemoved = Math.min(2, Math.max(0, target.lives));
-    target.lives -= 2;
+    const livesRemoved = this.loggedResources
+      ? -this.loggedDeltaAt(target.entityId, "lives", time, -1)
+      : Math.min(2, Math.max(0, target.lives));
+    this.setResource(target, "lives", target.lives - 2);
 
     if (isOpponent) {
       actor.missilesHitOpponent++;
@@ -2245,7 +2363,7 @@ class Simulator {
     this.awardAssists(target.entityId, actor.entityId);
 
     this.incrInteraction(actor.entityId, target.entityId, "missileHits");
-    actor.missiles = Math.max(0, actor.missiles - 1);
+    this.setResource(actor, "missiles", Math.max(0, actor.missiles - 1));
 
     target.deactivationCause = "other";
     this.triggerStateTransition(target, 3, time);
@@ -2284,8 +2402,12 @@ class Simulator {
     const opponents = this.getOpposingActivePlayers(actor, time);
 
     for (const target of opponents) {
-      const livesLost = Math.min(3, target.lives);
-      target.lives -= livesLost;
+      // Logged files record exactly what each nuke took, including from
+      // players already down.
+      const livesLost = this.loggedResources
+        ? -this.loggedDeltaAt(target.entityId, "lives", time, -1)
+        : Math.min(3, target.lives);
+      this.setResource(target, "lives", target.lives - livesLost);
 
       actor.livesRemovedByNuke += livesLost;
       if (target.position === POSITION.MEDIC) {
@@ -2333,7 +2455,7 @@ class Simulator {
     }
 
     const stats = POSITION_STATS[target.position]!;
-    target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
+    this.setResource(target, "shots", Math.min(target.shots + stats.resupplyShots, stats.maxShots));
 
     // End rapid fire if active
     let targetSnapshotRecorded = false;
@@ -2385,7 +2507,7 @@ class Simulator {
     }
 
     const stats = POSITION_STATS[target.position]!;
-    target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
+    this.setResource(target, "lives", Math.min(target.lives + stats.resupplyLives, stats.maxLives));
 
     this.handleNukeCancel(actor, target);
     target.deactivationCause = "resupply";
@@ -2404,7 +2526,11 @@ class Simulator {
     const stats = POSITION_STATS[target.position]!;
     if (type === "ammo") {
       target.emergencyResuppliesReceivedAmmo++;
-      target.shots = Math.min(target.shots + stats.resupplyShots, stats.maxShots);
+      this.setResource(
+        target,
+        "shots",
+        Math.min(target.shots + stats.resupplyShots, stats.maxShots),
+      );
       if (target.isRapidFire && target.rapidFireStartedAt !== null) {
         target.totalRapidTime += time - target.rapidFireStartedAt;
         target.isRapidFire = false;
@@ -2412,7 +2538,11 @@ class Simulator {
       }
     } else {
       target.emergencyResuppliesReceivedLives++;
-      target.lives = Math.min(target.lives + stats.resupplyLives, stats.maxLives);
+      this.setResource(
+        target,
+        "lives",
+        Math.min(target.lives + stats.resupplyLives, stats.maxLives),
+      );
     }
     this.handleNukeCancel(null, target);
     target.deactivationCause = "resupply";
@@ -2427,6 +2557,11 @@ class Simulator {
 
     const stats_actor = POSITION_STATS[actor.position]!;
     this.recordSnapshot(actor, eventIndex);
+
+    if (this.loggedResources) {
+      this.snapshotLoggedBoostRecipients(actor, "shots", time, eventIndex);
+      return;
+    }
 
     for (const teammate of this.getActiveTeammates(actor)) {
       // Skip players not yet registered or already superseded by a later generation.
@@ -2489,6 +2624,11 @@ class Simulator {
 
     this.recordSnapshot(actor, eventIndex);
 
+    if (this.loggedResources) {
+      this.snapshotLoggedBoostRecipients(actor, "lives", time, eventIndex);
+      return;
+    }
+
     for (const teammate of this.getActiveTeammates(actor)) {
       if (!this.isEntityActiveAt(teammate.entityId, time)) continue;
       const stats = POSITION_STATS[teammate.position]!;
@@ -2530,6 +2670,22 @@ class Simulator {
     }
   }
 
+  // Logged-resource team boost: the hardware names each recipient with a
+  // positive delta (state-3/state-2 teammates included), so snapshot exactly
+  // those. The cursor has already applied the values.
+  private snapshotLoggedBoostRecipients(
+    actor: PlayerSimState,
+    kind: ResourceKind,
+    time: number,
+    eventIndex: number,
+  ): void {
+    for (const teammate of this.getTeammates(actor)) {
+      if (this.loggedDeltaAt(teammate.entityId, kind, time, 1) > 0) {
+        this.recordSnapshot(teammate, eventIndex);
+      }
+    }
+  }
+
   // 0600 — Referee Penalty
   private handle0600(
     refereeEntityId: string | null,
@@ -2564,7 +2720,7 @@ class Simulator {
     actor.shotsFired += 1;
     actor.shotsHit += 1;
     if (actor.position !== POSITION.AMMO) {
-      actor.shots = Math.max(0, actor.shots - 1);
+      this.setResource(actor, "shots", Math.max(0, actor.shots - 1));
     }
     if (actor.isRapidFire) {
       actor.shotsFiredDuringRapid += 1;
@@ -2747,7 +2903,30 @@ class Simulator {
       targetDestructions: this.targetDestructions,
       penalties: this.penalties,
       interactions: this.interactions,
+      steps: this.stepsById,
+      resourceLog: this.loggedResources ? this.checkResourceLog() : null,
     };
+  }
+
+  // Structural checks on the logged resource stream: every line must continue
+  // its entity's running total, and missiles can never go negative.
+  private checkResourceLog(): ResourceLogResult {
+    const issues: string[] = [];
+    const last = new Map<string, number>();
+    for (const r of this.parsed.resourceLog) {
+      const key = `${r.entity}:${r.kind}`;
+      const prev = last.get(key);
+      if (prev !== undefined && prev + r.delta !== r.value) {
+        issues.push(
+          `${r.entity} ${r.kind} chain break at ${r.time}: ${prev} + ${r.delta} != ${r.value}`,
+        );
+      }
+      if (r.kind === "missiles" && r.value < 0) {
+        issues.push(`${r.entity} missiles negative at ${r.time}: ${r.value}`);
+      }
+      last.set(key, r.value);
+    }
+    return { issues, warnings: this.resourceWarnings };
   }
 }
 
@@ -2766,10 +2945,11 @@ export interface ConsistencyResult {
 export function runConsistencyCheck(
   playerStats: Map<string, PlayerSimState>,
   sm5StatsById: Map<string, import("./types.js").ParsedSm5Stats>,
+  resourceLog: ResourceLogResult | null = null,
 ): ConsistencyResult {
-  const discrepancies: string[] = [];
+  const discrepancies: string[] = [...(resourceLog?.issues ?? [])];
   const ghostShots: Array<{ entityId: string; count: number }> = [];
-  const warnings: string[] = [];
+  const warnings: string[] = [...(resourceLog?.warnings ?? [])];
 
   // Detect games with multi-battlesuit players (hardware restarts mid-game).
   // In these games nuke-on-medic interaction counts can be inaccurate because

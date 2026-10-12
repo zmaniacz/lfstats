@@ -165,7 +165,11 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
 
   // 5. Consistency check
   const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-  const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+  const { discrepancies } = runConsistencyCheck(
+    simResult.playerStats,
+    sm5StatsById,
+    simResult.resourceLog,
+  );
   if (discrepancies.length > 0) {
     const reason = `Consistency check failed:\n${JSON.stringify(discrepancies, null, 2)}`;
     log(`FAIL [consistency] ${gameId}`);

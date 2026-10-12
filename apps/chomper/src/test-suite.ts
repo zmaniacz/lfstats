@@ -12,29 +12,36 @@ import type { ParsedTeam } from "./types.js";
 
 const demoDir = resolve(import.meta.dirname, "../../../demo_files");
 const lbDir = join(demoDir, "laserball");
+// SM5 files carrying the logged resource lines (10-13). Every file here must
+// take the logged-resources path; a fallback to inference is a failure.
+const resourceLogDirName = "2026_update";
+const resourceLogDir = join(demoDir, resourceLogDirName);
 
 // Collect SM5 demo files (top-level) and Laserball demo files (laserball/ subdir).
 const sm5Files = readdirSync(demoDir)
   .filter((f) => f.endsWith(".tdf"))
   .sort()
   .map((f) => ({ file: f, path: join(demoDir, f) }));
-let lbFiles: { file: string; path: string }[] = [];
-try {
-  lbFiles = readdirSync(lbDir)
-    .filter((f) => f.endsWith(".tdf"))
-    .sort()
-    .map((f) => ({ file: `laserball/${f}`, path: join(lbDir, f) }));
-} catch {
-  // no laserball dir — fine
+function collectSubdir(dir: string, prefix: string): { file: string; path: string }[] {
+  try {
+    return readdirSync(dir)
+      .filter((f) => f.endsWith(".tdf"))
+      .sort()
+      .map((f) => ({ file: `${prefix}/${f}`, path: join(dir, f) }));
+  } catch {
+    return []; // subdirectory absent — fine
+  }
 }
-const entries = [...sm5Files, ...lbFiles];
+const lbFiles = collectSubdir(lbDir, "laserball");
+const resourceLogFiles = collectSubdir(resourceLogDir, resourceLogDirName);
+const entries = [...sm5Files, ...resourceLogFiles, ...lbFiles];
 
 if (entries.length === 0) {
   console.error("No .tdf files found in demo_files/");
   process.exit(1);
 }
 
-for (const dir of [demoDir, lbDir]) {
+for (const dir of [demoDir, lbDir, resourceLogDir]) {
   let stale: string[] = [];
   try {
     stale = readdirSync(dir).filter((f) => f.endsWith(".debug.json"));
@@ -211,7 +218,12 @@ for (const { file, path: filePath } of entries) {
   const { discrepancies, ghostShots, warnings } = runConsistencyCheck(
     simResult.playerStats,
     sm5StatsById,
+    simResult.resourceLog,
   );
+  const resourceMode = simResult.resourceLog ? "logged" : "inferred";
+  if (file.startsWith(`${resourceLogDirName}/`) && resourceMode !== "logged") {
+    discrepancies.push("expected logged resources (lines 11-13) but fell back to inference");
+  }
 
   // Invariant: exit code "04" means the player exhausted their lives, and that is
   // terminal — a later registration (replacement vest, or a referee putting an
@@ -247,6 +259,8 @@ for (const { file, path: filePath } of entries) {
       ghostShots,
       warnings,
     },
+    resourceMode,
+    stepCount: [...simResult.steps.values()].reduce((n, steps) => n + steps.length, 0),
     events: simResult.events.map((e, i) => ({ index: i, ...e })),
     playerStates: Object.fromEntries(
       [...simResult.playerStats.entries()].map(([id, ps]) => [

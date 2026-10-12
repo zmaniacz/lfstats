@@ -379,6 +379,13 @@
       "when": 1791161862661,
       "tag": "0053_localized_neutral_teams",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791822885907,
+      "tag": "0054_sm5_game_player_step",
+      "breakpoints": true
     }
   ]
 }
