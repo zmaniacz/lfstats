@@ -21,6 +21,16 @@ export interface ParsedTdf {
     penaltyDeclared: boolean;
     missionType: number; // skip if not 5
     missionDesc: string;
+    /**
+     * Whether the file carries authoritative lives/shots/missiles running totals
+     * (line types 11/12/13) for every player. Detected from content, not
+     * file-version — the format change shipped without a version bump. When
+     * true the simulator reads these resources from `resourceLog` instead of
+     * inferring them.
+     */
+    hasResourceLog: boolean;
+    /** Whether the file declares line type 10 (steps). */
+    hasStepLog: boolean;
   };
   teams: ParsedTeam[];
   entities: ParsedEntity[];
@@ -29,6 +39,8 @@ export interface ParsedTdf {
   entityEnds: ParsedEntityEnd[];
   sm5Stats: ParsedSm5Stats[];
   playerStateLog: ParsedPlayerState[]; // empty if absent (pre-2.005)
+  resourceLog: ParsedResourceDelta[]; // line types 11/12/13; empty if absent
+  stepLog: ParsedStep[]; // line type 10; empty if absent
   // Mid-game position changes: each entry maps an external entity ID to its
   // time-ordered generations, each with a disambiguated internal ID.
   entityRouting: Array<{
@@ -112,6 +124,27 @@ export interface ParsedPlayerState {
   time: number;
   entity: string;
   state: number;
+}
+
+export type ResourceKind = "lives" | "shots" | "missiles";
+
+// Line types 11 (lives), 12 (shots), 13 (missiles): `time entity delta new`.
+// A delta-0 line at entity-start carries the initial value.
+export interface ParsedResourceDelta {
+  time: number;
+  entity: string;
+  kind: ResourceKind;
+  delta: number;
+  value: number; // the `new` column — running total after this delta
+}
+
+// Line type 10 (steps): `time entity delta new`. Emitted roughly every 1.3s
+// while the player is moving; no lines while idle.
+export interface ParsedStep {
+  time: number;
+  entity: string;
+  delta: number;
+  value: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -270,6 +303,16 @@ export interface SimulatedGame {
       missileResets: number;
     }
   >; // key: "${actorId}->${targetId}"
+  // Line type 10 step deltas per player entity, in time order. Empty for files
+  // without a step log.
+  steps: Map<string, Array<{ time: number; delta: number }>>;
+  // Present only when lives/shots/missiles came from the logged resource lines.
+  resourceLog: ResourceLogResult | null;
+}
+
+export interface ResourceLogResult {
+  issues: string[]; // structural problems in the logged stream — consistency failures
+  warnings: string[];
 }
 
 export interface SimTeam {

@@ -259,6 +259,8 @@ interface ParsedTdf {
     penaltyDeclared: boolean; // whether line 1 carried the column at all (2.003+)
     missionType: number; // skip if not 5
     missionDesc: string;
+    hasResourceLog: boolean; // lines 11/12/13 declared and every player seeded — see Logged Resources
+    hasStepLog: boolean; // line 10 declared
   };
   teams: ParsedTeam[];
   entities: ParsedEntity[]; // internalId may differ from originalId for multi-gen players
@@ -267,6 +269,8 @@ interface ParsedTdf {
   entityEnds: ParsedEntityEnd[];
   sm5Stats: ParsedSm5Stats[]; // duplicate entries merged by mergeDuplicateSm5Stats
   playerStateLog: ParsedPlayerState[]; // empty array for pre-2.005 files (type 9 lines discarded if fileVersion < 2.005)
+  resourceLog: ParsedResourceDelta[]; // lines 11/12/13; empty unless hasResourceLog
+  stepLog: ParsedStep[]; // line 10; empty if absent
   entityRouting: EntityRouting[]; // routing table for multi-generation players
 }
 ```
@@ -281,6 +285,7 @@ interface ParsedTdf {
 | `memberId` (line type 3)   | `null`                                                                                                                                                            |
 | `colourRgb` (line type 2)  | `null`                                                                                                                                                            |
 | Line type 9 entirely       | Empty array — simulator uses synthetic 4-second state reconstruction. Type 9 lines present in pre-2.005 files (early test artefacts) are discarded by the parser. |
+| Line types 10–13 entirely  | Empty arrays — lives/shots/missiles are inferred (the paths described below) and no steps are stored.                                                             |
 
 ### Entity Type Classification
 
@@ -387,6 +392,33 @@ reconcilePendingBoosts()
 applyEntityEnds()                ← safety net for trailing entity-ends
 buildResult()
 ```
+
+### Logged Resources (line types 11–13)
+
+Files from the 2026 format update carry the hardware's own running totals for lives, shots and missiles (see [TDF_Spec.md](TDF_Spec.md#line-types-1013--steps-lives-shots-missiles)). The update shipped without a `file-version` bump, so the parser detects it by content. `meta.hasResourceLog` is true only when:
+
+- schema comments for **all three** of `11`, `12` and `13` are present, and
+- every `player` entity with `category > 0` has a lives line.
+
+Anything partial falls back to inference. When the flag is set, the simulator runs one rule: **lives, shots and missiles only change by consuming the resource log.**
+
+- **Initial values** come from each player's entity-start (delta 0) line, falling back to `POSITION_STATS`.
+- **Resource cursor.** `advanceClock(T)` consumes every line with `time <= T + RESOURCE_SKEW_MS` (5 ms), setting the player's value to the line's `new`. Resource lines sit up to 2 ms before or after their event, so this makes the values a handler reads at `T` already authoritative. Before each line 9 transition the cursor is first drained to that entry's own window, so a resupply or nuke snapshot shows the value the hardware wrote a few ms later.
+- **Handlers.** Every inferred mutation goes through `setResource()`, which is a no-op in this mode. The Ammo Carrier and resupply-tag shot exemptions become irrelevant.
+- **Team boosts** (`0510`/`0512`) snapshot exactly the teammates with a positive logged delta at the boost. Players in state 3 or 2 are included. There is no respawn window, no pending boost and no `shotsRefAtBoost`.
+- **Delta-sized stats** read the logged delta itself (`loggedDeltaAt`):
+  - `missilesHitOpponentMedicLives` / `missilesHitTeamMedicLives` on `0306`/`0308`.
+  - `nukesHitMedic` / `livesRemovedByNuke` on `0405`.
+- **Elimination.** Logged lives at 0 eliminate, with no rescue and no forward simulation. A player acting again afterwards is recorded as a warning; it never happens in the sample corpus.
+- **Kicks** (`01`/`17`) keep the logged lives instead of line 7 `livesLeft`.
+- **Skipped entirely:**
+  - `tdfFinalLives`-driven rescue, `deactivationsReceived`, `resuppliesGained` and two-pass nuke detection.
+  - `directTeamBoostsReceived` and `buildShotsReference`.
+  - The pending-boost half of `reconcilePendingBoosts`, which has nothing to reconcile.
+
+**Steps (line type 10)** do not feed the simulation. They are routed to generation IDs like every other per-entity stream, concatenated when restart generations merge, and returned as `SimulatedGame.steps`. The ingester writes them to `sm5_game_player_step` (see [Core_Schema.md](Core_Schema.md)), re-accumulating `total` per scorecard.
+
+`SimulatedGame.resourceLog` is non-null only in this mode. It carries the logged-stream checks described under [Consistency Checks](#consistency-checks).
 
 ### State Machine and `advanceClock(T)`
 
@@ -586,6 +618,9 @@ Additional checks:
 - `Scorecard.targets_destroyed` must equal the count of `GameTargetDestruction` rows for this scorecard
 - `phantomDeactivations > 0` — HP reached 0 on a `0205` (non-deactivating) event; signals HP drift from hardware
 - `entityEndForcedLives > 0` — `applyEntityEnds()` found the player alive when hardware said eliminated
+- **Logged resources only** (passed in as `simResult.resourceLog`):
+  - Every line 11/12/13 must continue its entity's running total (`previous new + delta = new`), and missiles must never go negative. A break is a discrepancy.
+  - Warnings raised during simulation are appended to `warnings`.
 
 **Ghost shot detection:** `0B00` (Beacon Claim) events occur when SM5 targets are left active from a prior game mode. The claim shot itself has a section 4 event and is handled normally. But the two warm-up hits that precede it do not generate section 4 events — they appear only in section 7 stat totals as 2 extra `shotsHit` and `shotsFired` that the simulator cannot account for.
 
@@ -673,6 +708,7 @@ Writes to the database in a single transaction. Insert in this exact order to sa
 12. insertGamePenalties (bulk)
 13. insertGameEvents (bulk)
 14. insertGamePlayerStates (bulk) — largest table
+14b. insertGamePlayerSteps (bulk) — line type 10 files only
 15. insertScorecardMvps (bulk)
 16. upsertPlayerCallsignHistory (one per player)
 ```
@@ -775,7 +811,7 @@ pnpm --filter chomper run test        # or, from apps/chomper: node_modules/.bin
 ### What it does
 
 1. Deletes any stale `.debug.json` files from `demo_files/` before starting.
-2. Collects every `*.tdf` in `demo_files/` and `demo_files/laserball/` (sorted). A missing `laserball/` subdirectory is not an error.
+2. Collects every `*.tdf` in `demo_files/`, `demo_files/2026_update/` and `demo_files/laserball/` (sorted). A missing subdirectory is not an error. Files in `2026_update/` carry line types 10–13 and **must** take the logged-resources path; falling back to inference is a failure.
 3. For each file: runs `parseTdf`, dispatches on `parsed.meta.missionType`, writes `<filename>.debug.json` next to the TDF, and reports `PASS` / `FAIL` / `SKIP`.
 4. Writes a timestamped log to `apps/chomper/logs/test-suite-<timestamp>.log`.
 5. Exits 1 if any file failed, 0 if all passed or skipped.
@@ -799,6 +835,8 @@ SM5 files produce the full comparison shape:
 ```json
 {
   "consistencyCheck": { "passed": true, "discrepancies": [], "ghostShots": [], "warnings": [] },
+  "resourceMode": "inferred", // or "logged" for files with line types 11–13
+  "stepCount": 0,
   "events": [...],
   "playerStates": { ... }
 }

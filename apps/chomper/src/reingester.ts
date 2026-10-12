@@ -15,6 +15,7 @@ import {
   insertGamePenalties,
   insertGameEvents,
   insertGamePlayerStates,
+  insertGamePlayerSteps,
   insertScorecardMvps,
   upsertCenter,
   applyPenaltyMetadata,
@@ -32,7 +33,7 @@ import {
 import type { ParsedTdf, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
 import type { MvpRow } from "./mvp.js";
-import { buildArchiveKey } from "./ingester.js";
+import { buildArchiveKey, buildStepRows } from "./ingester.js";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -566,6 +567,10 @@ export async function reingest(
       }
     }
     await insertGamePlayerStates(tx, stateRows);
+    await insertGamePlayerSteps(
+      tx,
+      buildStepRows(simResult, scorecardIdByEntityId, existingGameId),
+    );
 
     // -----------------------------------------------------------------------
     // 16. Insert ScorecardMvps

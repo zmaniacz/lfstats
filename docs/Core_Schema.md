@@ -617,6 +617,26 @@ A single event can produce multiple rows — a nuke detonation affecting 5 oppos
 - `time` is denormalized from `GameEvent` to avoid a join on every state lookup. It must be kept consistent with `GameEvent.time` at ingest.
 - `hit_points` carries over from state 2 into state 0 if the player was damaged but not fully deactivated during the vulnerable window. It resets to the position maximum on every transition to state 3.
 - `accuracy` and `hit_diff` are live in-game running values and will differ from `Scorecard.accuracy` and `Scorecard.hit_diff` until the final event — the Scorecard values are authoritative for end-of-game stats. These columns exist solely for replay scoreboard display.
+- For files carrying TDF line types 11/12/13, `lives`, `shots` and `missiles` are the hardware's own running totals (initial values included) rather than simulator inference. See [chomper-design.md](chomper-design.md#logged-resources-line-types-1113).
+
+### `GamePlayerStep` (`sm5_game_player_step`)
+
+Step-tracker activity from TDF line type 10: one row per hardware step report. Exists to graph a player's activity level over a game. Only games whose TDF carries line type 10 have rows, so an absent timeline means "not recorded", not "did not move".
+
+| Column         | Type     | Null  | Description                                                                                                                                                             |
+| -------------- | -------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | uuid     | never | Primary key.                                                                                                                                                            |
+| `game_id`      | uuid FK  | never | References `Game` (cascade). Denormalized, as on `GamePlayerState`.                                                                                                     |
+| `scorecard_id` | uuid FK  | never | References `Scorecard` (cascade) — the player who stepped.                                                                                                              |
+| `time`         | integer  | never | Milliseconds elapsed since mission start.                                                                                                                               |
+| `delta`        | smallint | never | Steps reported in this line.                                                                                                                                            |
+| `total`        | integer  | never | Running sum of `delta` for this scorecard. Re-accumulated at ingest rather than copied from the TDF `new` column, so it stays continuous across mid-game vest restarts. |
+
+**Notes:**
+
+- Reports arrive roughly every 1.3 s while a player is moving and not at all while idle. Gaps of minutes are normal, so plot the series as a step function and don't interpolate across gaps.
+- Steps accrue in every player state. Around 45% of steps in the 2026 sample games happen while down (state 3/2), for example walking back to base.
+- Composite index on `(game_id, scorecard_id, time)`. Rows are deleted with the scorecard, so a reingest rewrites them.
 
 ---
 

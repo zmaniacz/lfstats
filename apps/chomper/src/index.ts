@@ -192,7 +192,11 @@ export const handler: S3Handler = async (event, context) => {
 
       // 6a. Consistency check — throws if any discrepancy found
       const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-      const { discrepancies } = runConsistencyCheck(simResult.playerStats, sm5StatsById);
+      const { discrepancies } = runConsistencyCheck(
+        simResult.playerStats,
+        sm5StatsById,
+        simResult.resourceLog,
+      );
       if (discrepancies.length > 0) {
         throw new Error(`Consistency check failed:\n${discrepancies.join("\n")}`);
       }

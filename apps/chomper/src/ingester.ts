@@ -18,6 +18,7 @@ import {
   insertGamePlayerInteractions,
   insertGameEvents,
   insertGamePlayerStates,
+  insertGamePlayerSteps,
   insertScorecardMvps,
 } from "@lfstats/db";
 import type { ParsedTdf, SimulatedGame } from "./types.js";
@@ -25,6 +26,27 @@ import { POSITION } from "./types.js";
 import type { MvpRow } from "./mvp.js";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
+
+// Step-tracker rows (line type 10). `total` is re-accumulated from the deltas
+// rather than taken from the TDF's own running value, so a scorecard merged
+// from a mid-game vest restart still gets one continuous count.
+export function buildStepRows(
+  simResult: SimulatedGame,
+  scorecardIdByEntityId: Map<string, string>,
+  gameId: string,
+) {
+  const rows = [];
+  for (const [entityId, steps] of simResult.steps) {
+    const scorecardId = scorecardIdByEntityId.get(entityId);
+    if (!scorecardId) continue;
+    let total = 0;
+    for (const step of [...steps].sort((a, b) => a.time - b.time)) {
+      total += step.delta;
+      rows.push({ gameId, scorecardId, time: step.time, delta: step.delta, total });
+    }
+  }
+  return rows;
+}
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -506,6 +528,7 @@ export async function ingest(
       }
     }
     await insertGamePlayerStates(tx, stateRows);
+    await insertGamePlayerSteps(tx, buildStepRows(simResult, scorecardIdByEntityId, gameId));
 
     // -----------------------------------------------------------------------
     // 15. Insert ScorecardMvps (bulk)

@@ -118,6 +118,7 @@ const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
 const { discrepancies, ghostShots, warnings } = runConsistencyCheck(
   simResult.playerStats,
   sm5StatsById,
+  simResult.resourceLog,
 );
 
 const debugOut = {

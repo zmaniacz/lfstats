@@ -26,7 +26,7 @@ A TDF file follows this general sequence:
 4. **Mission Start event** — `0100` event on line type `4`
 5. **Entity registration** — players and non-player entities check in (line type `3`)
 6. **Initial state transitions** — players go active (line type `9`, version-gated)
-7. **Game event stream** — interleaved line types `4`, `5`, `9` throughout gameplay
+7. **Game event stream** — interleaved line types `4`, `5`, `9` (and `10`–`13` where present) throughout gameplay
 8. **End-of-game summaries** — per-entity results and stats (line types `6`, `7`)
 
 ### File Naming Convention
@@ -745,6 +745,54 @@ During state 2, ALL incoming tags are treated as standard damage regardless of t
 
 ---
 
+## Line Types 10–13 — `steps`, `lives`, `shots`, `missiles`
+
+**Appears:** Throughout the event stream in files from the 2026 format update. That update did **not** bump `file-version` (it is still `2.006`), so presence is detected from the schema comment lines, not the version.
+
+**Schema (all four share it):**
+
+```
+10	time	entity	delta	new
+11	time	entity	delta	new
+12	time	entity	delta	new
+13	time	entity	delta	new
+```
+
+| Line | Name       | Tracks                                                             |
+| ---- | ---------- | ------------------------------------------------------------------ |
+| `10` | `steps`    | Step-tracker count — a player activity measure, not tracked before |
+| `11` | `lives`    | Lives remaining — the hardware's running total                     |
+| `12` | `shots`    | Shots remaining                                                    |
+| `13` | `missiles` | Missiles remaining                                                 |
+
+| Field    | Type    | Description                                                      |
+| -------- | ------- | ---------------------------------------------------------------- |
+| `time`   | integer | Milliseconds elapsed since mission start.                        |
+| `entity` | string  | The player's iplId (`#xxxxxxx`) or hardware ID (`@NNN`).         |
+| `delta`  | integer | Signed change.                                                   |
+| `new`    | integer | Running total after the change. Always previous `new` + `delta`. |
+
+**Behaviour observed in the 2026 sample games:**
+
+- **Initial values.** Every player gets a `delta = 0` line for `11`, `12` and `13` at entity-start. That line carries the starting value; these are the only zero-delta lines. Steps start at the player's first movement.
+- **Authoritative totals.** The final `new` for lives and shots equals line 7 `livesLeft` / `shotsLeft` for every player.
+- **Timing.** Each `11`/`12`/`13` line is within 0–2 ms of the event that caused it. Whether it comes **before** or **after** the line 4 event depends on the event type:
+  - Before: `0201`, `0500`, `0502`, `0510`, `0512`.
+  - After: hits, `0306`, `0405`.
+
+  Match lines to events by time window, never by line order.
+
+- **Explicit recipients.** Team boosts (`0510`/`0512`) and nukes (`0405`) emit a line for each player actually affected, including players in state 3 or 2. This resolves the radio-lag ambiguity described under those events.
+- **Shots.**
+  - Ammo Carriers only ever get the entity-start shots line (infinite shots).
+  - Resupply tags do not emit a shots delta for the giver.
+- **Lives.** Lives that reach 0 never recover; entity-end `04` follows about 2 s later.
+- **Steps.**
+  - Lines arrive about every 1.3 s while moving and not at all while idle.
+  - Steps accrue in every state.
+
+---
+
 ## Appendix A — Event Code Quick Reference
 
 | Code   | Name                          | Actor              | Target | Actor Δ  | Target Δ |
@@ -804,12 +852,13 @@ _For `0205`/`0206` and `0306`: actor delta is +value vs opponent, -value vs team
 
 ## Appendix D — Version-Gated Features
 
-| Feature             | Line Type | Introduced        | Default When Absent              | Notes                                                                                                                                                                                     |
-| ------------------- | --------- | ----------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `duration`          | `1`       | `2.001`           | `900000` (15 min)                | Absent in `2.000`                                                                                                                                                                         |
-| `penalty`           | `1`       | `2.003`           | `0`                              | Absent in `2.000` and `2.001`                                                                                                                                                             |
-| `battlesuit`        | `3`       | `2.003`           | `null`                           | Absent in `2.000` and `2.001`                                                                                                                                                             |
-| `colour-rgb`        | `2`       | `2.004`           | Derive from `colour-enum` lookup | Absent in `2.003` and earlier                                                                                                                                                             |
-| Player state log    | `9`       | `2.005`           | Reconstruct synthetically        | Absent in `2.004` and earlier; use 4000ms + 4000ms timers from deactivating events. Discard any type 9 lines found in pre-2.005 files — they are early test artefacts and are unreliable. |
-| `0902` reward event | `4`       | `2.005`           | N/A — event simply won't appear  | Absent in `2.004` and earlier                                                                                                                                                             |
-| `memberId`          | `3`       | `2.006` (partial) | `null`                           | Rolled out incrementally — presence determined by schema comment line, not `file-version`                                                                                                 |
+| Feature             | Line Type | Introduced                             | Default When Absent                  | Notes                                                                                                                                                                                     |
+| ------------------- | --------- | -------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `duration`          | `1`       | `2.001`                                | `900000` (15 min)                    | Absent in `2.000`                                                                                                                                                                         |
+| `penalty`           | `1`       | `2.003`                                | `0`                                  | Absent in `2.000` and `2.001`                                                                                                                                                             |
+| `battlesuit`        | `3`       | `2.003`                                | `null`                               | Absent in `2.000` and `2.001`                                                                                                                                                             |
+| `colour-rgb`        | `2`       | `2.004`                                | Derive from `colour-enum` lookup     | Absent in `2.003` and earlier                                                                                                                                                             |
+| Player state log    | `9`       | `2.005`                                | Reconstruct synthetically            | Absent in `2.004` and earlier; use 4000ms + 4000ms timers from deactivating events. Discard any type 9 lines found in pre-2.005 files — they are early test artefacts and are unreliable. |
+| `0902` reward event | `4`       | `2.005`                                | N/A — event simply won't appear      | Absent in `2.004` and earlier                                                                                                                                                             |
+| `memberId`          | `3`       | `2.006` (partial)                      | `null`                               | Rolled out incrementally — presence determined by schema comment line, not `file-version`                                                                                                 |
+| Resource & step log | `10`–`13` | `2.006` (2026 update, no version bump) | Infer lives/shots/missiles; no steps | Detected by schema comment lines, not `file-version`. See [Line Types 10–13](#line-types-1013--steps-lives-shots-missiles).                                                               |
