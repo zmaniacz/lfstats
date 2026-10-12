@@ -9,6 +9,7 @@ import {
   sm5Scorecard,
   sm5ScorecardMvp,
   sm5GamePlayerInteraction,
+  sm5GamePlayerStep,
   sm5GameEvent,
   sm5GamePlayerState,
   sm5GameTarget,
@@ -474,6 +475,9 @@ export type GameDetailPlayer = {
   resupplyDowntime: number;
   otherDowntime: number;
   endTime: Date;
+  // Step-tracker total (TDF line type 10). null when the game's TDF carries no step data;
+  // 0 when it does but this player never reported a step.
+  steps: number | null;
   mvpComponents: MvpComponentRow[];
   hitInteractions: PlayerHitData[];
 };
@@ -522,6 +526,30 @@ export type GameDetail = {
 type GameDetailListRow = Omit<GameDetail, "tags" | "teams">;
 
 /**
+ * Per-scorecard step totals for a set of games. Step data only exists for TDFs that carry
+ * line type 10, so a game with no rows at all yields null for every player, while a player
+ * in a step-tracked game who never moved yields 0.
+ */
+async function getStepTotals(
+  gameIds: string[],
+): Promise<(gameId: string, scorecardId: string) => number | null> {
+  const rows = await db
+    .select({
+      gameId: sm5GamePlayerStep.gameId,
+      scorecardId: sm5GamePlayerStep.scorecardId,
+      steps: sql<number>`sum(${sm5GamePlayerStep.delta})::int`,
+    })
+    .from(sm5GamePlayerStep)
+    .where(inArray(sm5GamePlayerStep.gameId, gameIds))
+    .groupBy(sm5GamePlayerStep.gameId, sm5GamePlayerStep.scorecardId);
+
+  const gamesWithSteps = new Set(rows.map((r) => r.gameId));
+  const byScorecard = new Map(rows.map((r) => [r.scorecardId, Number(r.steps)]));
+  return (gameId, scorecardId) =>
+    gamesWithSteps.has(gameId) ? (byScorecard.get(scorecardId) ?? 0) : null;
+}
+
+/**
  * Fans a set of already-selected game rows out into full GameDetails: teams, scorecards,
  * MVP components, per-player hit interactions and tags, in one round trip each.
  *
@@ -534,7 +562,7 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
 
   const gameIds = gameRows.map((r) => r.id);
 
-  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows] = await Promise.all([
+  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows, stepsFor] = await Promise.all([
     db
       .select({
         gameId: sm5GameTeam.gameId,
@@ -553,6 +581,7 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
     db
       .select({
         id: sm5Scorecard.id,
+        gameId: sm5Scorecard.gameId,
         teamId: sm5Scorecard.teamId,
         playerId: sm5Scorecard.playerId,
         iplId: sm5Scorecard.iplId,
@@ -664,6 +693,8 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
       .from(gameTag)
       .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
       .where(inArray(gameTagAssignment.gameId, gameIds)),
+
+    getStepTotals(gameIds),
   ]);
 
   const mvpByScorecard = new Map<string, MvpComponentRow[]>();
@@ -809,6 +840,7 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
       resupplyDowntime: sc.resupplyDowntime,
       otherDowntime: sc.otherDowntime,
       endTime: sc.endTime,
+      steps: stepsFor(sc.gameId, sc.id),
       mvpComponents: mvpByScorecard.get(sc.id) ?? [],
       hitInteractions: (() => {
         const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>();
@@ -991,7 +1023,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
 
   if (!gameRow) return null;
 
-  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows] = await Promise.all([
+  const [teamRows, scorecardRows, mvpRows, interactionRows, tagRows, stepsFor] = await Promise.all([
     db
       .select({
         id: sm5GameTeam.id,
@@ -1130,6 +1162,8 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
       .from(gameTag)
       .innerJoin(gameTagAssignment, eq(gameTagAssignment.tagId, gameTag.id))
       .where(eq(gameTagAssignment.gameId, id)),
+
+    getStepTotals([id]),
   ]);
 
   const mvpByScorecard = new Map<string, MvpComponentRow[]>();
@@ -1280,6 +1314,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         resupplyDowntime: sc.resupplyDowntime,
         otherDowntime: sc.otherDowntime,
         endTime: sc.endTime,
+        steps: stepsFor(id, sc.id),
         mvpComponents: mvpByScorecard.get(sc.id) ?? [],
         hitInteractions: (() => {
           const dealt = interactionDealt.get(sc.id) ?? new Map<string, RawHit>();

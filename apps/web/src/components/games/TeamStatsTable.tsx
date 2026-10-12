@@ -48,6 +48,8 @@ export function TeamStatsTable({
 }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<GameDetailPlayer | null>(null);
+  // Step data is all-or-nothing per game, so any player having it means the TDF carried it.
+  const hasSteps = team.players.some((p) => p.steps !== null);
 
   function openSheet(player: GameDetailPlayer) {
     setSelectedPlayer(player);
@@ -57,7 +59,7 @@ export function TeamStatsTable({
   return (
     <>
       <div className="overflow-x-auto">
-        <Table className="table-fixed min-w-[925px] w-full">
+        <Table className={`table-fixed w-full ${hasSteps ? "min-w-[985px]" : "min-w-[925px]"}`}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-[170px]">Callsign</TableHead>
@@ -71,6 +73,7 @@ export function TeamStatsTable({
               <TableHead className="w-[55px] text-center">Shots</TableHead>
               <TableHead className="w-[50px] text-center">Msls</TableHead>
               <TableHead className="w-[50px] text-center">Msld</TableHead>
+              {hasSteps && <TableHead className="w-[60px] text-center">Steps</TableHead>}
               <TableHead className="w-[80px] text-center">Survived</TableHead>
             </TableRow>
           </TableHeader>
@@ -175,6 +178,11 @@ export function TeamStatsTable({
                 <TableCell className="text-center tabular-nums">
                   {player.timesHitByMissile}
                 </TableCell>
+                {hasSteps && (
+                  <TableCell className="text-center tabular-nums">
+                    {formatScore(player.steps)}
+                  </TableCell>
+                )}
                 <TableCell className="px-3">
                   {(() => {
                     const survivalMs = player.eliminated
