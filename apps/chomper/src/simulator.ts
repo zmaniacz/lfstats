@@ -721,6 +721,7 @@ class Simulator {
       target.state = source.state;
       target.stateEnteredAt = source.stateEnteredAt;
       target.state3EnteredAt = source.state3EnteredAt;
+      target.downtimeSince = source.downtimeSince;
       target.lastTransitionToActiveAt = source.lastTransitionToActiveAt;
       target.hitPoints = source.hitPoints;
       target.lives = source.lives;
@@ -1265,6 +1266,7 @@ class Simulator {
         state: 0,
         stateEnteredAt: entity.time,
         state3EnteredAt: null,
+        downtimeSince: null,
         lastTransitionToActiveAt: null,
         hitPoints: stats.hitPoints,
         lives: this.initialResource(entity.id, "lives") ?? stats.initialLives,
@@ -1479,6 +1481,11 @@ class Simulator {
     const ps = this.playerStates.get(end.id);
     if (!ps) return;
 
+    // Both exits below end the player's time in game, and mission end skips
+    // players already out, so close their open uptime/downtime segment here.
+    const leavesGame = end.exitType === "04" || end.exitType === "01" || end.exitType === "17";
+    if (leavesGame && !ps.isEliminated) this.closeTimeInGame(ps, end.time);
+
     if (end.exitType === "04") {
       // Only flag a forced-lives discrepancy when the player was NOT already
       // eliminated. A prior exitType=01 (kicked/reset) marks isEliminated=true
@@ -1583,6 +1590,11 @@ class Simulator {
       // Accumulate the uptime segment that just ended
       if (ps.state === 0) {
         ps.uptime += time - ps.stateEnteredAt;
+        ps.downtimeSince = time;
+      } else {
+        // Re-deactivated in state 2: the down period continues, but the 4 s
+        // timer restarts. Book the time so far before state3EnteredAt moves.
+        this.bookDowntime(ps, time);
       }
       // On entry to state 3: reset HP, track state3EnteredAt
       ps.hitPoints = stats.hitPoints;
@@ -1593,15 +1605,9 @@ class Simulator {
       // HP unchanged from state 3 (which set it to full)
     } else {
       // Transitioning to state 0: accumulate downtime, reset resupply cycle flags
-      if (ps.state3EnteredAt !== null) {
-        const duration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply") {
-          ps.resupplyDowntime += duration;
-        } else {
-          ps.otherDowntime += duration;
-        }
-        ps.state3EnteredAt = null;
-      }
+      this.bookDowntime(ps, time);
+      ps.downtimeSince = null;
+      ps.state3EnteredAt = null;
       ps.deactivationCause = null;
       ps.receivedAmmoResupplyThisCycle = false;
       ps.receivedLivesResupplyThisCycle = false;
@@ -1612,6 +1618,47 @@ class Simulator {
     ps.stateEnteredAt = time;
 
     this.recordSnapshot(ps, eventIndex);
+  }
+
+  // Books the unbooked part of the current down period (state 3 or 2) to the
+  // bucket for its cause, then restarts the period at `time`. A down period can
+  // span several 4 s cycles when the player is re-deactivated in state 2, so it
+  // is tracked by downtimeSince rather than state3EnteredAt (the cycle timer).
+  private bookDowntime(ps: PlayerSimState, time: number): void {
+    if (ps.downtimeSince === null) return;
+    const duration = time - ps.downtimeSince;
+    if (ps.deactivationCause === "resupply") {
+      ps.resupplyDowntime += duration;
+    } else {
+      ps.otherDowntime += duration;
+    }
+    ps.downtimeSince = time;
+  }
+
+  // Books the player's open segment up to `time`: uptime when active, else the
+  // current down period. Used where their time in game ends.
+  private closeTimeInGame(ps: PlayerSimState, time: number): void {
+    if (ps.state === 0) {
+      ps.uptime += time - ps.stateEnteredAt;
+      ps.stateEnteredAt = time;
+    } else {
+      this.bookDowntime(ps, time);
+    }
+  }
+
+  // Sets the cause of the player's current down period. A deactivation landing
+  // while the player is already down changes the cause from here on; the time
+  // before it stays with the old cause. For 2.005+ files the state log usually
+  // opens the period before the handler runs, so a null cause is just unset yet.
+  private setDeactivationCause(
+    ps: PlayerSimState,
+    cause: "resupply" | "other",
+    time: number,
+  ): void {
+    if (ps.deactivationCause !== null && ps.deactivationCause !== cause) {
+      this.bookDowntime(ps, time);
+    }
+    ps.deactivationCause = cause;
   }
 
   // ---------------------------------------------------------------------------
@@ -1868,11 +1915,8 @@ class Simulator {
     }
 
     // The state transition to state 3 is blocked once isEliminated is set,
-    // so capture the final uptime segment now while we still can.
-    if (target.state === 0) {
-      target.uptime += time - target.stateEnteredAt;
-      target.stateEnteredAt = time;
-    }
+    // so capture the final uptime or downtime segment now while we still can.
+    this.closeTimeInGame(target, time);
 
     target.isEliminated = true;
     target.eliminatedInGame = true;
@@ -2088,18 +2132,7 @@ class Simulator {
     for (const ps of this.playerStates.values()) {
       if (ps.isEliminated) continue;
 
-      if (ps.state === 0) {
-        ps.uptime += time - ps.stateEnteredAt;
-      } else if (ps.state === 3 && ps.state3EnteredAt !== null) {
-        const duration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply") ps.resupplyDowntime += duration;
-        else ps.otherDowntime += duration;
-      } else if (ps.state === 2 && ps.state3EnteredAt !== null) {
-        // state3EnteredAt was set when entering state 3; state 3 lasted 4000ms
-        const fullDuration = time - ps.state3EnteredAt;
-        if (ps.deactivationCause === "resupply") ps.resupplyDowntime += fullDuration;
-        else ps.otherDowntime += fullDuration;
-      }
+      this.closeTimeInGame(ps, time);
 
       // Close any open rapid fire windows
       if (ps.isRapidFire && ps.rapidFireStartedAt !== null) {
@@ -2130,7 +2163,7 @@ class Simulator {
     this.handleNukeCancel(null, target);
     this.setResource(target, "lives", target.lives - 1);
     this.checkElimination(null, target, time, false);
-    target.deactivationCause = "other";
+    this.setDeactivationCause(target, "other", time);
     this.triggerStateTransition(target, 3, time);
     if (target.state === 3 && !target.isEliminated) {
       this.recordSnapshot(target, eventIndex);
@@ -2271,7 +2304,7 @@ class Simulator {
 
       this.incrInteraction(actor.entityId, target.entityId, "shotDeactivations");
 
-      target.deactivationCause = "other";
+      this.setDeactivationCause(target, "other", time);
       // State transition handled by state event (emitted by advanceClock or explicit state log)
       // Trigger the state_3 transition now since it coincides with the deactivating event
       this.triggerStateTransition(target, 3, time);
@@ -2365,7 +2398,7 @@ class Simulator {
     this.incrInteraction(actor.entityId, target.entityId, "missileHits");
     this.setResource(actor, "missiles", Math.max(0, actor.missiles - 1));
 
-    target.deactivationCause = "other";
+    this.setDeactivationCause(target, "other", time);
     this.triggerStateTransition(target, 3, time);
 
     this.recordSnapshot(actor, eventIndex);
@@ -2422,7 +2455,7 @@ class Simulator {
       this.checkElimination(actor, target, time, true);
       this.awardAssists(target.entityId, actor.entityId);
 
-      target.deactivationCause = "other";
+      this.setDeactivationCause(target, "other", time);
       this.triggerStateTransition(target, 3, time);
     }
 
@@ -2468,7 +2501,7 @@ class Simulator {
     }
 
     this.handleNukeCancel(actor, target);
-    target.deactivationCause = "resupply";
+    this.setDeactivationCause(target, "resupply", time);
     this.triggerStateTransition(target, 3, time);
     // For 2.005+ files, triggerStateTransition is a no-op driven by section 9.
     // If the target is already in state_3 (resupplied while down), no upcoming
@@ -2510,7 +2543,7 @@ class Simulator {
     this.setResource(target, "lives", Math.min(target.lives + stats.resupplyLives, stats.maxLives));
 
     this.handleNukeCancel(actor, target);
-    target.deactivationCause = "resupply";
+    this.setDeactivationCause(target, "resupply", time);
     this.triggerStateTransition(target, 3, time);
 
     this.recordSnapshot(actor, eventIndex);
@@ -2545,7 +2578,7 @@ class Simulator {
       );
     }
     this.handleNukeCancel(null, target);
-    target.deactivationCause = "resupply";
+    this.setDeactivationCause(target, "resupply", time);
     this.triggerStateTransition(target, 3, time);
     this.recordSnapshot(target, eventIndex);
   }
@@ -2706,7 +2739,7 @@ class Simulator {
     });
 
     this.handleNukeCancel(null, target);
-    target.deactivationCause = "other";
+    this.setDeactivationCause(target, "other", time);
     this.triggerStateTransition(target, 3, time);
     this.recordSnapshot(target, eventIndex);
   }

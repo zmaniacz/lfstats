@@ -247,15 +247,40 @@ for (const { file, path: filePath } of entries) {
     }
   }
 
+  // Invariant: uptime + resupply_downtime + other_downtime is the player's time in
+  // game — from mission start (or a later join) to mission end or elimination.
+  // A re-deactivation in state 2, or an elimination while down, must not drop the
+  // down period already elapsed. Restart-merged players span two registrations and
+  // kicked players leave without an elimination, so neither has a single window.
+  const timeViolations: string[] = [];
+  const missionStart = parsed.events.find((e) => e.type === "0100")?.time;
+  const missionEnd = parsed.events.find((e) => e.type === "0101")?.time;
+  if (missionStart !== undefined && missionEnd !== undefined) {
+    for (const [id, ps] of simResult.playerStats) {
+      if (ps.hadRestart || (ps.isEliminated && !ps.eliminatedInGame)) continue;
+      const joinTime = parsed.entities.find((e) => e.id === id)?.time ?? missionStart;
+      const start = Math.max(missionStart, joinTime);
+      const end = ps.eliminatedInGame ? ps.eliminatedAt! : missionEnd;
+      const accounted = ps.uptime + ps.resupplyDowntime + ps.otherDowntime;
+      if (accounted !== end - start) {
+        timeViolations.push(
+          `${id}: uptime ${ps.uptime} + resupply ${ps.resupplyDowntime} + other ${ps.otherDowntime} = ${accounted}, time in game ${end - start}`,
+        );
+      }
+    }
+  }
+
   const debugOut = {
     consistencyCheck: {
       passed:
         discrepancies.length === 0 &&
         eliminationViolations.length === 0 &&
-        neutralViolations.length === 0,
+        neutralViolations.length === 0 &&
+        timeViolations.length === 0,
       discrepancies,
       eliminationViolations,
       neutralViolations,
+      timeViolations,
       ghostShots,
       warnings,
     },
@@ -283,7 +308,8 @@ for (const { file, path: filePath } of entries) {
   if (
     discrepancies.length === 0 &&
     eliminationViolations.length === 0 &&
-    neutralViolations.length === 0
+    neutralViolations.length === 0 &&
+    timeViolations.length === 0
   ) {
     console.log(`PASS ${file}`);
     passes.push(file);
@@ -297,6 +323,13 @@ for (const { file, path: filePath } of entries) {
     failures.push({
       file,
       reason: JSON.stringify([...eliminationViolations, ...discrepancies], null, 2),
+    });
+    failed++;
+  } else if (timeViolations.length > 0) {
+    console.error(`FAIL [time in game] ${file}`);
+    failures.push({
+      file,
+      reason: JSON.stringify([...timeViolations, ...discrepancies], null, 2),
     });
     failed++;
   } else {
