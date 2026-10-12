@@ -159,6 +159,12 @@ export function PlayerStatsSheet({
                 <StatRow label="Other Downtime" value={formatMs(player.otherDowntime)} />
               </StatSection>
 
+              {player.steps !== null && (
+                <StatSection title="Movement">
+                  <StatRow label="Steps" value={fmt(player.steps)} />
+                </StatSection>
+              )}
+
               <StatSection title="Resupplies">
                 {(player.position === 4 || player.position === 5) && (
                   <>
