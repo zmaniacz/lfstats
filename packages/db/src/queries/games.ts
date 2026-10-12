@@ -1576,6 +1576,272 @@ export async function getGameReplayData(gameId: string): Promise<ReplayData | nu
 }
 
 // ---------------------------------------------------------------------------
+// Player Timeline
+// ---------------------------------------------------------------------------
+
+export type PlayerTimelinePoint = {
+  time: number;
+  score: number;
+  lives: number;
+  shots: number;
+  state: number;
+};
+
+export type PlayerTimelineInterval = {
+  start: number;
+  end: number;
+  kind: "down" | "resupply";
+};
+
+export type PlayerTimelineMarkerKind =
+  | "missileGiven"
+  | "missiled"
+  | "nukeActivate"
+  | "nukeDetonate"
+  | "nukedBy"
+  | "teamNuke"
+  | "baseDestroyed"
+  | "baseAward";
+
+export type PlayerTimelineMarker = {
+  time: number;
+  kind: PlayerTimelineMarkerKind;
+  // The other party involved: missile target/shooter, the nuking commander, or
+  // the base destroyed. Null for the player's own nuke events.
+  otherCallsign: string | null;
+};
+
+export type PlayerTimeline = {
+  duration: number;
+  eliminatedAt: number | null;
+  points: PlayerTimelinePoint[];
+  // Null when the game's TDF carried no step lines (matches getStepTotals).
+  steps: { time: number; total: number }[] | null;
+  intervals: PlayerTimelineInterval[];
+  markers: PlayerTimelineMarker[];
+};
+
+const TIMELINE_EVENT_TYPES = [
+  "0206", // deactivated by shot
+  "0204", // target destroyed (3rd shot)
+  "0209", // deactivated by warbot
+  "0303", // target destroyed (missile)
+  "0306", // missile hit opponent
+  "0308", // missile hit teammate
+  "0404", // nuke activate
+  "0405", // nuke detonate
+  "0500", // ammo resupply
+  "0502", // lives resupply
+  "0600", // penalty (actor is the penalised player)
+  "0B03", // base awarded on early team elimination
+] as const;
+
+// Deactivations that mark a downtime span as "other", even when they land on a
+// player who is already down (mirrors the simulator's deactivationCause).
+const OTHER_DEACTIVATION_TYPES = new Set(["0206", "0209", "0306", "0308"]);
+
+// A resupply's state_3 row can land a few ms after the 0500/0502 that caused
+// it on 2.005+ files (see chomper-design.md), so match within a small window.
+const RESUPPLY_MATCH_WINDOW_MS = 100;
+
+/**
+ * One player's activity over a game: score/lives/shots/steps series, the
+ * spans they were deactivated (split into resupply vs other downtime by the
+ * latest cause, as the simulator attributes it), and missile/nuke moments.
+ *
+ * Spans run from the first deactivation to reactivation. The scorecard's
+ * downtime totals can be lower: the simulator restarts its downtime clock when
+ * a player is re-deactivated during state 2, so the earlier part of that
+ * window is not counted anywhere.
+ */
+export async function getPlayerTimeline(
+  gameId: string,
+  scorecardId: string,
+): Promise<PlayerTimeline | null> {
+  const [scRow] = await db
+    .select({ teamId: sm5Scorecard.teamId, duration: game.actualDuration })
+    .from(sm5Scorecard)
+    .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
+    .where(and(eq(sm5Scorecard.id, scorecardId), eq(sm5Scorecard.gameId, gameId)));
+
+  if (!scRow) return null;
+
+  const actorScorecard = alias(sm5Scorecard, "actor_scorecard");
+  const targetScorecard = alias(sm5Scorecard, "target_scorecard");
+
+  const [stateRows, stepRows, anyStep, eventRows] = await Promise.all([
+    db
+      .select({
+        time: sm5GamePlayerState.time,
+        score: sm5GamePlayerState.score,
+        lives: sm5GamePlayerState.lives,
+        shots: sm5GamePlayerState.shots,
+        state: sm5GamePlayerState.state,
+        isEliminated: sm5GamePlayerState.isEliminated,
+      })
+      .from(sm5GamePlayerState)
+      .where(
+        and(eq(sm5GamePlayerState.gameId, gameId), eq(sm5GamePlayerState.scorecardId, scorecardId)),
+      )
+      .orderBy(asc(sm5GamePlayerState.time)),
+
+    db
+      .select({ time: sm5GamePlayerStep.time, total: sm5GamePlayerStep.total })
+      .from(sm5GamePlayerStep)
+      .where(
+        and(eq(sm5GamePlayerStep.gameId, gameId), eq(sm5GamePlayerStep.scorecardId, scorecardId)),
+      )
+      .orderBy(asc(sm5GamePlayerStep.time)),
+
+    db
+      .select({ id: sm5GamePlayerStep.id })
+      .from(sm5GamePlayerStep)
+      .where(eq(sm5GamePlayerStep.gameId, gameId))
+      .limit(1),
+
+    db
+      .select({
+        id: sm5GameEvent.id,
+        time: sm5GameEvent.time,
+        eventType: sm5GameEvent.eventType,
+        actorScorecardId: sm5GameEvent.actorScorecardId,
+        targetScorecardId: sm5GameEvent.targetScorecardId,
+        actorCallsign: actorScorecard.callsign,
+        actorTeamId: actorScorecard.teamId,
+        targetCallsign: targetScorecard.callsign,
+        targetName: target.name,
+      })
+      .from(sm5GameEvent)
+      .leftJoin(actorScorecard, eq(sm5GameEvent.actorScorecardId, actorScorecard.id))
+      .leftJoin(targetScorecard, eq(sm5GameEvent.targetScorecardId, targetScorecard.id))
+      .leftJoin(sm5GameTarget, eq(sm5GameEvent.targetGameTargetId, sm5GameTarget.id))
+      .leftJoin(target, eq(sm5GameTarget.targetId, target.id))
+      .where(
+        and(
+          eq(sm5GameEvent.gameId, gameId),
+          inArray(sm5GameEvent.eventType, [...TIMELINE_EVENT_TYPES]),
+        ),
+      )
+      .orderBy(asc(sm5GameEvent.time)),
+  ]);
+
+  const duration = scRow.duration;
+  const eliminatedAt = stateRows.find((s) => s.isEliminated)?.time ?? null;
+  const endTime = eliminatedAt ?? duration;
+
+  // Every non-eliminated opponent is hit by a detonation, including players
+  // already down, so an opponent 0405 before this player's elimination is a hit.
+  const isOpponentNuke = (e: (typeof eventRows)[number]) =>
+    e.eventType === "0405" &&
+    e.actorScorecardId !== scorecardId &&
+    e.actorTeamId !== null &&
+    e.actorTeamId !== scRow.teamId &&
+    e.time <= endTime;
+
+  // Events that set the cause of the current downtime span, as the simulator
+  // tracks it: a resupply (even one landing while already down) makes the span
+  // resupply downtime; a nuke or any other deactivation makes it other downtime.
+  const causes: { time: number; resupply: boolean }[] = [];
+  const resupplyTimes: number[] = [];
+  for (const e of eventRows) {
+    if ((e.eventType === "0500" || e.eventType === "0502") && e.targetScorecardId === scorecardId) {
+      resupplyTimes.push(e.time);
+      causes.push({ time: e.time, resupply: true });
+    } else if (
+      isOpponentNuke(e) ||
+      (OTHER_DEACTIVATION_TYPES.has(e.eventType) && e.targetScorecardId === scorecardId) ||
+      (e.eventType === "0600" && e.actorScorecardId === scorecardId)
+    ) {
+      causes.push({ time: e.time, resupply: false });
+    }
+  }
+  const isResupplyAt = (t: number) =>
+    resupplyTimes.some((r) => r <= t && t - r <= RESUPPLY_MATCH_WINDOW_MS);
+
+  // State 0 is active; 3 and 2 are the two halves of the deactivated window.
+  // A re-deactivation during state 2 re-enters 3 and restarts the cycle without
+  // the player ever coming back up, so the whole run is one span.
+  const spans: { start: number; end: number }[] = [];
+  let downStart: number | null = null;
+  let prevState = 0;
+  for (const s of stateRows) {
+    if (s.time > endTime) break;
+    if (s.state === 3 && prevState !== 3) {
+      if (downStart === null) downStart = s.time;
+      if (!isResupplyAt(s.time)) causes.push({ time: s.time, resupply: false });
+    } else if (s.state === 0 && downStart !== null) {
+      spans.push({ start: downStart, end: s.time });
+      downStart = null;
+    }
+    prevState = s.state;
+  }
+  if (downStart !== null) spans.push({ start: downStart, end: endTime });
+
+  causes.sort((a, b) => a.time - b.time);
+  const intervals: PlayerTimelineInterval[] = spans.map(({ start, end }) => {
+    let resupply = false;
+    for (const c of causes) {
+      if (c.time >= end) break;
+      if (c.time >= start - RESUPPLY_MATCH_WINDOW_MS) resupply = c.resupply;
+    }
+    return { start, end, kind: resupply ? "resupply" : "down" };
+  });
+
+  const markers: PlayerTimelineMarker[] = [];
+  for (const e of eventRows) {
+    const isActor = e.actorScorecardId === scorecardId;
+    switch (e.eventType) {
+      case "0306":
+      case "0308":
+        if (isActor) {
+          markers.push({ time: e.time, kind: "missileGiven", otherCallsign: e.targetCallsign });
+        } else if (e.targetScorecardId === scorecardId) {
+          markers.push({ time: e.time, kind: "missiled", otherCallsign: e.actorCallsign });
+        }
+        break;
+      case "0204":
+      case "0303":
+        if (isActor) {
+          markers.push({ time: e.time, kind: "baseDestroyed", otherCallsign: e.targetName });
+        }
+        break;
+      case "0B03":
+        if (isActor) {
+          markers.push({ time: e.time, kind: "baseAward", otherCallsign: e.targetName });
+        }
+        break;
+      case "0404":
+        if (isActor) markers.push({ time: e.time, kind: "nukeActivate", otherCallsign: null });
+        break;
+      case "0405":
+        if (isActor) {
+          markers.push({ time: e.time, kind: "nukeDetonate", otherCallsign: null });
+        } else if (e.actorTeamId === scRow.teamId) {
+          markers.push({ time: e.time, kind: "teamNuke", otherCallsign: e.actorCallsign });
+        } else if (isOpponentNuke(e)) {
+          markers.push({ time: e.time, kind: "nukedBy", otherCallsign: e.actorCallsign });
+        }
+        break;
+    }
+  }
+
+  return {
+    duration,
+    eliminatedAt,
+    points: stateRows.map((s) => ({
+      time: s.time,
+      score: s.score,
+      lives: s.lives,
+      shots: s.shots,
+      state: s.state,
+    })),
+    steps: anyStep.length === 0 ? null : stepRows,
+    intervals,
+    markers,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Game Momentum
 // ---------------------------------------------------------------------------
 
