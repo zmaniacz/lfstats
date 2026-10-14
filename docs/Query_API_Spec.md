@@ -1211,6 +1211,16 @@ MCP client ── POST /oauth/token (code + PKCE verifier) ───► access +
   cascades to their tokens.
 - **Rate limit:** per user at the default limits (60/minute, 2,000/day), shared across all of
   their clients.
+- **Seeing and revoking grants.** A _grant_ is one token family: the consent that started it and
+  every refresh since. It is active while one of its tokens is unrevoked with an unexpired refresh
+  token. Signed-in users see their own active grants at `/account/connected-apps` (linked from the
+  user menu and the consent page): client name, where it returns to (from its registered redirect
+  URIs), when it was first authorized and when it last called `/mcp`. Revoke revokes the whole
+  family, so the client loses its access token and can't refresh; reconnecting means consenting
+  again. SuperAdmins see every user's active grants in the "OAuth Grants" section of
+  `/admin/api-keys` and can revoke any of them. Queries: `listUserOAuthGrants`,
+  `listAllOAuthGrants`, `revokeOAuthGrant(familyId, userId?)`; the user-facing action passes the
+  session's user id, so it can't touch anyone else's grant.
 - **Issuer:** the origin of `AUTH_URL` (`https://lfstats.com` in production), else the request
   host. The MCP resource is `<issuer>/mcp`.
 

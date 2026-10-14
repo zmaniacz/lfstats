@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { describeRedirect } from "@/lib/oauth/describe-redirect";
 import { siteOrigin, validateAuthorizeRequest } from "@/lib/oauth/server";
 
 export const metadata: Metadata = { title: "Connect an app" };
@@ -35,14 +37,6 @@ const AUTHORIZE_PARAMS = [
   "state",
   "resource",
 ] as const;
-
-/** Where the user is sent back to, in words. A client's name is self-asserted; this isn't. */
-function describeRedirect(redirectUri: string): string {
-  const url = new URL(redirectUri);
-  if (url.protocol === "https:") return url.hostname;
-  if (url.protocol === "http:") return "an app on this computer";
-  return `the ${url.protocol.slice(0, -1)} app`;
-}
 
 function Shell({ children }: { children: React.ReactNode }) {
   return <div className="flex justify-center p-6">{children}</div>;
@@ -121,7 +115,11 @@ export default async function AuthorizePage({
           </p>
           <p className="text-muted-foreground">
             You&apos;ll be returned to {describeRedirect(redirectUri)}. Only allow apps you started
-            connecting yourself.
+            connecting yourself. You can disconnect it any time from{" "}
+            <Link href="/account/connected-apps" className="underline">
+              Connected apps
+            </Link>
+            .
           </p>
         </CardContent>
         <CardFooter>

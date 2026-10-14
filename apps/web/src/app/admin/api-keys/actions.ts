@@ -3,11 +3,18 @@
 
 "use server";
 
-import { API_KEY_SCOPES, createApiKey, revokeApiKey, type ApiKeyScope } from "@lfstats/db";
+import {
+  API_KEY_SCOPES,
+  createApiKey,
+  revokeApiKey,
+  revokeOAuthGrant,
+  type ApiKeyScope,
+} from "@lfstats/db";
 import { refresh, revalidatePath } from "next/cache";
+import type { RevokeGrantResult } from "@/components/account/OAuthGrantsTable";
 import { requireSuperAdmin } from "@/lib/auth-guards";
 
-// API keys grant access across every center, so both actions below are
+// API keys grant access across every center, so every action below is
 // superAdmin-only. These checks are the real boundary: a Server Action is an
 // independently invocable POST endpoint, reachable whether or not the caller
 // can render the page that normally triggers it.
@@ -40,4 +47,13 @@ export async function revokeApiKeyAction(id: string): Promise<void> {
   await revokeApiKey(id);
   revalidatePath("/admin/api-keys");
   refresh();
+}
+
+/** Revokes any user's OAuth grant (a whole token family). */
+export async function revokeOAuthGrantAction(familyId: string): Promise<RevokeGrantResult> {
+  await requireSuperAdmin();
+  const revoked = await revokeOAuthGrant(familyId);
+  revalidatePath("/admin/api-keys");
+  refresh();
+  return revoked ? { ok: true } : { ok: false, error: "That grant was already revoked." };
 }

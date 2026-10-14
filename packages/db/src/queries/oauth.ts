@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, max, min, or, sql } from "drizzle-orm";
 import { db } from "../client";
 import { safeEqual, sha256Hex, type OAuthScope, type TokenEndpointAuthMethod } from "../lib/oauth";
 import { authUser, oauthAuthorizationCode, oauthClient, oauthToken } from "../schema";
@@ -229,6 +229,87 @@ async function revokeTokenFamily(familyId: string): Promise<void> {
     .update(oauthToken)
     .set({ revokedAt: new Date() })
     .where(and(eq(oauthToken.familyId, familyId), isNull(oauthToken.revokedAt)));
+}
+
+/**
+ * One authorization a user gave a client: a token family, from the consent that started it
+ * through every refresh since. It is active while some token in it is unrevoked and its
+ * refresh token unexpired (rotation leaves exactly one such row).
+ */
+export type OAuthGrantListing = {
+  familyId: string;
+  clientId: string;
+  clientName: string | null;
+  redirectUris: string[];
+  userId: string;
+  userEmail: string;
+  authorizedAt: Date;
+  lastUsedAt: Date | null;
+};
+
+async function listActiveGrants(userId: string | null): Promise<OAuthGrantListing[]> {
+  const rows = await db
+    .select({
+      familyId: oauthToken.familyId,
+      clientId: oauthToken.clientId,
+      clientName: oauthClient.clientName,
+      redirectUris: oauthClient.redirectUris,
+      userId: oauthToken.userId,
+      userEmail: authUser.email,
+      authorizedAt: min(oauthToken.createdAt),
+      lastUsedAt: max(oauthToken.lastUsedAt),
+    })
+    .from(oauthToken)
+    .innerJoin(oauthClient, eq(oauthClient.id, oauthToken.clientId))
+    .innerJoin(authUser, eq(authUser.id, oauthToken.userId))
+    .where(userId === null ? undefined : eq(oauthToken.userId, userId))
+    .groupBy(
+      oauthToken.familyId,
+      oauthToken.clientId,
+      oauthToken.userId,
+      oauthClient.id,
+      authUser.id,
+    )
+    // Compared against a bound Date, like every other expiry check here, not now(): the
+    // column is a plain timestamp and now() would shift with the session time zone.
+    .having(
+      sql`bool_or(${and(isNull(oauthToken.revokedAt), gt(oauthToken.refreshExpiresAt, new Date()))})`,
+    )
+    .orderBy(desc(min(oauthToken.createdAt)));
+  // min() over a non-empty group is never null; the type just can't know the group is non-empty.
+  return rows.flatMap((r) => (r.authorizedAt ? [{ ...r, authorizedAt: r.authorizedAt }] : []));
+}
+
+/** The signed-in user's active grants, for /account/connected-apps. */
+export function listUserOAuthGrants(userId: string): Promise<OAuthGrantListing[]> {
+  return listActiveGrants(userId);
+}
+
+/** Every user's active grants, for the superAdmin /admin/api-keys page. */
+export function listAllOAuthGrants(): Promise<OAuthGrantListing[]> {
+  return listActiveGrants(null);
+}
+
+/**
+ * Revokes a whole token family, so the client loses both its access token and its ability
+ * to refresh. With `userId`, only that user's family is touched. Returns whether anything
+ * was still live to revoke.
+ */
+export async function revokeOAuthGrant(familyId: string, userId?: string): Promise<boolean> {
+  // familyId comes from a form post; a non-UUID would be a Postgres cast error.
+  if (!UUID_RE.test(familyId)) return false;
+  const revoked = await db
+    .update(oauthToken)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(oauthToken.familyId, familyId),
+        isNull(oauthToken.revokedAt),
+        userId === undefined ? undefined : eq(oauthToken.userId, userId),
+      ),
+    )
+    .returning({ id: oauthToken.id });
+  return revoked.length > 0;
 }
 
 /**
