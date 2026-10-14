@@ -3,6 +3,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -14,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { SignInIcon, SignOutIcon } from "@phosphor-icons/react";
+import { PlugsConnectedIcon, SignInIcon, SignOutIcon } from "@phosphor-icons/react";
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -69,6 +70,12 @@ export function NavUser() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/account/connected-apps">
+                    <PlugsConnectedIcon className="size-4" />
+                    Connected apps
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => signOut()}>
                   <SignOutIcon className="size-4" />
                   Sign out

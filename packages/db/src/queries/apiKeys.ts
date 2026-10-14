@@ -107,8 +107,10 @@ export async function revokeApiKey(id: string): Promise<void> {
   await db.update(apiKey).set({ revokedAt: new Date() }).where(eq(apiKey.id, id));
 }
 
-export type ApiRequestLogEntry = {
-  apiKeyId: string;
+/** Who made a logged request: an API key, or a user through an OAuth client. */
+export type ApiRequestPrincipal = { apiKeyId: string } | { userId: string; oauthClientId: string };
+
+export type ApiRequestLogEntry = ApiRequestPrincipal & {
   endpoint: string;
   status: number;
   durationMs: number;
@@ -118,7 +120,9 @@ export type ApiRequestLogEntry = {
 
 export async function logApiRequest(entry: ApiRequestLogEntry): Promise<void> {
   await db.insert(apiRequestLog).values({
-    apiKeyId: entry.apiKeyId,
+    apiKeyId: "apiKeyId" in entry ? entry.apiKeyId : null,
+    userId: "userId" in entry ? entry.userId : null,
+    oauthClientId: "oauthClientId" in entry ? entry.oauthClientId : null,
     endpoint: entry.endpoint,
     status: entry.status,
     durationMs: entry.durationMs,
