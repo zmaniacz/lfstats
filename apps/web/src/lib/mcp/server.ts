@@ -10,7 +10,7 @@ import {
   ReadResourceRequestSchema,
   type CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { logApiRequest, type AuthenticatedApiKey } from "@lfstats/db";
+import { logApiRequest } from "@lfstats/db";
 import {
   fromZodError,
   mapDatabaseError,
@@ -23,13 +23,15 @@ import {
   toolInputSchema,
   withAnalyticsSlot,
 } from "@lfstats/db/analytics";
-import { authorizeQueryRequest } from "@/lib/query-api/handler";
+import { authorizeMcpRequest, type McpPrincipal } from "@/lib/query-api/handler";
+import { protectedResourceMetadataUrl, siteOrigin } from "@/lib/oauth/server";
 
 // The LFstats MCP server (docs/Query_API_Spec.md "MCP server"), served over Streamable HTTP
 // at /mcp. Stateless: every HTTP request gets a fresh server and transport, so nothing is
 // held in memory between requests and any web process can serve any request.
 //
-// The API key and rate limit apply per HTTP request, exactly as for /api/query/v1. Tool
+// The credential (an API key or an OAuth access token) and the rate limit apply per HTTP
+// request, exactly as for /api/query/v1. Tool
 // calls then go through the same validation, concurrency slot, error shape and request log
 // as the HTTP endpoints, so the two surfaces cannot drift apart.
 
@@ -41,7 +43,7 @@ function toolResult(body: unknown, isError = false): CallToolResult {
 }
 
 async function callTool(
-  key: AuthenticatedApiKey,
+  principal: McpPrincipal,
   name: string,
   args: unknown,
 ): Promise<CallToolResult> {
@@ -73,7 +75,7 @@ async function callTool(
     return toolResult({ error: error.toBody() }, true);
   } finally {
     logApiRequest({
-      apiKeyId: key.id,
+      ...principal.log,
       endpoint: `mcp:${name}`,
       status,
       durationMs: Math.round(performance.now() - started),
@@ -83,7 +85,7 @@ async function callTool(
   }
 }
 
-function buildServer(key: AuthenticatedApiKey): Server {
+function buildServer(principal: McpPrincipal): Server {
   const server = new Server(
     { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
     { capabilities: { tools: {}, resources: {} }, instructions: MCP_INSTRUCTIONS },
@@ -100,7 +102,7 @@ function buildServer(key: AuthenticatedApiKey): Server {
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (req) =>
-    callTool(key, req.params.name, req.params.arguments),
+    callTool(principal, req.params.name, req.params.arguments),
   );
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
@@ -127,10 +129,26 @@ function buildServer(key: AuthenticatedApiKey): Server {
   return server;
 }
 
+/**
+ * RFC 9728 §5.1: a 401 names the protected resource metadata, which is how an MCP client
+ * discovers the OAuth server and starts sign-in. API-key clients ignore it.
+ */
+async function wwwAuthenticate(error: QueryApiError): Promise<string> {
+  const params = [
+    'realm="lfstats"',
+    `resource_metadata="${protectedResourceMetadataUrl(await siteOrigin())}"`,
+    'scope="query:read"',
+  ];
+  // RFC 6750 §3.1. A missing credential carries no error code.
+  if (error.code === "invalid_api_key") params.push('error="invalid_token"');
+  if (error.code === "insufficient_scope") params.push('error="insufficient_scope"');
+  return `Bearer ${params.join(", ")}`;
+}
+
 export async function handleMcpRequest(request: Request): Promise<Response> {
-  let key: AuthenticatedApiKey;
+  let principal: McpPrincipal;
   try {
-    key = await authorizeQueryRequest(request);
+    principal = await authorizeMcpRequest(request);
   } catch (err) {
     const error =
       err instanceof QueryApiError
@@ -138,14 +156,16 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
         : new QueryApiError("invalid_request", "The request could not be authorized.");
     if (!(err instanceof QueryApiError)) console.error("[mcp] authorization failed", err);
     const headers: Record<string, string> = {};
-    if (error.status === 401) headers["WWW-Authenticate"] = 'Bearer realm="lfstats"';
+    if (error.status === 401 || error.status === 403) {
+      headers["WWW-Authenticate"] = await wwwAuthenticate(error);
+    }
     if (error.retryAfterSeconds !== undefined) {
       headers["Retry-After"] = String(error.retryAfterSeconds);
     }
     return Response.json({ error: error.toBody() }, { status: error.status, headers });
   }
 
-  const server = buildServer(key);
+  const server = buildServer(principal);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

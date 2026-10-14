@@ -3,6 +3,7 @@
 
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   foreignKey,
@@ -18,6 +19,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -1361,14 +1363,19 @@ export const apiKey = pgTable("api_key", {
 /**
  * One row per query API request, so a misbehaving client can be identified and its key
  * revoked. Written after the response is computed, never on the request's critical path.
+ *
+ * A request is made either with an API key (`api_key_id`) or with an OAuth access token
+ * on /mcp (`user_id` + `oauth_client_id`).
  */
 export const apiRequestLog = pgTable(
   "api_request_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    apiKeyId: uuid("api_key_id")
-      .notNull()
-      .references(() => apiKey.id, { onDelete: "cascade" }),
+    apiKeyId: uuid("api_key_id").references(() => apiKey.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => authUser.id, { onDelete: "cascade" }),
+    oauthClientId: uuid("oauth_client_id").references(() => oauthClient.id, {
+      onDelete: "set null",
+    }),
     endpoint: text("endpoint").notNull(),
     status: integer("status").notNull(),
     durationMs: integer("duration_ms").notNull(),
@@ -1376,7 +1383,90 @@ export const apiRequestLog = pgTable(
     errorCode: text("error_code"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("api_request_log_key_created_idx").on(t.apiKeyId, t.createdAt)],
+  (t) => [
+    index("api_request_log_key_created_idx").on(t.apiKeyId, t.createdAt),
+    index("api_request_log_user_created_idx").on(t.userId, t.createdAt),
+    check(
+      "api_request_log_principal_check",
+      sql`${t.apiKeyId} IS NOT NULL OR ${t.userId} IS NOT NULL`,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// OAuth 2.1 for the MCP server (docs/Query_API_Spec.md "OAuth")
+//
+// LFstats is its own authorization server: users authenticate with the site's existing
+// Google sign-in, and MCP clients get LFstats-issued tokens. Every token, code and client
+// secret is stored as a SHA-256 hash only (see queries/oauth.ts).
+// ---------------------------------------------------------------------------
+
+/** A client registered through Dynamic Client Registration (RFC 7591). */
+export const oauthClient = pgTable("oauth_client", {
+  // The client_id handed to the client.
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientName: text("client_name"),
+  clientUri: text("client_uri"),
+  // Exact-match list; a redirect_uri not in it is refused without redirecting.
+  redirectUris: text("redirect_uris").array().notNull(),
+  // "none" (public client, PKCE only), "client_secret_post" or "client_secret_basic".
+  tokenEndpointAuthMethod: text("token_endpoint_auth_method").notNull(),
+  clientSecretHash: text("client_secret_hash"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/** A single-use authorization code. Deleted when redeemed. */
+export const oauthAuthorizationCode = pgTable(
+  "oauth_authorization_code",
+  {
+    codeHash: text("code_hash").primaryKey(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => oauthClient.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    // PKCE S256 challenge.
+    codeChallenge: text("code_challenge").notNull(),
+    scopes: text("scopes").array().$type<ApiKeyScope[]>().notNull(),
+    // RFC 8707 resource indicator the resulting token is bound to (the /mcp URL).
+    resource: text("resource").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (t) => [index("oauth_authorization_code_expires_idx").on(t.expiresAt)],
+);
+
+/**
+ * An access token and its refresh token. Refreshing rotates both: the old row is revoked
+ * and a new one is issued in the same family. Presenting an already-rotated refresh token
+ * means it leaked, so the whole family is revoked.
+ */
+export const oauthToken = pgTable(
+  "oauth_token",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id").notNull(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => oauthClient.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    accessTokenHash: text("access_token_hash").notNull().unique(),
+    refreshTokenHash: text("refresh_token_hash").notNull().unique(),
+    scopes: text("scopes").array().$type<ApiKeyScope[]>().notNull(),
+    resource: text("resource").notNull(),
+    accessExpiresAt: timestamp("access_expires_at").notNull(),
+    refreshExpiresAt: timestamp("refresh_expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at"),
+    lastUsedAt: timestamp("last_used_at"),
+  },
+  (t) => [
+    index("oauth_token_family_idx").on(t.familyId),
+    index("oauth_token_user_idx").on(t.userId),
+  ],
 );
 
 // ---------------------------------------------------------------------------

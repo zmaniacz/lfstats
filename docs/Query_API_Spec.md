@@ -2,7 +2,7 @@
 
 **Status:** Draft — not yet implemented  
 **Audience:** implementers of the query API and the LFstats MCP server  
-**Last Updated:** 2026-10
+**Last Updated:** 2026-10-14
 
 ---
 
@@ -124,8 +124,8 @@ These follow [API.md](API.md#conventions-for-new-routes) unless stated otherwise
   them explicitly. `NextResponse.json` adds a misleading `Z` to `Date` values, as noted in API.md.
 - **Numbers:** averages are returned unrounded as JSON numbers. Rounding is a presentation choice.
   Rates (`win_rate`, `accuracy`, `uptime_pct`) are fractions in `[0, 1]`, not percentages.
-- **Auth: an API key is required on every request**, including `GET /catalog` and the `/mcp`
-  endpoint. This deliberately departs from the unauthenticated public routes in API.md: these
+- **Auth: an API key is required on every request**, including `GET /catalog`. The `/mcp`
+  endpoint takes either an API key or an OAuth access token (see [OAuth](#oauth)). This deliberately departs from the unauthenticated public routes in API.md: these
   endpoints run arbitrary-scope aggregates and are the easiest way to put load on the server. Keys
   use the existing `api_key` table and the `/admin/api-keys` page, sent the same way as for
   `POST /api/videos`:
@@ -1113,8 +1113,8 @@ booleans, where the HTTP route takes the slug in the path and flags in the query
 
 Every tool is annotated `readOnlyHint: true`, `openWorldHint: false`.
 
-The `/mcp` endpoint requires the same `Authorization: Bearer lfs_…` header with a `query:read`
-key. MCP clients send it as a configured header. OAuth for MCP is out of scope for v1.
+The `/mcp` endpoint takes either the same `Authorization: Bearer lfs_…` header with a `query:read`
+key, sent by the client as a configured header, or an OAuth access token (see [OAuth](#oauth)).
 
 **Transport.** Streamable HTTP in **stateless JSON mode** (`WebStandardStreamableHTTPServerTransport`,
 no session id, `enableJsonResponse`). Every HTTP request gets a fresh server, so nothing is held in
@@ -1123,14 +1123,16 @@ streams or sessions to close.
 
 **Shared behaviour with the HTTP API.**
 
-- The key check and rate limit apply per HTTP request. That includes protocol messages
+- The credential check and rate limit apply per HTTP request. That includes protocol messages
   (`initialize`, `tools/list`), so a client session costs a few requests before its first tool
   call.
-- Missing, bad or revoked keys get a plain `401` JSON error with `WWW-Authenticate: Bearer`, not a
-  JSON-RPC error.
+- A missing, bad or revoked key or token gets a plain `401` JSON error, not a JSON-RPC error. Its
+  `WWW-Authenticate: Bearer` header carries `resource_metadata`, which is how an OAuth client
+  finds the authorization server, plus `error="invalid_token"` when a credential was sent.
 - Each tool call is validated with the same zod schema and `fromZodError` messages.
 - Each tool call runs in the same concurrency slot.
-- Each tool call is logged to `api_request_log` as `mcp:<tool name>`.
+- Each tool call is logged to `api_request_log` as `mcp:<tool name>`, against the API key, or
+  against the user and OAuth client.
 - A failed call returns `isError: true` with the same `{ "error": { … } }` body as the HTTP API,
   including `ambiguous_player` candidates.
 - Results are compact JSON text, `{ data, meta }`.
@@ -1152,6 +1154,65 @@ The text is `MCP_INSTRUCTIONS` in `tools.ts`. In summary:
 
 The MCP server also exposes `lfstats://docs/metrics`, which is the catalog rendered as Markdown. A
 client can attach it as context without spending a tool call.
+
+### OAuth
+
+Added 2026-10-14 so people can connect MCP clients (Claude, ChatGPT, VS Code, Cursor…) by signing
+in, without an admin issuing them an API key.
+
+**Who gets access.** Anyone with an LFstats account, meaning anyone who has signed in to the site
+with Google, can authorize a client with `query:read`. That is the only scope; roles play no part.
+API keys keep working on `/mcp` alongside OAuth.
+
+**Shape.** LFstats is its own OAuth 2.1 authorization server and issues its own tokens. Google is
+only how the user signs in, through the site's existing Auth.js login. Google tokens are never
+passed to MCP clients: Google does not support dynamic client registration, and its tokens are not
+issued for `/mcp`.
+
+```
+MCP client ── POST /mcp ──────────────────────────────► 401 + WWW-Authenticate resource_metadata
+           ── GET /.well-known/oauth-protected-resource/mcp ──► authorization_servers: [origin]
+           ── GET /.well-known/oauth-authorization-server ────► endpoints
+           ── POST /oauth/register ───────────────────────────► client_id (DCR, RFC 7591)
+browser    ── GET /oauth/authorize ── Google sign-in (Auth.js) if needed ── consent page
+           ── POST /oauth/authorize/decision ── 303 ─► redirect_uri?code=…&state=…&iss=…
+MCP client ── POST /oauth/token (code + PKCE verifier) ───► access + refresh token
+           ── POST /mcp  Authorization: Bearer lfo_at_… ──► tools
+```
+
+| Endpoint                                                   | Spec                                  |
+| ---------------------------------------------------------- | ------------------------------------- |
+| `GET /.well-known/oauth-protected-resource/mcp` (and bare) | RFC 9728                              |
+| `GET /.well-known/oauth-authorization-server`              | RFC 8414                              |
+| `POST /oauth/register`                                     | RFC 7591                              |
+| `GET /oauth/authorize` (page) → `POST …/decision`          | OAuth 2.1, PKCE `S256`                |
+| `POST /oauth/token`                                        | `authorization_code`, `refresh_token` |
+| `POST /oauth/revoke`                                       | RFC 7009                              |
+
+**Rules.**
+
+- **PKCE `S256` is required**; `plain` and missing challenges are refused.
+- **Redirect URIs** must be registered and match exactly. Allowed: `https`, `http` on a loopback
+  host, and private-use app schemes (`cursor://…`). An unknown client or redirect URI is shown on
+  the page, never redirected to.
+- **Clients** register as public (`none`) or confidential (`client_secret_post` /
+  `client_secret_basic`; the RFC 7591 default). Registration is open but rate limited per IP
+  (10/minute, 100/day). Registering grants nothing on its own.
+- **Consent every time.** The consent page names the client (self-asserted) and where the user
+  will be returned to (not self-asserted). It cannot be framed. The decision POST checks `Origin`
+  and the session, and validates the whole request again.
+- **Tokens are bound to the `/mcp` resource** (RFC 8707). They are refused by `/api/query/v1`,
+  which stays API-key only.
+- **Lifetimes:** codes 10 minutes and single-use, access tokens 1 hour, refresh tokens 30 days.
+  Each refresh rotates both tokens. Presenting an already-rotated refresh token revokes the whole
+  token family.
+- **Storage:** `oauth_client`, `oauth_authorization_code`, `oauth_token`. Codes, tokens and client
+  secrets are stored as SHA-256 hashes only (`packages/db/src/queries/oauth.ts`). Deleting a user
+  cascades to their tokens.
+- **Rate limit:** per user at the default limits (60/minute, 2,000/day), shared across all of
+  their clients.
+- **Issuer:** the origin of `AUTH_URL` (`https://lfstats.com` in production), else the request
+  host. The MCP resource is `<issuer>/mcp`.
 
 ---
 
@@ -1289,7 +1350,8 @@ against the live database cover the rest.
 
 Settled 2026-10-04:
 
-- **API key required** for every query endpoint and `/mcp`. No anonymous access.
+- **API key required** for every query endpoint and `/mcp`. No anonymous access. (2026-10-14:
+  `/mcp` also accepts OAuth tokens from any signed-in user; see [OAuth](#oauth).)
 - **`min_games` defaults to 10** and is overridable. `qualify` covers eligibility over a different
   scope ("at least 20 games in the last year").
 - **The baseline excludes the requested players.**

@@ -23,6 +23,19 @@ const config = (phase: string): NextConfig => {
         },
       ],
     },
+    // The OAuth consent page must not be framed, or a page could overlay it and trick a
+    // signed-in user into clicking Allow.
+    async headers() {
+      return [
+        {
+          source: "/oauth/:path*",
+          headers: [
+            { key: "X-Frame-Options", value: "DENY" },
+            { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          ],
+        },
+      ];
+    },
     // Old competition route tree → merged root pages. Unmatched query params
     // (e.g. ?competition=slug) are preserved automatically by Next.
     async redirects() {

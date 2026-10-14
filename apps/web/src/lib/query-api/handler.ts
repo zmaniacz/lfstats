@@ -3,7 +3,15 @@
 
 import { NextResponse } from "next/server";
 import type { z } from "zod";
-import { authenticateApiKey, logApiRequest, type AuthenticatedApiKey } from "@lfstats/db";
+import {
+  authenticateApiKey,
+  authenticateOAuthAccessToken,
+  logApiRequest,
+  OAUTH_ACCESS_TOKEN_PREFIX,
+  sameResource,
+  type ApiRequestPrincipal,
+  type AuthenticatedApiKey,
+} from "@lfstats/db";
 import {
   fromZodError,
   mapDatabaseError,
@@ -12,8 +20,9 @@ import {
   rateLimitsFor,
   withAnalyticsSlot,
 } from "@lfstats/db/analytics";
+import { mcpResourceUrl, siteOrigin } from "@/lib/oauth/server";
 
-// Shared request pipeline for every /api/query/v1 route and, later, the /mcp endpoint
+// Shared request pipeline for every /api/query/v1 route and the /mcp endpoint
 // (docs/Query_API_Spec.md): API key → scope check → rate limit → body validation →
 // concurrency slot → handler → request log. Routes only supply a schema and a handler.
 
@@ -56,14 +65,49 @@ function enforceRateLimit(key: AuthenticatedApiKey): void {
   }
 }
 
+/** Who an authorized /mcp request runs as: an API key, or a user via an OAuth client. */
+export type McpPrincipal = { label: string; log: ApiRequestPrincipal };
+
 /**
- * Authenticates a query API request and applies its rate limit. Throws QueryApiError.
- * Exported so the MCP transport can reuse it without the JSON envelope.
+ * Authenticates an /mcp request and applies its rate limit. Throws QueryApiError.
+ *
+ * /mcp accepts an `lfs_` API key, exactly like /api/query/v1, or an OAuth access token
+ * (docs/Query_API_Spec.md "OAuth"). OAuth tokens are bound to the /mcp resource, so they
+ * are deliberately not accepted by the HTTP query routes.
  */
-export async function authorizeQueryRequest(request: Request): Promise<AuthenticatedApiKey> {
-  const key = await authenticateQueryKey(request);
-  enforceRateLimit(key);
-  return key;
+export async function authorizeMcpRequest(request: Request): Promise<McpPrincipal> {
+  const token = bearerToken(request);
+  if (!token?.startsWith(OAUTH_ACCESS_TOKEN_PREFIX)) {
+    const key = await authenticateQueryKey(request);
+    enforceRateLimit(key);
+    return { label: `api_key:${key.id}`, log: { apiKeyId: key.id } };
+  }
+
+  const grant = await authenticateOAuthAccessToken(token);
+  if (!grant) {
+    throw new QueryApiError("invalid_api_key", "The access token is invalid, expired or revoked.");
+  }
+  if (!sameResource(grant.resource, mcpResourceUrl(await siteOrigin()))) {
+    throw new QueryApiError("invalid_api_key", "The access token was not issued for this server.");
+  }
+  if (!grant.scopes.includes("query:read")) {
+    throw new QueryApiError(
+      "insufficient_scope",
+      "This access token does not have the query:read scope.",
+    );
+  }
+  // One bucket per user, whichever client they connect with, at the default limits.
+  const bucket = `user:${grant.userId}`;
+  const limit = rateLimiter.check(
+    bucket,
+    rateLimitsFor({ rateLimitPerMinute: null, rateLimitPerDay: null }),
+  );
+  if (!limit.ok) {
+    throw new QueryApiError("rate_limited", "Rate limit exceeded for this account.", {
+      retryAfterSeconds: limit.retryAfterSeconds,
+    });
+  }
+  return { label: bucket, log: { userId: grant.userId, oauthClientId: grant.clientId } };
 }
 
 export type QueryHandlerResult = {
