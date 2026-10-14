@@ -1221,6 +1221,10 @@ MCP client ── POST /oauth/token (code + PKCE verifier) ───► access +
   `/admin/api-keys` and can revoke any of them. Queries: `listUserOAuthGrants`,
   `listAllOAuthGrants`, `revokeOAuthGrant(familyId, userId?)`; the user-facing action passes the
   session's user id, so it can't touch anyone else's grant.
+- **Setup guide.** `/account/connected-apps` also shows the server URL (from `siteOrigin()`)
+  with a copy button, and short per-client steps: Claude, ChatGPT and Gemini, plus config for
+  Claude Code, VS Code, Cursor and Gemini CLI (`McpSetupGuide.tsx`). Client menus change often,
+  so keep each entry brief and link the vendor's help page for the chat apps.
 - **Issuer:** the origin of `AUTH_URL` (`https://lfstats.com` in production), else the request
   host. The MCP resource is `<issuer>/mcp`.
 

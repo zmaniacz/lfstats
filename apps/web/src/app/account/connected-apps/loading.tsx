@@ -10,6 +10,17 @@ export default function ConnectedAppsLoading() {
       <Skeleton className="h-8 w-52" />
       <Card>
         <CardHeader className="space-y-2">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-full max-w-2xl" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-8 w-full max-w-xl" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="space-y-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-4 w-full max-w-lg" />
         </CardHeader>
