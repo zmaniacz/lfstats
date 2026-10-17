@@ -13,6 +13,7 @@ import { GameMomentumTab } from "@/components/games/GameMomentumTab";
 import { GameTagManager } from "@/components/games/GameTagManager";
 import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
 import { MarkReplayButton } from "@/components/games/MarkReplayButton";
+import { PdfGameDetail } from "@/components/sm5-pdf/PdfGameDetail";
 import { ReplayTab } from "@/components/games/ReplayTab";
 import { TeamPenaltyManager } from "@/components/games/TeamPenaltyManager";
 import { TeamStatsTable } from "@/components/games/TeamStatsTable";
@@ -33,6 +34,7 @@ import {
   getGamePenalties,
   getGameTeamPenalties,
   getGameVideos,
+  getPdfGameDetailBySlug,
   getTagsByCenter,
   isFavorite,
 } from "@lfstats/db";
@@ -66,6 +68,8 @@ import {
 } from "./actions";
 
 const getGame = cache(getGameDetailBySlug);
+// Legacy PDF-era games share the URL space; they are looked up only when no TDF game matches.
+const getPdfGame = cache(getPdfGameDetailBySlug);
 const getMatchAssignment = cache(getGameMatchAssignment);
 
 export async function generateMetadata({
@@ -75,7 +79,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const game = await getGame(slug);
-  if (!game) return { title: "Game Not Found" };
+  if (!game) {
+    const pdfGame = await getPdfGame(slug);
+    return {
+      title: pdfGame
+        ? `${formatGameName(pdfGame.description, pdfGame.startTime)} – ${pdfGame.centerName}`
+        : "Game Not Found",
+    };
+  }
 
   const matchAssignment = await getMatchAssignment(game.id);
   const title = matchAssignment
@@ -89,7 +100,11 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const [game, session, cookieStore] = await Promise.all([getGame(slug), auth(), cookies()]);
 
-  if (!game) notFound();
+  if (!game) {
+    const pdfGame = await getPdfGame(slug);
+    if (!pdfGame) notFound();
+    return <PdfGameDetail game={pdfGame} />;
+  }
 
   const roles = session?.user.roles ?? [];
   const canDelete = roles.some(

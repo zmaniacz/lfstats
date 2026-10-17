@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { isSyntheticIplId } from "../lib/synthetic-ipl-id";
 import { db } from "../client";
 import {
   player,
@@ -37,7 +38,8 @@ export type PositionAvgMvp = {
 };
 
 export async function getPlayerByIplId(iplId: string): Promise<PlayerDetail | null> {
-  const normalized = iplId.startsWith("#") ? iplId : `#${iplId}`;
+  // Synthetic `L-…` ids (legacy PDF-era players) carry no `#`.
+  const normalized = iplId.startsWith("#") || isSyntheticIplId(iplId) ? iplId : `#${iplId}`;
   const [row] = await db
     .select({
       id: player.id,

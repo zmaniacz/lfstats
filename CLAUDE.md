@@ -37,6 +37,7 @@ The specs live in /docs — see [docs/README.md](docs/README.md) for the full in
 - Laserball_Scorecard_Table_Spec.md — per-stat definitions for the lb_scorecard table
 - Competition_Structure.md — competition/tournament tables, standings, mercenary rules
 - Legacy_Migration_TDF_Events.md — the completed (closed) migration of TDF-based legacy events
+- Legacy_Migration_PDF_Games.md — pre-TDF games from PDF scorecards: sm5_pdf_* tables, synthetic players
 - Player_Rating.md — the global player ranking: model, why MVP is excluded, schema, recompute
 - SM5-penalty-definitions.md — penalty types and their default score/MVP impact
 

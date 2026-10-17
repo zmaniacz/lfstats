@@ -8,17 +8,26 @@ import { ExternalLink } from "lucide-react";
 import {
   getPlayerByIplId,
   getPlayerCallsignHistory,
+  getPlayerPdfGames,
   getPlayerVideos,
   isPlayerFavorite,
+  isSyntheticIplId,
 } from "@lfstats/db";
 import { auth } from "@/auth";
 import { FavoriteButton } from "@/components/players/FavoriteButton";
-import { addFavoritePlayerAction, removeFavoritePlayerAction } from "./actions";
+import {
+  addFavoritePlayerAction,
+  mergeSyntheticPlayerAction,
+  removeFavoritePlayerAction,
+  searchMergeTargetsAction,
+} from "./actions";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
+import { MergeLegacyPlayer } from "@/components/players/MergeLegacyPlayer";
+import { PlayerLegacyGames } from "@/components/players/PlayerLegacyGames";
 import { PlayerVideos } from "@/components/players/PlayerVideos";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 
@@ -62,11 +71,46 @@ export default async function PlayerDetailPage({
   ]);
   if (!playerDetail) notFound();
 
-  const [callsignHistory, favorited, videos] = await Promise.all([
+  const [callsignHistory, favorited, videos, legacyGames] = await Promise.all([
     getPlayerCallsignHistory(playerDetail.id),
     session?.user?.id ? isPlayerFavorite(session.user.id, playerDetail.id) : Promise.resolve(false),
     getPlayerVideos(playerDetail.id),
+    getPlayerPdfGames(playerDetail.id),
   ]);
+
+  // A legacy PDF-era player with no known IPL id has only legacy games: no modern stats,
+  // no filters and no iPlayLaserforce profile.
+  if (isSyntheticIplId(playerDetail.iplId)) {
+    const aliases = callsignHistory.filter((h) => h.callsign !== playerDetail.currentCallsign);
+    const canMerge = (session?.user?.roles ?? []).some(
+      (r) => r.role === "superAdmin" || r.role === "admin",
+    );
+    return (
+      <div className="p-6 space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold">{playerDetail.currentCallsign}</h1>
+          {aliases.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Also known as: {aliases.map((h) => h.callsign).join(", ")}
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground">
+            Legacy player — their IPL id was never recorded, so only games from printed scorecards
+            are known.
+          </p>
+        </div>
+        <PlayerLegacyGames games={legacyGames} />
+        {canMerge && (
+          <MergeLegacyPlayer
+            sourceCallsign={playerDetail.currentCallsign}
+            legacyGameCount={legacyGames.length}
+            searchAction={searchMergeTargetsAction}
+            mergeAction={mergeSyntheticPlayerAction.bind(null, iplId, playerDetail.id)}
+          />
+        )}
+      </div>
+    );
+  }
 
   const otherCallsigns = callsignHistory.filter((h) => h.callsign !== playerDetail.currentCallsign);
 
@@ -142,6 +186,8 @@ export default async function PlayerDetailPage({
           <PlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
         )}
       </Suspense>
+
+      {gameType === "sm5" && <PlayerLegacyGames games={legacyGames} />}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import type { ResolveRequest } from "../../schemas/query-api";
 import { QUERY_LIMITS } from "../../schemas/query-api";
 import { QueryApiError } from "./errors";
 import { getAnalyticsDb } from "./pool";
+import { SYNTHETIC_IPL_PREFIX } from "../../lib/synthetic-ipl-id";
 
 // POST /resolve (docs/Query_API_Spec.md): names → ids. Matching runs in order and stops at
 // the first step with any result:
@@ -22,6 +23,8 @@ import { getAnalyticsDb } from "./pool";
 //   2. exact name, ignoring case and surrounding whitespace
 //   3. exact previous callsign   (players only)
 //   4. trigram similarity        (pg_trgm `%`, threshold 0.3, or 0.2 for short queries)
+// Synthetic `L-…` players (legacy PDF-era, no IPL id) are never candidates: the query API
+// does not serve PDF-era games, so they would only make real players look ambiguous.
 // Exactly one match from steps 1–3 is `unique`. Several matches, or any fuzzy match, are
 // `ambiguous`: the model must ask the user rather than guess.
 
@@ -97,11 +100,13 @@ export type PlayerMatch = {
 
 type Candidate = { playerId: string; matchedOn: PlayerMatchedOn; similarity?: number };
 
+const notSynthetic = sql`${player.iplId} not like ${`${SYNTHETIC_IPL_PREFIX}%`}`;
+
 async function playerIdsWhere(where: SQL, matchedOn: PlayerMatchedOn): Promise<Candidate[]> {
   const rows = await getAnalyticsDb()
     .select({ id: player.id })
     .from(player)
-    .where(where)
+    .where(and(where, notSynthetic))
     .limit(MAX);
   return rows.map((r) => ({ playerId: r.id, matchedOn }));
 }
@@ -131,7 +136,8 @@ async function findPlayerCandidates(
   const previous = await db
     .selectDistinct({ id: playerCallsignHistory.playerId })
     .from(playerCallsignHistory)
-    .where(eq(normalized(playerCallsignHistory.callsign), q))
+    .innerJoin(player, eq(player.id, playerCallsignHistory.playerId))
+    .where(and(eq(normalized(playerCallsignHistory.callsign), q), notSynthetic))
     .limit(MAX);
   if (previous.length > 0) {
     return {
@@ -150,10 +156,12 @@ async function findPlayerCandidates(
     tx.execute<{ player_id: string; sim: number }>(sql`
     select player_id, max(sim)::float8 as sim from (
       select ${player.id} as player_id, similarity(${player.currentCallsign}, ${query}) as sim
-        from ${player} where ${player.currentCallsign} % ${query}
+        from ${player} where ${player.currentCallsign} % ${query} and ${notSynthetic}
       union all
       select ${playerCallsignHistory.playerId}, similarity(${playerCallsignHistory.callsign}, ${query})
-        from ${playerCallsignHistory} where ${playerCallsignHistory.callsign} % ${query}
+        from ${playerCallsignHistory}
+        join ${player} on ${player.id} = ${playerCallsignHistory.playerId}
+        where ${playerCallsignHistory.callsign} % ${query} and ${notSynthetic}
     ) m
     group by player_id
     order by sim desc
