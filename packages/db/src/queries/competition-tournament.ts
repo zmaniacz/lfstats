@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { db } from "../client";
+import { SYNTHETIC_IPL_PREFIX } from "../lib/synthetic-ipl-id";
 import {
   competitionTeam,
   competitionTeamPlayer,
@@ -20,7 +21,20 @@ import {
   center,
   competition,
 } from "../schema";
-import { eq, and, ne, asc, desc, ilike, inArray, not, or, sql, type SQL } from "drizzle-orm";
+import {
+  eq,
+  and,
+  ne,
+  asc,
+  desc,
+  ilike,
+  inArray,
+  not,
+  or,
+  sql,
+  type SQL,
+  notLike,
+} from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
 import { hasMatchStructure } from "./admin";
 import type { CompetitionCategory, CompetitionFormat, CompetitionState } from "./admin";
@@ -652,9 +666,13 @@ export async function searchPlayersForRoster(
     .from(player)
     .leftJoin(playerCallsignHistory, eq(playerCallsignHistory.playerId, player.id))
     .where(
-      or(
-        ilike(player.currentCallsign, `%${query}%`),
-        ilike(playerCallsignHistory.callsign, `%${query}%`),
+      and(
+        or(
+          ilike(player.currentCallsign, `%${query}%`),
+          ilike(playerCallsignHistory.callsign, `%${query}%`),
+        ),
+        // Synthetic legacy PDF-era players (no IPL id) never join modern rosters.
+        notLike(player.iplId, `${SYNTHETIC_IPL_PREFIX}%`),
       ),
     )
     .orderBy(asc(player.currentCallsign))

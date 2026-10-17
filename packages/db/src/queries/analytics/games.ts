@@ -560,7 +560,8 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
         sql`to_char(${game.startTime}, 'YYYYMMDDHH24MISS') = ${parsed.timestamp}`,
       ),
     );
-  if (!g) {
+  // PDF-era games (sm5_pdf) are not served by the query API yet.
+  if (!g || g.type === "sm5_pdf") {
     throw new QueryApiError("game_not_found", `No game with slug '${slug}'.`, {
       field: "slug",
       hint: "Use search_games to find the game.",

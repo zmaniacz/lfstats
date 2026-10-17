@@ -6,6 +6,7 @@ import { parseGameSlug } from "../lib/game-slug";
 import {
   game,
   sm5GameTeam,
+  sm5PdfGameTeam,
   sm5Scorecard,
   sm5ScorecardMvp,
   sm5GamePlayerInteraction,
@@ -52,12 +53,15 @@ export type GameListItem = {
   description: string | null;
   competitionName: string | null;
   actualDuration: number;
+  /** "sm5_pdf" for a legacy PDF-era game (end-of-game data only); otherwise "sm5" or absent. */
+  gameType?: string;
   teams: GameTeamSummary[];
 };
 
 function buildGameListConditions(filters: GameListFilters): SQL[] {
-  // SM5 games only — Laserball lives in the same `game` table (type = "lb").
-  const conditions: SQL[] = [eq(game.type, "sm5")];
+  // SM5 games, including legacy PDF-era ones — Laserball lives in the same `game`
+  // table (type = "lb").
+  const conditions: SQL[] = [inArray(game.type, ["sm5", "sm5_pdf"])];
   if (filters.scopeFilter) {
     // A game list, not an aggregate: excluded games stay listed.
     conditions.push(...gameScopeConditions(filters.scopeFilter, { includeExcluded: true }));
@@ -82,6 +86,7 @@ export async function getGamesList(filters: GameListFilters = {}): Promise<GameL
       description: game.description,
       competitionName: competition.name,
       actualDuration: game.actualDuration,
+      gameType: game.type,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -91,20 +96,40 @@ export async function getGamesList(filters: GameListFilters = {}): Promise<GameL
 
   if (rows.length === 0) return [];
 
-  const gameIds = rows.map((r) => r.id);
+  const gameIds = rows.filter((r) => r.gameType === "sm5").map((r) => r.id);
+  const pdfGameIds = rows.filter((r) => r.gameType === "sm5_pdf").map((r) => r.id);
 
-  const teamRows = await db
-    .select({
-      gameId: sm5GameTeam.gameId,
-      colourEnum: sm5GameTeam.colourEnum,
-      score: sm5GameTeam.score,
-      eliminationBonus: sm5GameTeam.eliminationBonus,
-      penaltyScore: sm5GameTeam.penaltyScore,
-      result: sm5GameTeam.result,
-    })
-    .from(sm5GameTeam)
-    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
-    .orderBy(sm5GameTeam.tdfTeamIndex);
+  const [tdfTeamRows, pdfTeamRows] = await Promise.all([
+    gameIds.length
+      ? db
+          .select({
+            gameId: sm5GameTeam.gameId,
+            colourEnum: sm5GameTeam.colourEnum,
+            score: sm5GameTeam.score,
+            eliminationBonus: sm5GameTeam.eliminationBonus,
+            penaltyScore: sm5GameTeam.penaltyScore,
+            result: sm5GameTeam.result,
+          })
+          .from(sm5GameTeam)
+          .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))
+          .orderBy(sm5GameTeam.tdfTeamIndex)
+      : [],
+    pdfGameIds.length
+      ? db
+          .select({
+            gameId: sm5PdfGameTeam.gameId,
+            colourEnum: sm5PdfGameTeam.colourEnum,
+            score: sm5PdfGameTeam.score,
+            eliminationBonus: sm5PdfGameTeam.eliminationBonus,
+            penaltyScore: sm5PdfGameTeam.penaltyScore,
+            result: sm5PdfGameTeam.result,
+          })
+          .from(sm5PdfGameTeam)
+          .where(inArray(sm5PdfGameTeam.gameId, pdfGameIds))
+          .orderBy(sm5PdfGameTeam.colourEnum)
+      : [],
+  ]);
+  const teamRows = [...tdfTeamRows, ...pdfTeamRows];
 
   const teamsByGame = new Map<string, typeof teamRows>();
   for (const team of teamRows) {
@@ -123,6 +148,7 @@ export async function getGamesList(filters: GameListFilters = {}): Promise<GameL
     description: row.description,
     competitionName: row.competitionName,
     actualDuration: row.actualDuration,
+    gameType: row.gameType,
     teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
       colourEnum: t.colourEnum,
       score: t.score,
@@ -161,7 +187,8 @@ export type GameExportItem = {
 };
 
 export async function getGamesForExport(filters: GameExportFilters): Promise<GameExportItem[]> {
-  const conditions: SQL[] = [eq(game.exclude, false)];
+  // PDF-era games (sm5_pdf) have no TDF and no sm5 rows, so the export leaves them out.
+  const conditions: SQL[] = [eq(game.exclude, false), inArray(game.type, ["sm5", "lb"])];
   if (filters.startDate) {
     conditions.push(sql`date(${game.startTime}) >= ${filters.startDate}::date`);
   }
@@ -286,7 +313,8 @@ export async function getGameSummaryBySlug(slug: string): Promise<GameSummary | 
       ),
     );
 
-  if (!gameRow) return null;
+  // PDF-era games have no TDF roster to describe.
+  if (!gameRow || gameRow.gameType === "sm5_pdf") return null;
 
   const isLb = gameRow.gameType === "lb";
   const gameTeam = isLb ? lbGameTeam : sm5GameTeam;

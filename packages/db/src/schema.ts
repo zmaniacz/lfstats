@@ -1184,6 +1184,241 @@ export const lbGamePlayerState = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// SM5 PDF-era Tables
+//
+// Legacy games ingested from printed PDF scorecards before TDF files were kept
+// (2012–2020). They hold end-of-game state only: no events, so no replay, uptime,
+// assists, resets or modern MVP. They reuse `game` (game.type = "sm5_pdf",
+// tdf_filename = "") and the identity tables, and keep everything else in the
+// sm5_pdf_-prefixed tables below so no `sm5_*` reader can mistake them for TDF
+// data. Every side is red or green — the PDFs carried nothing finer.
+//
+// Players: every scorecard has a player. Legacy players with no IPL id get a
+// synthetic `player.ipl_id` of the form `L-<legacy player id>` (see
+// lib/synthetic-ipl-id.ts); `legacy_player_map` records the mapping.
+//
+// Migrated by scripts/migrate-legacy-pdf-games.ts. See
+// docs/Legacy_Migration_PDF_Games.md.
+// ---------------------------------------------------------------------------
+
+export const sm5PdfGame = pgTable("sm5_pdf_game", {
+  gameId: uuid("game_id")
+    .primaryKey()
+    .references(() => game.id, { onDelete: "cascade" }),
+  legacyGameId: integer("legacy_game_id").notNull().unique(),
+  pdfId: text("pdf_id"),
+  gameName: text("game_name"),
+  // Staged for the later competition migration; unused until then.
+  legacyEventId: integer("legacy_event_id"),
+  legacyMatchId: integer("legacy_match_id"),
+  legacyType: text("legacy_type").notNull(),
+  leagueRound: smallint("league_round"),
+  leagueMatch: smallint("league_match"),
+  leagueGame: smallint("league_game"),
+  legacyWinner: text("legacy_winner"),
+});
+
+export const sm5PdfGameTeam = pgTable(
+  "sm5_pdf_game_team",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    side: text("side").$type<"red" | "green">().notNull(),
+    name: text("name").notNull(),
+    colourEnum: integer("colour_enum").notNull(),
+    // Penalty-free, as the scorecards sum to it.
+    score: integer("score").notNull(),
+    eliminationBonus: integer("elimination_bonus").notNull(),
+    // Live sum of non-rescinded player and team penalty score_value.
+    penaltyScore: integer("penalty_score").notNull(),
+    result: teamResultEnum("result"),
+    eliminated: boolean("eliminated").notNull(),
+  },
+  (t) => [
+    unique().on(t.gameId, t.side),
+    check("sm5_pdf_game_team_side_check", sql`${t.side} in ('red', 'green')`),
+  ],
+);
+
+export const sm5PdfScorecard = pgTable(
+  "sm5_pdf_scorecard",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => sm5PdfGameTeam.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id),
+    legacyScorecardId: integer("legacy_scorecard_id").notNull().unique(),
+    callsign: text("callsign").notNull(),
+    position: integer("position").notNull(),
+    isSub: boolean("is_sub").notNull(),
+    // Derived from lives_left = 0; the PDFs record no elimination time.
+    eliminated: boolean("eliminated").notNull(),
+    // Seconds alive, when the PDF recorded it.
+    survived: integer("survived"),
+
+    shotsFired: integer("shots_fired").notNull(),
+    shotsHit: integer("shots_hit").notNull(),
+    shotsHitOpponent: integer("shots_hit_opponent").notNull(),
+    shotsHitTeam: integer("shots_hit_team").notNull(),
+    shotsHitOpponent3hit: integer("shots_hit_opponent_3hit").notNull(),
+    timesHit: integer("times_hit").notNull(),
+
+    missileHits: integer("missile_hits").notNull(),
+    missilesHitOpponent: integer("missiles_hit_opponent").notNull(),
+    missilesHitTeam: integer("missiles_hit_team").notNull(),
+    timesHitByMissile: integer("times_hit_by_missile").notNull(),
+
+    // Legacy semantics kept under legacy names where modern has no exact twin.
+    medicHits: integer("medic_hits").notNull(),
+    ownMedicHits: integer("own_medic_hits").notNull(),
+    nukesCanceled: integer("nukes_canceled").notNull(),
+    teamNukesCanceled: integer("team_nukes_canceled").notNull(),
+    resupplies: integer("resupplies").notNull(),
+    elimOtherTeam: boolean("elim_other_team").notNull(),
+    teamElim: boolean("team_elim").notNull(),
+
+    // Commander only
+    nukesActivated: integer("nukes_activated"),
+    nukesDetonated: integer("nukes_detonated"),
+    nukesHitMedic: integer("nukes_hit_medic"),
+    // Scout only
+    rapidFire: integer("rapid_fire"),
+    // Ammo Carrier only
+    ammoBoost: integer("ammo_boost"),
+    // Medic only
+    lifeBoost: integer("life_boost"),
+    // Null for Heavy Weapons only
+    spEarned: integer("sp_earned"),
+    spSpent: integer("sp_spent"),
+
+    targetsDestroyed: integer("targets_destroyed").notNull(),
+    penalties: integer("penalties").notNull(),
+    livesLeft: integer("lives_left").notNull(),
+    shotsLeft: integer("shots_left").notNull(),
+
+    // Penalty-free, as printed.
+    score: integer("score").notNull(),
+    maxScore: integer("max_score"),
+    rank: integer("rank").notNull(),
+    accuracy: doublePrecision("accuracy").notNull(),
+    hitDiff: doublePrecision("hit_diff").notNull(),
+
+    // The legacy site's MVP. Never mixed into modern MVP stats.
+    legacyMvpPoints: doublePrecision("legacy_mvp_points").notNull(),
+    legacyMvpDetails: jsonb("legacy_mvp_details"),
+  },
+  (t) => [
+    index("sm5_pdf_scorecard_game_id_idx").on(t.gameId),
+    index("sm5_pdf_scorecard_team_id_idx").on(t.teamId),
+    index("sm5_pdf_scorecard_player_id_idx").on(t.playerId),
+  ],
+);
+
+export const sm5PdfGamePlayerInteraction = pgTable(
+  "sm5_pdf_game_player_interaction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    scorecardId: uuid("scorecard_id").notNull(),
+    targetScorecardId: uuid("target_scorecard_id").notNull(),
+    shotsHit: integer("shots_hit").notNull(),
+    missileHits: integer("missile_hits").notNull(),
+  },
+  (t) => [
+    unique("sm5_pdf_gpi_unique").on(t.gameId, t.scorecardId, t.targetScorecardId),
+    // Named explicitly: the generated name exceeds Postgres's 63-character limit.
+    foreignKey({
+      name: "sm5_pdf_gpi_scorecard_id_fk",
+      columns: [t.scorecardId],
+      foreignColumns: [sm5PdfScorecard.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "sm5_pdf_gpi_tgt_scorecard_id_fk",
+      columns: [t.targetScorecardId],
+      foreignColumns: [sm5PdfScorecard.id],
+    }).onDelete("cascade"),
+    index("sm5_pdf_gpi_scorecard_id_idx").on(t.scorecardId),
+    index("sm5_pdf_gpi_target_scorecard_id_idx").on(t.targetScorecardId),
+  ],
+);
+
+export const sm5PdfGamePenalty = pgTable(
+  "sm5_pdf_game_penalty",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    scorecardId: uuid("scorecard_id")
+      .notNull()
+      .references(() => sm5PdfScorecard.id, { onDelete: "cascade" }),
+    scoreValue: integer("score_value").notNull(),
+    description: text("description").notNull(),
+    type: text("type").notNull().default("Common Foul"),
+    mvpValue: doublePrecision("mvp_value").notNull().default(0),
+    inGame: boolean("in_game").notNull().default(true),
+    rescinded: boolean("rescinded").notNull().default(false),
+  },
+  (t) => [
+    index("sm5_pdf_game_penalty_scorecard_id_idx").on(t.scorecardId),
+    index("sm5_pdf_game_penalty_game_id_idx").on(t.gameId),
+  ],
+);
+
+export const sm5PdfGameTeamPenalty = pgTable(
+  "sm5_pdf_game_team_penalty",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    gameTeamId: uuid("game_team_id")
+      .notNull()
+      .references(() => sm5PdfGameTeam.id, { onDelete: "cascade" }),
+    scoreValue: integer("score_value").notNull(),
+    description: text("description").notNull(),
+    type: text("type").notNull().default("Common Foul"),
+    rescinded: boolean("rescinded").notNull().default(false),
+  },
+  (t) => [
+    index("sm5_pdf_game_team_penalty_game_team_id_idx").on(t.gameTeamId),
+    index("sm5_pdf_game_team_penalty_game_id_idx").on(t.gameId),
+  ],
+);
+
+/**
+ * Legacy `players.id` → modern `player`. `synthetic` marks the rows created with an
+ * `L-…` IPL id because legacy had none — the hook for a later merge into a real player.
+ * One legacy id can map to more than one modern player only where a legacy player was
+ * split (`legacy_variant` > 0), e.g. two people merged under one legacy id.
+ */
+export const legacyPlayerMap = pgTable(
+  "legacy_player_map",
+  {
+    legacyPlayerId: integer("legacy_player_id").notNull(),
+    legacyVariant: integer("legacy_variant").notNull().default(0),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id),
+    synthetic: boolean("synthetic").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.legacyPlayerId, t.legacyVariant] }),
+    index("legacy_player_map_player_id_idx").on(t.playerId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Auth Tables (NextAuth.js v5 / Auth.js + custom RBAC)
 // ---------------------------------------------------------------------------
 

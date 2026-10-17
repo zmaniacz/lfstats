@@ -3,6 +3,7 @@
 
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -150,6 +151,11 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
                     >
                       {formatGameName(game.description, game.startTime)}
                     </Link>
+                    {game.gameType === "sm5_pdf" && (
+                      <Badge variant="outline" className="ml-2 text-xs px-1 py-0">
+                        Legacy
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>{game.centerName}</TableCell>
                   {showCompetition && (
