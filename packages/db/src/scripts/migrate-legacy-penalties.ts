@@ -31,6 +31,9 @@
  *   pnpm --filter @lfstats/db migrate-legacy-penalties --report
  *
  * Requires `LEGACY_DATABASE_URL` alongside `DATABASE_URL`.
+ *
+ * **Closed 2026-10-17.** Writing runs exit unless given `--reopen-closed-migration`;
+ * `--report` and `--dry-run` still work. See LEGACY_MIGRATION_CLOSED in legacy-events.ts.
  */
 
 import postgres from "postgres";
@@ -38,6 +41,7 @@ import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { initDb } from "../client";
 import { game, sm5GamePenalty, sm5GameTeam, sm5GameTeamPenalty, sm5Scorecard } from "../schema";
 import { addPenalty, addTeamPenalty, updatePenalty } from "../queries/penalties";
+import { assertLegacyMigrationOpen } from "./legacy-events";
 
 type Legacy = ReturnType<typeof postgres>;
 
@@ -222,6 +226,7 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const reportOnly = args.includes("--report");
+  if (!dryRun && !reportOnly) assertLegacyMigrationOpen(args);
 
   const legacy = connectLegacy();
   const db = await initDb();

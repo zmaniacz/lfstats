@@ -12,6 +12,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | Look up an SM5 per-player stat              | [Scorecard_Table_Spec.md](Scorecard_Table_Spec.md)                             |
 | Look up a Laserball per-player stat         | [Laserball_Scorecard_Table_Spec.md](Laserball_Scorecard_Table_Spec.md)         |
 | Work on tournaments, standings, or rosters  | [Competition_Structure.md](Competition_Structure.md)                           |
+| See how legacy events were migrated         | [Legacy_Migration_TDF_Events.md](Legacy_Migration_TDF_Events.md)               |
 | Change the global player ranking            | [Player_Rating.md](Player_Rating.md)                                           |
 | Change how TDFs are parsed or simulated     | [chomper-design.md](chomper-design.md)                                         |
 | Change Laserball ingestion specifically     | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
@@ -44,6 +45,9 @@ Specifications and design docs for the LFstats monorepo. Start here.
   column, with references to the PHP reference implementation.
 - **[Competition_Structure.md](Competition_Structure.md)** — competition, team, roster, round,
   pool, and match tables; points derivation; mercenary rules.
+- **[Legacy_Migration_TDF_Events.md](Legacy_Migration_TDF_Events.md)** — the completed migration
+  of TDF-based competitive events from the legacy database: method, verification, and what was
+  deliberately left different. Closed 2026-10-17; a historical reference.
 - **[SM5-penalty-definitions.md](SM5-penalty-definitions.md)** — standard penalty types and their
   default score and MVP impact.
 

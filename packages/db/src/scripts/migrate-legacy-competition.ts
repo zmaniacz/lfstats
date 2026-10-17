@@ -16,6 +16,9 @@
  *
  * Requires `LEGACY_DATABASE_URL` in addition to `DATABASE_URL`.
  *
+ * **Closed 2026-10-17.** Writing runs exit unless given `--reopen-closed-migration`;
+ * `--report` and `--dry-run` still work. See LEGACY_MIGRATION_CLOSED in legacy-events.ts.
+ *
  * ## Colour
  *
  * The legacy site assumed every team was red or green and coerced anything else, so
@@ -58,9 +61,11 @@ import {
 import {
   ALREADY_MIGRATED,
   LEGACY_EVENTS,
+  assertLegacyMigrationOpen,
   deriveShortName,
   findLegacyEvent,
   uniquifyShortName,
+  withoutReopenFlag,
   type LegacyEventConfig,
 } from "./legacy-events";
 
@@ -849,7 +854,9 @@ function parseArgs(argv: string[]) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const args = parseArgs(withoutReopenFlag(argv));
+  if (!args.report && !args.dryRun) assertLegacyMigrationOpen(argv);
   const legacy = connectLegacy();
   const db = await initDb();
 

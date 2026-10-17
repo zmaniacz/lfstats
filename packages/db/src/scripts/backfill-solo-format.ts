@@ -15,16 +15,20 @@
  *
  *   pnpm --filter @lfstats/db backfill-solo-format --dry-run
  *   pnpm --filter @lfstats/db backfill-solo-format
+ *
+ * **Closed 2026-10-17.** Writing runs exit unless given `--reopen-closed-migration`;
+ * `--dry-run` still works. See LEGACY_MIGRATION_CLOSED in legacy-events.ts.
  */
 
 import { eq } from "drizzle-orm";
 import { initDb } from "../client";
 import { competition } from "../schema";
 import { slugify } from "../lib/slug";
-import { LEGACY_EVENTS } from "./legacy-events";
+import { LEGACY_EVENTS, assertLegacyMigrationOpen } from "./legacy-events";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  if (!dryRun) assertLegacyMigrationOpen(process.argv);
   const db = await initDb();
 
   const soloEvents = LEGACY_EVENTS.filter((e) => e.kind === "solo");
