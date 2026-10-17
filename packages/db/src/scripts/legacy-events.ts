@@ -100,6 +100,37 @@ export const ALREADY_MIGRATED: Record<number, string> = {
   2024: "internationals_2026",
 };
 
+/**
+ * The legacy migration of TDF-based events was declared complete on this date. Since
+ * then the modern database is the source of truth: admins edit competitions and
+ * penalties directly, and two legacy penalty awards were deliberately rescinded because
+ * the TDF score already held them. Re-running a migration or back-fill would overwrite
+ * that work with legacy's view, so the scripts that write refuse to.
+ */
+export const LEGACY_MIGRATION_CLOSED = "2026-10-17";
+
+const REOPEN_FLAG = "--reopen-closed-migration";
+
+/**
+ * Exits unless `argv` carries the reopen flag. Call only on a script's *writing* path:
+ * `--report` and `--dry-run` stay available, as does the read-only legacy-variance.
+ */
+export function assertLegacyMigrationOpen(argv: string[]): void {
+  if (argv.includes(REOPEN_FLAG)) return;
+  console.error(
+    `The legacy migration was closed on ${LEGACY_MIGRATION_CLOSED}; this script would ` +
+      `overwrite data edited in the modern database since then.\n` +
+      `See docs/Competition_Structure.md, "Legacy Migration". ` +
+      `Pass ${REOPEN_FLAG} only if you mean to reopen it.`,
+  );
+  process.exit(1);
+}
+
+/** Strips the reopen flag so a script's own argument parser never sees it. */
+export function withoutReopenFlag(argv: string[]): string[] {
+  return argv.filter((a) => a !== REOPEN_FLAG);
+}
+
 export function findLegacyEvent(legacyId: number): LegacyEventConfig | undefined {
   return LEGACY_EVENTS.find((e) => e.legacyId === legacyId);
 }

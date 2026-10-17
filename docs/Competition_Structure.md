@@ -526,6 +526,14 @@ were never carried over — the **games** were all re-ingested from TDF and alre
 in `lfstats_modern`, but with no competition, team, round, or match structure around
 them. `packages/db/src/scripts/migrate-legacy-competition.ts` imports that structure.
 
+> **Status: closed on 2026-10-17.** Every legacy event with TDF games is migrated, and
+> the modern database is now the source of truth. Do not re-run the migration or the
+> back-fills: they would overwrite admin edits made since, and undo the deliberate
+> exceptions listed under [Final state](#final-state). The three scripts that write
+> (`migrate-legacy-comp`, `migrate-legacy-penalties`, `backfill-solo-format`) exit unless
+> given `--reopen-closed-migration`. `--report`, `--dry-run` and `legacy-variance` are
+> read-only and still work. The rest of this section records how the migration was done.
+
 ```
 pnpm --filter @lfstats/db migrate-legacy-comp --report            # status of every legacy event
 pnpm --filter @lfstats/db migrate-legacy-comp --event 1312 --dry-run
@@ -628,52 +636,84 @@ pnpm --filter @lfstats/db legacy-variance --scores-only  # score disagreements o
 ```
 
 which is read-only against both databases and is the authority for the figures below.
+They were taken at close, 2026-10-17, after the penalty back-fill.
 
 Fifteen competitions are comparable — the eleven migrated team events plus four of the
 five built by hand. (`internationals_2026` exists in legacy as a shell: ten placeholder
-teams, no games.) Of those fifteen, **eight reproduce exactly**. Of 82 team-seasons, 19
-differ: 11 on points and a further 8 only in finishing position.
+teams, no games.) Of those fifteen, **eleven reproduce exactly**. Of 82 team-seasons, 8
+differ, and **none on points** — all eight are tie-break order (item 2 below).
 
-1. **The two systems score penalties differently** — 405 of 3032 team-game totals
-   disagree. A penalty is scored twice over, and the databases take different views of
-   each half. _In-game_, the arena deducts line 1 `penalty` on every `0600` event; that
-   setting is per game, and center 4-19 runs `-1000` normally but was set to `0` for the
+1. **The two systems score penalties differently** — 54 of 3032 team-game totals
+   disagree: 45 where modern counts an in-game deduction legacy dropped, 3 where legacy
+   holds an escalation modern lacks, 2 for the elimination bonus legacy left out of
+   `adj`, and 4 unexplained (listed below). None of them moves a standings point.
+   Before the back-fill there were 405.
+
+   A penalty is scored twice over, and the databases take different views of each half.
+   _In-game_, the arena deducts line 1 `penalty` on every `0600` event; that setting is
+   per game, and center 4-19 runs `-1000` normally but was set to `0` for the
    Internationals 2024 files. _After the game_, referees meet and decide which penalties
    are escalated, normally to `-1000` score and `-5` MVP; that decision exists only in
-   legacy `penalties.value` and can only arrive via the back-fill. Legacy stored a
-   deduction-free score and counted escalations only; modern counts the in-game
-   deduction and has not received the escalations. So 361 rows are modern counting an
-   in-game deduction legacy dropped, 36 are legacy holding an escalation modern lacks,
-   and 2 are the elimination bonus legacy left out of `adj`. Note that `score_value`
-   cannot be summed to measure this — where the arena deducted in-game on a pre-2.003
-   TDF the amount is baked into the line 5 score stream and the row's own `score_value`
-   is 0. Where a close game's result flips, the match points follow — this is the whole
-   of the Fake Nats 2021 and WCT 2022 variance. **Six totals fit no such shape**; all six
-   are listed by the script with both sides' penalty ledgers.
-2. **The Nerd Sturgis round-4 multiplier** (see below) accounts for all four of that
-   event's team rows — the diffs sum to exactly 36, the round's extra point pool.
-3. **Tie-breaks.** The remaining four competitions — Darmstadt 2021 Season 1, Armageddon
-   2024, St George Summer League 2025 and (inter)nationals 2024 — reproduce every points
-   total exactly and differ only in the order of teams that are level on points, which
-   modern breaks on score ratio. Eight team-seasons, no points moved.
+   legacy `penalties.value` and arrived via the back-fill. Legacy stored a deduction-free
+   score and counted escalations only; modern counts the in-game deduction. Note that
+   `score_value` cannot be summed to measure this — where the arena deducted in-game on a
+   pre-2.003 TDF the amount is baked into the line 5 score stream and the row's own
+   `score_value` is 0.
+
+2. **Tie-breaks.** Four competitions — Darmstadt 2021 Season 1, Armageddon 2024, St
+   George Summer League 2025 and (inter)nationals 2024 — reproduce every points total
+   exactly and differ only in the order of teams that are level on points, which modern
+   breaks on score ratio. Eight team-seasons, no points moved.
 
 Modern's scores are the correct basis for the modern site. The team-to-side mapping is
 verified independently by the structural and roster checks above, and by the fact that on
 every game the _matching_ side's score agrees with legacy to the point.
 
+### Final state
+
+What was deliberately left unlike legacy when the migration closed, and should stay
+that way:
+
+- **Two legacy score awards are rescinded.** Legacy recorded `Unknown` awards of +6232
+  (Rockwood, `4-19-20240806230803.tdf`) and +3142 (Bromatized, `4-19-20240807235410.tdf`)
+  in Internationals 2024. The back-fill created them, but the TDF score already contained
+  most of each correction, so they double-counted: the gap to legacy grew from −350 and
+  +2338 to +5882 and +5480. Both are rescinded in modern, and neither game's winner
+  changed. A back-fill run would un-rescind them — one reason it is now blocked.
+- **Three manual legacy entries were never created.** The Spirit −6482 / King Fox +6482
+  score transfer in `4-19-20240805164045.tdf` (Spirit has no scorecard in modern for that
+  game, so there is nothing to attach the penalty to) and a rescinded "Penalty Removed"
+  for Scout in `4-19-20230816193132.tdf`.
+- **42 penalty groups were left as the TDF has them.** Their legacy and modern penalty
+  counts disagree (17), or modern has a penalty legacy does not (23), or a team penalty
+  already existed (2), so pairing them would have been a guess. Accepted as is.
+- **Four score totals stay unexplained** — three in Internationals 2024 and one in
+  Syracuse Shindig 2022 (`legacy-variance` lists them with both penalty ledgers).
+- **Three competition slugs were renamed** to the URL-safe form after `slugify` was
+  tightened: `nerd_sturgis_st_george_2020`, `st_george_random_bonanza_2022` and
+  `inter_nationals_2024`. The old URLs no longer resolve.
+
+Left for admins, in the admin UI rather than by script:
+
+- **Syracuse Shindig 2025** (built by hand) is missing ten games from 2025-10-08. They
+  are in modern but belong to no competition, and legacy never put them in a match
+  either: its round 2 has 15 matches but only 4 games.
+- **Solo handicaps** — see Known data loss below.
+
 ### Known data loss
 
-- **Round multipliers.** `rounds.multiplier` has one non-1 value in the entire legacy
-  database (Nerd Sturgis round 4 is `2`). Modern has no multiplier, so that round's
-  points are not weighted. The script warns.
 - **Solo handicaps.** `event_players.handicap` was not migrated. Modern models handicaps on
   `competition_player.handicap`, but the legacy values are unrecoverable, so every backfilled solo
-  event starts with nobody enrolled and an admin must re-enter them. See
-  [Solo Competitions](#solo-competitions).
+  event starts with nobody enrolled and an admin must re-enter them. At close, only
+  Brisbane 2020 Season 1 had been enrolled. See [Solo Competitions](#solo-competitions).
 - **Single-game matches.** Armageddon 2024 is 15 matches × 1 game, and Darmstadt 2021
   Season 1 round 2 is 4 more. Modern awards the match bonus only when both games are
   recorded, so those matches read `incomplete` and contribute 0 match points; game
   points still count. The script warns.
+
+Round multipliers were a known loss when the migration ran, but modern has since gained
+`competition_round.multiplier`, and Nerd Sturgis round 4 (the only non-1 value in legacy)
+is set to `2`. That event now reproduces legacy exactly.
 
 ### Out of scope
 
