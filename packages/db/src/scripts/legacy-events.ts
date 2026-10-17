@@ -120,7 +120,7 @@ export function assertLegacyMigrationOpen(argv: string[]): void {
   console.error(
     `The legacy migration was closed on ${LEGACY_MIGRATION_CLOSED}; this script would ` +
       `overwrite data edited in the modern database since then.\n` +
-      `See docs/Competition_Structure.md, "Legacy Migration". ` +
+      `See docs/Legacy_Migration_TDF_Events.md. ` +
       `Pass ${REOPEN_FLAG} only if you mean to reopen it.`,
   );
   process.exit(1);
