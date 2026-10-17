@@ -31,7 +31,7 @@ const CATEGORY_BY_SLUG: Record<string, Category> = {
   // The big annual championships.
   wct_2022: "internationals",
   internationals_2023: "internationals",
-  "(inter)nationals_2024": "internationals",
+  inter_nationals_2024: "internationals",
   ect_2025: "internationals",
   internationals_2025: "internationals",
   internationals_2026: "internationals",

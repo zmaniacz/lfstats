@@ -93,7 +93,7 @@ export const LEGACY_EVENTS: LegacyEventConfig[] = [
  * these and only reports a legacy-vs-modern diff for them.
  */
 export const ALREADY_MIGRATED: Record<number, string> = {
-  1612: "(inter)nationals_2024",
+  1612: "inter_nationals_2024",
   1863: "internationals_2025",
   1915: "syracuse_shindig_2025",
   1988: "loveland_random_draw_2026",
