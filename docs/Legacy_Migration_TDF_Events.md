@@ -207,9 +207,10 @@ is set to `2`. That event now reproduces legacy exactly.
 ## Out of scope
 
 Legacy `tdf_key` only starts appearing in late 2019. Competitive events before that
-(Nationals 2012–2013, Internationals 2014–2019, ECT 2020, WCT 5, …) have no TDF and their
-games **do not exist in the modern database at all** — verified by matching center IPL id
-plus timestamp. They are permanently unmigratable. `--report` lists every legacy
+(Nationals 2012–2013, Internationals 2014–2019, ECT 2020, WCT 5, …) have no TDF. Their games were
+later migrated from the legacy PDF scorecards as social `sm5_pdf` games — see
+[Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md); their competitions are
+still to do there. `--report` lists every legacy
 competitive event with its status and flags any that have TDF games but no config entry.
 
 **Solo events** (individually-scored leagues: Brisbane solo seasons, Loveland

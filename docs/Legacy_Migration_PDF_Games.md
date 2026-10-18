@@ -190,8 +190,43 @@ Left as the data has them, and listed by `--dry-run`:
 - **One scorecard** (legacy 72283, AceKnight, game 5683) had team `"null"`; it was placed on green,
   the only side whose scorecards fall short of the legacy side score by exactly its score.
 
-## Later phases
+## Remaining work
 
-- Competitions for PDF-era events, from `sm5_pdf_game.legacy_event_id` / `legacy_match_id` and
-  `league_round/match/game`, plus `match_penalties`.
-- Opting PDF games into basic aggregates (games played, W/L), if wanted.
+The games are in; the following is still open. Items 1–2 were named at handover; the rest
+turned up during the migration.
+
+1. **Competitive (league) events.** 2,228 PDF games are legacy `type = 'league'`, staged on
+   `sm5_pdf_game` with `legacy_event_id`, `legacy_match_id` and `league_round/match/game`.
+   Build their competitions the way `migrate-legacy-competition.ts` did for the TDF era
+   (teams, rounds, matches, rosters with mercenaries, solo events as `format = 'solo'`), and
+   carry the 3 legacy `match_penalties`. **Schema gap:** `competition_match_game` points at
+   `sm5_game_team` (`team1_game_team_id` / `team2_game_team_id`), and standings read the
+   `sm5_*` tables, so PDF games can't be assigned to matches or scored until the competition
+   tables and standings queries learn about `sm5_pdf_game_team`. Rosters should derive from
+   `sm5_pdf_scorecard` (every row has a player, synthetic or real).
+2. **Armageddon 2014 and 2015.** Legacy recorded these as their own "centers" (legacy ids 3
+   and 9, 35 and 21 games); they were mapped to Syracuse (`4-23`) and need recreating as
+   competitions. **Check their start times first:** these are among the few batches that look
+   stored as true local time rather than Pacific (as stored, 35 of 35 2014 games fall in
+   normal play hours; read as Pacific, 26), so they may need the other conversion before
+   matches are built around them.
+3. **Lock the migration script.** `migrate-legacy-pdf-games --reset` deletes every
+   `sm5_pdf` game. Once admins edit these games (descriptions, exclusions, competition
+   assignments) or merge players, gate the writing paths behind `assertLegacyMigrationOpen`
+   as was done for the TDF-era scripts.
+4. **Timestamp outliers.** 433 games still start between 00:00 and 09:00 local under the
+   Pacific rule — likely batches imported another way (see item 2, and the 2020 batches at
+   Syracuse, Auckland and Loveland). Review per batch, using `pdf_id` upload times and
+   overlap with same-night TDF games, and correct `game.start_time` where the evidence is clear.
+5. **Synthetic player curation.** 1,075 synthetic `L-…` players remain. The merge tool
+   handles one at a time; a report of likely matches (same callsign as a real player at the
+   same center, overlapping years) would make the curation tractable.
+6. **Center details.** The two created centers (`4-999` Lasertag of Santa Rosa, `7-999`
+   LaserZone Yorkshire) have no city, country or short name. Separately, `center.timezone` is
+   null for every center.
+7. **Admin editing of PDF games.** The PDF game page is read-only: no exclude toggle,
+   description, tags, penalty editing or competition assignment. Needed before item 1 can be
+   corrected by hand.
+8. **Basic aggregates (decision).** PDF games are deliberately left out of every career stat.
+   Opting them into games played and W/L is possible later; their MVP and advanced stats
+   should stay out.
