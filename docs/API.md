@@ -164,13 +164,13 @@ overall and per position — commander/heavy/scout/ammo/medic).
 
 ## `GET /api/games/[gameId]/replay`
 
-Full SM5 replay data (events, per-tick player states, non-player actors) for one game, keyed by
-internal `gameId` (UUID), **not** the public game slug — unlike its parent
-[`GET /api/games/[slug]`](#get-apigamesslug), which is keyed by slug. Defined in
+Full SM5 replay data (events, per-tick player states, non-player actors) for one game. The
+segment accepts either the internal `gameId` (UUID, what the game view's replay tab sends) or the
+public game slug, like its parent [`GET /api/games/[slug]`](#get-apigamesslug). Defined in
 `apps/web/src/app/api/games/[game]/replay/route.ts` (the directory is named `[game]` because
-Next.js requires one name per dynamic segment and the parent route uses the slug), backed by
-`getGameReplayData` in `packages/db/src/queries/games.ts`. Returns `404` with
-`{ "error": "Not found" }` for an unknown `gameId`.
+Next.js requires one name per dynamic segment), backed by `getGameReplayData` in
+`packages/db/src/queries/games.ts`. Returns `404` with `{ "error": "Not found" }` for an unknown
+id or slug, or a slug that names a non-SM5 game.
 
 ## `GET /api/games/[gameId]/players/[scorecardId]/timeline`
 
