@@ -193,8 +193,11 @@ its downtime clock when a player is re-deactivated during state 2.
 
 ## `GET /api/laserball/games/[gameId]/replay`
 
-Laserball equivalent of the above — backed by `getLbGameReplayData` in
-`packages/db/src/queries/laserball.ts`.
+Laserball equivalent of the above. The segment accepts either the internal `gameId` (UUID, what
+the Laserball game view's replay tab sends) or the public game slug. Defined in
+`apps/web/src/app/api/laserball/games/[gameId]/replay/route.ts`, backed by `getLbGameReplayData`
+in `packages/db/src/queries/laserball.ts`. Returns `404` with `{ "error": "Not found" }` for an
+unknown id or slug, or a slug that names a non-Laserball game.
 
 ## `GET /api/laserball/matches/[matchId]/replay`
 
@@ -273,7 +276,9 @@ and the handicap are defined. Note that `avgMvp * gamesCounted` is deliberately 
 
 ## Game slugs
 
-`GET /api/games` and the video routes identify a game by its **slug**:
+`GET /api/games`, the video routes and the game replay routes (`GET /api/games/[gameId]/replay`,
+`GET /api/laserball/games/[gameId]/replay`, which also take a UUID) identify a game by its
+**slug**:
 
 ```
 {countryCode}-{siteCode}-{YYYYMMDDHHmmss}
