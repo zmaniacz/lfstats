@@ -162,15 +162,16 @@ overall and per position — commander/heavy/scout/ammo/medic).
 
 ---
 
-## `GET /api/games/[gameId]/replay`
+## `GET /api/games/[game]/replay`
 
-Full SM5 replay data (events, per-tick player states, non-player actors) for one game. The
-segment accepts either the internal `gameId` (UUID, what the game view's replay tab sends) or the
-public game slug, like its parent [`GET /api/games/[slug]`](#get-apigamesslug). Defined in
+Full SM5 replay data (events, per-tick player states, non-player actors) for one game. `[game]` is
+either the internal game UUID (what the game view's replay tab sends) or the public
+[game slug](#game-slugs), like its parent [`GET /api/games/[slug]`](#get-apigamesslug). A value
+shaped like a UUID is used as-is; anything else is resolved with `getGameBySlug`. Defined in
 `apps/web/src/app/api/games/[game]/replay/route.ts` (the directory is named `[game]` because
 Next.js requires one name per dynamic segment), backed by `getGameReplayData` in
 `packages/db/src/queries/games.ts`. Returns `404` with `{ "error": "Not found" }` for an unknown
-id or slug, or a slug that names a non-SM5 game.
+UUID or slug, or for a slug that names a Laserball or PDF-era game.
 
 ## `GET /api/games/[gameId]/players/[scorecardId]/timeline`
 
@@ -276,9 +277,10 @@ and the handicap are defined. Note that `avgMvp * gamesCounted` is deliberately 
 
 ## Game slugs
 
-`GET /api/games`, the video routes and the game replay routes (`GET /api/games/[gameId]/replay`,
-`GET /api/laserball/games/[gameId]/replay`, which also take a UUID) identify a game by its
-**slug**:
+`GET /api/games`, `GET /api/games/[slug]`, the video routes and the game replay routes
+([`GET /api/games/[game]/replay`](#get-apigamesgamereplay) and
+[`GET /api/laserball/games/[gameId]/replay`](#get-apilaserballgamesgameidreplay), which also
+take a UUID) identify a game by its **slug**:
 
 ```
 {countryCode}-{siteCode}-{YYYYMMDDHHmmss}
@@ -289,9 +291,10 @@ center time. This is **the same string used in game page URLs**
 (`/games/4-23-20260808212334`), so a slug from either source works anywhere one is accepted.
 
 Parsing goes through `parseGameSlug` in `packages/db/src/lib/game-slug.ts`, the single inverse of
-the `concat(...)` expression that builds these SQL-side. Lookup for the video routes is
-`getGameBySlug` in `packages/db/src/queries/videos.ts`, which covers both SM5 and Laserball
-games (the per-type `getGameDetailBySlug` / `getLbGameDetailBySlug` filter by type).
+the `concat(...)` expression that builds these SQL-side. Lookup for the video routes and both game
+replay routes is `getGameBySlug` in `packages/db/src/queries/videos.ts`, which covers both SM5
+and Laserball games (the per-type `getGameDetailBySlug` / `getLbGameDetailBySlug` filter by
+type; the replay routes check `type` themselves).
 
 ## `POST /api/videos`
 
