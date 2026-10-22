@@ -59,6 +59,18 @@ export type AddGameVideoResult = {
   updated: boolean;
 };
 
+/**
+ * Matches the (game_id, player_id, youtube_video_id) NULLS NOT DISTINCT unique
+ * key — a null playerId means the game-level video, not "any player".
+ */
+function naturalKey(gameId: string, playerId: string | null, youtubeVideoId: string) {
+  return and(
+    eq(gameVideo.gameId, gameId),
+    playerId === null ? sql`${gameVideo.playerId} is null` : eq(gameVideo.playerId, playerId),
+    eq(gameVideo.youtubeVideoId, youtubeVideoId),
+  );
+}
+
 const gameSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`;
 
 /**
@@ -83,13 +95,7 @@ export async function addGameVideo(
 
   if (inserted) return { video: inserted, created: true, updated: false };
 
-  const conflict = and(
-    eq(gameVideo.gameId, input.gameId),
-    input.playerId === null
-      ? sql`${gameVideo.playerId} is null`
-      : eq(gameVideo.playerId, input.playerId),
-    eq(gameVideo.youtubeVideoId, input.youtubeVideoId),
-  );
+  const conflict = naturalKey(input.gameId, input.playerId, input.youtubeVideoId);
 
   const [existing] = await db.select().from(gameVideo).where(conflict);
 
@@ -121,6 +127,59 @@ export async function addGameVideo(
 
 export async function removeGameVideo(videoId: string): Promise<void> {
   await db.delete(gameVideo).where(eq(gameVideo.id, videoId));
+}
+
+/**
+ * A video's id from the same identity POST uses, for a caller that has lost the
+ * id it was given. `playerId` null finds the game-level video only.
+ */
+export async function findGameVideoId(
+  gameId: string,
+  playerId: string | null,
+  youtubeVideoId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ id: gameVideo.id })
+    .from(gameVideo)
+    .where(naturalKey(gameId, playerId, youtubeVideoId));
+  return row?.id ?? null;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The API's delete. API keys are global, so a key may only remove links that
+ * came in through the API — admin-added videos are curated by hand on the game
+ * page and stay out of an external tool's reach.
+ *
+ * Returns the game so the caller can revalidate its page. A malformed id is
+ * reported as not found rather than reaching Postgres as an invalid uuid.
+ */
+export async function removeApiGameVideo(
+  videoId: string,
+): Promise<
+  { ok: true; gameId: string; gameType: string } | { ok: false; reason: "not_found" | "not_api" }
+> {
+  if (!UUID_RE.test(videoId)) return { ok: false, reason: "not_found" };
+
+  const [row] = await db
+    .select({ source: gameVideo.source, gameId: gameVideo.gameId, gameType: game.type })
+    .from(gameVideo)
+    .innerJoin(game, eq(game.id, gameVideo.gameId))
+    .where(eq(gameVideo.id, videoId));
+
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.source !== "api") return { ok: false, reason: "not_api" };
+
+  // source is re-checked in the delete itself, so nothing slips through between
+  // the read and the write.
+  const [deleted] = await db
+    .delete(gameVideo)
+    .where(and(eq(gameVideo.id, videoId), eq(gameVideo.source, "api")))
+    .returning({ id: gameVideo.id });
+
+  if (!deleted) return { ok: false, reason: "not_found" };
+  return { ok: true, gameId: row.gameId, gameType: row.gameType };
 }
 
 /**
@@ -161,15 +220,7 @@ export async function updateGameVideo(
     const [clash] = await db
       .select({ id: gameVideo.id })
       .from(gameVideo)
-      .where(
-        and(
-          eq(gameVideo.gameId, existing.gameId),
-          existing.playerId === null
-            ? sql`${gameVideo.playerId} is null`
-            : eq(gameVideo.playerId, existing.playerId),
-          eq(gameVideo.youtubeVideoId, fields.youtubeVideoId),
-        ),
-      );
+      .where(naturalKey(existing.gameId, existing.playerId, fields.youtubeVideoId));
     if (clash) return { ok: false, reason: "duplicate" };
   }
 

@@ -5,16 +5,19 @@ import { NextResponse } from "next/server";
 import {
   addGameVideo,
   authenticateApiKey,
+  findGameVideoId,
   getGameBySlug,
   getGameSlugById,
   getGameVideos,
   getScorecardPlayerIdByIplId,
+  removeApiGameVideo,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
 import { parseYoutubeLink } from "@/lib/youtube";
 
-// Unlike the rest of /api (unauthenticated GETs), POST here requires an API key
-// holding the `video:write` scope. Keys are global: any such key may write for any center.
+// Unlike the rest of /api (unauthenticated GETs), POST and DELETE here require an
+// API key holding the `video:write` scope. Keys are global: any such key may write
+// for any center.
 
 type PostBody = {
   game_slug?: unknown;
@@ -48,21 +51,39 @@ async function revalidateGamePage(gameId: string, gameType: string) {
   revalidatePath(gameType === "lb" ? `/laserball/games/${slug}` : `/games/${slug}`);
 }
 
-export async function POST(request: Request) {
+/** The key on success, or the 401/403 response to return as-is. */
+async function requireVideoWriteKey(
+  request: Request,
+): Promise<{ ok: true; keyId: string } | { ok: false; response: NextResponse }> {
   const token = bearerToken(request);
   if (!token) {
-    return NextResponse.json({ error: "Missing API key" }, { status: 401 });
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Missing API key" }, { status: 401 }),
+    };
   }
   const key = await authenticateApiKey(token);
   if (!key) {
-    return NextResponse.json({ error: "Invalid or revoked API key" }, { status: 401 });
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Invalid or revoked API key" }, { status: 401 }),
+    };
   }
   if (!key.scopes.includes("video:write")) {
-    return NextResponse.json(
-      { error: "This API key does not have the video:write permission" },
-      { status: 403 },
-    );
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "This API key does not have the video:write permission" },
+        { status: 403 },
+      ),
+    };
   }
+  return { ok: true, keyId: key.id };
+}
+
+export async function POST(request: Request) {
+  const auth = await requireVideoWriteKey(request);
+  if (!auth.ok) return auth.response;
 
   let body: PostBody;
   try {
@@ -147,7 +168,7 @@ export async function POST(request: Request) {
       gameStartOffset,
       label,
       source: "api",
-      createdByApiKeyId: key.id,
+      createdByApiKeyId: auth.keyId,
     },
     { overwrite },
   );
@@ -168,6 +189,69 @@ export async function POST(request: Request) {
     },
     { status: created ? 201 : 200 },
   );
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireVideoWriteKey(request);
+  if (!auth.ok) return auth.response;
+
+  const { searchParams } = new URL(request.url);
+  let id = searchParams.get("id");
+  const slug = searchParams.get("game_slug");
+  const youtubeUrl = searchParams.get("youtube_url")?.trim() || null;
+  const iplId = searchParams.get("ipl_id") || null;
+
+  if (id && (slug || youtubeUrl || iplId)) {
+    return NextResponse.json(
+      { error: "Pass either id, or game_slug and youtube_url — not both" },
+      { status: 400 },
+    );
+  }
+
+  // The same identity POST deduplicates on, for a caller that lost the id:
+  // game + player (none for a game-level video) + YouTube video. The URL's start
+  // time is ignored, so any link to the same video finds it.
+  if (!id) {
+    if (!slug || !youtubeUrl) {
+      return NextResponse.json(
+        { error: "id, or game_slug and youtube_url, is required" },
+        { status: 400 },
+      );
+    }
+    const link = parseYoutubeLink(youtubeUrl);
+    if (!link) {
+      return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 });
+    }
+    const game = await getGameBySlug(slug);
+    if (!game) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+    let playerId: string | null = null;
+    if (iplId) {
+      playerId = await getScorecardPlayerIdByIplId(game.id, game.type, iplId);
+      if (!playerId) {
+        return NextResponse.json({ error: "Player did not play in this game" }, { status: 404 });
+      }
+    }
+    id = await findGameVideoId(game.id, playerId, link.videoId);
+    if (!id) {
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
+    }
+  }
+
+  const result = await removeApiGameVideo(id);
+  if (!result.ok) {
+    return result.reason === "not_api"
+      ? NextResponse.json(
+          { error: "This video was added on the game page and can only be removed there" },
+          { status: 403 },
+        )
+      : NextResponse.json({ error: "Video not found" }, { status: 404 });
+  }
+
+  await revalidateGamePage(result.gameId, result.gameType);
+
+  return new NextResponse(null, { status: 204 });
 }
 
 export async function GET(request: Request) {
