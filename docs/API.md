@@ -3,8 +3,8 @@
 Routes live under `https://lfstats.com/api/` in `apps/web/src/app/api/**/route.ts` and are backed
 by query functions in `packages/db/src/queries/`.
 
-Everything here is an unauthenticated GET **except `POST /api/videos`**, which requires an API key
-— see [Video routes](#post-apivideos) below.
+Everything here is an unauthenticated GET **except `POST` and `DELETE /api/videos`**, which require
+an API key — see [Video routes](#post-apivideos) below.
 
 ---
 
@@ -301,8 +301,8 @@ type; the replay routes check `type` themselves).
 Attaches a YouTube link to a game (scoreboard/arena cam) or to one player's performance in that
 game (POV footage). Intended for external capture tooling.
 
-**This is the only authenticated, mutating route in the API.** It requires a key issued at
-`/admin/api-keys` by a superAdmin:
+**This and [`DELETE /api/videos`](#delete-apivideos) are the only authenticated, mutating routes
+in the API.** They require a key issued at `/admin/api-keys` by a superAdmin:
 
 ```
 Authorization: Bearer lfs_xxxxxxxxxxxxxxxxxxxx
@@ -430,6 +430,49 @@ Note the `404` on `ipl_id`: a POV video may only be attached to someone who actu
 game, so a mistyped id belonging to a real player elsewhere is rejected rather than silently
 mis-attributed.
 
+## `DELETE /api/videos`
+
+Removes a video link, so a capture tool can clean up one it posted by mistake. Same
+`Authorization: Bearer` header and `video:write` permission as
+[`POST /api/videos`](#post-apivideos). The video itself stays on YouTube; only the link is removed.
+
+Identify the video in one of two ways, as query parameters:
+
+```
+DELETE /api/videos?id=2c77bbbf-0ade-4e67-afbb-092a46ae80cc
+DELETE /api/videos?game_slug=4-23-20260808212334&youtube_url=https%3A%2F%2Fyoutu.be%2FdQw4w9WgXcQ&ipl_id=%231234567
+```
+
+| Param         | Description                                                                      |
+| ------------- | -------------------------------------------------------------------------------- |
+| `id`          | The video's `id`, as returned by `POST` or `GET /api/videos`                     |
+| `game_slug`   | With `youtube_url`, instead of `id`: the game the video is linked to             |
+| `youtube_url` | With `game_slug`: any URL for the same YouTube video (URL-encoded)               |
+| `ipl_id`      | Optional, with `game_slug`: the POV player. Omit to target the game-level video. |
+
+Send either `id` or `game_slug` + `youtube_url`; mixing them is a `400`. The second form uses the
+same identity `POST` deduplicates on — game, player, and YouTube video — so it finds exactly the
+row a `POST` with those values would have created or updated. Only the video id is taken from
+`youtube_url`: its start time, and whether it's a `youtu.be` or `/watch?v=` link, don't matter.
+Omitting `ipl_id` means the game-level video specifically, never "this video for any player"; to
+remove a POV link, pass the `ipl_id` it was posted with.
+
+**Only videos with `source: "api"` can be removed this way.** Keys are global, so letting one
+delete links an admin added on the game page would put hand-curated videos within reach of any
+tool for any center. Those are removed from the game page's Videos tab instead. Any `video:write`
+key can remove any API-sourced video, not only the ones it posted.
+
+| Status | Meaning                                                                                                   |
+| ------ | --------------------------------------------------------------------------------------------------------- |
+| `204`  | Removed; no body                                                                                          |
+| `400`  | No target, both forms mixed, or an unparseable `youtube_url`                                              |
+| `401`  | Missing, unknown, or revoked API key                                                                      |
+| `403`  | Key lacks `video:write`, or the video was added on the game page                                          |
+| `404`  | No such video (including an `id` that isn't a UUID), game not found, or `ipl_id` didn't play in that game |
+
+Deleting an already-deleted video is a `404`, so a retry after a lost response should treat
+`404` as success.
+
 ## `GET /api/videos`
 
 Unauthenticated. Lists the videos attached to a game, so a tool can check what it already
@@ -504,8 +547,8 @@ exported as `@lfstats/db/analytics`.
 
 ## Conventions for new routes
 
-- Default to no auth — every route here is public except `POST /api/videos`, which needs a
-  Bearer API key because it writes. Follow that precedent for any future mutating route.
+- Default to no auth — every route here is public except `POST` and `DELETE /api/videos`, which
+  need a Bearer API key because they write. Follow that precedent for any future mutating route.
 - Request and response bodies use `snake_case` field names, not the `camelCase` used internally.
 - Query logic belongs in `packages/db/src/queries/`, never inline in `app/api/**/route.ts`.
 - Prefer `NextResponse.json({ data })` for list endpoints; a 404 with `{ "error": "Not found" }`
