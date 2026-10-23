@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import Link from "next/link";
-import type { CompetitionMatchResult } from "@lfstats/db";
+import type { CompetitionMatchResult, MatchResultPartner } from "@lfstats/db";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
@@ -21,8 +21,30 @@ export function MatchCard({
   const incomplete = match.matchWinner === "incomplete";
   const upcoming = match.games.length === 0;
 
-  const t1Label = match.team1ShortName ?? match.team1Name;
-  const t2Label = match.team2ShortName ?? match.team2Name;
+  const side1 = sideTeams(
+    {
+      id: match.team1Id,
+      slug: match.team1Slug,
+      name: match.team1Name,
+      shortName: match.team1ShortName,
+      hasLogo: match.team1HasLogo,
+      logoVersion: match.team1LogoVersion,
+    },
+    match.team1Partner,
+  );
+  const side2 = sideTeams(
+    {
+      id: match.team2Id,
+      slug: match.team2Slug,
+      name: match.team2Name,
+      shortName: match.team2ShortName,
+      hasLogo: match.team2HasLogo,
+      logoVersion: match.team2LogoVersion,
+    },
+    match.team2Partner,
+  );
+  const t1Label = side1.map((t) => t.label).join(" & ");
+  const t2Label = side2.map((t) => t.label).join(" & ");
   const winnerLabel =
     match.matchWinner === "team1" ? t1Label : match.matchWinner === "team2" ? t2Label : null;
 
@@ -88,27 +110,11 @@ export function MatchCard({
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
-            {match.team1Id && match.team1Slug ? (
-              <Link
-                href={`/competitions/${competitionSlug}/teams/${match.team1Slug}`}
-                className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team1" ? "font-semibold" : "text-muted-foreground"}`}
-              >
-                {t1Label}
-              </Link>
-            ) : (
-              <span className="text-sm text-center truncate w-full text-muted-foreground italic">
-                {t1Label}
-              </span>
-            )}
-            <TeamLogo
-              teamId={match.team1Id ?? undefined}
-              hasLogo={match.team1HasLogo}
-              logoVersion={match.team1LogoVersion}
-              name={match.team1Name}
-              size={48}
-            />
-          </div>
+          <MatchSide
+            teams={side1}
+            won={match.matchWinner === "team1"}
+            competitionSlug={competitionSlug}
+          />
 
           <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-3 gap-y-1.5 text-sm">
             <GameScore
@@ -140,30 +146,72 @@ export function MatchCard({
             <ScoreDiff diff={diff !== null ? -diff : null} />
           </div>
 
-          <div className="flex flex-col items-center gap-1.5 w-20 flex-shrink-0">
-            {match.team2Id && match.team2Slug ? (
-              <Link
-                href={`/competitions/${competitionSlug}/teams/${match.team2Slug}`}
-                className={`text-sm text-center truncate w-full hover:underline ${match.matchWinner === "team2" ? "font-semibold" : "text-muted-foreground"}`}
-              >
-                {t2Label}
-              </Link>
-            ) : (
-              <span className="text-sm text-center truncate w-full text-muted-foreground italic">
-                {t2Label}
-              </span>
-            )}
-            <TeamLogo
-              teamId={match.team2Id ?? undefined}
-              hasLogo={match.team2HasLogo}
-              logoVersion={match.team2LogoVersion}
-              name={match.team2Name}
-              size={48}
-            />
-          </div>
+          <MatchSide
+            teams={side2}
+            won={match.matchWinner === "team2"}
+            competitionSlug={competitionSlug}
+          />
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+type SideTeam = {
+  id: string | null;
+  slug: string | null;
+  name: string;
+  label: string;
+  hasLogo: boolean;
+  logoVersion: number;
+};
+
+// One side of the card is a single team, or both trios of a trios match stacked.
+function sideTeams(
+  team: Omit<SideTeam, "label"> & { shortName: string | null },
+  partner: MatchResultPartner | null,
+): SideTeam[] {
+  const first = { ...team, label: team.shortName ?? team.name };
+  if (!partner) return [first];
+  return [first, { ...partner, label: partner.shortName ?? partner.name }];
+}
+
+function MatchSide({
+  teams,
+  won,
+  competitionSlug,
+}: {
+  teams: SideTeam[];
+  won: boolean;
+  competitionSlug: string;
+}) {
+  const stacked = teams.length > 1;
+  return (
+    <div className="flex flex-col items-center gap-3 w-20 flex-shrink-0">
+      {teams.map((t, i) => (
+        <div key={t.id ?? i} className="flex flex-col items-center gap-1.5 w-full">
+          {t.id && t.slug ? (
+            <Link
+              href={`/competitions/${competitionSlug}/teams/${t.slug}`}
+              className={`text-sm text-center truncate w-full hover:underline ${won ? "font-semibold" : "text-muted-foreground"}`}
+            >
+              {t.label}
+            </Link>
+          ) : (
+            <span className="text-sm text-center truncate w-full text-muted-foreground italic">
+              {t.label}
+            </span>
+          )}
+          <TeamLogo
+            teamId={t.id ?? undefined}
+            hasLogo={t.hasLogo}
+            logoVersion={t.logoVersion}
+            name={t.name}
+            size={stacked ? 32 : 48}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 

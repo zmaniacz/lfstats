@@ -100,12 +100,14 @@ export async function getPenalties(
       roundNumber: competitionRound.roundNumber,
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
-      team1ShortName: sql<
-        string | null
-      >`(select short_name from competition_team where id = ${competitionMatch.team1Id})`,
-      team2ShortName: sql<
-        string | null
-      >`(select short_name from competition_team where id = ${competitionMatch.team2Id})`,
+      // Trios: both trios on the side, joined as "A & B".
+      team1ShortName: sql<string | null>`nullif(concat_ws(' & ',
+        (select short_name from competition_team where id = ${competitionMatch.team1Id}),
+        (select short_name from competition_team where id = ${competitionMatch.team1PartnerId})), '')`,
+      // Trios: both trios on the side, joined as "A & B".
+      team2ShortName: sql<string | null>`nullif(concat_ws(' & ',
+        (select short_name from competition_team where id = ${competitionMatch.team2Id}),
+        (select short_name from competition_team where id = ${competitionMatch.team2PartnerId})), '')`,
     })
     .from(sm5GamePenalty)
     .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GamePenalty.scorecardId))
@@ -316,12 +318,14 @@ export async function getTeamPenalties(
       roundNumber: competitionRound.roundNumber,
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
-      team1ShortName: sql<
-        string | null
-      >`(select short_name from competition_team where id = ${competitionMatch.team1Id})`,
-      team2ShortName: sql<
-        string | null
-      >`(select short_name from competition_team where id = ${competitionMatch.team2Id})`,
+      // Trios: both trios on the side, joined as "A & B".
+      team1ShortName: sql<string | null>`nullif(concat_ws(' & ',
+        (select short_name from competition_team where id = ${competitionMatch.team1Id}),
+        (select short_name from competition_team where id = ${competitionMatch.team1PartnerId})), '')`,
+      // Trios: both trios on the side, joined as "A & B".
+      team2ShortName: sql<string | null>`nullif(concat_ws(' & ',
+        (select short_name from competition_team where id = ${competitionMatch.team2Id}),
+        (select short_name from competition_team where id = ${competitionMatch.team2PartnerId})), '')`,
     })
     .from(sm5GameTeamPenalty)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5GameTeamPenalty.gameTeamId))

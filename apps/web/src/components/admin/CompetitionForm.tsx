@@ -55,6 +55,11 @@ const FORMAT_CHANGE_WARNINGS: Record<CompetitionFormat, string> = {
     "and displayed. Switching to No Scoring hides any rounds, matches, teams and enrollments: " +
     "the standings page becomes a flat view of every game in the event. The games still count " +
     "towards competitive stats.",
+  trios:
+    "Changing the format deletes nothing, but it does change how this competition is scored " +
+    "and displayed. Switching to Trios pairs two teams on each side of a match: both share " +
+    "the side's points, and ties break on each trio's own player score. Switching away from " +
+    "Trios still credits any partner trios already set on matches — clear them first.",
 };
 
 export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {

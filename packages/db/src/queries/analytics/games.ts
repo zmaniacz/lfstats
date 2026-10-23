@@ -89,6 +89,9 @@ async function competitionInfo(gameIds: string[]) {
   const db = getAnalyticsDb();
   const ct1 = alias(competitionTeam, "ct1");
   const ct2 = alias(competitionTeam, "ct2");
+  // Trios: the second trio on each side, joined into the side's name as "A & B".
+  const ct1p = alias(competitionTeam, "ct1p");
+  const ct2p = alias(competitionTeam, "ct2p");
   const [base, matches] = await Promise.all([
     db
       .select({ gameId: game.id, slug: competition.slug, name: competition.name })
@@ -104,14 +107,18 @@ async function competitionInfo(gameIds: string[]) {
         gameNumber: competitionMatchGame.gameNumber,
         team1GameTeamId: competitionMatchGame.team1GameTeamId,
         team2GameTeamId: competitionMatchGame.team2GameTeamId,
-        team1: ct1.name,
-        team2: ct2.name,
+        team1: sql<string | null>`case when ${ct1p.name} is null then ${ct1.name}
+                                       else ${ct1.name} || ' & ' || ${ct1p.name} end`,
+        team2: sql<string | null>`case when ${ct2p.name} is null then ${ct2.name}
+                                       else ${ct2.name} || ' & ' || ${ct2p.name} end`,
       })
       .from(competitionMatchGame)
       .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
       .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
       .leftJoin(ct1, eq(ct1.id, competitionMatch.team1Id))
       .leftJoin(ct2, eq(ct2.id, competitionMatch.team2Id))
+      .leftJoin(ct1p, eq(ct1p.id, competitionMatch.team1PartnerId))
+      .leftJoin(ct2p, eq(ct2p.id, competitionMatch.team2PartnerId))
       .where(inArray(competitionMatchGame.gameId, gameIds)),
   ]);
 

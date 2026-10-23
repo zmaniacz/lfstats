@@ -43,12 +43,14 @@ export async function StandingsContent({
   activeRoundType,
   competitionSlug,
   competitionName,
+  trios = false,
 }: {
   activeId: string;
   activeRoundId: string | null;
   activeRoundType: CompetitionRoundType | null;
   competitionSlug: string;
   competitionName: string;
+  trios?: boolean;
 }) {
   const teams = await getCompetitionTeams(activeId);
 
@@ -88,6 +90,7 @@ export async function StandingsContent({
                   standings={standings}
                   teams={teams}
                   competitionSlug={competitionSlug}
+                  trios={trios}
                 />
               </CardContent>
             </Card>
@@ -113,7 +116,12 @@ export async function StandingsContent({
           <CardTitle>{competitionName}</CardTitle>
         </CardHeader>
         <CardContent>
-          <StandingsTable standings={standings} teams={teams} competitionSlug={competitionSlug} />
+          <StandingsTable
+            standings={standings}
+            teams={teams}
+            competitionSlug={competitionSlug}
+            trios={trios}
+          />
         </CardContent>
       </Card>
 

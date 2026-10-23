@@ -7,10 +7,12 @@ export const COMPETITION_FORMAT_LABELS: Record<CompetitionFormat, string> = {
   team: "Team (matches & rounds)",
   solo: "Solo (individual scoring)",
   none: "No Scoring (games only, scored elsewhere)",
+  trios: "Trios (two trios per side, matches & rounds)",
 };
 
 /** The short badge form, for the browse and admin lists. `team` is the default and unbadged. */
 export const COMPETITION_FORMAT_BADGES: Partial<Record<CompetitionFormat, string>> = {
   solo: "Solo",
   none: "No Scoring",
+  trios: "Trios",
 };

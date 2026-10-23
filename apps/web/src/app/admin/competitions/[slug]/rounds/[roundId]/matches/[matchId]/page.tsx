@@ -97,6 +97,9 @@ export default async function MatchDetailPage({
             teams={teams}
             initialTeam1Id={match.team1Id}
             initialTeam2Id={match.team2Id}
+            initialTeam1PartnerId={match.team1PartnerId}
+            initialTeam2PartnerId={match.team2PartnerId}
+            trios={comp.format === "trios"}
             action={boundUpdateTeams}
           />
         </CardContent>

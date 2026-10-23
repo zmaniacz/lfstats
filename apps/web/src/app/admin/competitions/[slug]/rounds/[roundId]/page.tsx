@@ -80,6 +80,10 @@ export default async function RoundMatchesPage({
     : [[], []];
 
   const id = comp.id;
+  // A trios match needs four distinct trios; round-robin generation doesn't apply, since
+  // pairings change from match to match and are set by hand.
+  const trios = comp.format === "trios";
+  const minTeams = trios ? 4 : 2;
   const boundDeleteMatch = deleteMatchAction.bind(null, id, round.id);
   const boundReorder = reorderMatchesAction.bind(null, id, round.id);
   const boundUpdateTeams = updateMatchTeamsAction.bind(null, id, round.id);
@@ -168,16 +172,16 @@ export default async function RoundMatchesPage({
           <CardTitle>Matches</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {teams.length >= 2 ? (
+          {teams.length >= minTeams ? (
             <div>
-              {round.type === "pool" && (
+              {!trios && round.type === "pool" && (
                 <div className="mb-4">
                   <GeneratePoolMatchesButton
                     action={generatePoolMatchesAction.bind(null, id, round.id)}
                   />
                 </div>
               )}
-              {usesPools && (
+              {!trios && usesPools && (
                 <div className="mb-4">
                   <GeneratePoolMatchesButton
                     action={generateSplitPoolMatchesAction.bind(null, id, round.id)}
@@ -190,12 +194,13 @@ export default async function RoundMatchesPage({
                 teams={teams}
                 pools={usesPools ? pools : undefined}
                 teamPoolAssignments={usesPools ? teamPoolAssignments : undefined}
+                trios={trios}
                 action={createMatchAction.bind(null, id)}
               />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Add at least 2 teams before creating matches.{" "}
+              Add at least {minTeams} {trios ? "trios" : "teams"} before creating matches.{" "}
               <Link href={`/admin/competitions/${comp.slug}/teams`} className="underline">
                 Manage teams
               </Link>
@@ -211,6 +216,7 @@ export default async function RoundMatchesPage({
               matches={matches}
               teams={teams}
               pools={usesPools ? pools : undefined}
+              trios={trios}
               deleteAction={boundDeleteMatch}
               reorderAction={boundReorder}
               updateTeamsAction={boundUpdateTeams}

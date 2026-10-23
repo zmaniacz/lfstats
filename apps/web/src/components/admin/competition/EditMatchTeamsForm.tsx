@@ -4,34 +4,44 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { CompetitionTeamListItem } from "@lfstats/db";
 import { useState } from "react";
+import { MatchTeamSelects, matchSlotsFrom, setMatchSlotsOnFormData } from "./MatchTeamSelects";
 
 type Props = {
   teams: CompetitionTeamListItem[];
   initialTeam1Id: string | null;
   initialTeam2Id: string | null;
+  // Trios only.
+  initialTeam1PartnerId?: string | null;
+  initialTeam2PartnerId?: string | null;
+  trios?: boolean;
   action: (formData: FormData) => Promise<void>;
 };
 
-export function EditMatchTeamsForm({ teams, initialTeam1Id, initialTeam2Id, action }: Props) {
-  const [team1Id, setTeam1Id] = useState(initialTeam1Id ?? "tbd");
-  const [team2Id, setTeam2Id] = useState(initialTeam2Id ?? "tbd");
+export function EditMatchTeamsForm({
+  teams,
+  initialTeam1Id,
+  initialTeam2Id,
+  initialTeam1PartnerId = null,
+  initialTeam2PartnerId = null,
+  trios = false,
+  action,
+}: Props) {
+  const [slots, setSlots] = useState(() =>
+    matchSlotsFrom({
+      team1Id: initialTeam1Id,
+      team1PartnerId: initialTeam1PartnerId,
+      team2Id: initialTeam2Id,
+      team2PartnerId: initialTeam2PartnerId,
+    }),
+  );
   const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    formData.set("team1Id", team1Id === "tbd" ? "" : team1Id);
-    formData.set("team2Id", team2Id === "tbd" ? "" : team2Id);
+    setMatchSlotsOnFormData(formData, slots, trios);
     setIsPending(true);
     try {
       await action(formData);
@@ -42,39 +52,7 @@ export function EditMatchTeamsForm({ teams, initialTeam1Id, initialTeam2Id, acti
 
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
-      <div className="space-y-1">
-        <Label>Team 1</Label>
-        <Select value={team1Id} onValueChange={setTeam1Id}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Select team…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tbd">TBD</SelectItem>
-            {teams.map((t) => (
-              <SelectItem key={t.id} value={t.id} disabled={t.id === team2Id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <span className="text-sm text-muted-foreground pb-2">vs</span>
-      <div className="space-y-1">
-        <Label>Team 2</Label>
-        <Select value={team2Id} onValueChange={setTeam2Id}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Select team…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tbd">TBD</SelectItem>
-            {teams.map((t) => (
-              <SelectItem key={t.id} value={t.id} disabled={t.id === team1Id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <MatchTeamSelects teams={teams} slots={slots} onChange={setSlots} trios={trios} labelled />
       <Button type="submit" disabled={isPending}>
         {isPending ? "Saving…" : "Save"}
       </Button>

@@ -18,12 +18,15 @@ import type {
   CompetitionTeamListItem,
 } from "@lfstats/db";
 import { useState } from "react";
+import { EMPTY_MATCH_SLOTS, MatchTeamSelects, setMatchSlotsOnFormData } from "./MatchTeamSelects";
 
 type Props = {
   roundId: string;
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
   teamPoolAssignments?: CompetitionPoolTeamAssignment[];
+  // Trios competitions pick two trios per side.
+  trios?: boolean;
   action: (roundId: string, formData: FormData) => Promise<void>;
 };
 
@@ -32,10 +35,10 @@ export function CompetitionMatchForm({
   teams,
   pools,
   teamPoolAssignments,
+  trios = false,
   action,
 }: Props) {
-  const [team1Id, setTeam1Id] = useState("tbd");
-  const [team2Id, setTeam2Id] = useState("tbd");
+  const [slots, setSlots] = useState(EMPTY_MATCH_SLOTS);
   const [poolId, setPoolId] = useState(pools && pools.length > 0 ? pools[0].id : "none");
   const [isPending, setIsPending] = useState(false);
 
@@ -49,14 +52,12 @@ export function CompetitionMatchForm({
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    formData.set("team1Id", team1Id === "tbd" ? "" : team1Id);
-    formData.set("team2Id", team2Id === "tbd" ? "" : team2Id);
+    setMatchSlotsOnFormData(formData, slots, trios);
     if (pools) formData.set("poolId", poolId === "none" ? "" : poolId);
     setIsPending(true);
     try {
       await action(roundId, formData);
-      setTeam1Id("tbd");
-      setTeam2Id("tbd");
+      setSlots(EMPTY_MATCH_SLOTS);
       setPoolId(pools && pools.length > 0 ? pools[0].id : "none");
     } finally {
       setIsPending(false);
@@ -83,39 +84,13 @@ export function CompetitionMatchForm({
           </Select>
         </div>
       )}
-      <div className="space-y-1">
-        <Label>Team 1</Label>
-        <Select value={team1Id} onValueChange={setTeam1Id}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Select team…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tbd">TBD</SelectItem>
-            {teamOptions.map((t) => (
-              <SelectItem key={t.id} value={t.id} disabled={t.id === team2Id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <span className="text-sm text-muted-foreground pb-2">vs</span>
-      <div className="space-y-1">
-        <Label>Team 2</Label>
-        <Select value={team2Id} onValueChange={setTeam2Id}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Select team…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tbd">TBD</SelectItem>
-            {teamOptions.map((t) => (
-              <SelectItem key={t.id} value={t.id} disabled={t.id === team1Id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <MatchTeamSelects
+        teams={teamOptions}
+        slots={slots}
+        onChange={setSlots}
+        trios={trios}
+        labelled
+      />
       <Button type="submit" disabled={isPending}>
         {isPending ? "Adding…" : "Add Match"}
       </Button>
