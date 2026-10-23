@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DeleteEntityButton } from "./DeleteEntityButton";
+import { MatchTeamSelects, matchSlotsFrom, setMatchSlotsOnFormData } from "./MatchTeamSelects";
 import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import type {
@@ -46,6 +47,8 @@ type Props = {
   matches: CompetitionMatchListItem[];
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
+  // Trios competitions pick two trios per side.
+  trios?: boolean;
   deleteAction: (matchId: string) => Promise<void>;
   reorderAction: (reorders: { id: string; matchNumber: number }[]) => Promise<void>;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
@@ -55,25 +58,25 @@ function EditMatchTeamsForm({
   match,
   teams,
   pools,
+  trios,
   updateTeamsAction,
   onCancel,
 }: {
   match: CompetitionMatchListItem;
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
+  trios: boolean;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [team1Id, setTeam1Id] = useState(match.team1Id ?? "tbd");
-  const [team2Id, setTeam2Id] = useState(match.team2Id ?? "tbd");
+  const [slots, setSlots] = useState(() => matchSlotsFrom(match));
   const [poolId, setPoolId] = useState(match.poolId ?? "none");
   const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    formData.set("team1Id", team1Id === "tbd" ? "" : team1Id);
-    formData.set("team2Id", team2Id === "tbd" ? "" : team2Id);
+    setMatchSlotsOnFormData(formData, slots, trios);
     if (pools) formData.set("poolId", poolId === "none" ? "" : poolId);
     setIsPending(true);
     try {
@@ -101,33 +104,13 @@ function EditMatchTeamsForm({
           </SelectContent>
         </Select>
       )}
-      <Select value={team1Id} onValueChange={setTeam1Id}>
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="Select team…" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="tbd">TBD</SelectItem>
-          {teams.map((t) => (
-            <SelectItem key={t.id} value={t.id} disabled={t.id === team2Id}>
-              {t.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <span className="text-sm text-muted-foreground pb-2">vs</span>
-      <Select value={team2Id} onValueChange={setTeam2Id}>
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="Select team…" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="tbd">TBD</SelectItem>
-          {teams.map((t) => (
-            <SelectItem key={t.id} value={t.id} disabled={t.id === team1Id}>
-              {t.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <MatchTeamSelects
+        teams={teams}
+        slots={slots}
+        onChange={setSlots}
+        trios={trios}
+        triggerClassName="w-40"
+      />
       <Button type="submit" size="sm" disabled={isPending}>
         {isPending ? "Saving…" : "Save"}
       </Button>
@@ -144,6 +127,7 @@ function SortableMatch({
   roundId,
   teams,
   pools,
+  trios,
   deleteAction,
   updateTeamsAction,
 }: {
@@ -152,6 +136,7 @@ function SortableMatch({
   roundId: string;
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
+  trios: boolean;
   deleteAction: (id: string) => Promise<void>;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
 }) {
@@ -190,6 +175,7 @@ function SortableMatch({
             match={match}
             teams={teams}
             pools={pools}
+            trios={trios}
             updateTeamsAction={updateTeamsAction}
             onCancel={() => setIsEditingTeams(false)}
           />
@@ -252,6 +238,7 @@ export function SortableMatchList({
   matches: initialMatches,
   teams,
   pools,
+  trios = false,
   deleteAction,
   reorderAction,
   updateTeamsAction,
@@ -313,6 +300,7 @@ export function SortableMatchList({
               roundId={roundId}
               teams={teams}
               pools={pools}
+              trios={trios}
               deleteAction={deleteAction}
               updateTeamsAction={updateTeamsAction}
             />

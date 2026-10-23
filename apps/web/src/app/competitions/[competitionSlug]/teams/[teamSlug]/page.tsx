@@ -89,7 +89,10 @@ export default async function CompetitionTeamPage({
     })),
   ];
 
-  const teamMatches = matchResults.filter((m) => m.team1Id === team.id || m.team2Id === team.id);
+  // A trio also appears as the partner slot of its side.
+  const teamMatches = matchResults.filter((m) =>
+    [m.team1Id, m.team2Id, m.team1Partner?.id, m.team2Partner?.id].includes(team.id),
+  );
   const rounds = new Map<
     string,
     {

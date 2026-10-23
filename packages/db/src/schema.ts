@@ -50,7 +50,12 @@ export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "s
  * `type = 'competitive', format = 'solo'`; a No Scoring event is still
  * `type = 'competitive'`, so its games feed the all-competitive aggregate like any other.
  */
-export const competitionFormatEnum = pgEnum("competition_format", ["team", "solo", "none"]);
+export const competitionFormatEnum = pgEnum("competition_format", [
+  "team",
+  "solo",
+  "none",
+  "trios",
+]);
 
 /**
  * Which bucket a competition sits in when browsing (`/competitions`). Independent of both
@@ -401,6 +406,9 @@ export const competitionMatch = pgTable(
     matchNumber: integer("match_number").notNull(),
     team1Id: uuid("team1_id").references(() => competitionTeam.id),
     team2Id: uuid("team2_id").references(() => competitionTeam.id),
+    // Trios format only: the second trio on each side. Null for every other format.
+    team1PartnerId: uuid("team1_partner_id").references(() => competitionTeam.id),
+    team2PartnerId: uuid("team2_partner_id").references(() => competitionTeam.id),
     game1ScheduledStartTime: timestamp("game1_scheduled_start_time"),
     game2ScheduledStartTime: timestamp("game2_scheduled_start_time"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -408,6 +416,15 @@ export const competitionMatch = pgTable(
   (t) => [
     unique().on(t.roundId, t.matchNumber),
     index("competition_match_competition_id_idx").on(t.competitionId),
+    // No trio may appear twice in one match. Null slots (unscheduled) are ignored.
+    check(
+      "competition_match_distinct_teams_check",
+      // Pairwise so a null slot compares as unknown, which a CHECK treats as passing.
+      sql`${t.team1Id} <> ${t.team2Id}
+        and ${t.team1PartnerId} <> ${t.team1Id} and ${t.team1PartnerId} <> ${t.team2Id}
+        and ${t.team2PartnerId} <> ${t.team1Id} and ${t.team2PartnerId} <> ${t.team2Id}
+        and ${t.team1PartnerId} <> ${t.team2PartnerId}`,
+    ),
   ],
 );
 

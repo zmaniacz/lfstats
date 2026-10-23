@@ -84,19 +84,30 @@ export async function deleteRoundAction(competitionId: string, roundId: string):
   refresh();
 }
 
+// Match team slots from a match form. The partner slots are only posted by a trios competition's
+// forms; elsewhere they read as null, which is what every other format stores.
+function readMatchTeams(formData: FormData) {
+  const read = (key: string) => (formData.get(key) as string) || null;
+  return {
+    team1Id: read("team1Id"),
+    team1PartnerId: read("team1PartnerId"),
+    team2Id: read("team2Id"),
+    team2PartnerId: read("team2PartnerId"),
+  };
+}
+
 export async function createMatchAction(
   competitionId: string,
   roundId: string,
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
-  const team1Id = (formData.get("team1Id") as string) || null;
-  const team2Id = (formData.get("team2Id") as string) || null;
+  const teams = readMatchTeams(formData);
   const poolId = (formData.get("poolId") as string) || null;
   // Auto-assign next match number within this round
   const existing = await getCompetitionMatchesByRound(roundId);
   const matchNumber = existing.length > 0 ? Math.max(...existing.map((m) => m.matchNumber)) + 1 : 1;
-  await createCompetitionMatch({ competitionId, roundId, matchNumber, team1Id, team2Id, poolId });
+  await createCompetitionMatch({ competitionId, roundId, matchNumber, ...teams, poolId });
   await revalidateRoundPage(competitionId, roundId);
   refresh();
 }
@@ -144,12 +155,8 @@ export async function updateMatchTeamsAction(
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
-  const team1Id = (formData.get("team1Id") as string) || null;
-  const team2Id = (formData.get("team2Id") as string) || null;
-  const data: { team1Id: string | null; team2Id: string | null; poolId?: string | null } = {
-    team1Id,
-    team2Id,
-  };
+  const data: ReturnType<typeof readMatchTeams> & { poolId?: string | null } =
+    readMatchTeams(formData);
   if (formData.has("poolId")) {
     data.poolId = (formData.get("poolId") as string) || null;
   }

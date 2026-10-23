@@ -13,17 +13,17 @@ import { slugify, resolveUniqueSlug } from "../lib/slug";
 export type CompetitionState = "preshow" | "upcoming" | "active" | "completed";
 
 /** How a competition is scored. Orthogonal to `type` — see schema.ts `competitionFormatEnum`. */
-export type CompetitionFormat = "team" | "solo" | "none";
+export type CompetitionFormat = "team" | "solo" | "none" | "trios";
 
 /**
- * Whether a competition is built out of rounds and matches. Only `team` is — `solo` ranks
- * individual scorecards and `none` is an unscored collection of games — so anything that
+ * Whether a competition is built out of rounds and matches. `team` and `trios` are — `solo`
+ * ranks individual scorecards and `none` is an unscored collection of games — so anything that
  * reads `competition_round` / `competition_match` / `competition_team`, or offers the
  * pool/finals/mercenary toggles, must gate on this rather than comparing against a single
  * format value.
  */
 export function hasMatchStructure(format: CompetitionFormat): boolean {
-  return format === "team";
+  return format === "team" || format === "trios";
 }
 
 /**

@@ -32,6 +32,7 @@ import {
   not,
   or,
   sql,
+  type Column,
   type SQL,
   notLike,
 } from "drizzle-orm";
@@ -42,6 +43,12 @@ import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
 import { getPlayerPictureUrl } from "../lib/player-pictures";
+import {
+  compareStandings,
+  computeTeamStats,
+  emptyTeamStats,
+  type StandingsGameRow,
+} from "../lib/match-points";
 
 // ---------------------------------------------------------------------------
 // Competition lookup
@@ -53,6 +60,93 @@ export async function getCompetitionHostCenterId(competitionId: string): Promise
     .from(competition)
     .where(eq(competition.id, competitionId));
   return row?.hostCenterId ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Match sides
+// ---------------------------------------------------------------------------
+
+// A trios match puts two competition teams (trios) on each side of one sm5_game_team; the
+// partner columns are null in every other format. Everything a side earns is shared by both
+// trios on it, so most queries only need to widen "team1_id" to "team1_id or its partner".
+type MatchSideIds = {
+  team1Id: string | null;
+  team1PartnerId: string | null;
+  team2Id: string | null;
+  team2PartnerId: string | null;
+};
+
+function matchSideTeamIds(rows: MatchSideIds[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .flatMap((r) => [r.team1Id, r.team1PartnerId, r.team2Id, r.team2PartnerId])
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+}
+
+async function loadTeamNames(rows: MatchSideIds[]): Promise<Map<string, string>> {
+  const ids = matchSideTeamIds(rows);
+  if (ids.length === 0) return new Map();
+  const teams = await db
+    .select({ id: competitionTeam.id, name: competitionTeam.name })
+    .from(competitionTeam)
+    .where(inArray(competitionTeam.id, ids));
+  return new Map(teams.map((t) => [t.id, t.name]));
+}
+
+// Display name for one side: "TBD" before it is scheduled, else the team — joined with its
+// partner trio as "A & B" in a trios match.
+function matchSideName(
+  names: Map<string, string>,
+  teamId: string | null,
+  partnerId: string | null,
+): string {
+  if (!teamId) return "TBD";
+  const name = names.get(teamId) ?? "Unknown";
+  return partnerId ? `${name} & ${names.get(partnerId) ?? "Unknown"}` : name;
+}
+
+// The sm5_game_team ids a competition team played as, across every match it is on. A trio
+// resolves to the side it shares with its partner.
+function teamGameTeamIdsSql(teamId: string | Column): SQL {
+  return sql`SELECT CASE WHEN ${teamId}::uuid IN (cm.team1_id, cm.team1_partner_id)
+                         THEN cmg.team1_game_team_id ELSE cmg.team2_game_team_id END
+             FROM competition_match cm
+             JOIN competition_match_game cmg ON cmg.match_id = cm.id
+             WHERE ${teamId}::uuid IN (cm.team1_id, cm.team2_id, cm.team1_partner_id, cm.team2_partner_id)`;
+}
+
+// True when a scorecard counts for a competition team: it is on the team's side, and — for a
+// trio — the player is not rostered on that match's partner trio instead. For an ordinary team
+// the partner is null, so this reduces to "on the team's side".
+function teamScorecardSql(
+  teamId: string | Column,
+  scTeamId: SQL | Column,
+  scPlayerId: SQL | Column,
+): SQL {
+  return sql`EXISTS (
+    SELECT 1 FROM competition_match cm
+    JOIN competition_match_game cmg ON cmg.match_id = cm.id
+    WHERE ${teamId}::uuid IN (cm.team1_id, cm.team2_id, cm.team1_partner_id, cm.team2_partner_id)
+      AND ${scTeamId} = CASE WHEN ${teamId}::uuid IN (cm.team1_id, cm.team1_partner_id)
+                             THEN cmg.team1_game_team_id ELSE cmg.team2_game_team_id END
+      AND NOT EXISTS (
+        SELECT 1 FROM competition_team_player partner_ctp
+        WHERE partner_ctp.player_id = ${scPlayerId}
+          AND partner_ctp.competition_team_id = CASE ${teamId}::uuid
+            WHEN cm.team1_id THEN cm.team1_partner_id
+            WHEN cm.team1_partner_id THEN cm.team1_id
+            WHEN cm.team2_id THEN cm.team2_partner_id
+            ELSE cm.team2_id END
+          AND NOT EXISTS (
+            SELECT 1 FROM competition_team_player own_ctp
+            WHERE own_ctp.player_id = ${scPlayerId}
+              AND own_ctp.competition_team_id = ${teamId}::uuid
+          )
+      )
+  )`;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,8 +196,11 @@ export type CompetitionMatchListItem = {
   poolId: string | null;
   poolName: string | null;
   team1Id: string | null;
+  team1PartnerId: string | null;
+  // Side display name: both trios joined ("A & B") in a trios match.
   team1Name: string;
   team2Id: string | null;
+  team2PartnerId: string | null;
   team2Name: string;
   game1ScheduledStartTime: Date | null;
   game2ScheduledStartTime: Date | null;
@@ -118,8 +215,11 @@ export type CompetitionMatchDetail = {
   competitionId: string;
   roundId: string;
   team1Id: string | null;
+  team1PartnerId: string | null;
+  // Side display name: both trios joined ("A & B") in a trios match.
   team1Name: string;
   team2Id: string | null;
+  team2PartnerId: string | null;
   team2Name: string;
   game1ScheduledStartTime: Date | null;
   game2ScheduledStartTime: Date | null;
@@ -175,13 +275,7 @@ export async function getCompetitionTeams(
       mercCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = true)::int`,
       unassignedCount: sql<number>`(
         SELECT count(DISTINCT sc.player_id)::int FROM sm5_scorecard sc
-        WHERE sc.team_id IN (
-          SELECT CASE WHEN cm.team1_id = ${competitionTeam.id} THEN cmg.team1_game_team_id
-                      ELSE cmg.team2_game_team_id END
-          FROM competition_match cm
-          JOIN competition_match_game cmg ON cmg.match_id = cm.id
-          WHERE cm.team1_id = ${competitionTeam.id} OR cm.team2_id = ${competitionTeam.id}
-        )
+        WHERE ${teamScorecardSql(competitionTeam.id, sql`sc.team_id`, sql`sc.player_id`)}
         AND sc.player_id NOT IN (
           SELECT player_id FROM competition_team_player
           WHERE competition_team_id = ${competitionTeam.id}
@@ -301,13 +395,7 @@ export async function getCompetitionTeamRoster(
       gamesPlayed: sql<number>`(
         SELECT count(*)::int FROM sm5_scorecard sc
         WHERE sc.player_id = ${player.id}
-          AND sc.team_id IN (
-            SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
-                        ELSE cmg.team2_game_team_id END
-            FROM competition_match cm
-            JOIN competition_match_game cmg ON cmg.match_id = cm.id
-            WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
-          )
+          AND ${teamScorecardSql(teamId, sql`sc.team_id`, sql`sc.player_id`)}
       )`,
     })
     .from(competitionTeamPlayer)
@@ -331,7 +419,7 @@ export async function getTeamGameParticipants(
 ): Promise<TeamGameParticipant[]> {
   // Find all players who have a scorecard on this competition team's game-team rows,
   // excluding those already on the official roster.
-  // The join path: competition_team -> competition_match (team1_id or team2_id)
+  // The join path: competition_team -> competition_match (either side, or a trio partner slot)
   //   -> competition_match_game -> sm5_game_team (the right side) -> sm5_scorecard -> player
   const rows = await db
     .select({
@@ -345,17 +433,8 @@ export async function getTeamGameParticipants(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(
       and(
-        // scorecard's game team must be one assigned to this competition team
-        sql`${sm5Scorecard.teamId} IN (
-          SELECT
-            CASE
-              WHEN cm.team1_id = ${competitionTeamId} THEN cmg.team1_game_team_id
-              ELSE cmg.team2_game_team_id
-            END
-          FROM competition_match cm
-          JOIN competition_match_game cmg ON cmg.match_id = cm.id
-          WHERE cm.team1_id = ${competitionTeamId} OR cm.team2_id = ${competitionTeamId}
-        )`,
+        // scorecard must count for this team (its side, minus a trio partner's players)
+        teamScorecardSql(competitionTeamId, sm5Scorecard.teamId, sm5Scorecard.playerId),
         // exclude players already on the official roster
         sql`${sm5Scorecard.playerId} NOT IN (
           SELECT player_id FROM competition_team_player
@@ -432,13 +511,7 @@ export async function getCompetitionTeamPlayerStats(
       and(
         sql`${sm5Scorecard.playerId} IS NOT NULL`,
         eq(game.exclude, false),
-        sql`${sm5Scorecard.teamId} IN (
-          SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
-                      ELSE cmg.team2_game_team_id END
-          FROM competition_match cm
-          JOIN competition_match_game cmg ON cmg.match_id = cm.id
-          WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
-        )`,
+        teamScorecardSql(teamId, sm5Scorecard.teamId, sm5Scorecard.playerId),
       ),
     )
     .groupBy(
@@ -475,18 +548,7 @@ export async function getCompetitionTeamResultsByColor(
     })
     .from(sm5GameTeam)
     .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
-    .where(
-      and(
-        eq(game.exclude, false),
-        sql`${sm5GameTeam.id} IN (
-          SELECT CASE WHEN cm.team1_id = ${teamId} THEN cmg.team1_game_team_id
-                      ELSE cmg.team2_game_team_id END
-          FROM competition_match cm
-          JOIN competition_match_game cmg ON cmg.match_id = cm.id
-          WHERE cm.team1_id = ${teamId} OR cm.team2_id = ${teamId}
-        )`,
-      ),
-    )
+    .where(and(eq(game.exclude, false), sql`${sm5GameTeam.id} IN (${teamGameTeamIdsSql(teamId)})`))
     .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
     .orderBy(desc(sm5GameTeam.result), asc(sm5GameTeam.colourEnum), desc(game.outcome));
 
@@ -566,16 +628,7 @@ export async function setPlayerMercenary(
     .where(
       and(
         eq(sm5Scorecard.playerId, playerId),
-        sql`${sm5Scorecard.teamId} IN (
-          SELECT
-            CASE
-              WHEN cm.team1_id = ${competitionTeamId} THEN cmg.team1_game_team_id
-              ELSE cmg.team2_game_team_id
-            END
-          FROM competition_match cm
-          JOIN competition_match_game cmg ON cmg.match_id = cm.id
-          WHERE cm.team1_id = ${competitionTeamId} OR cm.team2_id = ${competitionTeamId}
-        )`,
+        sql`${sm5Scorecard.teamId} IN (${teamGameTeamIdsSql(competitionTeamId)})`,
       ),
     );
   return { ok: true };
@@ -781,7 +834,9 @@ export async function getCompetitionMatchesByRound(
       poolId: competitionMatch.poolId,
       poolName: competitionPool.name,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
       game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
     })
@@ -792,23 +847,7 @@ export async function getCompetitionMatchesByRound(
 
   if (matchRows.length === 0) return [];
 
-  const teamIds = [
-    ...new Set(
-      [...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)].filter(
-        (id): id is string => id !== null,
-      ),
-    ),
-  ];
-
-  const teams =
-    teamIds.length > 0
-      ? await db
-          .select({ id: competitionTeam.id, name: competitionTeam.name })
-          .from(competitionTeam)
-          .where(inArray(competitionTeam.id, teamIds))
-      : [];
-
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+  const teamMap = await loadTeamNames(matchRows);
 
   const matchIds = matchRows.map((m) => m.id);
   const gameAssignments = await db
@@ -840,9 +879,11 @@ export async function getCompetitionMatchesByRound(
       poolId: m.poolId,
       poolName: m.poolName,
       team1Id: m.team1Id,
-      team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
+      team1PartnerId: m.team1PartnerId,
+      team1Name: matchSideName(teamMap, m.team1Id, m.team1PartnerId),
       team2Id: m.team2Id,
-      team2Name: m.team2Id ? (teamMap.get(m.team2Id) ?? "Unknown") : "TBD",
+      team2PartnerId: m.team2PartnerId,
+      team2Name: matchSideName(teamMap, m.team2Id, m.team2PartnerId),
       game1ScheduledStartTime: m.game1ScheduledStartTime,
       game2ScheduledStartTime: m.game2ScheduledStartTime,
       game1StartTime: entry?.startTimes.get(1) ?? null,
@@ -858,26 +899,18 @@ export async function getCompetitionMatchById(id: string): Promise<CompetitionMa
 
   if (!match) return null;
 
-  const teamIds = [match.team1Id, match.team2Id].filter((id): id is string => id !== null);
-
-  const teams =
-    teamIds.length > 0
-      ? await db
-          .select({ id: competitionTeam.id, name: competitionTeam.name })
-          .from(competitionTeam)
-          .where(inArray(competitionTeam.id, teamIds))
-      : [];
-
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+  const teamMap = await loadTeamNames([match]);
 
   return {
     id: match.id,
     competitionId: match.competitionId,
     roundId: match.roundId,
     team1Id: match.team1Id,
-    team1Name: match.team1Id ? (teamMap.get(match.team1Id) ?? "Unknown") : "TBD",
+    team1PartnerId: match.team1PartnerId,
+    team1Name: matchSideName(teamMap, match.team1Id, match.team1PartnerId),
     team2Id: match.team2Id,
-    team2Name: match.team2Id ? (teamMap.get(match.team2Id) ?? "Unknown") : "TBD",
+    team2PartnerId: match.team2PartnerId,
+    team2Name: matchSideName(teamMap, match.team2Id, match.team2PartnerId),
     game1ScheduledStartTime: match.game1ScheduledStartTime,
     game2ScheduledStartTime: match.game2ScheduledStartTime,
   };
@@ -908,6 +941,9 @@ export async function createCompetitionMatch(data: {
   matchNumber: number;
   team1Id: string | null;
   team2Id: string | null;
+  // Trios only.
+  team1PartnerId?: string | null;
+  team2PartnerId?: string | null;
 }): Promise<string> {
   const [row] = await db
     .insert(competitionMatch)
@@ -922,7 +958,14 @@ export async function deleteCompetitionMatch(id: string): Promise<void> {
 
 export async function updateCompetitionMatchTeams(
   id: string,
-  data: { team1Id: string | null; team2Id: string | null; poolId?: string | null },
+  data: {
+    team1Id: string | null;
+    team2Id: string | null;
+    // Trios only.
+    team1PartnerId?: string | null;
+    team2PartnerId?: string | null;
+    poolId?: string | null;
+  },
 ): Promise<void> {
   await db.update(competitionMatch).set(data).where(eq(competitionMatch.id, id));
 }
@@ -1162,10 +1205,11 @@ export async function assignGameToMatch(
   });
 
   // Apply mercenary flags from competition_team_player to the newly assigned game's scorecards.
-  // For each side, find players with is_mercenary=true on the roster and mark their scorecards.
-  for (const [gameTeamId, side] of [
-    [team1GameTeamId, "team1_id"],
-    [team2GameTeamId, "team2_id"],
+  // For each side, find players with is_mercenary=true on the roster — of either trio, in a
+  // trios match — and mark their scorecards.
+  for (const [gameTeamId, side, partner] of [
+    [team1GameTeamId, "team1_id", "team1_partner_id"],
+    [team2GameTeamId, "team2_id", "team2_partner_id"],
   ] as const) {
     await db
       .update(sm5Scorecard)
@@ -1176,7 +1220,8 @@ export async function assignGameToMatch(
           sql`${sm5Scorecard.playerId} IN (
             SELECT ctp.player_id
             FROM competition_team_player ctp
-            JOIN competition_match cm ON cm.${sql.raw(side)} = ctp.competition_team_id
+            JOIN competition_match cm
+              ON ctp.competition_team_id IN (cm.${sql.raw(side)}, cm.${sql.raw(partner)})
             WHERE cm.id = ${matchId}
               AND ctp.is_mercenary = true
           )`,
@@ -1262,6 +1307,7 @@ export type GameMatchAssignment = {
   gameNumber: number;
   roundName: string;
   team1GameTeamId: string;
+  // Side display name: both trios joined ("A & B") in a trios match.
   team1Name: string;
   team2GameTeamId: string;
   team2Name: string;
@@ -1274,7 +1320,9 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
       matchNumber: competitionMatch.matchNumber,
       roundName: competitionRound.name,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
     })
     .from(competitionMatch)
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
@@ -1283,21 +1331,7 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
 
   if (matchRows.length === 0) return [];
 
-  const teamIds = [
-    ...new Set(
-      [...matchRows.map((m) => m.team1Id), ...matchRows.map((m) => m.team2Id)].filter(
-        (id): id is string => id !== null,
-      ),
-    ),
-  ];
-  const teams =
-    teamIds.length > 0
-      ? await db
-          .select({ id: competitionTeam.id, name: competitionTeam.name })
-          .from(competitionTeam)
-          .where(inArray(competitionTeam.id, teamIds))
-      : [];
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+  const teamMap = await loadTeamNames(matchRows);
 
   const matchIds = matchRows.map((m) => m.id);
   const assignments = await db
@@ -1322,8 +1356,8 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
         id: m.id,
         matchNumber: m.matchNumber,
         roundName: m.roundName,
-        team1Name: m.team1Id ? (teamMap.get(m.team1Id) ?? "Unknown") : "TBD",
-        team2Name: m.team2Id ? (teamMap.get(m.team2Id) ?? "Unknown") : "TBD",
+        team1Name: matchSideName(teamMap, m.team1Id, m.team1PartnerId),
+        team2Name: matchSideName(teamMap, m.team2Id, m.team2PartnerId),
         availableGameNumbers,
       };
     })
@@ -1401,7 +1435,9 @@ export async function getCompetitionAssignedGamesForAdmin(
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       team1ColourEnum: sql<number>`t1.colour_enum`,
       team2ColourEnum: sql<number>`t2.colour_enum`,
       startTime: game.startTime,
@@ -1424,21 +1460,7 @@ export async function getCompetitionAssignedGamesForAdmin(
 
   if (rows.length === 0) return [];
 
-  const teamIds = [
-    ...new Set(
-      [...rows.map((r) => r.team1Id), ...rows.map((r) => r.team2Id)].filter(
-        (id): id is string => id !== null,
-      ),
-    ),
-  ];
-  const teams =
-    teamIds.length > 0
-      ? await db
-          .select({ id: competitionTeam.id, name: competitionTeam.name })
-          .from(competitionTeam)
-          .where(inArray(competitionTeam.id, teamIds))
-      : [];
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+  const teamMap = await loadTeamNames(rows);
 
   return rows.map((r) => ({
     id: r.id,
@@ -1447,9 +1469,9 @@ export async function getCompetitionAssignedGamesForAdmin(
     roundName: r.roundName,
     matchNumber: r.matchNumber,
     gameNumber: r.gameNumber,
-    team1Name: r.team1Id ? (teamMap.get(r.team1Id) ?? "Unknown") : "TBD",
+    team1Name: matchSideName(teamMap, r.team1Id, r.team1PartnerId),
     team1ColourEnum: r.team1ColourEnum,
-    team2Name: r.team2Id ? (teamMap.get(r.team2Id) ?? "Unknown") : "TBD",
+    team2Name: matchSideName(teamMap, r.team2Id, r.team2PartnerId),
     team2ColourEnum: r.team2ColourEnum,
     startTime: r.startTime,
     outcome: r.outcome,
@@ -1607,140 +1629,61 @@ export type CompetitionStandingsRow = {
   gameLosses: number;
   gameDraws: number;
   teamEliminations: number; // # of games where the opposing team was fully eliminated
+  // Trios: the trio's own players' net score, and the net score of every opponent they faced
+  // (see getTrioScoreTotals). Otherwise the side's team score for and against.
   scoreFor: number;
   scoreAgainst: number;
 };
 
-type StandingsGameRow = {
-  matchId: string;
-  gameNumber: number;
-  // Round-level scaling applied to every point this game can earn.
-  roundMultiplier: number;
-  team1Id: string | null;
-  team1Score: number;
-  team1Result: string;
-  team1EliminatedOpponent: boolean;
-  team2Id: string | null;
-  team2Score: number;
-  team2Result: string;
-  team2EliminatedOpponent: boolean;
-};
-
-type TeamStatsAccumulator = {
-  matchPoints: number;
-  matchWins: number;
-  matchLosses: number;
-  matchDraws: number;
-  gameWins: number;
-  gameLosses: number;
-  gameDraws: number;
-  teamEliminations: number;
-  scoreFor: number;
-  scoreAgainst: number;
-};
-
-// Accumulates per-team match/game stats from a set of match-game rows.
-// Shared by the overall round standings and per-pool standings (split-pool rounds).
-function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, TeamStatsAccumulator> {
-  // Group games by match (matches always have both teams assigned once games are linked)
-  const matchMap = new Map<
-    string,
-    { team1Id: string; team2Id: string; multiplier: number; games: StandingsGameRow[] }
-  >();
-  for (const row of gameRows) {
-    if (row.team1Id === null || row.team2Id === null) continue;
-    if (!matchMap.has(row.matchId)) {
-      matchMap.set(row.matchId, {
-        team1Id: row.team1Id,
-        team2Id: row.team2Id,
-        multiplier: row.roundMultiplier,
-        games: [],
-      });
-    }
-    matchMap.get(row.matchId)!.games.push(row);
-  }
-
-  const stats = new Map<string, TeamStatsAccumulator>();
-
-  function ensureTeam(id: string) {
-    if (!stats.has(id)) {
-      stats.set(id, {
-        matchPoints: 0,
-        matchWins: 0,
-        matchLosses: 0,
-        matchDraws: 0,
-        gameWins: 0,
-        gameLosses: 0,
-        gameDraws: 0,
-        teamEliminations: 0,
-        scoreFor: 0,
-        scoreAgainst: 0,
-      });
-    }
-    return stats.get(id)!;
-  }
-
-  for (const [, { team1Id, team2Id, multiplier, games }] of matchMap) {
-    const t1 = ensureTeam(team1Id);
-    const t2 = ensureTeam(team2Id);
-
-    let t1TotalScore = 0;
-    let t2TotalScore = 0;
-
-    for (const g of games) {
-      const t1s = Number(g.team1Score ?? 0);
-      const t2s = Number(g.team2Score ?? 0);
-      t1TotalScore += t1s;
-      t2TotalScore += t2s;
-
-      t1.scoreFor += t1s;
-      t1.scoreAgainst += t2s;
-      t2.scoreFor += t2s;
-      t2.scoreAgainst += t1s;
-
-      if (g.team1EliminatedOpponent) t1.teamEliminations += 1;
-      if (g.team2EliminatedOpponent) t2.teamEliminations += 1;
-
-      // Game points: 2 per win, 1 per draw, scaled by the round multiplier.
-      const r1 = g.team1Result;
-      const r2 = g.team2Result;
-      if (r1 === "win") {
-        t1.gameWins += 1;
-        t1.matchPoints += 2 * multiplier;
-        t2.gameLosses += 1;
-      } else if (r2 === "win") {
-        t2.gameWins += 1;
-        t2.matchPoints += 2 * multiplier;
-        t1.gameLosses += 1;
-      } else {
-        t1.gameDraws += 1;
-        t1.matchPoints += multiplier;
-        t2.gameDraws += 1;
-        t2.matchPoints += multiplier;
-      }
-    }
-
-    // Match bonus: compare combined scores. Only awarded once the match is complete
-    // (both games reported) — an in-progress match shouldn't grant the win/draw bonus yet.
-    if (games.length >= 2) {
-      if (t1TotalScore > t2TotalScore) {
-        t1.matchPoints += 2 * multiplier;
-        t1.matchWins += 1;
-        t2.matchLosses += 1;
-      } else if (t2TotalScore > t1TotalScore) {
-        t2.matchPoints += 2 * multiplier;
-        t2.matchWins += 1;
-        t1.matchLosses += 1;
-      } else {
-        t1.matchPoints += multiplier;
-        t1.matchDraws += 1;
-        t2.matchPoints += multiplier;
-        t2.matchDraws += 1;
-      }
-    }
-  }
-
-  return stats;
+// Trio tiebreak totals, keyed by trio id. A trio's score is the sum of its rostered players'
+// (mercs included) scorecard score net of their own non-rescinded penalties; "against" is the same
+// sum over every scorecard on the opposing side. Team-level penalties and elimination bonuses
+// can't be attributed to one trio, so they are left out of both — they still count towards
+// game results and the match bonus.
+async function getTrioScoreTotals(
+  conditions: SQL | undefined,
+): Promise<Map<string, { scoreFor: number; scoreAgainst: number }>> {
+  const rows = await db.execute<{ trio_id: string; score_for: number; score_against: number }>(sql`
+    WITH mg AS (
+      SELECT competition_match_game.team1_game_team_id AS gt1,
+             competition_match_game.team2_game_team_id AS gt2,
+             competition_match.team1_id, competition_match.team1_partner_id,
+             competition_match.team2_id, competition_match.team2_partner_id
+      FROM competition_match_game
+      JOIN competition_match ON competition_match.id = competition_match_game.match_id
+      JOIN competition_round ON competition_round.id = competition_match.round_id
+      JOIN game ON game.id = competition_match_game.game_id
+      WHERE ${conditions}
+    ),
+    slot AS (
+      SELECT team1_id AS trio_id, gt1 AS own_gt, gt2 AS opp_gt FROM mg
+      UNION ALL SELECT team1_partner_id, gt1, gt2 FROM mg
+      UNION ALL SELECT team2_id, gt2, gt1 FROM mg
+      UNION ALL SELECT team2_partner_id, gt2, gt1 FROM mg
+    ),
+    net AS (
+      SELECT sc.team_id, sc.player_id,
+             sc.score + coalesce((SELECT sum(p.score_value) FROM sm5_game_penalty p
+                                  WHERE p.scorecard_id = sc.id AND NOT p.rescinded), 0) AS net_score
+      FROM sm5_scorecard sc
+      WHERE sc.team_id IN (SELECT gt1 FROM mg UNION SELECT gt2 FROM mg)
+    )
+    SELECT slot.trio_id,
+           coalesce(sum((SELECT sum(n.net_score) FROM net n
+                         JOIN competition_team_player ctp
+                           ON ctp.player_id = n.player_id AND ctp.competition_team_id = slot.trio_id
+                         WHERE n.team_id = slot.own_gt)), 0)::int AS score_for,
+           coalesce(sum((SELECT sum(n.net_score) FROM net n WHERE n.team_id = slot.opp_gt)), 0)::int
+             AS score_against
+    FROM slot
+    WHERE slot.trio_id IS NOT NULL
+    GROUP BY slot.trio_id`);
+  return new Map(
+    [...rows].map((r) => [
+      r.trio_id,
+      { scoreFor: Number(r.score_for), scoreAgainst: Number(r.score_against) },
+    ]),
+  );
 }
 
 export async function getCompetitionStandings(
@@ -1757,6 +1700,23 @@ export async function getCompetitionStandings(
   //
   // Standings are computed from 'pool' and 'split-pool' rounds; optionally narrowed to a
   // single round and/or a single pool (for split-pool rounds).
+  //
+  // In a trios competition each side is two trios: both are credited with the side's points,
+  // and the score ratio is replaced by each trio's own player score (getTrioScoreTotals).
+
+  const conditions = and(
+    eq(competitionMatch.competitionId, competitionId),
+    // An excluded game left in a match slot counts as not yet reported.
+    eq(game.exclude, false),
+    roundId ? eq(competitionMatch.roundId, roundId) : ne(competitionRound.type, "finals"),
+    poolId ? eq(competitionMatch.poolId, poolId) : undefined,
+  );
+
+  const [comp] = await db
+    .select({ format: competition.format })
+    .from(competition)
+    .where(eq(competition.id, competitionId));
+  const isTrios = comp?.format === "trios";
 
   const gameRows: StandingsGameRow[] = await db
     .select({
@@ -1765,11 +1725,13 @@ export async function getCompetitionStandings(
       roundMultiplier: competitionRound.multiplier,
       // team1 perspective
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team1Score: sql<number>`t1.score + t1.elimination_bonus + coalesce(t1.penalty_score, 0)`,
       team1Result: sql<string>`t1.result`,
       team1EliminatedOpponent: sql<boolean>`t2.eliminated`,
       // team2 perspective
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       team2Score: sql<number>`t2.score + t2.elimination_bonus + coalesce(t2.penalty_score, 0)`,
       team2Result: sql<string>`t2.result`,
       team2EliminatedOpponent: sql<boolean>`t1.eliminated`,
@@ -1780,17 +1742,17 @@ export async function getCompetitionStandings(
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
-    .where(
-      and(
-        eq(competitionMatch.competitionId, competitionId),
-        // An excluded game left in a match slot counts as not yet reported.
-        eq(game.exclude, false),
-        roundId ? eq(competitionMatch.roundId, roundId) : ne(competitionRound.type, "finals"),
-        poolId ? eq(competitionMatch.poolId, poolId) : undefined,
-      ),
-    );
+    .where(conditions);
 
   const stats = computeTeamStats(gameRows);
+  if (isTrios) {
+    const trioScores = await getTrioScoreTotals(conditions);
+    for (const [teamId, s] of stats) {
+      const trio = trioScores.get(teamId) ?? { scoreFor: 0, scoreAgainst: 0 };
+      s.scoreFor = trio.scoreFor;
+      s.scoreAgainst = trio.scoreAgainst;
+    }
+  }
 
   // Fetch team names (including 0-game teams). For a specific pool, only include teams
   // assigned to that pool; otherwise all teams in the competition.
@@ -1831,18 +1793,7 @@ export async function getCompetitionStandings(
 
   return allTeams
     .map((team) => {
-      const s = stats.get(team.id) ?? {
-        matchPoints: 0,
-        matchWins: 0,
-        matchLosses: 0,
-        matchDraws: 0,
-        gameWins: 0,
-        gameLosses: 0,
-        gameDraws: 0,
-        teamEliminations: 0,
-        scoreFor: 0,
-        scoreAgainst: 0,
-      };
+      const s = stats.get(team.id) ?? emptyTeamStats();
       return {
         teamId: team.id,
         teamName: team.name,
@@ -1854,22 +1805,21 @@ export async function getCompetitionStandings(
         ...s,
       };
     })
-    .sort((a, b) => {
-      if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
-
-      const ratioA =
-        a.scoreAgainst === 0 ? (a.scoreFor === 0 ? 0 : Infinity) : a.scoreFor / a.scoreAgainst;
-      const ratioB =
-        b.scoreAgainst === 0 ? (b.scoreFor === 0 ? 0 : Infinity) : b.scoreFor / b.scoreAgainst;
-      if (ratioB !== ratioA) return ratioB - ratioA;
-
-      return b.gameWins - a.gameWins;
-    });
+    .sort(compareStandings);
 }
 
 // ---------------------------------------------------------------------------
 // Match results (standings page)
 // ---------------------------------------------------------------------------
+
+export type MatchResultPartner = {
+  id: string;
+  name: string;
+  slug: string;
+  shortName: string | null;
+  hasLogo: boolean;
+  logoVersion: number;
+};
 
 export type CompetitionMatchResult = {
   matchId: string;
@@ -1890,6 +1840,10 @@ export type CompetitionMatchResult = {
   team2ShortName: string | null;
   team2HasLogo: boolean;
   team2LogoVersion: number;
+  // Trios only: the second trio on each side, credited with everything its side earns.
+  // Null in every other format.
+  team1Partner: MatchResultPartner | null;
+  team2Partner: MatchResultPartner | null;
   games: {
     gameNumber: number;
     gameId: string;
@@ -1935,7 +1889,9 @@ export async function getCompetitionMatchResults(
       roundNumber: competitionRound.roundNumber,
       roundMultiplier: competitionRound.multiplier,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
       game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
       gameNumber: competitionMatchGame.gameNumber,
@@ -1981,11 +1937,7 @@ export async function getCompetitionMatchResults(
   if (gameRows.length === 0) return [];
 
   // Fetch team names and short names
-  const teamIds = [
-    ...new Set(
-      gameRows.flatMap((r) => [r.team1Id, r.team2Id]).filter((id): id is string => id !== null),
-    ),
-  ];
+  const teamIds = matchSideTeamIds(gameRows);
   const teams =
     teamIds.length > 0
       ? await db
@@ -2021,6 +1973,7 @@ export async function getCompetitionMatchResults(
       matchOrder.push(row.matchId);
       const t1 = row.team1Id ? teamMap.get(row.team1Id) : undefined;
       const t2 = row.team2Id ? teamMap.get(row.team2Id) : undefined;
+      const partner = (id: string | null) => (id ? (teamMap.get(id) ?? null) : null);
       matchMap.set(row.matchId, {
         matchId: row.matchId,
         matchNumber: row.matchNumber,
@@ -2040,6 +1993,8 @@ export async function getCompetitionMatchResults(
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
         team2LogoVersion: t2?.logoVersion ?? 0,
+        team1Partner: partner(row.team1PartnerId),
+        team2Partner: partner(row.team2PartnerId),
         games: [],
         game1ScheduledStartTime: row.game1ScheduledStartTime,
         game2ScheduledStartTime: row.game2ScheduledStartTime,
@@ -2129,7 +2084,9 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
       gameNumber: competitionMatchGame.gameNumber,
       roundName: competitionRound.name,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       team1GameTeamId: competitionMatchGame.team1GameTeamId,
       team2GameTeamId: competitionMatchGame.team2GameTeamId,
     })
@@ -2140,15 +2097,7 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
 
   if (!row) return null;
 
-  const teamIds = [row.team1Id, row.team2Id].filter((id): id is string => id !== null);
-  const teams =
-    teamIds.length > 0
-      ? await db
-          .select({ id: competitionTeam.id, name: competitionTeam.name })
-          .from(competitionTeam)
-          .where(inArray(competitionTeam.id, teamIds))
-      : [];
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]));
+  const teamMap = await loadTeamNames([row]);
 
   return {
     matchGameId: row.matchGameId,
@@ -2157,9 +2106,9 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
     gameNumber: row.gameNumber,
     roundName: row.roundName,
     team1GameTeamId: row.team1GameTeamId,
-    team1Name: row.team1Id ? (teamMap.get(row.team1Id) ?? "Unknown") : "TBD",
+    team1Name: matchSideName(teamMap, row.team1Id, row.team1PartnerId),
     team2GameTeamId: row.team2GameTeamId,
-    team2Name: row.team2Id ? (teamMap.get(row.team2Id) ?? "Unknown") : "TBD",
+    team2Name: matchSideName(teamMap, row.team2Id, row.team2PartnerId),
   };
 }
 
@@ -3301,15 +3250,25 @@ export async function createForfeitGame(data: {
   team2Id: string;
   forfeitingTeam: "team1" | "team2";
 }): Promise<void> {
-  await db.transaction(async (tx) => {
-    const teams = await tx
-      .select({ id: competitionTeam.id, name: competitionTeam.name })
-      .from(competitionTeam)
-      .where(inArray(competitionTeam.id, [data.team1Id, data.team2Id]));
-    const teamMap = new Map(teams.map((t) => [t.id, t.name]));
-    const team1Name = teamMap.get(data.team1Id) ?? "Team 1";
-    const team2Name = teamMap.get(data.team2Id) ?? "Team 2";
+  // Trio partners are read off the match so a trios forfeit names the whole side ("A & B").
+  const [sides] = await db
+    .select({
+      team1PartnerId: competitionMatch.team1PartnerId,
+      team2PartnerId: competitionMatch.team2PartnerId,
+    })
+    .from(competitionMatch)
+    .where(eq(competitionMatch.id, data.matchId));
+  const sideIds = {
+    team1Id: data.team1Id,
+    team1PartnerId: sides?.team1PartnerId ?? null,
+    team2Id: data.team2Id,
+    team2PartnerId: sides?.team2PartnerId ?? null,
+  };
+  const teamMap = await loadTeamNames([sideIds]);
+  const team1Name = matchSideName(teamMap, sideIds.team1Id, sideIds.team1PartnerId);
+  const team2Name = matchSideName(teamMap, sideIds.team2Id, sideIds.team2PartnerId);
 
+  await db.transaction(async (tx) => {
     const winnerName = data.forfeitingTeam === "team1" ? team2Name : team1Name;
     const loserName = data.forfeitingTeam === "team1" ? team1Name : team2Name;
 
@@ -3616,7 +3575,9 @@ async function queryCompetitionGames(
       matchNumber: competitionMatch.matchNumber,
       gameNumber: competitionMatchGame.gameNumber,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       team1ColourEnum: sql<number>`t1.colour_enum`,
       team1Result: sql<"win" | "loss" | "draw" | null>`t1.result`,
       team2ColourEnum: sql<number>`t2.colour_enum`,
@@ -3640,11 +3601,7 @@ async function queryCompetitionGames(
 
   if (rows.length === 0) return [];
 
-  const teamIds = [
-    ...new Set(
-      rows.flatMap((r) => [r.team1Id, r.team2Id]).filter((id): id is string => id !== null),
-    ),
-  ];
+  const teamIds = matchSideTeamIds(rows);
   const teams =
     teamIds.length > 0
       ? await db
@@ -3679,9 +3636,15 @@ async function queryCompetitionGames(
     teamsByGame.set(t.gameId, list);
   }
 
+  // Short label per team, joined with a trio partner's as "A & B".
+  const label = (id: string | null) => {
+    const t = id ? teamMap.get(id) : undefined;
+    return t?.shortName ?? t?.name ?? "?";
+  };
+  const sideLabel = (id: string | null, partnerId: string | null) =>
+    partnerId ? `${label(id)} & ${label(partnerId)}` : label(id);
+
   return rows.map((row) => {
-    const t1 = row.team1Id ? teamMap.get(row.team1Id) : undefined;
-    const t2 = row.team2Id ? teamMap.get(row.team2Id) : undefined;
     return {
       id: row.id,
       slug: row.slug,
@@ -3692,10 +3655,10 @@ async function queryCompetitionGames(
       description: row.description,
       actualDuration: row.actualDuration,
       prefix: `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber}`,
-      team1Label: t1?.shortName ?? t1?.name ?? "?",
+      team1Label: sideLabel(row.team1Id, row.team1PartnerId),
       team1ColourEnum: row.team1ColourEnum,
       team1Result: row.team1Result,
-      team2Label: t2?.shortName ?? t2?.name ?? "?",
+      team2Label: sideLabel(row.team2Id, row.team2PartnerId),
       team2ColourEnum: row.team2ColourEnum,
       team2Result: row.team2Result,
       teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
@@ -4405,7 +4368,9 @@ export async function getCompetitionSchedule(
       roundNumber: competitionRound.roundNumber,
       roundType: competitionRound.type,
       team1Id: competitionMatch.team1Id,
+      team1PartnerId: competitionMatch.team1PartnerId,
       team2Id: competitionMatch.team2Id,
+      team2PartnerId: competitionMatch.team2PartnerId,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
       game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
     })
@@ -4417,11 +4382,7 @@ export async function getCompetitionSchedule(
   if (matchRows.length === 0) return [];
 
   // Fetch team names
-  const teamIds = [
-    ...new Set(
-      matchRows.flatMap((m) => [m.team1Id, m.team2Id]).filter((id): id is string => id !== null),
-    ),
-  ];
+  const teamIds = matchSideTeamIds(matchRows);
   const teams =
     teamIds.length > 0
       ? await db
@@ -4435,6 +4396,7 @@ export async function getCompetitionSchedule(
           .where(inArray(competitionTeam.id, teamIds))
       : [];
   const teamMap = new Map(teams.map((t) => [t.id, t]));
+  const teamNames = new Map(teams.map((t) => [t.id, t.name]));
 
   // Fetch all game assignments with actual scores
   const matchIds = matchRows.map((m) => m.matchId);
@@ -4478,8 +4440,8 @@ export async function getCompetitionSchedule(
     const roundPrefix = isFinals ? "Finals" : `R${m.roundNumber}`;
     const team1 = m.team1Id ? teamMap.get(m.team1Id) : undefined;
     const team2 = m.team2Id ? teamMap.get(m.team2Id) : undefined;
-    const team1Name = m.team1Id ? (team1?.name ?? "TBD") : "TBD";
-    const team2Name = m.team2Id ? (team2?.name ?? "TBD") : "TBD";
+    const team1Name = matchSideName(teamNames, m.team1Id, m.team1PartnerId);
+    const team2Name = matchSideName(teamNames, m.team2Id, m.team2PartnerId);
     const team1LogoUrl =
       m.team1Id && team1?.hasLogo ? getTeamLogoUrl(m.team1Id, team1.logoVersion) : null;
     const team2LogoUrl =

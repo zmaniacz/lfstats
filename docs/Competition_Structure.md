@@ -1,6 +1,6 @@
 # Competition Structure
 
-**Last Updated:** 2026-08
+**Last Updated:** 2026-10
 
 ---
 
@@ -67,7 +67,11 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
   competition is not scored here at all. A solo league is normally `type = 'competitive', format = 'solo'`,
   so it still appears in the competition picker and the all-competitive aggregate. See
   [Solo Competitions](#solo-competitions) and [No Scoring Competitions](#no-scoring-competitions).
-- **Only `team` has a match structure.** Both `solo` and `none` select their games straight off
+- **Trios is a team format with two teams per side.** A `trios` competition runs the same rounds,
+  pools and two-game matches as `team`, but each side of a match is two `competition_team` rows
+  (trios) sharing one `sm5_game_team`. Pairings change from match to match, so they live on the
+  match, not the team. See [Trios Competitions](#trios-competitions).
+- **Only `team` and `trios` have a match structure.** Both `solo` and `none` select their games straight off
   `game.competition_id`, own no rounds/matches/teams, and never apply the pool/finals/mercenary
   toggles. Code must therefore gate on `hasMatchStructure(format)` (exported from
   `packages/db/src/queries/admin.ts`) rather than comparing against a single format value — a
@@ -93,22 +97,22 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 
 ### `competition`
 
-| Column                     | Type             | Notes                                                                                                                                               |
-| -------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                       | uuid PK          |                                                                                                                                                     |
-| `name`                     | text             |                                                                                                                                                     |
-| `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                            |
-| `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                            |
-| `format`                   | enum             | `"team"` (default), `"solo"` or `"none"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive. |
-| `category`                 | enum             | `"internationals"` \| `"tournament"` (default) \| `"league"`. **Display only** — see [Browsing Competitions](#browsing-competitions).               |
-| `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted.          |
-| `host_center_id`           | uuid FK → center | nullable — null for a true multi-center competition                                                                                                 |
-| `start_date`               | date             |                                                                                                                                                     |
-| `end_date`                 | date             | nullable                                                                                                                                            |
-| `description`              | text             | nullable                                                                                                                                            |
-| `challonge_link`           | text             | nullable. Embedded bracket URL — this is how bracket structure is presented, since it is not modeled internally.                                    |
-| `challonge_bracket_height` | integer          | nullable. Iframe height for the embed.                                                                                                              |
-| `created_at`               | timestamp        | defaults to now                                                                                                                                     |
+| Column                     | Type             | Notes                                                                                                                                                          |
+| -------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                       | uuid PK          |                                                                                                                                                                |
+| `name`                     | text             |                                                                                                                                                                |
+| `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                                       |
+| `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                                       |
+| `format`                   | enum             | `"team"` (default), `"solo"`, `"none"` or `"trios"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive. |
+| `category`                 | enum             | `"internationals"` \| `"tournament"` (default) \| `"league"`. **Display only** — see [Browsing Competitions](#browsing-competitions).                          |
+| `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted.                     |
+| `host_center_id`           | uuid FK → center | nullable — null for a true multi-center competition                                                                                                            |
+| `start_date`               | date             |                                                                                                                                                                |
+| `end_date`                 | date             | nullable                                                                                                                                                       |
+| `description`              | text             | nullable                                                                                                                                                       |
+| `challonge_link`           | text             | nullable. Embedded bracket URL — this is how bracket structure is presented, since it is not modeled internally.                                               |
+| `challonge_bracket_height` | integer          | nullable. Iframe height for the embed.                                                                                                                         |
+| `created_at`               | timestamp        | defaults to now                                                                                                                                                |
 
 ### `competition_team`
 
@@ -215,24 +219,28 @@ A match between two teams within a round. A match consists of 2 games where the 
 | `match_number`               | integer                     | Per-round sequence; drag-and-drop reorderable                                                    |
 | `team1_id`                   | uuid FK → competition_team  | **nullable** — a slot can be scheduled before its team is known (e.g. an unresolved finals slot) |
 | `team2_id`                   | uuid FK → competition_team  | **nullable**, same reason                                                                        |
+| `team1_partner_id`           | uuid FK → competition_team  | nullable. **Trios only** — the second trio on side 1. Null in every other format.                |
+| `team2_partner_id`           | uuid FK → competition_team  | nullable. **Trios only** — the second trio on side 2.                                            |
 | `game1_scheduled_start_time` | timestamp                   | nullable — each game in the match is scheduled independently                                     |
 | `game2_scheduled_start_time` | timestamp                   | nullable                                                                                         |
 | `created_at`                 | timestamp                   | defaults to now                                                                                  |
 
 **Unique:** `(round_id, match_number)` · **Index:** `competition_id`
+**Check:** `competition_match_distinct_teams_check` — no team may fill two slots of one match. It
+compares the four slots pairwise, so an empty (null) slot never fails it.
 
 ### `competition_match_game`
 
 Links an ingested game to a match slot and records which color each team played in that game.
 
-| Column               | Type                        | Notes                                                   |
-| -------------------- | --------------------------- | ------------------------------------------------------- |
-| `id`                 | uuid PK                     |                                                         |
-| `match_id`           | uuid FK → competition_match | cascade delete                                          |
-| `game_id`            | uuid FK → game              | cascade delete                                          |
-| `game_number`        | integer                     | 1 or 2                                                  |
-| `team1_game_team_id` | uuid FK → sm5_game_team     | Which `sm5_game_team` row is `match.team1` in this game |
-| `team2_game_team_id` | uuid FK → sm5_game_team     | Which `sm5_game_team` row is `match.team2` in this game |
+| Column               | Type                        | Notes                                                                          |
+| -------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| `id`                 | uuid PK                     |                                                                                |
+| `match_id`           | uuid FK → competition_match | cascade delete                                                                 |
+| `game_id`            | uuid FK → game              | cascade delete                                                                 |
+| `game_number`        | integer                     | 1 or 2                                                                         |
+| `team1_game_team_id` | uuid FK → sm5_game_team     | Which `sm5_game_team` row is `match.team1` (and its trio partner) in this game |
+| `team2_game_team_id` | uuid FK → sm5_game_team     | Which `sm5_game_team` row is `match.team2` (and its trio partner) in this game |
 
 **Unique:** `(match_id, game_number)` — one game per slot  
 **Unique:** `(game_id)` — a game belongs to at most one match
@@ -319,6 +327,80 @@ Points are derived at query time — never stored. For each match:
 7. Sum per team across all matches in a round or the full competition for standings.
 
 Implemented in `packages/db/src/queries/competition-tournament.ts`.
+
+---
+
+## Trios Competitions
+
+A **trios** competition (`format = 'trios'`) is a team competition in which each side of a match
+is two teams of three — **trios** — playing together as one six-player team. Trios are ordinary
+`competition_team` rows with their own rosters, logos, mercs and team pages. The pairings change
+over the schedule, so every trio plays both with and against the others.
+
+### Schema
+
+A match records its pairing in `competition_match.team1_id` + `team1_partner_id` (side 1) and
+`team2_id` + `team2_partner_id` (side 2). `competition_match_game` is unchanged: a game still has
+exactly two non-neutral `sm5_game_team` rows, and `team1_game_team_id` is the one side 1 played as.
+Reingest preservation is therefore untouched.
+
+The partner columns are what make a match a trios match. Queries don't branch on the format to
+read them — a null partner simply contributes nothing — so switching a competition's format away
+from `trios` leaves any partners already set still counting. Clear them first.
+
+### Points
+
+Game points and the match bonus are computed **per side**, exactly as in
+[Points Calculation](#points-calculation) (the bonus compares the whole side's
+`score + elimination_bonus + penalty_score`). Then **both trios on the side receive the full
+amount**, along with the side's game and match W/L/D and team eliminations. If trios A and B sweep
+C and D, A and B get 6 match points each and C and D get none.
+
+Implemented in `computeTeamStats` (`packages/db/src/lib/match-points.ts`), which is pure and
+covered by `match-points.test.ts`.
+
+### Tiebreaker
+
+Standings order on match points, then **trio score ratio**, then game wins
+(`compareStandings`). For a trio, `scoreFor` / `scoreAgainst` are replaced by
+`getTrioScoreTotals`:
+
+- **Trio score** — the sum, over the trio's rostered players (**mercs included**), of
+  `sm5_scorecard.score` plus that player's own non-rescinded `sm5_game_penalty.score_value`.
+- **Against** — the same per-player net score summed over **every** scorecard on the opposing side
+  in those games (guests included).
+
+Elimination bonuses and team-level penalties (`sm5_game_team_penalty`) can't be attributed to one
+trio, so they are left out of both — they still affect game results and the match bonus. A sub
+only counts towards a trio once they are on its roster (normally as a merc); an unrostered player
+counts for nobody's trio score.
+
+### Which trio a scorecard belongs to
+
+Both trios share one game team, so the game team alone can't say whose a scorecard is. Team pages
+(roster games played, unassigned players, per-player stats) credit a scorecard on a trio's side
+to that trio **unless the player is rostered on that match's partner trio instead**
+(`teamScorecardSql`). A player on neither roster appears as unassigned on both trios until an admin
+rosters them. For an ordinary team the partner is null and the rule reduces to "on the team's
+side".
+
+Mercenary stamping (`assignGameToMatch`) reads the rosters of both trios on each side.
+
+### Display
+
+- **Side names.** Every side-level label — admin match lists, the game-page header, game
+  assignment, the games list, forfeits, the schedule, the analytics API — joins the two trios as
+  `A & B`, so the game header reads _Round 1 · Match 3 · Game 2 · A & B vs C & D_.
+- **Match cards** stack both trios on each side, each with its own logo and link.
+- **Standings** say "Trio", add a _Trio Score_ column, and label the ratio _Trio Ratio_.
+- A trio's team page lists every match it played in either slot.
+
+### Admin
+
+Choose **Trios** as the format on the competition form. Match forms (add match, edit teams inline,
+and the match page) then show four pickers, `A + B vs C + D`, and disable any trio already chosen
+in another slot. Round-robin generation is hidden for trios — pairings are set by hand — and a
+round needs at least four trios before matches can be added.
 
 ---
 

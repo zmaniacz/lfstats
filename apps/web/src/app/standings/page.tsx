@@ -149,6 +149,7 @@ export default async function StandingsPage({
                 activeRoundType={activeRoundType}
                 competitionSlug={activeComp.slug}
                 competitionName={activeComp.name}
+                trios={activeComp.format === "trios"}
               />
             </Suspense>
           </>
