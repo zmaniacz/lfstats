@@ -153,6 +153,8 @@ export type PlayerSearchResult = {
   id: string;
   iplId: string;
   currentCallsign: string;
+  /** Up to 5 earlier callsigns, most recently used first; excludes the current one. */
+  recentCallsigns: string[];
 };
 
 // ---------------------------------------------------------------------------
@@ -662,6 +664,22 @@ export async function searchPlayersForRoster(
       id: player.id,
       iplId: player.iplId,
       currentCallsign: player.currentCallsign,
+      // Earlier names help tell apart players who switch callsigns often.
+      // Case-only variants ("MrMischief" / "mrmischief") count once, as their latest spelling.
+      recentCallsigns: sql<string[]>`coalesce((
+        select array_agg(recent.callsign order by recent.last_seen_at desc)
+        from (
+          select * from (
+            select distinct on (lower(h.callsign)) h.callsign, h.last_seen_at
+            from player_callsign_history h
+            where h.player_id = ${player.id}
+              and lower(h.callsign) <> lower(${player.currentCallsign})
+            order by lower(h.callsign), h.last_seen_at desc
+          ) latest
+          order by latest.last_seen_at desc
+          limit 5
+        ) recent
+      ), '{}')`,
     })
     .from(player)
     .leftJoin(playerCallsignHistory, eq(playerCallsignHistory.playerId, player.id))

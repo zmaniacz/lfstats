@@ -75,6 +75,9 @@ export function PlayerRosterSearch({ searchAction, addAction }: Props) {
             <li key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
               <span>
                 <span className="font-medium">{p.currentCallsign}</span>{" "}
+                {p.recentCallsigns.length > 0 && (
+                  <span className="text-muted-foreground">({p.recentCallsigns.join(", ")}) </span>
+                )}
                 <span className="text-muted-foreground">{p.iplId}</span>
               </span>
               <Button
