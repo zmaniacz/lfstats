@@ -13,17 +13,31 @@ import { slugify, resolveUniqueSlug } from "../lib/slug";
 export type CompetitionState = "preshow" | "upcoming" | "active" | "completed";
 
 /** How a competition is scored. Orthogonal to `type` — see schema.ts `competitionFormatEnum`. */
-export type CompetitionFormat = "team" | "solo" | "none" | "trios";
+export type CompetitionFormat = "team" | "solo" | "none" | "trios" | "duos";
 
 /**
- * Whether a competition is built out of rounds and matches. `team` and `trios` are — `solo`
+ * Whether a competition is built out of rounds and matches. `team`, `trios` and `duos` are — `solo`
  * ranks individual scorecards and `none` is an unscored collection of games — so anything that
  * reads `competition_round` / `competition_match` / `competition_team`, or offers the
  * pool/finals/mercenary toggles, must gate on this rather than comparing against a single
  * format value.
  */
 export function hasMatchStructure(format: CompetitionFormat): boolean {
-  return format === "team" || format === "trios";
+  return format === "team" || format === "trios" || format === "duos";
+}
+
+/**
+ * How many competition teams share each side of a match: two trios in `trios`, three duos in
+ * `duos`, one team otherwise. A side is always one sm5_game_team; the extra teams sit in the
+ * match's partner slots (`team1_partner_id`, then `team1_partner2_id`).
+ */
+export function teamsPerSide(format: CompetitionFormat): 1 | 2 | 3 {
+  return format === "duos" ? 3 : format === "trios" ? 2 : 1;
+}
+
+/** Whether a side is several smaller teams (trios, duos) rather than one team. */
+export function isPartnerFormat(format: CompetitionFormat): boolean {
+  return teamsPerSide(format) > 1;
 }
 
 /**

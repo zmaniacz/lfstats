@@ -255,6 +255,9 @@ everything its side earned, and `scoreFor` / `scoreAgainst` hold the trio's own 
 the score of the opponents it faced rather than the side's team score — see
 [Competition_Structure.md](Competition_Structure.md#trios-competitions).
 
+`format = 'duos'` — the same as `trios`, one row per **duo**, with three duos sharing each side —
+see [Competition_Structure.md](Competition_Structure.md#duos-competitions).
+
 `format = 'solo'` — per-player standings, backed by `getSoloCompetitionStandingsData` in
 `packages/db/src/queries/competition-solo.ts`, ordered by `totalMvp` descending:
 

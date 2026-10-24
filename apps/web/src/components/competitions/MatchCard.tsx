@@ -30,7 +30,7 @@ export function MatchCard({
       hasLogo: match.team1HasLogo,
       logoVersion: match.team1LogoVersion,
     },
-    match.team1Partner,
+    match.team1Partners,
   );
   const side2 = sideTeams(
     {
@@ -41,7 +41,7 @@ export function MatchCard({
       hasLogo: match.team2HasLogo,
       logoVersion: match.team2LogoVersion,
     },
-    match.team2Partner,
+    match.team2Partners,
   );
   const t1Label = side1.map((t) => t.label).join(" & ");
   const t2Label = side2.map((t) => t.label).join(" & ");
@@ -166,14 +166,13 @@ type SideTeam = {
   logoVersion: number;
 };
 
-// One side of the card is a single team, or both trios of a trios match stacked.
+// One side of the card is a single team, or every trio (or duo) on that side stacked.
 function sideTeams(
   team: Omit<SideTeam, "label"> & { shortName: string | null },
-  partner: MatchResultPartner | null,
+  partners: MatchResultPartner[],
 ): SideTeam[] {
   const first = { ...team, label: team.shortName ?? team.name };
-  if (!partner) return [first];
-  return [first, { ...partner, label: partner.shortName ?? partner.name }];
+  return [first, ...partners.map((p) => ({ ...p, label: p.shortName ?? p.name }))];
 }
 
 function MatchSide({

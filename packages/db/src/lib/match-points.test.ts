@@ -9,7 +9,7 @@ function game(
   gameNumber: number,
   team1Score: number,
   team2Score: number,
-  opts: { trios?: boolean; matchId?: string; multiplier?: number } = {},
+  opts: { trios?: boolean; duos?: boolean; matchId?: string; multiplier?: number } = {},
 ): StandingsGameRow {
   const result1 = team1Score > team2Score ? "win" : team1Score < team2Score ? "loss" : "draw";
   const result2 = result1 === "win" ? "loss" : result1 === "loss" ? "win" : "draw";
@@ -18,12 +18,14 @@ function game(
     gameNumber,
     roundMultiplier: opts.multiplier ?? 1,
     team1Id: "A",
-    team1PartnerId: opts.trios ? "B" : null,
+    team1PartnerId: opts.trios || opts.duos ? "B" : null,
+    team1Partner2Id: opts.duos ? "E" : null,
     team1Score,
     team1Result: result1,
     team1EliminatedOpponent: false,
     team2Id: "C",
-    team2PartnerId: opts.trios ? "D" : null,
+    team2PartnerId: opts.trios || opts.duos ? "D" : null,
+    team2Partner2Id: opts.duos ? "F" : null,
     team2Score,
     team2Result: result2,
     team2EliminatedOpponent: false,
@@ -85,6 +87,34 @@ test("an incomplete trios match earns game points but no match bonus", () => {
   const stats = computeTeamStats([game(1, 100, 50, { trios: true })]);
   assert.equal(stats.get("B")!.matchPoints, 2);
   assert.equal(stats.get("B")!.matchWins, 0);
+});
+
+test("duos sweep credits all three duos on the winning side with 6 points", () => {
+  const stats = computeTeamStats([
+    game(1, 100, 50, { duos: true }),
+    game(2, 100, 50, { duos: true }),
+  ]);
+  for (const id of ["A", "B", "E"]) {
+    const s = stats.get(id)!;
+    assert.equal(s.matchPoints, 6);
+    assert.equal(s.gameWins, 2);
+    assert.equal(s.matchWins, 1);
+  }
+  for (const id of ["C", "D", "F"]) {
+    const s = stats.get(id)!;
+    assert.equal(s.matchPoints, 0);
+    assert.equal(s.gameLosses, 2);
+    assert.equal(s.matchLosses, 1);
+  }
+});
+
+test("duos split: every duo on a side shares its game points and match bonus", () => {
+  const stats = computeTeamStats([
+    game(1, 100, 50, { duos: true }),
+    game(2, 60, 80, { duos: true }),
+  ]);
+  for (const id of ["A", "B", "E"]) assert.equal(stats.get(id)!.matchPoints, 4);
+  for (const id of ["C", "D", "F"]) assert.equal(stats.get(id)!.matchPoints, 2);
 });
 
 test("standings sort on points, then score ratio, then game wins", () => {

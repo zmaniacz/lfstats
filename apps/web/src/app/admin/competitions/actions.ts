@@ -28,7 +28,7 @@ function readCategory(formData: FormData): CompetitionCategory {
   return CATEGORIES.find((c) => c === raw) ?? "tournament";
 }
 
-const FORMATS: CompetitionFormat[] = ["team", "solo", "none", "trios"];
+const FORMATS: CompetitionFormat[] = ["team", "solo", "none", "trios", "duos"];
 
 /**
  * Coerced rather than cast: an unrecognised value falls back to `team`, the same default

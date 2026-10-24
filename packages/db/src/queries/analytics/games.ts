@@ -89,9 +89,12 @@ async function competitionInfo(gameIds: string[]) {
   const db = getAnalyticsDb();
   const ct1 = alias(competitionTeam, "ct1");
   const ct2 = alias(competitionTeam, "ct2");
-  // Trios: the second trio on each side, joined into the side's name as "A & B".
+  // Trios and duos: the other teams on each side, joined into the side's name as "A & B"
+  // (trios) or "A & B & C" (duos).
   const ct1p = alias(competitionTeam, "ct1p");
   const ct2p = alias(competitionTeam, "ct2p");
+  const ct1p2 = alias(competitionTeam, "ct1p2");
+  const ct2p2 = alias(competitionTeam, "ct2p2");
   const [base, matches] = await Promise.all([
     db
       .select({ gameId: game.id, slug: competition.slug, name: competition.name })
@@ -107,10 +110,12 @@ async function competitionInfo(gameIds: string[]) {
         gameNumber: competitionMatchGame.gameNumber,
         team1GameTeamId: competitionMatchGame.team1GameTeamId,
         team2GameTeamId: competitionMatchGame.team2GameTeamId,
-        team1: sql<string | null>`case when ${ct1p.name} is null then ${ct1.name}
-                                       else ${ct1.name} || ' & ' || ${ct1p.name} end`,
-        team2: sql<string | null>`case when ${ct2p.name} is null then ${ct2.name}
-                                       else ${ct2.name} || ' & ' || ${ct2p.name} end`,
+        team1: sql<
+          string | null
+        >`nullif(concat_ws(' & ', ${ct1.name}, ${ct1p.name}, ${ct1p2.name}), '')`,
+        team2: sql<
+          string | null
+        >`nullif(concat_ws(' & ', ${ct2.name}, ${ct2p.name}, ${ct2p2.name}), '')`,
       })
       .from(competitionMatchGame)
       .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
@@ -119,6 +124,8 @@ async function competitionInfo(gameIds: string[]) {
       .leftJoin(ct2, eq(ct2.id, competitionMatch.team2Id))
       .leftJoin(ct1p, eq(ct1p.id, competitionMatch.team1PartnerId))
       .leftJoin(ct2p, eq(ct2p.id, competitionMatch.team2PartnerId))
+      .leftJoin(ct1p2, eq(ct1p2.id, competitionMatch.team1Partner2Id))
+      .leftJoin(ct2p2, eq(ct2p2.id, competitionMatch.team2Partner2Id))
       .where(inArray(competitionMatchGame.gameId, gameIds)),
   ]);
 

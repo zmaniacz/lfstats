@@ -89,9 +89,14 @@ export default async function CompetitionTeamPage({
     })),
   ];
 
-  // A trio also appears as the partner slot of its side.
+  // A trio or duo also appears in the partner slots of its side.
   const teamMatches = matchResults.filter((m) =>
-    [m.team1Id, m.team2Id, m.team1Partner?.id, m.team2Partner?.id].includes(team.id),
+    [
+      m.team1Id,
+      m.team2Id,
+      ...m.team1Partners.map((p) => p.id),
+      ...m.team2Partners.map((p) => p.id),
+    ].includes(team.id),
   );
   const rounds = new Map<
     string,

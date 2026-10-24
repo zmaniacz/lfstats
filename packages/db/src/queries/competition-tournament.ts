@@ -37,7 +37,7 @@ import {
   notLike,
 } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
-import { hasMatchStructure } from "./admin";
+import { hasMatchStructure, isPartnerFormat } from "./admin";
 import type { CompetitionCategory, CompetitionFormat, CompetitionState } from "./admin";
 import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
@@ -47,6 +47,7 @@ import {
   compareStandings,
   computeTeamStats,
   emptyTeamStats,
+  sideTeamIds,
   type StandingsGameRow,
 } from "../lib/match-points";
 
@@ -66,22 +67,36 @@ export async function getCompetitionHostCenterId(competitionId: string): Promise
 // Match sides
 // ---------------------------------------------------------------------------
 
-// A trios match puts two competition teams (trios) on each side of one sm5_game_team; the
-// partner columns are null in every other format. Everything a side earns is shared by both
-// trios on it, so most queries only need to widen "team1_id" to "team1_id or its partner".
+// A trios match puts two competition teams (trios) on each side of one sm5_game_team, and a
+// duos match three (duos); the partner columns are null in every other format, and partner2
+// is null outside duos. Everything a side earns is shared by every team on it, so most queries
+// only need to widen "team1_id" to "team1_id or one of its partners".
 type MatchSideIds = {
   team1Id: string | null;
   team1PartnerId: string | null;
+  team1Partner2Id: string | null;
   team2Id: string | null;
   team2PartnerId: string | null;
+  team2Partner2Id: string | null;
 };
+
+// Every slot of each side, for `IN (...)` against a `competition_match cm` row.
+const CM_SIDE1 = sql.raw("cm.team1_id, cm.team1_partner_id, cm.team1_partner2_id");
+const CM_SIDE2 = sql.raw("cm.team2_id, cm.team2_partner_id, cm.team2_partner2_id");
 
 function matchSideTeamIds(rows: MatchSideIds[]): string[] {
   return [
     ...new Set(
-      rows
-        .flatMap((r) => [r.team1Id, r.team1PartnerId, r.team2Id, r.team2PartnerId])
-        .filter((id): id is string => id !== null),
+      rows.flatMap((r) =>
+        sideTeamIds(
+          r.team1Id,
+          r.team1PartnerId,
+          r.team1Partner2Id,
+          r.team2Id,
+          r.team2PartnerId,
+          r.team2Partner2Id,
+        ),
+      ),
     ),
   ];
 }
@@ -97,30 +112,31 @@ async function loadTeamNames(rows: MatchSideIds[]): Promise<Map<string, string>>
 }
 
 // Display name for one side: "TBD" before it is scheduled, else the team — joined with its
-// partner trio as "A & B" in a trios match.
+// partners as "A & B" in a trios match, "A & B & C" in a duos match.
 function matchSideName(
   names: Map<string, string>,
   teamId: string | null,
-  partnerId: string | null,
+  ...partnerIds: (string | null)[]
 ): string {
   if (!teamId) return "TBD";
-  const name = names.get(teamId) ?? "Unknown";
-  return partnerId ? `${name} & ${names.get(partnerId) ?? "Unknown"}` : name;
+  return sideTeamIds(teamId, ...partnerIds)
+    .map((id) => names.get(id) ?? "Unknown")
+    .join(" & ");
 }
 
-// The sm5_game_team ids a competition team played as, across every match it is on. A trio
-// resolves to the side it shares with its partner.
+// The sm5_game_team ids a competition team played as, across every match it is on. A trio or
+// duo resolves to the side it shares with its partners.
 function teamGameTeamIdsSql(teamId: string | Column): SQL {
-  return sql`SELECT CASE WHEN ${teamId}::uuid IN (cm.team1_id, cm.team1_partner_id)
+  return sql`SELECT CASE WHEN ${teamId}::uuid IN (${CM_SIDE1})
                          THEN cmg.team1_game_team_id ELSE cmg.team2_game_team_id END
              FROM competition_match cm
              JOIN competition_match_game cmg ON cmg.match_id = cm.id
-             WHERE ${teamId}::uuid IN (cm.team1_id, cm.team2_id, cm.team1_partner_id, cm.team2_partner_id)`;
+             WHERE ${teamId}::uuid IN (${CM_SIDE1}, ${CM_SIDE2})`;
 }
 
 // True when a scorecard counts for a competition team: it is on the team's side, and — for a
-// trio — the player is not rostered on that match's partner trio instead. For an ordinary team
-// the partner is null, so this reduces to "on the team's side".
+// trio or duo — the player is not rostered on one of that match's partner teams instead. For
+// an ordinary team the partners are null, so this reduces to "on the team's side".
 function teamScorecardSql(
   teamId: string | Column,
   scTeamId: SQL | Column,
@@ -129,17 +145,16 @@ function teamScorecardSql(
   return sql`EXISTS (
     SELECT 1 FROM competition_match cm
     JOIN competition_match_game cmg ON cmg.match_id = cm.id
-    WHERE ${teamId}::uuid IN (cm.team1_id, cm.team2_id, cm.team1_partner_id, cm.team2_partner_id)
-      AND ${scTeamId} = CASE WHEN ${teamId}::uuid IN (cm.team1_id, cm.team1_partner_id)
+    WHERE ${teamId}::uuid IN (${CM_SIDE1}, ${CM_SIDE2})
+      AND ${scTeamId} = CASE WHEN ${teamId}::uuid IN (${CM_SIDE1})
                              THEN cmg.team1_game_team_id ELSE cmg.team2_game_team_id END
       AND NOT EXISTS (
         SELECT 1 FROM competition_team_player partner_ctp
         WHERE partner_ctp.player_id = ${scPlayerId}
-          AND partner_ctp.competition_team_id = CASE ${teamId}::uuid
-            WHEN cm.team1_id THEN cm.team1_partner_id
-            WHEN cm.team1_partner_id THEN cm.team1_id
-            WHEN cm.team2_id THEN cm.team2_partner_id
-            ELSE cm.team2_id END
+          AND partner_ctp.competition_team_id <> ${teamId}::uuid
+          AND CASE WHEN ${teamId}::uuid IN (${CM_SIDE1})
+                   THEN partner_ctp.competition_team_id IN (${CM_SIDE1})
+                   ELSE partner_ctp.competition_team_id IN (${CM_SIDE2}) END
           AND NOT EXISTS (
             SELECT 1 FROM competition_team_player own_ctp
             WHERE own_ctp.player_id = ${scPlayerId}
@@ -197,10 +212,12 @@ export type CompetitionMatchListItem = {
   poolName: string | null;
   team1Id: string | null;
   team1PartnerId: string | null;
-  // Side display name: both trios joined ("A & B") in a trios match.
+  team1Partner2Id: string | null;
+  // Side display name: every team on it joined ("A & B", "A & B & C") in trios and duos.
   team1Name: string;
   team2Id: string | null;
   team2PartnerId: string | null;
+  team2Partner2Id: string | null;
   team2Name: string;
   game1ScheduledStartTime: Date | null;
   game2ScheduledStartTime: Date | null;
@@ -216,10 +233,12 @@ export type CompetitionMatchDetail = {
   roundId: string;
   team1Id: string | null;
   team1PartnerId: string | null;
-  // Side display name: both trios joined ("A & B") in a trios match.
+  team1Partner2Id: string | null;
+  // Side display name: every team on it joined ("A & B", "A & B & C") in trios and duos.
   team1Name: string;
   team2Id: string | null;
   team2PartnerId: string | null;
+  team2Partner2Id: string | null;
   team2Name: string;
   game1ScheduledStartTime: Date | null;
   game2ScheduledStartTime: Date | null;
@@ -421,7 +440,7 @@ export async function getTeamGameParticipants(
 ): Promise<TeamGameParticipant[]> {
   // Find all players who have a scorecard on this competition team's game-team rows,
   // excluding those already on the official roster.
-  // The join path: competition_team -> competition_match (either side, or a trio partner slot)
+  // The join path: competition_team -> competition_match (either side, or a partner slot)
   //   -> competition_match_game -> sm5_game_team (the right side) -> sm5_scorecard -> player
   const rows = await db
     .select({
@@ -435,7 +454,7 @@ export async function getTeamGameParticipants(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(
       and(
-        // scorecard must count for this team (its side, minus a trio partner's players)
+        // scorecard must count for this team (its side, minus its partners' players)
         teamScorecardSql(competitionTeamId, sm5Scorecard.teamId, sm5Scorecard.playerId),
         // exclude players already on the official roster
         sql`${sm5Scorecard.playerId} NOT IN (
@@ -853,8 +872,10 @@ export async function getCompetitionMatchesByRound(
       poolName: competitionPool.name,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
       game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
     })
@@ -898,10 +919,12 @@ export async function getCompetitionMatchesByRound(
       poolName: m.poolName,
       team1Id: m.team1Id,
       team1PartnerId: m.team1PartnerId,
-      team1Name: matchSideName(teamMap, m.team1Id, m.team1PartnerId),
+      team1Partner2Id: m.team1Partner2Id,
+      team1Name: matchSideName(teamMap, m.team1Id, m.team1PartnerId, m.team1Partner2Id),
       team2Id: m.team2Id,
       team2PartnerId: m.team2PartnerId,
-      team2Name: matchSideName(teamMap, m.team2Id, m.team2PartnerId),
+      team2Partner2Id: m.team2Partner2Id,
+      team2Name: matchSideName(teamMap, m.team2Id, m.team2PartnerId, m.team2Partner2Id),
       game1ScheduledStartTime: m.game1ScheduledStartTime,
       game2ScheduledStartTime: m.game2ScheduledStartTime,
       game1StartTime: entry?.startTimes.get(1) ?? null,
@@ -925,10 +948,12 @@ export async function getCompetitionMatchById(id: string): Promise<CompetitionMa
     roundId: match.roundId,
     team1Id: match.team1Id,
     team1PartnerId: match.team1PartnerId,
-    team1Name: matchSideName(teamMap, match.team1Id, match.team1PartnerId),
+    team1Partner2Id: match.team1Partner2Id,
+    team1Name: matchSideName(teamMap, match.team1Id, match.team1PartnerId, match.team1Partner2Id),
     team2Id: match.team2Id,
     team2PartnerId: match.team2PartnerId,
-    team2Name: matchSideName(teamMap, match.team2Id, match.team2PartnerId),
+    team2Partner2Id: match.team2Partner2Id,
+    team2Name: matchSideName(teamMap, match.team2Id, match.team2PartnerId, match.team2Partner2Id),
     game1ScheduledStartTime: match.game1ScheduledStartTime,
     game2ScheduledStartTime: match.game2ScheduledStartTime,
   };
@@ -959,9 +984,11 @@ export async function createCompetitionMatch(data: {
   matchNumber: number;
   team1Id: string | null;
   team2Id: string | null;
-  // Trios only.
+  // Trios and duos only (partner2: duos only).
   team1PartnerId?: string | null;
+  team1Partner2Id?: string | null;
   team2PartnerId?: string | null;
+  team2Partner2Id?: string | null;
 }): Promise<string> {
   const [row] = await db
     .insert(competitionMatch)
@@ -979,9 +1006,11 @@ export async function updateCompetitionMatchTeams(
   data: {
     team1Id: string | null;
     team2Id: string | null;
-    // Trios only.
+    // Trios and duos only (partner2: duos only).
     team1PartnerId?: string | null;
+    team1Partner2Id?: string | null;
     team2PartnerId?: string | null;
+    team2Partner2Id?: string | null;
     poolId?: string | null;
   },
 ): Promise<void> {
@@ -1223,11 +1252,11 @@ export async function assignGameToMatch(
   });
 
   // Apply mercenary flags from competition_team_player to the newly assigned game's scorecards.
-  // For each side, find players with is_mercenary=true on the roster — of either trio, in a
-  // trios match — and mark their scorecards.
-  for (const [gameTeamId, side, partner] of [
-    [team1GameTeamId, "team1_id", "team1_partner_id"],
-    [team2GameTeamId, "team2_id", "team2_partner_id"],
+  // For each side, find players with is_mercenary=true on the roster — of any team on the side,
+  // in a trios or duos match — and mark their scorecards.
+  for (const [gameTeamId, side] of [
+    [team1GameTeamId, CM_SIDE1],
+    [team2GameTeamId, CM_SIDE2],
   ] as const) {
     await db
       .update(sm5Scorecard)
@@ -1239,7 +1268,7 @@ export async function assignGameToMatch(
             SELECT ctp.player_id
             FROM competition_team_player ctp
             JOIN competition_match cm
-              ON ctp.competition_team_id IN (cm.${sql.raw(side)}, cm.${sql.raw(partner)})
+              ON ctp.competition_team_id IN (${side})
             WHERE cm.id = ${matchId}
               AND ctp.is_mercenary = true
           )`,
@@ -1325,7 +1354,7 @@ export type GameMatchAssignment = {
   gameNumber: number;
   roundName: string;
   team1GameTeamId: string;
-  // Side display name: both trios joined ("A & B") in a trios match.
+  // Side display name: every team on it joined ("A & B", "A & B & C") in trios and duos.
   team1Name: string;
   team2GameTeamId: string;
   team2Name: string;
@@ -1339,8 +1368,10 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
       roundName: competitionRound.name,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
     })
     .from(competitionMatch)
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
@@ -1374,8 +1405,8 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
         id: m.id,
         matchNumber: m.matchNumber,
         roundName: m.roundName,
-        team1Name: matchSideName(teamMap, m.team1Id, m.team1PartnerId),
-        team2Name: matchSideName(teamMap, m.team2Id, m.team2PartnerId),
+        team1Name: matchSideName(teamMap, m.team1Id, m.team1PartnerId, m.team1Partner2Id),
+        team2Name: matchSideName(teamMap, m.team2Id, m.team2PartnerId, m.team2Partner2Id),
         availableGameNumbers,
       };
     })
@@ -1454,8 +1485,10 @@ export async function getCompetitionAssignedGamesForAdmin(
       gameNumber: competitionMatchGame.gameNumber,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       team1ColourEnum: sql<number>`t1.colour_enum`,
       team2ColourEnum: sql<number>`t2.colour_enum`,
       startTime: game.startTime,
@@ -1487,9 +1520,9 @@ export async function getCompetitionAssignedGamesForAdmin(
     roundName: r.roundName,
     matchNumber: r.matchNumber,
     gameNumber: r.gameNumber,
-    team1Name: matchSideName(teamMap, r.team1Id, r.team1PartnerId),
+    team1Name: matchSideName(teamMap, r.team1Id, r.team1PartnerId, r.team1Partner2Id),
     team1ColourEnum: r.team1ColourEnum,
-    team2Name: matchSideName(teamMap, r.team2Id, r.team2PartnerId),
+    team2Name: matchSideName(teamMap, r.team2Id, r.team2PartnerId, r.team2Partner2Id),
     team2ColourEnum: r.team2ColourEnum,
     startTime: r.startTime,
     outcome: r.outcome,
@@ -1647,26 +1680,28 @@ export type CompetitionStandingsRow = {
   gameLosses: number;
   gameDraws: number;
   teamEliminations: number; // # of games where the opposing team was fully eliminated
-  // Trios: the trio's own players' net score, and the net score of every opponent they faced
-  // (see getTrioScoreTotals). Otherwise the side's team score for and against.
+  // Trios and duos: the team's own players' net score, and the net score of every opponent
+  // they faced (see getPartnerScoreTotals). Otherwise the side's team score for and against.
   scoreFor: number;
   scoreAgainst: number;
 };
 
-// Trio tiebreak totals, keyed by trio id. A trio's score is the sum of its rostered players'
-// (mercs included) scorecard score net of their own non-rescinded penalties; "against" is the same
-// sum over every scorecard on the opposing side. Team-level penalties and elimination bonuses
-// can't be attributed to one trio, so they are left out of both — they still count towards
-// game results and the match bonus.
-async function getTrioScoreTotals(
+// Trios/duos tiebreak totals, keyed by competition team id. A trio's (or duo's) score is the sum
+// of its rostered players' (mercs included) scorecard score net of their own non-rescinded
+// penalties; "against" is the same sum over every scorecard on the opposing side. Team-level
+// penalties and elimination bonuses can't be attributed to one team on a shared side, so they
+// are left out of both — they still count towards game results and the match bonus.
+async function getPartnerScoreTotals(
   conditions: SQL | undefined,
 ): Promise<Map<string, { scoreFor: number; scoreAgainst: number }>> {
-  const rows = await db.execute<{ trio_id: string; score_for: number; score_against: number }>(sql`
+  const rows = await db.execute<{ team_id: string; score_for: number; score_against: number }>(sql`
     WITH mg AS (
       SELECT competition_match_game.team1_game_team_id AS gt1,
              competition_match_game.team2_game_team_id AS gt2,
              competition_match.team1_id, competition_match.team1_partner_id,
-             competition_match.team2_id, competition_match.team2_partner_id
+             competition_match.team1_partner2_id,
+             competition_match.team2_id, competition_match.team2_partner_id,
+             competition_match.team2_partner2_id
       FROM competition_match_game
       JOIN competition_match ON competition_match.id = competition_match_game.match_id
       JOIN competition_round ON competition_round.id = competition_match.round_id
@@ -1674,10 +1709,12 @@ async function getTrioScoreTotals(
       WHERE ${conditions}
     ),
     slot AS (
-      SELECT team1_id AS trio_id, gt1 AS own_gt, gt2 AS opp_gt FROM mg
+      SELECT team1_id AS team_id, gt1 AS own_gt, gt2 AS opp_gt FROM mg
       UNION ALL SELECT team1_partner_id, gt1, gt2 FROM mg
+      UNION ALL SELECT team1_partner2_id, gt1, gt2 FROM mg
       UNION ALL SELECT team2_id, gt2, gt1 FROM mg
       UNION ALL SELECT team2_partner_id, gt2, gt1 FROM mg
+      UNION ALL SELECT team2_partner2_id, gt2, gt1 FROM mg
     ),
     net AS (
       SELECT sc.team_id, sc.player_id,
@@ -1686,19 +1723,19 @@ async function getTrioScoreTotals(
       FROM sm5_scorecard sc
       WHERE sc.team_id IN (SELECT gt1 FROM mg UNION SELECT gt2 FROM mg)
     )
-    SELECT slot.trio_id,
+    SELECT slot.team_id,
            coalesce(sum((SELECT sum(n.net_score) FROM net n
                          JOIN competition_team_player ctp
-                           ON ctp.player_id = n.player_id AND ctp.competition_team_id = slot.trio_id
+                           ON ctp.player_id = n.player_id AND ctp.competition_team_id = slot.team_id
                          WHERE n.team_id = slot.own_gt)), 0)::int AS score_for,
            coalesce(sum((SELECT sum(n.net_score) FROM net n WHERE n.team_id = slot.opp_gt)), 0)::int
              AS score_against
     FROM slot
-    WHERE slot.trio_id IS NOT NULL
-    GROUP BY slot.trio_id`);
+    WHERE slot.team_id IS NOT NULL
+    GROUP BY slot.team_id`);
   return new Map(
     [...rows].map((r) => [
-      r.trio_id,
+      r.team_id,
       { scoreFor: Number(r.score_for), scoreAgainst: Number(r.score_against) },
     ]),
   );
@@ -1719,8 +1756,9 @@ export async function getCompetitionStandings(
   // Standings are computed from 'pool' and 'split-pool' rounds; optionally narrowed to a
   // single round and/or a single pool (for split-pool rounds).
   //
-  // In a trios competition each side is two trios: both are credited with the side's points,
-  // and the score ratio is replaced by each trio's own player score (getTrioScoreTotals).
+  // In a trios or duos competition each side is two trios or three duos: every one is credited
+  // with the side's points, and the score ratio is replaced by each team's own player score
+  // (getPartnerScoreTotals).
 
   const conditions = and(
     eq(competitionMatch.competitionId, competitionId),
@@ -1734,7 +1772,7 @@ export async function getCompetitionStandings(
     .select({ format: competition.format })
     .from(competition)
     .where(eq(competition.id, competitionId));
-  const isTrios = comp?.format === "trios";
+  const partnered = comp ? isPartnerFormat(comp.format) : false;
 
   const gameRows: StandingsGameRow[] = await db
     .select({
@@ -1744,12 +1782,14 @@ export async function getCompetitionStandings(
       // team1 perspective
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team1Score: sql<number>`t1.score + t1.elimination_bonus + coalesce(t1.penalty_score, 0)`,
       team1Result: sql<string>`t1.result`,
       team1EliminatedOpponent: sql<boolean>`t2.eliminated`,
       // team2 perspective
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       team2Score: sql<number>`t2.score + t2.elimination_bonus + coalesce(t2.penalty_score, 0)`,
       team2Result: sql<string>`t2.result`,
       team2EliminatedOpponent: sql<boolean>`t1.eliminated`,
@@ -1763,12 +1803,12 @@ export async function getCompetitionStandings(
     .where(conditions);
 
   const stats = computeTeamStats(gameRows);
-  if (isTrios) {
-    const trioScores = await getTrioScoreTotals(conditions);
+  if (partnered) {
+    const ownScores = await getPartnerScoreTotals(conditions);
     for (const [teamId, s] of stats) {
-      const trio = trioScores.get(teamId) ?? { scoreFor: 0, scoreAgainst: 0 };
-      s.scoreFor = trio.scoreFor;
-      s.scoreAgainst = trio.scoreAgainst;
+      const own = ownScores.get(teamId) ?? { scoreFor: 0, scoreAgainst: 0 };
+      s.scoreFor = own.scoreFor;
+      s.scoreAgainst = own.scoreAgainst;
     }
   }
 
@@ -1858,10 +1898,10 @@ export type CompetitionMatchResult = {
   team2ShortName: string | null;
   team2HasLogo: boolean;
   team2LogoVersion: number;
-  // Trios only: the second trio on each side, credited with everything its side earns.
-  // Null in every other format.
-  team1Partner: MatchResultPartner | null;
-  team2Partner: MatchResultPartner | null;
+  // Trios and duos: the other teams on each side (one trio, or two duos), credited with
+  // everything their side earns. Empty in every other format.
+  team1Partners: MatchResultPartner[];
+  team2Partners: MatchResultPartner[];
   games: {
     gameNumber: number;
     gameId: string;
@@ -1908,8 +1948,10 @@ export async function getCompetitionMatchResults(
       roundMultiplier: competitionRound.multiplier,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
       game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
       gameNumber: competitionMatchGame.gameNumber,
@@ -1991,7 +2033,8 @@ export async function getCompetitionMatchResults(
       matchOrder.push(row.matchId);
       const t1 = row.team1Id ? teamMap.get(row.team1Id) : undefined;
       const t2 = row.team2Id ? teamMap.get(row.team2Id) : undefined;
-      const partner = (id: string | null) => (id ? (teamMap.get(id) ?? null) : null);
+      const partners = (...ids: (string | null)[]) =>
+        sideTeamIds(...ids).flatMap((id) => teamMap.get(id) ?? []);
       matchMap.set(row.matchId, {
         matchId: row.matchId,
         matchNumber: row.matchNumber,
@@ -2011,8 +2054,8 @@ export async function getCompetitionMatchResults(
         team2ShortName: t2?.shortName ?? null,
         team2HasLogo: t2?.hasLogo ?? false,
         team2LogoVersion: t2?.logoVersion ?? 0,
-        team1Partner: partner(row.team1PartnerId),
-        team2Partner: partner(row.team2PartnerId),
+        team1Partners: partners(row.team1PartnerId, row.team1Partner2Id),
+        team2Partners: partners(row.team2PartnerId, row.team2Partner2Id),
         games: [],
         game1ScheduledStartTime: row.game1ScheduledStartTime,
         game2ScheduledStartTime: row.game2ScheduledStartTime,
@@ -2103,8 +2146,10 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
       roundName: competitionRound.name,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       team1GameTeamId: competitionMatchGame.team1GameTeamId,
       team2GameTeamId: competitionMatchGame.team2GameTeamId,
     })
@@ -2124,9 +2169,9 @@ export async function getGameMatchAssignment(gameId: string): Promise<GameMatchA
     gameNumber: row.gameNumber,
     roundName: row.roundName,
     team1GameTeamId: row.team1GameTeamId,
-    team1Name: matchSideName(teamMap, row.team1Id, row.team1PartnerId),
+    team1Name: matchSideName(teamMap, row.team1Id, row.team1PartnerId, row.team1Partner2Id),
     team2GameTeamId: row.team2GameTeamId,
-    team2Name: matchSideName(teamMap, row.team2Id, row.team2PartnerId),
+    team2Name: matchSideName(teamMap, row.team2Id, row.team2PartnerId, row.team2Partner2Id),
   };
 }
 
@@ -3268,23 +3313,37 @@ export async function createForfeitGame(data: {
   team2Id: string;
   forfeitingTeam: "team1" | "team2";
 }): Promise<void> {
-  // Trio partners are read off the match so a trios forfeit names the whole side ("A & B").
+  // Partners are read off the match so a trios or duos forfeit names the whole side ("A & B").
   const [sides] = await db
     .select({
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
     })
     .from(competitionMatch)
     .where(eq(competitionMatch.id, data.matchId));
   const sideIds = {
     team1Id: data.team1Id,
     team1PartnerId: sides?.team1PartnerId ?? null,
+    team1Partner2Id: sides?.team1Partner2Id ?? null,
     team2Id: data.team2Id,
     team2PartnerId: sides?.team2PartnerId ?? null,
+    team2Partner2Id: sides?.team2Partner2Id ?? null,
   };
   const teamMap = await loadTeamNames([sideIds]);
-  const team1Name = matchSideName(teamMap, sideIds.team1Id, sideIds.team1PartnerId);
-  const team2Name = matchSideName(teamMap, sideIds.team2Id, sideIds.team2PartnerId);
+  const team1Name = matchSideName(
+    teamMap,
+    sideIds.team1Id,
+    sideIds.team1PartnerId,
+    sideIds.team1Partner2Id,
+  );
+  const team2Name = matchSideName(
+    teamMap,
+    sideIds.team2Id,
+    sideIds.team2PartnerId,
+    sideIds.team2Partner2Id,
+  );
 
   await db.transaction(async (tx) => {
     const winnerName = data.forfeitingTeam === "team1" ? team2Name : team1Name;
@@ -3594,8 +3653,10 @@ async function queryCompetitionGames(
       gameNumber: competitionMatchGame.gameNumber,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       team1ColourEnum: sql<number>`t1.colour_enum`,
       team1Result: sql<"win" | "loss" | "draw" | null>`t1.result`,
       team2ColourEnum: sql<number>`t2.colour_enum`,
@@ -3654,13 +3715,13 @@ async function queryCompetitionGames(
     teamsByGame.set(t.gameId, list);
   }
 
-  // Short label per team, joined with a trio partner's as "A & B".
+  // Short label per team, joined with its partners' as "A & B" (trios) or "A & B & C" (duos).
   const label = (id: string | null) => {
     const t = id ? teamMap.get(id) : undefined;
     return t?.shortName ?? t?.name ?? "?";
   };
-  const sideLabel = (id: string | null, partnerId: string | null) =>
-    partnerId ? `${label(id)} & ${label(partnerId)}` : label(id);
+  const sideLabel = (id: string | null, ...partnerIds: (string | null)[]) =>
+    [label(id), ...sideTeamIds(...partnerIds).map(label)].join(" & ");
 
   return rows.map((row) => {
     return {
@@ -3673,10 +3734,10 @@ async function queryCompetitionGames(
       description: row.description,
       actualDuration: row.actualDuration,
       prefix: `R${row.roundNumber} M${row.matchNumber} G${row.gameNumber}`,
-      team1Label: sideLabel(row.team1Id, row.team1PartnerId),
+      team1Label: sideLabel(row.team1Id, row.team1PartnerId, row.team1Partner2Id),
       team1ColourEnum: row.team1ColourEnum,
       team1Result: row.team1Result,
-      team2Label: sideLabel(row.team2Id, row.team2PartnerId),
+      team2Label: sideLabel(row.team2Id, row.team2PartnerId, row.team2Partner2Id),
       team2ColourEnum: row.team2ColourEnum,
       team2Result: row.team2Result,
       teams: (teamsByGame.get(row.id) ?? []).map((t) => ({
@@ -4387,8 +4448,10 @@ export async function getCompetitionSchedule(
       roundType: competitionRound.type,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
+      team1Partner2Id: competitionMatch.team1Partner2Id,
       team2Id: competitionMatch.team2Id,
       team2PartnerId: competitionMatch.team2PartnerId,
+      team2Partner2Id: competitionMatch.team2Partner2Id,
       game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
       game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
     })
@@ -4458,8 +4521,8 @@ export async function getCompetitionSchedule(
     const roundPrefix = isFinals ? "Finals" : `R${m.roundNumber}`;
     const team1 = m.team1Id ? teamMap.get(m.team1Id) : undefined;
     const team2 = m.team2Id ? teamMap.get(m.team2Id) : undefined;
-    const team1Name = matchSideName(teamNames, m.team1Id, m.team1PartnerId);
-    const team2Name = matchSideName(teamNames, m.team2Id, m.team2PartnerId);
+    const team1Name = matchSideName(teamNames, m.team1Id, m.team1PartnerId, m.team1Partner2Id);
+    const team2Name = matchSideName(teamNames, m.team2Id, m.team2PartnerId, m.team2Partner2Id);
     const team1LogoUrl =
       m.team1Id && team1?.hasLogo ? getTeamLogoUrl(m.team1Id, team1.logoVersion) : null;
     const team2LogoUrl =

@@ -2,12 +2,18 @@
 // Copyright (C) 2015 Russell Lewis
 
 /**
- * Pure standings arithmetic for team and trios competitions. Kept free of the db client so it
- * can be unit-tested directly; the queries in competition-tournament.ts feed it rows.
+ * Pure standings arithmetic for team, trios and duos competitions. Kept free of the db client
+ * so it can be unit-tested directly; the queries in competition-tournament.ts feed it rows.
  *
- * A side of a match is one team, or — in a trios competition — two trios sharing one
- * sm5_game_team. Every point a side earns is credited in full to each team on it.
+ * A side of a match is one team, or several teams sharing one sm5_game_team — two trios in a
+ * trios competition, three duos in a duos competition. Every point a side earns is credited in
+ * full to each team on it.
  */
+
+/** The teams on one side of a match: the main slot plus any partner slots that are set. */
+export function sideTeamIds(...ids: (string | null | undefined)[]): string[] {
+  return ids.filter((id): id is string => id != null);
+}
 
 export type StandingsGameRow = {
   matchId: string;
@@ -15,13 +21,16 @@ export type StandingsGameRow = {
   // Round-level scaling applied to every point this game can earn.
   roundMultiplier: number;
   team1Id: string | null;
-  // Trios only: the second trio on side 1. Null in every other format.
+  // Trios and duos: the second team on side 1. Null in every other format.
   team1PartnerId: string | null;
+  // Duos only: the third duo on side 1.
+  team1Partner2Id: string | null;
   team1Score: number;
   team1Result: string;
   team1EliminatedOpponent: boolean;
   team2Id: string | null;
   team2PartnerId: string | null;
+  team2Partner2Id: string | null;
   team2Score: number;
   team2Result: string;
   team2EliminatedOpponent: boolean;
@@ -67,8 +76,8 @@ export function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, Team
     if (row.team1Id === null || row.team2Id === null) continue;
     if (!matchMap.has(row.matchId)) {
       matchMap.set(row.matchId, {
-        side1: [row.team1Id, row.team1PartnerId].filter((id): id is string => id !== null),
-        side2: [row.team2Id, row.team2PartnerId].filter((id): id is string => id !== null),
+        side1: sideTeamIds(row.team1Id, row.team1PartnerId, row.team1Partner2Id),
+        side2: sideTeamIds(row.team2Id, row.team2PartnerId, row.team2Partner2Id),
         multiplier: row.roundMultiplier,
         games: [],
       });
@@ -162,9 +171,9 @@ function scoreRatio(s: { scoreFor: number; scoreAgainst: number }): number {
 }
 
 /**
- * Standings order: match points, then score ratio, then game wins. In a trios competition
- * scoreFor/scoreAgainst hold the trio's own player score rather than the side's team score
- * (see getTrioScoreTotals), so the same comparator serves both formats.
+ * Standings order: match points, then score ratio, then game wins. In a trios or duos
+ * competition scoreFor/scoreAgainst hold the team's own player score rather than the side's
+ * team score (see getPartnerScoreTotals), so the same comparator serves every format.
  */
 export function compareStandings(
   a: { matchPoints: number; scoreFor: number; scoreAgainst: number; gameWins: number },
