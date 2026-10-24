@@ -45,8 +45,13 @@ export function MatchCard({
   );
   const t1Label = side1.map((t) => t.label).join(" & ");
   const t2Label = side2.map((t) => t.label).join(" & ");
+  // A trios/duos side has no short name ("A & B & C" overflows the header), so its badge just
+  // reads "Final"; the winning side's names are already bold below.
+  const partnered = side1.length > 1 || side2.length > 1;
   const winnerLabel =
     match.matchWinner === "team1" ? t1Label : match.matchWinner === "team2" ? t2Label : null;
+  const resultLabel =
+    match.matchWinner === "draw" ? "Draw" : partnered ? "Final" : `${winnerLabel} wins`;
 
   const t1Total = (game1?.team1Score ?? 0) + (game2?.team1Score ?? 0);
   const t2Total = (game1?.team2Score ?? 0) + (game2?.team2Score ?? 0);
@@ -93,9 +98,9 @@ export function MatchCard({
           {!incomplete && (
             <Badge
               variant={match.matchWinner === "draw" ? "secondary" : "default"}
-              className="text-xs"
+              className="text-xs max-w-[50%] truncate"
             >
-              {match.matchWinner === "draw" ? "Draw" : `${winnerLabel} wins`}
+              {resultLabel}
             </Badge>
           )}
           {incomplete && (

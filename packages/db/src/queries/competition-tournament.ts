@@ -1916,7 +1916,8 @@ export type CompetitionMatchResult = {
   }[];
   game1ScheduledStartTime: Date | null;
   game2ScheduledStartTime: Date | null;
-  // match-level outcome (compare combined scores across both games)
+  // match-level outcome (compare combined scores across both games). A match left with a
+  // single game once the competition is completed takes that game's result instead.
   matchWinner: "team1" | "team2" | "draw" | "incomplete";
   team1MatchPoints: number; // match bonus only (2/1/0, scaled by roundMultiplier)
   team2MatchPoints: number;
@@ -1995,6 +1996,14 @@ export async function getCompetitionMatchResults(
     );
 
   if (gameRows.length === 0) return [];
+
+  // Once a competition is completed no more games are coming, so a match left with a single
+  // game (a one-game round, or an unplayed second game) is final rather than in progress.
+  const [comp] = await db
+    .select({ state: competition.state })
+    .from(competition)
+    .where(eq(competition.id, competitionId));
+  const completed = comp?.state === "completed";
 
   // Fetch team names and short names
   const teamIds = matchSideTeamIds(gameRows);
@@ -2096,9 +2105,20 @@ export async function getCompetitionMatchResults(
     }
 
     if (m.games.length < 2) {
+      // No match bonus without both games, matching getCompetitionStandings(); a finished
+      // single-game match is still decided by its game's result (which respects eliminations).
+      const [only] = m.games;
+      const matchWinner: CompetitionMatchResult["matchWinner"] =
+        !completed || !only
+          ? "incomplete"
+          : only.team1Result === "win"
+            ? "team1"
+            : only.team2Result === "win"
+              ? "team2"
+              : "draw";
       return {
         ...m,
-        matchWinner: "incomplete" as const,
+        matchWinner,
         team1MatchPoints: 0,
         team2MatchPoints: 0,
         team1TotalPoints: t1GamePoints,
