@@ -6,6 +6,7 @@ import {
   getCompetitionMatchResults,
   getCompetitionTeams,
   getCompetitionPoolsForStandings,
+  type CompetitionFormat,
   type CompetitionMatchResult,
   type CompetitionRoundType,
 } from "@lfstats/db";
@@ -43,14 +44,14 @@ export async function StandingsContent({
   activeRoundType,
   competitionSlug,
   competitionName,
-  trios = false,
+  format = "team",
 }: {
   activeId: string;
   activeRoundId: string | null;
   activeRoundType: CompetitionRoundType | null;
   competitionSlug: string;
   competitionName: string;
-  trios?: boolean;
+  format?: CompetitionFormat;
 }) {
   const teams = await getCompetitionTeams(activeId);
 
@@ -90,7 +91,7 @@ export async function StandingsContent({
                   standings={standings}
                   teams={teams}
                   competitionSlug={competitionSlug}
-                  trios={trios}
+                  format={format}
                 />
               </CardContent>
             </Card>
@@ -120,7 +121,7 @@ export async function StandingsContent({
             standings={standings}
             teams={teams}
             competitionSlug={competitionSlug}
-            trios={trios}
+            format={format}
           />
         </CardContent>
       </Card>

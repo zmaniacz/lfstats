@@ -11,6 +11,7 @@ import {
   getMatchGameAssignments,
   getUnassignedCompetitionGames,
   getCompetitionTeams,
+  teamsPerSide,
 } from "@lfstats/db";
 import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
@@ -98,8 +99,10 @@ export default async function MatchDetailPage({
             initialTeam1Id={match.team1Id}
             initialTeam2Id={match.team2Id}
             initialTeam1PartnerId={match.team1PartnerId}
+            initialTeam1Partner2Id={match.team1Partner2Id}
             initialTeam2PartnerId={match.team2PartnerId}
-            trios={comp.format === "trios"}
+            initialTeam2Partner2Id={match.team2Partner2Id}
+            teamsPerSide={teamsPerSide(comp.format)}
             action={boundUpdateTeams}
           />
         </CardContent>

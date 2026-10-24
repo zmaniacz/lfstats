@@ -11,22 +11,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import type { CompetitionStandingsRow, CompetitionTeamListItem } from "@lfstats/db";
+import type {
+  CompetitionFormat,
+  CompetitionStandingsRow,
+  CompetitionTeamListItem,
+} from "@lfstats/db";
 import { formatScore } from "@/lib/format";
+import { competitionTeamNoun } from "@/lib/competition-format";
 
 export function StandingsTable({
   standings,
   teams,
   competitionSlug,
-  trios = false,
+  format = "team",
 }: {
   standings: CompetitionStandingsRow[];
   teams: CompetitionTeamListItem[];
   competitionSlug: string;
-  // Trios rank on each trio's own player score (scoreFor/scoreAgainst), which is shown as well.
-  trios?: boolean;
+  // Trios and duos rank on each trio's or duo's own player score (scoreFor/scoreAgainst),
+  // which is shown as well.
+  format?: CompetitionFormat;
 }) {
-  const entity = trios ? "Trio" : "Team";
+  const entity = competitionTeamNoun(format);
+  const partnered = entity !== "Team";
   if (standings.length === 0) {
     if (teams.length === 0) {
       return <p className="text-sm text-muted-foreground">No teams have been added yet.</p>;
@@ -85,8 +92,10 @@ export function StandingsTable({
           <TableHead className="text-right">M W-L-D</TableHead>
           <TableHead className="text-right">G W-L-D</TableHead>
           <TableHead className="text-right">Elims</TableHead>
-          {trios && <TableHead className="text-right">Trio Score</TableHead>}
-          <TableHead className="text-right">{trios ? "Trio Ratio" : "Score Ratio"}</TableHead>
+          {partnered && <TableHead className="text-right">{entity} Score</TableHead>}
+          <TableHead className="text-right">
+            {partnered ? `${entity} Ratio` : "Score Ratio"}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -134,7 +143,7 @@ export function StandingsTable({
                 {row.gameWins}-{row.gameLosses}-{row.gameDraws}
               </TableCell>
               <TableCell className="text-right tabular-nums">{row.teamEliminations}</TableCell>
-              {trios && (
+              {partnered && (
                 <TableCell className="text-right tabular-nums">
                   {formatScore(row.scoreFor)}
                 </TableCell>

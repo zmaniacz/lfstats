@@ -6,16 +6,23 @@
 import { Button } from "@/components/ui/button";
 import type { CompetitionTeamListItem } from "@lfstats/db";
 import { useState } from "react";
-import { MatchTeamSelects, matchSlotsFrom, setMatchSlotsOnFormData } from "./MatchTeamSelects";
+import {
+  MatchTeamSelects,
+  matchSlotsFrom,
+  setMatchSlotsOnFormData,
+  type TeamsPerSide,
+} from "./MatchTeamSelects";
 
 type Props = {
   teams: CompetitionTeamListItem[];
   initialTeam1Id: string | null;
   initialTeam2Id: string | null;
-  // Trios only.
+  // Trios and duos only (partner2: duos only).
   initialTeam1PartnerId?: string | null;
+  initialTeam1Partner2Id?: string | null;
   initialTeam2PartnerId?: string | null;
-  trios?: boolean;
+  initialTeam2Partner2Id?: string | null;
+  teamsPerSide?: TeamsPerSide;
   action: (formData: FormData) => Promise<void>;
 };
 
@@ -24,16 +31,20 @@ export function EditMatchTeamsForm({
   initialTeam1Id,
   initialTeam2Id,
   initialTeam1PartnerId = null,
+  initialTeam1Partner2Id = null,
   initialTeam2PartnerId = null,
-  trios = false,
+  initialTeam2Partner2Id = null,
+  teamsPerSide = 1,
   action,
 }: Props) {
   const [slots, setSlots] = useState(() =>
     matchSlotsFrom({
       team1Id: initialTeam1Id,
       team1PartnerId: initialTeam1PartnerId,
+      team1Partner2Id: initialTeam1Partner2Id,
       team2Id: initialTeam2Id,
       team2PartnerId: initialTeam2PartnerId,
+      team2Partner2Id: initialTeam2Partner2Id,
     }),
   );
   const [isPending, setIsPending] = useState(false);
@@ -41,7 +52,7 @@ export function EditMatchTeamsForm({
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    setMatchSlotsOnFormData(formData, slots, trios);
+    setMatchSlotsOnFormData(formData, slots, teamsPerSide);
     setIsPending(true);
     try {
       await action(formData);
@@ -52,7 +63,13 @@ export function EditMatchTeamsForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
-      <MatchTeamSelects teams={teams} slots={slots} onChange={setSlots} trios={trios} labelled />
+      <MatchTeamSelects
+        teams={teams}
+        slots={slots}
+        onChange={setSlots}
+        teamsPerSide={teamsPerSide}
+        labelled
+      />
       <Button type="submit" disabled={isPending}>
         {isPending ? "Saving…" : "Save"}
       </Button>

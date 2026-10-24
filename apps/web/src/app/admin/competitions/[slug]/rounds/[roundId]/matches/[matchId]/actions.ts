@@ -84,12 +84,15 @@ export async function updateMatchTeamsAction(
 ): Promise<void> {
   await requireAdmin();
   const read = (key: string) => (formData.get(key) as string) || null;
-  // Partner slots are only posted by a trios competition's form; null otherwise.
+  // Partner slots are only posted by a trios or duos competition's form (partner2 by duos
+  // only); null otherwise.
   await updateCompetitionMatchTeams(matchId, {
     team1Id: read("team1Id"),
     team1PartnerId: read("team1PartnerId"),
+    team1Partner2Id: read("team1Partner2Id"),
     team2Id: read("team2Id"),
     team2PartnerId: read("team2PartnerId"),
+    team2Partner2Id: read("team2Partner2Id"),
   });
 
   const match = await getCompetitionMatchById(matchId);

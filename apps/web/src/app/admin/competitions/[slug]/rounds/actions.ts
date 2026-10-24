@@ -84,15 +84,18 @@ export async function deleteRoundAction(competitionId: string, roundId: string):
   refresh();
 }
 
-// Match team slots from a match form. The partner slots are only posted by a trios competition's
-// forms; elsewhere they read as null, which is what every other format stores.
+// Match team slots from a match form. The partner slots are only posted by a trios or duos
+// competition's forms (partner2 by duos only); elsewhere they read as null, which is what every
+// other format stores.
 function readMatchTeams(formData: FormData) {
   const read = (key: string) => (formData.get(key) as string) || null;
   return {
     team1Id: read("team1Id"),
     team1PartnerId: read("team1PartnerId"),
+    team1Partner2Id: read("team1Partner2Id"),
     team2Id: read("team2Id"),
     team2PartnerId: read("team2PartnerId"),
+    team2Partner2Id: read("team2Partner2Id"),
   };
 }
 

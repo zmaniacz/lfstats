@@ -15,92 +15,131 @@ import type { CompetitionTeamListItem } from "@lfstats/db";
 
 /**
  * The team slots of one match, as Select values ("tbd" for an empty slot). In a trios
- * competition each side holds two trios; the partner slots are unused otherwise.
+ * competition each side holds two trios, in a duos competition three duos; the partner slots
+ * are unused otherwise (and partner2 outside duos).
  */
 export type MatchTeamSlots = {
   team1Id: string;
   team1PartnerId: string;
+  team1Partner2Id: string;
   team2Id: string;
   team2PartnerId: string;
+  team2Partner2Id: string;
 };
 
 type SlotKey = keyof MatchTeamSlots;
 
+/** How many competition teams share each side of a match — see `teamsPerSide` in @lfstats/db. */
+export type TeamsPerSide = 1 | 2 | 3;
+
 export const EMPTY_MATCH_SLOTS: MatchTeamSlots = {
   team1Id: "tbd",
   team1PartnerId: "tbd",
+  team1Partner2Id: "tbd",
   team2Id: "tbd",
   team2PartnerId: "tbd",
+  team2Partner2Id: "tbd",
 };
 
 export function matchSlotsFrom(m: {
   team1Id: string | null;
   team1PartnerId: string | null;
+  team1Partner2Id: string | null;
   team2Id: string | null;
   team2PartnerId: string | null;
+  team2Partner2Id: string | null;
 }): MatchTeamSlots {
   return {
     team1Id: m.team1Id ?? "tbd",
     team1PartnerId: m.team1PartnerId ?? "tbd",
+    team1Partner2Id: m.team1Partner2Id ?? "tbd",
     team2Id: m.team2Id ?? "tbd",
     team2PartnerId: m.team2PartnerId ?? "tbd",
+    team2Partner2Id: m.team2Partner2Id ?? "tbd",
   };
 }
 
-/** Writes the slots into the form data the match actions read; partners only for trios. */
+// The slots on each side that a format uses, in display order.
+function sideSlots(teamsPerSide: TeamsPerSide): [SlotKey[], SlotKey[]] {
+  const side1: SlotKey[] = ["team1Id", "team1PartnerId", "team1Partner2Id"];
+  const side2: SlotKey[] = ["team2Id", "team2PartnerId", "team2Partner2Id"];
+  return [side1.slice(0, teamsPerSide), side2.slice(0, teamsPerSide)];
+}
+
+/** Writes the slots into the form data the match actions read; only the format's own slots. */
 export function setMatchSlotsOnFormData(
   formData: FormData,
   slots: MatchTeamSlots,
-  trios: boolean,
+  teamsPerSide: TeamsPerSide,
 ): void {
-  const keys: SlotKey[] = trios
-    ? ["team1Id", "team1PartnerId", "team2Id", "team2PartnerId"]
-    : ["team1Id", "team2Id"];
-  for (const key of keys) formData.set(key, slots[key] === "tbd" ? "" : slots[key]);
+  for (const key of sideSlots(teamsPerSide).flat()) {
+    formData.set(key, slots[key] === "tbd" ? "" : slots[key]);
+  }
 }
 
 const SLOT_LABELS: Record<SlotKey, string> = {
   team1Id: "Team 1",
   team1PartnerId: "Team 1 partner",
+  team1Partner2Id: "Team 1 partner 2",
   team2Id: "Team 2",
   team2PartnerId: "Team 2 partner",
+  team2Partner2Id: "Team 2 partner 2",
 };
 
 const TRIO_SLOT_LABELS: Record<SlotKey, string> = {
+  ...SLOT_LABELS,
   team1Id: "Side 1 · Trio A",
   team1PartnerId: "Side 1 · Trio B",
   team2Id: "Side 2 · Trio A",
   team2PartnerId: "Side 2 · Trio B",
 };
 
+const DUO_SLOT_LABELS: Record<SlotKey, string> = {
+  team1Id: "Side 1 · Duo A",
+  team1PartnerId: "Side 1 · Duo B",
+  team1Partner2Id: "Side 1 · Duo C",
+  team2Id: "Side 2 · Duo A",
+  team2PartnerId: "Side 2 · Duo B",
+  team2Partner2Id: "Side 2 · Duo C",
+};
+
+const LABELS_BY_SIZE: Record<TeamsPerSide, Record<SlotKey, string>> = {
+  1: SLOT_LABELS,
+  2: TRIO_SLOT_LABELS,
+  3: DUO_SLOT_LABELS,
+};
+
 type Props = {
   teams: CompetitionTeamListItem[];
   slots: MatchTeamSlots;
   onChange: (slots: MatchTeamSlots) => void;
-  trios: boolean;
+  teamsPerSide: TeamsPerSide;
   /** Show a label above each select (the add-match form) or not (inline edit rows). */
   labelled?: boolean;
   triggerClassName?: string;
 };
 
 /**
- * Team pickers for one match: "Team 1 vs Team 2", or for trios "A + B vs C + D". A team chosen
- * in any slot is disabled in the others, mirroring the competition_match distinct-teams check.
+ * Team pickers for one match: "Team 1 vs Team 2", for trios "A + B vs C + D", for duos
+ * "A + B + C vs D + E + F". A team chosen in any slot is disabled in the others, mirroring the
+ * competition_match distinct-teams check.
  */
 export function MatchTeamSelects({
   teams,
   slots,
   onChange,
-  trios,
+  teamsPerSide,
   labelled = false,
   triggerClassName = "w-44",
 }: Props) {
-  const labels = trios ? TRIO_SLOT_LABELS : SLOT_LABELS;
+  const labels = LABELS_BY_SIZE[teamsPerSide];
+  const [side1, side2] = sideSlots(teamsPerSide);
+  const used = [...side1, ...side2];
 
   function renderSelect(key: SlotKey) {
     const takenElsewhere = new Set(
-      (Object.keys(slots) as SlotKey[])
-        .filter((k) => k !== key && (trios || !k.endsWith("PartnerId")))
+      used
+        .filter((k) => k !== key)
         .map((k) => slots[k])
         .filter((v) => v !== "tbd"),
     );
@@ -128,25 +167,23 @@ export function MatchTeamSelects({
     );
   }
 
-  if (!trios) {
-    return (
-      <>
-        {renderSelect("team1Id")}
-        <span className="text-sm text-muted-foreground pb-2">vs</span>
-        {renderSelect("team2Id")}
-      </>
-    );
-  }
+  const renderSide = (keys: SlotKey[]) =>
+    keys.flatMap((key, i) => [
+      ...(i > 0
+        ? [
+            <span key={`${key}-plus`} className="text-sm text-muted-foreground pb-2">
+              +
+            </span>,
+          ]
+        : []),
+      renderSelect(key),
+    ]);
 
   return (
     <>
-      {renderSelect("team1Id")}
-      <span className="text-sm text-muted-foreground pb-2">+</span>
-      {renderSelect("team1PartnerId")}
+      {renderSide(side1)}
       <span className="text-sm text-muted-foreground pb-2">vs</span>
-      {renderSelect("team2Id")}
-      <span className="text-sm text-muted-foreground pb-2">+</span>
-      {renderSelect("team2PartnerId")}
+      {renderSide(side2)}
     </>
   );
 }

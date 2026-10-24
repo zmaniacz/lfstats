@@ -60,6 +60,11 @@ const FORMAT_CHANGE_WARNINGS: Record<CompetitionFormat, string> = {
     "and displayed. Switching to Trios pairs two teams on each side of a match: both share " +
     "the side's points, and ties break on each trio's own player score. Switching away from " +
     "Trios still credits any partner trios already set on matches — clear them first.",
+  duos:
+    "Changing the format deletes nothing, but it does change how this competition is scored " +
+    "and displayed. Switching to Duos puts three teams on each side of a match: all three share " +
+    "the side's points, and ties break on each duo's own player score. Switching away from " +
+    "Duos still credits any partner duos already set on matches — clear them first.",
 };
 
 export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {

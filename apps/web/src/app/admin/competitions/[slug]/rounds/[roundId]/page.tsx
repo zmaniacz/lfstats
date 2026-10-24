@@ -12,7 +12,9 @@ import {
   getCompetitionMatchesByRound,
   getCompetitionPoolsByRound,
   getCompetitionRoundTeamPoolAssignments,
+  teamsPerSide,
 } from "@lfstats/db";
+import { competitionTeamNoun } from "@/lib/competition-format";
 import { CompetitionMatchForm } from "@/components/admin/competition/CompetitionMatchForm";
 import { EditRoundForm } from "@/components/admin/competition/EditRoundForm";
 import { SortableMatchList } from "@/components/admin/competition/SortableMatchList";
@@ -80,10 +82,12 @@ export default async function RoundMatchesPage({
     : [[], []];
 
   const id = comp.id;
-  // A trios match needs four distinct trios; round-robin generation doesn't apply, since
-  // pairings change from match to match and are set by hand.
-  const trios = comp.format === "trios";
-  const minTeams = trios ? 4 : 2;
+  // A trios match needs four distinct trios and a duos match six duos; round-robin generation
+  // doesn't apply to either, since pairings change from match to match and are set by hand.
+  const perSide = teamsPerSide(comp.format);
+  const partnered = perSide > 1;
+  const minTeams = perSide * 2;
+  const teamNoun = competitionTeamNoun(comp.format).toLowerCase();
   const boundDeleteMatch = deleteMatchAction.bind(null, id, round.id);
   const boundReorder = reorderMatchesAction.bind(null, id, round.id);
   const boundUpdateTeams = updateMatchTeamsAction.bind(null, id, round.id);
@@ -174,14 +178,14 @@ export default async function RoundMatchesPage({
         <CardContent className="space-y-4">
           {teams.length >= minTeams ? (
             <div>
-              {!trios && round.type === "pool" && (
+              {!partnered && round.type === "pool" && (
                 <div className="mb-4">
                   <GeneratePoolMatchesButton
                     action={generatePoolMatchesAction.bind(null, id, round.id)}
                   />
                 </div>
               )}
-              {!trios && usesPools && (
+              {!partnered && usesPools && (
                 <div className="mb-4">
                   <GeneratePoolMatchesButton
                     action={generateSplitPoolMatchesAction.bind(null, id, round.id)}
@@ -194,13 +198,13 @@ export default async function RoundMatchesPage({
                 teams={teams}
                 pools={usesPools ? pools : undefined}
                 teamPoolAssignments={usesPools ? teamPoolAssignments : undefined}
-                trios={trios}
+                teamsPerSide={perSide}
                 action={createMatchAction.bind(null, id)}
               />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Add at least {minTeams} {trios ? "trios" : "teams"} before creating matches.{" "}
+              Add at least {minTeams} {teamNoun}s before creating matches.{" "}
               <Link href={`/admin/competitions/${comp.slug}/teams`} className="underline">
                 Manage teams
               </Link>
@@ -216,7 +220,7 @@ export default async function RoundMatchesPage({
               matches={matches}
               teams={teams}
               pools={usesPools ? pools : undefined}
-              trios={trios}
+              teamsPerSide={perSide}
               deleteAction={boundDeleteMatch}
               reorderAction={boundReorder}
               updateTeamsAction={boundUpdateTeams}

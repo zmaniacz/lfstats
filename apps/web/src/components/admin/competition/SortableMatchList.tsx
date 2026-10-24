@@ -32,7 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DeleteEntityButton } from "./DeleteEntityButton";
-import { MatchTeamSelects, matchSlotsFrom, setMatchSlotsOnFormData } from "./MatchTeamSelects";
+import {
+  MatchTeamSelects,
+  matchSlotsFrom,
+  setMatchSlotsOnFormData,
+  type TeamsPerSide,
+} from "./MatchTeamSelects";
 import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import type {
@@ -47,8 +52,8 @@ type Props = {
   matches: CompetitionMatchListItem[];
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
-  // Trios competitions pick two trios per side.
-  trios?: boolean;
+  // Trios competitions pick two trios per side, duos competitions three duos.
+  teamsPerSide?: TeamsPerSide;
   deleteAction: (matchId: string) => Promise<void>;
   reorderAction: (reorders: { id: string; matchNumber: number }[]) => Promise<void>;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
@@ -58,14 +63,14 @@ function EditMatchTeamsForm({
   match,
   teams,
   pools,
-  trios,
+  teamsPerSide,
   updateTeamsAction,
   onCancel,
 }: {
   match: CompetitionMatchListItem;
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
-  trios: boolean;
+  teamsPerSide: TeamsPerSide;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -76,7 +81,7 @@ function EditMatchTeamsForm({
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    setMatchSlotsOnFormData(formData, slots, trios);
+    setMatchSlotsOnFormData(formData, slots, teamsPerSide);
     if (pools) formData.set("poolId", poolId === "none" ? "" : poolId);
     setIsPending(true);
     try {
@@ -108,7 +113,7 @@ function EditMatchTeamsForm({
         teams={teams}
         slots={slots}
         onChange={setSlots}
-        trios={trios}
+        teamsPerSide={teamsPerSide}
         triggerClassName="w-40"
       />
       <Button type="submit" size="sm" disabled={isPending}>
@@ -127,7 +132,7 @@ function SortableMatch({
   roundId,
   teams,
   pools,
-  trios,
+  teamsPerSide,
   deleteAction,
   updateTeamsAction,
 }: {
@@ -136,7 +141,7 @@ function SortableMatch({
   roundId: string;
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
-  trios: boolean;
+  teamsPerSide: TeamsPerSide;
   deleteAction: (id: string) => Promise<void>;
   updateTeamsAction: (matchId: string, formData: FormData) => Promise<void>;
 }) {
@@ -175,7 +180,7 @@ function SortableMatch({
             match={match}
             teams={teams}
             pools={pools}
-            trios={trios}
+            teamsPerSide={teamsPerSide}
             updateTeamsAction={updateTeamsAction}
             onCancel={() => setIsEditingTeams(false)}
           />
@@ -238,7 +243,7 @@ export function SortableMatchList({
   matches: initialMatches,
   teams,
   pools,
-  trios = false,
+  teamsPerSide = 1,
   deleteAction,
   reorderAction,
   updateTeamsAction,
@@ -300,7 +305,7 @@ export function SortableMatchList({
               roundId={roundId}
               teams={teams}
               pools={pools}
-              trios={trios}
+              teamsPerSide={teamsPerSide}
               deleteAction={deleteAction}
               updateTeamsAction={updateTeamsAction}
             />

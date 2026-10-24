@@ -18,15 +18,20 @@ import type {
   CompetitionTeamListItem,
 } from "@lfstats/db";
 import { useState } from "react";
-import { EMPTY_MATCH_SLOTS, MatchTeamSelects, setMatchSlotsOnFormData } from "./MatchTeamSelects";
+import {
+  EMPTY_MATCH_SLOTS,
+  MatchTeamSelects,
+  setMatchSlotsOnFormData,
+  type TeamsPerSide,
+} from "./MatchTeamSelects";
 
 type Props = {
   roundId: string;
   teams: CompetitionTeamListItem[];
   pools?: CompetitionPoolListItem[];
   teamPoolAssignments?: CompetitionPoolTeamAssignment[];
-  // Trios competitions pick two trios per side.
-  trios?: boolean;
+  // Trios competitions pick two trios per side, duos competitions three duos.
+  teamsPerSide?: TeamsPerSide;
   action: (roundId: string, formData: FormData) => Promise<void>;
 };
 
@@ -35,7 +40,7 @@ export function CompetitionMatchForm({
   teams,
   pools,
   teamPoolAssignments,
-  trios = false,
+  teamsPerSide = 1,
   action,
 }: Props) {
   const [slots, setSlots] = useState(EMPTY_MATCH_SLOTS);
@@ -52,7 +57,7 @@ export function CompetitionMatchForm({
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    setMatchSlotsOnFormData(formData, slots, trios);
+    setMatchSlotsOnFormData(formData, slots, teamsPerSide);
     if (pools) formData.set("poolId", poolId === "none" ? "" : poolId);
     setIsPending(true);
     try {
@@ -88,7 +93,7 @@ export function CompetitionMatchForm({
         teams={teamOptions}
         slots={slots}
         onChange={setSlots}
-        trios={trios}
+        teamsPerSide={teamsPerSide}
         labelled
       />
       <Button type="submit" disabled={isPending}>
