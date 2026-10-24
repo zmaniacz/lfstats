@@ -327,7 +327,7 @@ Points are derived at query time — never stored. For each match:
 
    Higher total takes +2; an exact tie gives +1 each. Note that `penalty_score` is included — penalties can flip a match bonus, not just a game result.
 
-5. **Incomplete matches.** With fewer than 2 games recorded, `matchWinner` is `"incomplete"` and both sides get 0 match points. Game points already earned still count.
+5. **Incomplete matches.** With fewer than 2 games recorded, `matchWinner` is `"incomplete"` and both sides get 0 match points. Game points already earned still count. Once the competition's `state` is `completed`, a match left with a **single** game (a one-game round, or a second game that was never played) is final instead: `matchWinner` takes that game's result, so the match card shows a winner rather than "In progress". It still earns no match bonus, so standings are unchanged.
 6. **Round multiplier.** Both game points and the match bonus are multiplied by `competition_round.multiplier` (default `1`), so a round can be made worth double or more. Win/loss/draw _counts_ are never scaled — only points. Admins set the multiplier per round in `/admin/competitions/[slug]/rounds`; a non-1 multiplier is surfaced as a "N× points" badge on the round.
 7. Sum per team across all matches in a round or the full competition for standings.
 
