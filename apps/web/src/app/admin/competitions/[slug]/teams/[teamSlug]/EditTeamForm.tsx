@@ -4,6 +4,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,9 @@ import { Label } from "@/components/ui/label";
 type Props = {
   name: string;
   shortName: string | null;
-  action: (formData: FormData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  action: (
+    formData: FormData,
+  ) => Promise<{ ok: true; redirectTo?: string } | { ok: false; error: string }>;
 };
 
 /**
@@ -22,6 +25,7 @@ type Props = {
  * `useTransition` warning in apps/web/CLAUDE.md.
  */
 export function EditTeamForm({ name, shortName, action }: Props) {
+  const router = useRouter();
   const [isPending, setIsPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -38,6 +42,8 @@ export function EditTeamForm({ name, shortName, action }: Props) {
         setError(result.error);
         return;
       }
+      // A rename can change the slug in this page's URL; follow it.
+      if (result.redirectTo) router.replace(result.redirectTo);
       setSaved(true);
     } finally {
       setIsPending(false);
