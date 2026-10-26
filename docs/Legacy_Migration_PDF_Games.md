@@ -72,6 +72,36 @@ TDF-era legacy games used a different path (legacy `game_datetime` is the TDF wa
 labelled UTC — offset 0 on all 7,123 games present in both databases). This rule is for PDF
 games only.
 
+**Corrected from the PDFs, 2026-10-26.** The Pacific rule was only right in winter: the legacy
+importer used a fixed UTC−8, so `AT TIME ZONE 'America/Los_Angeles'` left every
+daylight-saving-season game an hour late. The start time printed in each source PDF's header
+is the source of truth, and `fix-legacy-pdf-start-times` rewrote `game.start_time` from it:
+
+```
+pnpm --filter @lfstats/db fix-legacy-pdf-start-times --fetch     # download + parse every PDF (needs pdftotext)
+pnpm --filter @lfstats/db fix-legacy-pdf-start-times --dry-run   # report the corrections
+pnpm --filter @lfstats/db fix-legacy-pdf-start-times --apply
+```
+
+The PDFs are public at `https://lfstats-scorecards.s3.amazonaws.com/<pdf_id>.pdf`. Of the
+7,152 games, 1,886 already matched and 4,725 were corrected: 4,542 by −1h, plus whole batches
+imported another way — Syracuse, Loveland and Auckland in January–February 2020 (+8h, 168),
+Syracuse on 5 July 2015 (−14h15m, 11) and four Carmichael games in August–September 2016 (+7h).
+No corrected game falls within an hour of a TDF game. Not corrected:
+
+- **335 games** have no `pdf_id`, and **149 PDFs** are missing from the bucket (S3 answers 403).
+- **52 PDFs** can't be read: 51 truncated uploads (most from Brisbane, July 2018) and one
+  whose header text extracts garbled.
+- **4 games** whose printed time is held by a neighbour whose own PDF is missing or unreadable
+  (so the neighbour is probably still an hour late).
+
+Those keep the Pacific reading, so the DST-season ones among them are likely still an hour late.
+
+A fifth collision was a duplicate: St George legacy 6308 is the same game as 6311 uploaded twice
+(identical scorecards, same printed time). 6308 was deleted on 2026-10-26. A re-run of
+`migrate-legacy-pdf-games` without `--reset` would bring it back, since it skips only games
+already in `sm5_pdf_game`.
+
 A PDF game within **2 minutes** of a TDF game at the same center is that game, already
 ingested from its TDF, and is skipped (`duplicate-of-tdf-game`, 15 games). The first run used
 the offset-0 reading, missed them, and was reset and redone.
@@ -206,18 +236,15 @@ turned up during the migration.
    `sm5_pdf_scorecard` (every row has a player, synthetic or real).
 2. **Armageddon 2014 and 2015.** Legacy recorded these as their own "centers" (legacy ids 3
    and 9, 35 and 21 games); they were mapped to Syracuse (`4-23`) and need recreating as
-   competitions. **Check their start times first:** these are among the few batches that look
-   stored as true local time rather than Pacific (as stored, 35 of 35 2014 games fall in
-   normal play hours; read as Pacific, 26), so they may need the other conversion before
-   matches are built around them.
+   competitions. Their start times now match the printed PDFs (55 of 56; one PDF is missing),
+   early-morning clock readings included.
 3. **Lock the migration script.** `migrate-legacy-pdf-games --reset` deletes every
    `sm5_pdf` game. Once admins edit these games (descriptions, exclusions, competition
    assignments) or merge players, gate the writing paths behind `assertLegacyMigrationOpen`
    as was done for the TDF-era scripts.
-4. **Timestamp outliers.** 433 games still start between 00:00 and 09:00 local under the
-   Pacific rule — likely batches imported another way (see item 2, and the 2020 batches at
-   Syracuse, Auckland and Loveland). Review per batch, using `pdf_id` upload times and
-   overlap with same-night TDF games, and correct `game.start_time` where the evidence is clear.
+4. **Timestamp leftovers.** Start times were corrected from the PDFs (see
+   [Start time](#start-time)). Still open: 540 unchecked games (536 with no readable PDF,
+   4 blocked by a collision), whose DST-season times are probably still an hour late.
 5. **Synthetic player curation.** 1,075 synthetic `L-…` players remain. The merge tool
    handles one at a time; a report of likely matches (same callsign as a real player at the
    same center, overlapping years) would make the curation tractable.

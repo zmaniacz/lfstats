@@ -18,7 +18,9 @@
  *                 America/Los_Angeles — whatever the center's own timezone. (TDF-era
  *                 legacy games used a different path; this applies to PDF games only.)
  *                 Established from upload times (`pdf_id` is epoch ms), play hours, and
- *                 15 Brisbane games that duplicate TDF games exactly under this reading
+ *                 15 Brisbane games that duplicate TDF games exactly under this reading.
+ *                 Wrong by an hour in DST season — fix-legacy-pdf-start-times later
+ *                 rewrote start_time from the printed PDF headers
  *   - duplicates  a PDF game within 2 minutes of a TDF game at the same center is that
  *                 game, already ingested from its TDF, and is skipped
  *   - score       scorecards sum to the side score and are penalty-free; legacy `adj`
