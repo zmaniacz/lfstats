@@ -9,6 +9,16 @@ import { fileURLToPath } from "node:url";
 const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../");
 
 const config = (phase: string): NextConfig => {
+  // These are inlined into the browser bundle at build time, so a build without them ships
+  // image URLs with "undefined" in the host (see packages/db/src/lib/images.ts).
+  const imagesBucket = process.env.NEXT_PUBLIC_IMAGES_BUCKET;
+  const imagesRegion = process.env.NEXT_PUBLIC_AWS_REGION;
+  if (phase === PHASE_PRODUCTION_BUILD && (!imagesBucket || !imagesRegion)) {
+    throw new Error(
+      "NEXT_PUBLIC_IMAGES_BUCKET and NEXT_PUBLIC_AWS_REGION must be set when building the web app",
+    );
+  }
+
   const base: NextConfig = {
     experimental: {
       staleTimes: {
@@ -16,12 +26,10 @@ const config = (phase: string): NextConfig => {
       },
     },
     images: {
-      remotePatterns: [
-        {
-          protocol: "https",
-          hostname: "lfstats-modern-images.s3.*.amazonaws.com",
-        },
-      ],
+      remotePatterns:
+        imagesBucket && imagesRegion
+          ? [{ protocol: "https", hostname: `${imagesBucket}.s3.${imagesRegion}.amazonaws.com` }]
+          : [],
     },
     // The OAuth consent page must not be framed, or a page could overlay it and trick a
     // signed-in user into clicking Allow.
