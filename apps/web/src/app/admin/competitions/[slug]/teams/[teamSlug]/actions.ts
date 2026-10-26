@@ -17,6 +17,7 @@ import {
   type PlayerSearchResult,
   type RosterMutationResult,
 } from "@lfstats/db";
+import { getImagesBucket } from "@lfstats/db/lib/images";
 import { auth } from "@/auth";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -38,12 +39,6 @@ function getS3Client() {
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
     },
   });
-}
-
-function getImagesBucket(): string {
-  const bucket = process.env.IMAGES_BUCKET;
-  if (!bucket) throw new Error("IMAGES_BUCKET is not configured");
-  return bucket;
 }
 
 async function revalidateTeamPaths(competitionId: string, teamId: string): Promise<void> {

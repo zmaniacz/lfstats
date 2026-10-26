@@ -95,6 +95,15 @@ A function form that returns the full standalone config only during `PHASE_PRODU
 
 - **Base stage**: Node 24 Alpine with corepack-activated pnpm pinned to the version in the root `package.json`'s `packageManager` field.
 - **Builder stage**: copies the whole monorepo (build context is the repo root, set by `context: .` in the workflow), runs `pnpm install --frozen-lockfile`, then `pnpm turbo build --filter=web`. Turbo handles workspace topological order, so `packages/db` is built first if needed.
+- **Build-time variables**: `NEXT_PUBLIC_AWS_REGION` and `NEXT_PUBLIC_IMAGES_BUCKET` arrive as `ARG`s
+  (from the `build-web` workflow's `build-args`, sourced from the repository **variables** of the
+  same names) and are set as `ENV` in the builder stage before `next build`. Next inlines
+  `NEXT_PUBLIC_*` into the browser bundle at build time, and `.env*` never enters the build
+  context, so without them every team logo and player picture rendered by a client component
+  points at `<bucket>.s3.undefined.amazonaws.com`. `next.config.ts` refuses a production build
+  that lacks either one, and derives the `images.remotePatterns` hostname from them. The URL
+  builder is `packages/db/src/lib/images.ts`; the logo/picture upload actions use the same bucket.
+  Changing either value means a rebuild, not a container restart.
 - **Runner stage**: fresh `node:24-alpine`, copies only the standalone bundle, `.next/static`, and `public/` from the builder. Runs as a non-root `nextjs` user. `ENV HOSTNAME=0.0.0.0` and `ENV PORT=3000` so the standalone server binds where the published port can reach it.
 
 The runner stage doesn't inherit anything from the builder except the explicit `COPY`s, so build-time concerns (placeholder env vars, etc.) never leak into the final image.
@@ -508,6 +517,9 @@ Add `export const dynamic = "force-static"` to the page to opt back into static 
 2. Add it to the `environment` block in `docker-compose.yml` on the deploy host (with `${VAR}` interpolation if it should come from `.env`) or to the `env_file` list if it should be passed through verbatim.
 3. `docker compose up -d web` to recreate the container with the new env.
 4. No CI/build changes needed unless the build also requires the var (rare — most env vars are runtime-only since Next doesn't inline non-`NEXT_PUBLIC_` vars).
+   A `NEXT_PUBLIC_*` var read by client code is the exception: it must be a repository variable,
+   passed through `build-args` in `build-web.yml` and declared as `ARG`/`ENV` in
+   `apps/web/Dockerfile` — setting it in the host `.env` does nothing for the browser bundle.
 
 ### New runner
 

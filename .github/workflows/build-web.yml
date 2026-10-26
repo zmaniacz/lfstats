@@ -37,6 +37,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_AWS_REGION=${{ vars.NEXT_PUBLIC_AWS_REGION }}
+            NEXT_PUBLIC_IMAGES_BUCKET=${{ vars.NEXT_PUBLIC_IMAGES_BUCKET }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

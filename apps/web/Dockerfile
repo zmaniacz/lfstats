@@ -8,6 +8,11 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
 RUN pnpm install --frozen-lockfile
 COPY . .
+# Inlined into the browser bundle by `next build`; .env* never enters the build context.
+ARG NEXT_PUBLIC_AWS_REGION
+ARG NEXT_PUBLIC_IMAGES_BUCKET
+ENV NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION \
+    NEXT_PUBLIC_IMAGES_BUCKET=$NEXT_PUBLIC_IMAGES_BUCKET
 RUN pnpm turbo build --filter=web
 
 FROM node:24-alpine AS runner
