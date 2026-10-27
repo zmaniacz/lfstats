@@ -180,6 +180,9 @@ It returns:
 
 - the score, lives and shots series;
 - the running step total, or `null` when the TDF carried no step lines;
+- step activity: steps per minute in 15-second slices (the trailing partial slice folded into
+  the one before it, ending at elimination), plus `maxRate`, the busiest slice of any player in
+  the game so every player's lane shares one scale. `null` alongside the step total;
 - downtime spans, each classified `resupply` or `down`;
 - missile and nuke markers.
 

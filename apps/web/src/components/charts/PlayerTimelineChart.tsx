@@ -4,9 +4,18 @@
 "use client";
 
 import { memo, useMemo, useRef, useState } from "react";
-import { Line, LineChart, ReferenceDot, ReferenceLine, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  ComposedChart,
+  Line,
+  LineChart,
+  ReferenceDot,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import { formatMs, formatScore } from "@/lib/format";
+import { formatMs, formatPerMin, formatScore } from "@/lib/format";
 import {
   buildTimelineSeries,
   type TimelineRow,
@@ -70,10 +79,12 @@ function markerText(m: PlayerTimelineMarker): string {
 }
 
 type Lane = {
-  key: "score" | "shots" | "lives" | "steps";
+  key: "score" | "shots" | "lives" | "activity";
   label: string;
   height: number;
   format: (n: number) => string;
+  // Fixed top of the y axis instead of this player's own maximum.
+  max?: number;
 };
 
 // Every lane shares the same left gutter so their x scales line up exactly.
@@ -205,6 +216,7 @@ export function PlayerTimelineChart({ timeline }: Props) {
             <span>Score {formatScore(active.score)}</span>
             <span className={readoutClass(active.shots)}>Shots {active.shots}</span>
             <span className={readoutClass(active.lives)}>Lives {active.lives}</span>
+            {active.activity !== null && <span>Activity {formatPerMin(active.activity)}</span>}
             {active.steps !== null && <span>Steps {formatScore(active.steps)}</span>}
             <span className="text-muted-foreground">{STATUS_LABEL[statusAt(hover.time)]}</span>
           </>
@@ -292,13 +304,15 @@ const TimelineLanes = memo(function TimelineLanes({
     { key: "score", label: "Score", height: 110, format: (n) => formatScore(n) },
     { key: "shots", label: "Shots", height: 64, format: (n) => String(n) },
     { key: "lives", label: "Lives", height: 64, format: (n) => String(n) },
-    ...(timeline.steps !== null
+    // Activity shares one scale across the game so players compare directly.
+    ...(timeline.activity !== null
       ? [
           {
-            key: "steps" as const,
-            label: "Steps",
+            key: "activity" as const,
+            label: "Activity",
             height: 64,
-            format: (n: number) => formatScore(n),
+            format: (n: number) => String(Math.round(n)),
+            max: Math.max(1, timeline.activity.maxRate),
           },
         ]
       : []),
@@ -411,6 +425,7 @@ const TimelineLanes = memo(function TimelineLanes({
           if (v > max) max = v;
           if (v < min) min = v;
         }
+        if (lane.max !== undefined) max = lane.max;
         const bands =
           lane.key === "shots" || lane.key === "lives" ? bandRows(rows, lane.key) : null;
         const banded = bands !== null;
@@ -422,7 +437,7 @@ const TimelineLanes = memo(function TimelineLanes({
             height={lane.height + (isLast ? X_AXIS_HEIGHT : 0)}
             config={chartConfig}
           >
-            <LineChart data={data} margin={MARGIN}>
+            <ComposedChart data={data} margin={MARGIN}>
               {xAxis(isLast)}
               <YAxis
                 domain={[min, max]}
@@ -434,23 +449,39 @@ const TimelineLanes = memo(function TimelineLanes({
                 width={Y_AXIS_WIDTH}
               />
               <ReferenceLine y={0} stroke="var(--border)" />
-              {(banded
-                ? BANDS.map(({ band, color }) => ({ dataKey: band, stroke: color }))
-                : [{ dataKey: lane.key, stroke: `var(--color-${lane.key})` }]
-              ).map(({ dataKey, stroke }) => (
-                <Line
-                  key={dataKey}
+              {lane.key === "activity" ? (
+                // One flat-topped block per activity slice, edge to edge.
+                <Area
                   type="stepAfter"
-                  dataKey={dataKey}
-                  stroke={stroke}
-                  strokeWidth={2}
+                  dataKey="activity"
+                  stroke={`var(--color-${lane.key})`}
+                  strokeWidth={1}
+                  fill={`var(--color-${lane.key})`}
+                  fillOpacity={0.35}
                   dot={false}
                   activeDot={false}
                   connectNulls={false}
                   isAnimationActive={false}
                 />
-              ))}
-            </LineChart>
+              ) : (
+                (banded
+                  ? BANDS.map(({ band, color }) => ({ dataKey: band, stroke: color }))
+                  : [{ dataKey: lane.key, stroke: `var(--color-${lane.key})` }]
+                ).map(({ dataKey, stroke }) => (
+                  <Line
+                    key={dataKey}
+                    type="stepAfter"
+                    dataKey={dataKey}
+                    stroke={stroke}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={false}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
+                ))
+              )}
+            </ComposedChart>
           </LaneRow>
         );
       })}
