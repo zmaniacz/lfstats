@@ -15,7 +15,7 @@
 #   docker compose run --rm jobs pnpm exec tsx src/scripts/backfill-solo-format.ts
 
 FROM node:24-alpine
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+RUN corepack enable
 WORKDIR /app
 
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
