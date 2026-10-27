@@ -36,6 +36,12 @@ export function formatMsDuration(ms: number | null): string {
   return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// A per-minute rate as a whole number, e.g. step activity: `96/min`.
+export function formatPerMin(n: number | null): string {
+  if (n === null) return EM_DASH;
+  return `${Math.round(n)}/min`;
+}
+
 export function formatHitDiff(n: number | null): string {
   if (n === null) return EM_DASH;
   return n.toFixed(2);

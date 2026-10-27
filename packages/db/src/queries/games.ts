@@ -1645,9 +1645,35 @@ export type PlayerTimeline = {
   points: PlayerTimelinePoint[];
   // Null when the game's TDF carried no step lines (matches getStepTotals).
   steps: { time: number; total: number }[] | null;
+  // Steps per minute in fixed time slices, null alongside steps. maxRate is
+  // the busiest slice of any player in the game, so every player's activity
+  // lane shares one scale.
+  activity: { bins: PlayerActivityBin[]; maxRate: number } | null;
   intervals: PlayerTimelineInterval[];
   markers: PlayerTimelineMarker[];
 };
+
+export type PlayerActivityBin = { start: number; end: number; rate: number };
+
+const ACTIVITY_BIN_MS = 15_000;
+
+// Buckets step deltas into ACTIVITY_BIN_MS slices up to endTime. The trailing
+// partial slice is folded into the one before it, so no slice is shorter than
+// ACTIVITY_BIN_MS and a few steps in a sliver of time can't spike the rate.
+function activityBins(steps: { time: number; delta: number }[], endTime: number) {
+  if (endTime <= 0) return [];
+  const count = Math.max(1, Math.floor(endTime / ACTIVITY_BIN_MS));
+  const totals = Array.from({ length: count }, () => 0);
+  for (const s of steps) {
+    if (s.time > endTime) continue;
+    totals[Math.min(count - 1, Math.floor(s.time / ACTIVITY_BIN_MS))]! += s.delta;
+  }
+  return totals.map((total, i): PlayerActivityBin => {
+    const start = i * ACTIVITY_BIN_MS;
+    const end = i === count - 1 ? endTime : start + ACTIVITY_BIN_MS;
+    return { start, end, rate: (total * 60_000) / (end - start) };
+  });
+}
 
 const TIMELINE_EVENT_TYPES = [
   "0206", // deactivated by shot
@@ -1697,7 +1723,7 @@ export async function getPlayerTimeline(
   const actorScorecard = alias(sm5Scorecard, "actor_scorecard");
   const targetScorecard = alias(sm5Scorecard, "target_scorecard");
 
-  const [stateRows, stepRows, anyStep, eventRows] = await Promise.all([
+  const [stateRows, gameStepRows, eliminationRows, eventRows] = await Promise.all([
     db
       .select({
         time: sm5GamePlayerState.time,
@@ -1713,19 +1739,26 @@ export async function getPlayerTimeline(
       )
       .orderBy(asc(sm5GamePlayerState.time)),
 
+    // Every player's steps: this player's series, plus the game-wide scale.
     db
-      .select({ time: sm5GamePlayerStep.time, total: sm5GamePlayerStep.total })
+      .select({
+        scorecardId: sm5GamePlayerStep.scorecardId,
+        time: sm5GamePlayerStep.time,
+        delta: sm5GamePlayerStep.delta,
+        total: sm5GamePlayerStep.total,
+      })
       .from(sm5GamePlayerStep)
-      .where(
-        and(eq(sm5GamePlayerStep.gameId, gameId), eq(sm5GamePlayerStep.scorecardId, scorecardId)),
-      )
+      .where(eq(sm5GamePlayerStep.gameId, gameId))
       .orderBy(asc(sm5GamePlayerStep.time)),
 
     db
-      .select({ id: sm5GamePlayerStep.id })
-      .from(sm5GamePlayerStep)
-      .where(eq(sm5GamePlayerStep.gameId, gameId))
-      .limit(1),
+      .select({
+        scorecardId: sm5GamePlayerState.scorecardId,
+        time: sql<number>`min(${sm5GamePlayerState.time})::int`,
+      })
+      .from(sm5GamePlayerState)
+      .where(and(eq(sm5GamePlayerState.gameId, gameId), eq(sm5GamePlayerState.isEliminated, true)))
+      .groupBy(sm5GamePlayerState.scorecardId),
 
     db
       .select({
@@ -1853,6 +1886,27 @@ export async function getPlayerTimeline(
     }
   }
 
+  let activity: PlayerTimeline["activity"] = null;
+  if (gameStepRows.length > 0) {
+    const stepsByScorecard = new Map<string, { time: number; delta: number }[]>();
+    for (const r of gameStepRows) {
+      const list = stepsByScorecard.get(r.scorecardId) ?? [];
+      list.push(r);
+      stepsByScorecard.set(r.scorecardId, list);
+    }
+    const eliminatedBy = new Map(eliminationRows.map((r) => [r.scorecardId, r.time]));
+    let maxRate = 0;
+    for (const [id, steps] of stepsByScorecard) {
+      for (const b of activityBins(steps, eliminatedBy.get(id) ?? duration)) {
+        if (b.rate > maxRate) maxRate = b.rate;
+      }
+    }
+    activity = {
+      bins: activityBins(stepsByScorecard.get(scorecardId) ?? [], endTime),
+      maxRate,
+    };
+  }
+
   return {
     duration,
     eliminatedAt,
@@ -1863,7 +1917,13 @@ export async function getPlayerTimeline(
       shots: s.shots,
       state: s.state,
     })),
-    steps: anyStep.length === 0 ? null : stepRows,
+    steps:
+      gameStepRows.length === 0
+        ? null
+        : gameStepRows
+            .filter((r) => r.scorecardId === scorecardId)
+            .map((r) => ({ time: r.time, total: r.total })),
+    activity,
     intervals,
     markers,
   };
