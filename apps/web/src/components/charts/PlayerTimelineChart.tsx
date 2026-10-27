@@ -18,6 +18,12 @@ const LINE_COLOR = "var(--chart-1)";
 const DOWN_COLOR = "var(--muted-foreground)";
 const RESUPPLY_COLOR = "#0ea5e9";
 const ELIMINATED_COLOR = "var(--destructive)";
+const LOW_COLOR = "#eab308";
+const CRITICAL_COLOR = "#dc2626";
+
+// Shots and lives turn yellow below LOW and red below CRITICAL.
+const LOW_THRESHOLD = 10;
+const CRITICAL_THRESHOLD = 6;
 
 const MARKER_STYLE: Record<
   PlayerTimelineMarkerKind,
@@ -79,6 +85,47 @@ const Y_AXIS_WIDTH = 44;
 const X_AXIS_HEIGHT = 24;
 const PLOT_LEFT = LABEL_WIDTH + Y_AXIS_WIDTH;
 const PLOT_RIGHT = MARGIN.right;
+
+// The readout keeps its normal text colour until a value crosses a threshold.
+// Text needs darker shades than the lines to stay legible, per theme.
+function readoutClass(value: number): string | undefined {
+  if (value < CRITICAL_THRESHOLD) return "text-red-600 dark:text-red-400";
+  if (value < LOW_THRESHOLD) return "text-yellow-700 dark:text-yellow-300";
+  return undefined;
+}
+
+type Band = "normal" | "low" | "critical";
+const BANDS: { band: Band; color: string }[] = [
+  { band: "normal", color: LINE_COLOR },
+  { band: "low", color: LOW_COLOR },
+  { band: "critical", color: CRITICAL_COLOR },
+];
+
+function bandOf(value: number): Band {
+  if (value < CRITICAL_THRESHOLD) return "critical";
+  if (value < LOW_THRESHOLD) return "low";
+  return "normal";
+}
+
+type BandRow = { time: number } & Record<Band, number | null>;
+
+// Splits one lane into a series per band, so each step is drawn whole in a
+// single colour. A stepAfter segment runs from row j-1 to row j at row j-1's
+// value, so it belongs to row j-1's band: each band keeps its own rows plus
+// the row that ends its last segment, and nulls elsewhere break the line.
+function bandRows(rows: TimelineRow[], key: "shots" | "lives"): BandRow[] {
+  return rows.map((r, j) => {
+    const here = bandOf(r[key]);
+    const prev = j > 0 ? bandOf(rows[j - 1]![key]) : here;
+    const value = (band: Band) => (band === here || band === prev ? r[key] : null);
+    return {
+      time: r.time,
+      normal: value("normal"),
+      low: value("low"),
+      critical: value("critical"),
+    };
+  });
+}
 
 // Last row at or before `time`; rows are sorted by time.
 function rowIndexAt(rows: TimelineRow[], time: number): number {
@@ -156,8 +203,8 @@ export function PlayerTimelineChart({ timeline }: Props) {
           <>
             <span className="font-medium">{formatMs(hover.time)}</span>
             <span>Score {formatScore(active.score)}</span>
-            <span>Shots {active.shots}</span>
-            <span>Lives {active.lives}</span>
+            <span className={readoutClass(active.shots)}>Shots {active.shots}</span>
+            <span className={readoutClass(active.lives)}>Lives {active.lives}</span>
             {active.steps !== null && <span>Steps {formatScore(active.steps)}</span>}
             <span className="text-muted-foreground">{STATUS_LABEL[statusAt(hover.time)]}</span>
           </>
@@ -364,6 +411,10 @@ const TimelineLanes = memo(function TimelineLanes({
           if (v > max) max = v;
           if (v < min) min = v;
         }
+        const bands =
+          lane.key === "shots" || lane.key === "lives" ? bandRows(rows, lane.key) : null;
+        const banded = bands !== null;
+        const data: (TimelineRow | BandRow)[] = bands ?? rows;
         return (
           <LaneRow
             key={lane.key}
@@ -371,7 +422,7 @@ const TimelineLanes = memo(function TimelineLanes({
             height={lane.height + (isLast ? X_AXIS_HEIGHT : 0)}
             config={chartConfig}
           >
-            <LineChart data={rows} margin={MARGIN}>
+            <LineChart data={data} margin={MARGIN}>
               {xAxis(isLast)}
               <YAxis
                 domain={[min, max]}
@@ -383,16 +434,22 @@ const TimelineLanes = memo(function TimelineLanes({
                 width={Y_AXIS_WIDTH}
               />
               <ReferenceLine y={0} stroke="var(--border)" />
-              <Line
-                type="stepAfter"
-                dataKey={lane.key}
-                stroke={`var(--color-${lane.key})`}
-                strokeWidth={2}
-                dot={false}
-                activeDot={false}
-                connectNulls={false}
-                isAnimationActive={false}
-              />
+              {(banded
+                ? BANDS.map(({ band, color }) => ({ dataKey: band, stroke: color }))
+                : [{ dataKey: lane.key, stroke: `var(--color-${lane.key})` }]
+              ).map(({ dataKey, stroke }) => (
+                <Line
+                  key={dataKey}
+                  type="stepAfter"
+                  dataKey={dataKey}
+                  stroke={stroke}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={false}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              ))}
             </LineChart>
           </LaneRow>
         );
