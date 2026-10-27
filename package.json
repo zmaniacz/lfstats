@@ -2,7 +2,7 @@
   "name": "lfstats",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.21.0",
+  "packageManager": "pnpm@12.15.0",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
