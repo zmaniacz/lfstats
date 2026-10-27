@@ -857,9 +857,17 @@ export const sm5GameEvent = pgTable(
   (t) => [
     index("sm5_game_event_game_id_idx").on(t.gameId),
     index("sm5_game_event_actor_sc_idx").on(t.actorScorecardId),
-    index("sm5_game_event_target_sc_idx").on(t.targetScorecardId),
-    index("sm5_game_event_actor_gt_idx").on(t.actorGameTargetId),
-    index("sm5_game_event_target_gt_idx").on(t.targetGameTargetId),
+    // Partial: these columns are mostly null (~72%, ~99.98%, ~97%), and the
+    // ON DELETE CASCADE lookups only ever probe for a non-null value.
+    index("sm5_game_event_target_sc_idx")
+      .on(t.targetScorecardId)
+      .where(sql`${t.targetScorecardId} is not null`),
+    index("sm5_game_event_actor_gt_idx")
+      .on(t.actorGameTargetId)
+      .where(sql`${t.actorGameTargetId} is not null`),
+    index("sm5_game_event_target_gt_idx")
+      .on(t.targetGameTargetId)
+      .where(sql`${t.targetGameTargetId} is not null`),
   ],
 );
 
@@ -919,6 +927,7 @@ export const sm5GamePlayerState = pgTable(
     unique().on(t.eventId, t.scorecardId),
     // Primary read pattern: reconstruct player state at time T
     index("sm5_game_player_state_sc_time_idx").on(t.gameId, t.scorecardId, t.time),
+    // Serves the ON DELETE CASCADE from sm5_scorecard; reads all lead with game_id.
     index("sm5_game_player_state_scorecard_id_idx").on(t.scorecardId),
   ],
 );
@@ -1204,7 +1213,6 @@ export const lbGamePlayerState = pgTable(
   (t) => [
     unique().on(t.eventId, t.scorecardId),
     index("lb_game_player_state_sc_time_idx").on(t.gameId, t.scorecardId, t.time),
-    index("lb_game_player_state_event_id_idx").on(t.eventId),
     index("lb_game_player_state_scorecard_id_idx").on(t.scorecardId),
   ],
 );

@@ -421,6 +421,13 @@
       "when": 1792803072616,
       "tag": "0059_duos_format",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793139360605,
+      "tag": "0060_index_space_savings",
+      "breakpoints": true
     }
   ]
 }
