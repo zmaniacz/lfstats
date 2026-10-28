@@ -42,7 +42,8 @@
  *   add --verbose to list every anomaly rather than the first few
  *
  * Re-runs skip games already present in `sm5_pdf_game`; `--reset` deletes every sm5_pdf game
- * first (players and the legacy player map are kept and reused). Requires `LEGACY_DATABASE_URL`
+ * first (players and the legacy player map are kept and reused), and refuses once any PDF game
+ * belongs to a competition. Requires `LEGACY_DATABASE_URL`
  * alongside `DATABASE_URL`; the legacy connection is read-only.
  */
 
@@ -1075,6 +1076,17 @@ async function main(): Promise<void> {
       throw new Error("sm5_pdf tables are missing — run pnpm db:migrate first.");
     }
     if (reset && !dryRun) {
+      // Deleting a game cascades to its competition_match_game row, so a reset would silently
+      // drop every competition's PDF match assignments along with the games.
+      const [{ n: inCompetitions }] = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from game where type = 'sm5_pdf' and competition_id is not null`,
+      );
+      if (inCompetitions > 0) {
+        throw new Error(
+          `--reset refused: ${inCompetitions} PDF games belong to competitions, and deleting them ` +
+            `would drop those competitions' match assignments. See docs/Legacy_Migration_PDF_Events.md.`,
+        );
+      }
       const deleted = await db.execute<{ n: number }>(
         sql`with d as (delete from game where type = 'sm5_pdf' returning 1) select count(*)::int as n from d`,
       );

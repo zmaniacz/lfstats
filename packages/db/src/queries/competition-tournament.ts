@@ -12,12 +12,16 @@ import {
   competitionRoundTeamPool,
   competitionMatch,
   competitionMatchGame,
+  competitionGameSide,
+  competitionScorecard,
   player,
   playerCallsignHistory,
   game,
   sm5GamePenalty,
   sm5GameTeam,
   sm5Scorecard,
+  sm5PdfGameTeam,
+  sm5PdfScorecard,
   center,
   competition,
 } from "../schema";
@@ -295,7 +299,7 @@ export async function getCompetitionTeams(
       playerCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = false)::int`,
       mercCount: sql<number>`count(${competitionTeamPlayer.id}) filter (where ${competitionTeamPlayer.isMercenary} = true)::int`,
       unassignedCount: sql<number>`(
-        SELECT count(DISTINCT sc.player_id)::int FROM sm5_scorecard sc
+        SELECT count(DISTINCT sc.player_id)::int FROM competition_scorecard sc
         WHERE ${teamScorecardSql(competitionTeam.id, sql`sc.team_id`, sql`sc.player_id`)}
         AND sc.player_id NOT IN (
           SELECT player_id FROM competition_team_player
@@ -414,7 +418,7 @@ export async function getCompetitionTeamRoster(
       hasProfilePicture: competitionTeamPlayer.hasProfilePicture,
       pictureVersion: competitionTeamPlayer.pictureVersion,
       gamesPlayed: sql<number>`(
-        SELECT count(*)::int FROM sm5_scorecard sc
+        SELECT count(*)::int FROM competition_scorecard sc
         WHERE sc.player_id = ${player.id}
           AND ${teamScorecardSql(teamId, sql`sc.team_id`, sql`sc.player_id`)}
       )`,
@@ -441,23 +445,28 @@ export async function getTeamGameParticipants(
   // Find all players who have a scorecard on this competition team's game-team rows,
   // excluding those already on the official roster.
   // The join path: competition_team -> competition_match (either side, or a partner slot)
-  //   -> competition_match_game -> sm5_game_team (the right side) -> sm5_scorecard -> player
+  //   -> competition_match_game -> game team (the right side) -> scorecard -> player, over
+  //   TDF and PDF-era scorecards alike
   const rows = await db
     .select({
       playerId: player.id,
       iplId: player.iplId,
       currentCallsign: player.currentCallsign,
-      isMercenary: sql<boolean>`bool_or(${sm5Scorecard.isMercenary})`,
+      isMercenary: sql<boolean>`bool_or(${competitionScorecard.isMercenary})`,
       gamesPlayed: sql<number>`count(*)::int`,
     })
-    .from(sm5Scorecard)
-    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .from(competitionScorecard)
+    .innerJoin(player, eq(player.id, competitionScorecard.playerId))
     .where(
       and(
         // scorecard must count for this team (its side, minus its partners' players)
-        teamScorecardSql(competitionTeamId, sm5Scorecard.teamId, sm5Scorecard.playerId),
+        teamScorecardSql(
+          competitionTeamId,
+          competitionScorecard.teamId,
+          competitionScorecard.playerId,
+        ),
         // exclude players already on the official roster
-        sql`${sm5Scorecard.playerId} NOT IN (
+        sql`${competitionScorecard.playerId} NOT IN (
           SELECT player_id FROM competition_team_player
           WHERE competition_team_id = ${competitionTeamId}
         )`,
@@ -562,16 +571,25 @@ export async function getCompetitionTeamResultsByColor(
 ): Promise<CompetitionTeamResultItem[]> {
   const rows = await db
     .select({
-      colourEnum: sm5GameTeam.colourEnum,
-      result: sm5GameTeam.result,
+      colourEnum: competitionGameSide.colourEnum,
+      result: competitionGameSide.result,
       outcome: game.outcome,
       count: sql<number>`count(*)::int`,
     })
-    .from(sm5GameTeam)
-    .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
-    .where(and(eq(game.exclude, false), sql`${sm5GameTeam.id} IN (${teamGameTeamIdsSql(teamId)})`))
-    .groupBy(sm5GameTeam.colourEnum, sm5GameTeam.result, game.outcome)
-    .orderBy(desc(sm5GameTeam.result), asc(sm5GameTeam.colourEnum), desc(game.outcome));
+    .from(competitionGameSide)
+    .innerJoin(game, eq(game.id, competitionGameSide.gameId))
+    .where(
+      and(
+        eq(game.exclude, false),
+        sql`${competitionGameSide.id} IN (${teamGameTeamIdsSql(teamId)})`,
+      ),
+    )
+    .groupBy(competitionGameSide.colourEnum, competitionGameSide.result, game.outcome)
+    .orderBy(
+      desc(competitionGameSide.result),
+      asc(competitionGameSide.colourEnum),
+      desc(game.outcome),
+    );
 
   return rows
     .filter(
@@ -1217,9 +1235,9 @@ export async function getMatchGameAssignments(matchId: string): Promise<MatchGam
   ];
 
   const gameTeams = await db
-    .select({ id: sm5GameTeam.id, colourEnum: sm5GameTeam.colourEnum })
-    .from(sm5GameTeam)
-    .where(inArray(sm5GameTeam.id, teamIds));
+    .select({ id: competitionGameSide.id, colourEnum: competitionGameSide.colourEnum })
+    .from(competitionGameSide)
+    .where(inArray(competitionGameSide.id, teamIds));
 
   const colorMap = new Map(gameTeams.map((t) => [t.id, t.colourEnum]));
 
@@ -1236,6 +1254,35 @@ export async function getMatchGameAssignments(matchId: string): Promise<MatchGam
   }));
 }
 
+// The match-game columns for two game teams of either kind: a PDF-era legacy game's teams
+// are sm5_pdf_game_team rows, everything else sm5_game_team.
+async function matchGameSideColumns(
+  team1GameTeamId: string,
+  team2GameTeamId: string,
+): Promise<
+  | { team1Sm5GameTeamId: string; team2Sm5GameTeamId: string }
+  | { team1PdfGameTeamId: string; team2PdfGameTeamId: string }
+> {
+  const pdfTeams = await db
+    .select({ id: sm5PdfGameTeam.id })
+    .from(sm5PdfGameTeam)
+    .where(inArray(sm5PdfGameTeam.id, [team1GameTeamId, team2GameTeamId]));
+  return pdfTeams.length > 0
+    ? { team1PdfGameTeamId: team1GameTeamId, team2PdfGameTeamId: team2GameTeamId }
+    : { team1Sm5GameTeamId: team1GameTeamId, team2Sm5GameTeamId: team2GameTeamId };
+}
+
+// Players rostered as mercenaries on any team of a match side — both trios or all three duos
+// in those formats.
+function sideMercenaryPlayerIdsSql(matchId: string, side: SQL): SQL {
+  return sql`SELECT ctp.player_id
+             FROM competition_team_player ctp
+             JOIN competition_match cm
+               ON ctp.competition_team_id IN (${side})
+             WHERE cm.id = ${matchId}
+               AND ctp.is_mercenary = true`;
+}
+
 export async function assignGameToMatch(
   matchId: string,
   gameId: string,
@@ -1243,35 +1290,29 @@ export async function assignGameToMatch(
   team1GameTeamId: string,
   team2GameTeamId: string,
 ): Promise<void> {
-  await db.insert(competitionMatchGame).values({
-    matchId,
-    gameId,
-    gameNumber,
-    team1GameTeamId,
-    team2GameTeamId,
-  });
+  const sides = await matchGameSideColumns(team1GameTeamId, team2GameTeamId);
+  await db.insert(competitionMatchGame).values({ matchId, gameId, gameNumber, ...sides });
 
   // Apply mercenary flags from competition_team_player to the newly assigned game's scorecards.
-  // For each side, find players with is_mercenary=true on the roster — of any team on the side,
-  // in a trios or duos match — and mark their scorecards.
+  // Only one of the two updates can match, since a game team is TDF or PDF-era, never both.
   for (const [gameTeamId, side] of [
     [team1GameTeamId, CM_SIDE1],
     [team2GameTeamId, CM_SIDE2],
   ] as const) {
+    const mercenaries = sideMercenaryPlayerIdsSql(matchId, side);
     await db
       .update(sm5Scorecard)
       .set({ isMercenary: true })
       .where(
+        and(eq(sm5Scorecard.teamId, gameTeamId), sql`${sm5Scorecard.playerId} IN (${mercenaries})`),
+      );
+    await db
+      .update(sm5PdfScorecard)
+      .set({ isMercenary: true })
+      .where(
         and(
-          eq(sm5Scorecard.teamId, gameTeamId),
-          sql`${sm5Scorecard.playerId} IN (
-            SELECT ctp.player_id
-            FROM competition_team_player ctp
-            JOIN competition_match cm
-              ON ctp.competition_team_id IN (${side})
-            WHERE cm.id = ${matchId}
-              AND ctp.is_mercenary = true
-          )`,
+          eq(sm5PdfScorecard.teamId, gameTeamId),
+          sql`${sm5PdfScorecard.playerId} IN (${mercenaries})`,
         ),
       );
   }
@@ -1305,15 +1346,27 @@ export async function getUnassignedCompetitionGames(
   if (gameRows.length === 0) return [];
 
   const gameIds = gameRows.map((g) => g.id);
-  const teamRows = await db
-    .select({
-      gameId: sm5GameTeam.gameId,
-      id: sm5GameTeam.id,
-      name: sm5GameTeam.name,
-      colourEnum: sm5GameTeam.colourEnum,
-    })
-    .from(sm5GameTeam)
-    .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)));
+  const teamRows = [
+    ...(await db
+      .select({
+        gameId: sm5GameTeam.gameId,
+        id: sm5GameTeam.id,
+        name: sm5GameTeam.name,
+        colourEnum: sm5GameTeam.colourEnum,
+      })
+      .from(sm5GameTeam)
+      .where(and(inArray(sm5GameTeam.gameId, gameIds), eq(sm5GameTeam.isNeutral, false)))),
+    // PDF-era legacy games have no neutral team.
+    ...(await db
+      .select({
+        gameId: sm5PdfGameTeam.gameId,
+        id: sm5PdfGameTeam.id,
+        name: sm5PdfGameTeam.name,
+        colourEnum: sm5PdfGameTeam.colourEnum,
+      })
+      .from(sm5PdfGameTeam)
+      .where(inArray(sm5PdfGameTeam.gameId, gameIds))),
+  ];
 
   const teamsByGame = new Map<string, typeof teamRows>();
   for (const t of teamRows) {
@@ -1500,8 +1553,8 @@ export async function getCompetitionAssignedGamesForAdmin(
     .innerJoin(center, eq(center.id, game.centerId))
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
-    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .innerJoin(sql`competition_game_side t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`competition_game_side t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(eq(competitionMatch.competitionId, competitionId))
     .orderBy(
       asc(competitionRound.roundNumber),
@@ -1798,8 +1851,8 @@ export async function getCompetitionStandings(
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
-    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .innerJoin(sql`competition_game_side t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`competition_game_side t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(conditions);
 
   const stats = computeTeamStats(gameRows);
@@ -1979,8 +2032,8 @@ export async function getCompetitionMatchResults(
     // match points agree with getCompetitionStandings().
     .leftJoin(game, and(eq(game.id, competitionMatchGame.gameId), eq(game.exclude, false)))
     .leftJoin(center, eq(center.id, game.centerId))
-    .leftJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .leftJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .leftJoin(sql`competition_game_side t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .leftJoin(sql`competition_game_side t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(
       and(
         eq(competitionMatch.competitionId, competitionId),
@@ -3434,8 +3487,8 @@ export async function createForfeitGame(data: {
       matchId: data.matchId,
       gameId: gameRow.id,
       gameNumber: data.gameNumber,
-      team1GameTeamId,
-      team2GameTeamId,
+      team1Sm5GameTeamId: team1GameTeamId,
+      team2Sm5GameTeamId: team2GameTeamId,
     });
   });
 }
@@ -3687,8 +3740,8 @@ async function queryCompetitionGames(
     .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .innerJoin(center, eq(center.id, game.centerId))
-    .innerJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .innerJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .innerJoin(sql`competition_game_side t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .innerJoin(sql`competition_game_side t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(
       and(eq(competitionMatch.competitionId, competitionId), eq(game.exclude, options.excluded)),
     )
@@ -4515,8 +4568,8 @@ export async function getCompetitionSchedule(
     })
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
-    .leftJoin(sql`sm5_game_team t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
-    .leftJoin(sql`sm5_game_team t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
+    .leftJoin(sql`competition_game_side t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
+    .leftJoin(sql`competition_game_side t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(inArray(competitionMatchGame.matchId, matchIds));
 
   // Index assignments by matchId + gameNumber

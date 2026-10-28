@@ -689,8 +689,8 @@ export async function reingest(
           matchId,
           gameId: existingGameId,
           gameNumber,
-          team1GameTeamId: team1Id,
-          team2GameTeamId: team2Id,
+          team1Sm5GameTeamId: team1Id,
+          team2Sm5GameTeamId: team2Id,
         });
       }
     }

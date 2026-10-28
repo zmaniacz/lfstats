@@ -12,6 +12,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  pgView,
   primaryKey,
   smallint,
   text,
@@ -19,7 +20,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -502,15 +503,98 @@ export const competitionMatchGame = pgTable(
       .notNull()
       .references(() => game.id, { onDelete: "cascade" }),
     gameNumber: integer("game_number").notNull(),
+    // Each side points at the game team it played as: an sm5_game_team for a TDF game, an
+    // sm5_pdf_game_team for a PDF-era legacy game. Exactly one pair is set (see the check);
+    // write these, and read team1/team2GameTeamId.
+    team1Sm5GameTeamId: uuid("team1_sm5_game_team_id"),
+    team2Sm5GameTeamId: uuid("team2_sm5_game_team_id"),
+    team1PdfGameTeamId: uuid("team1_pdf_game_team_id"),
+    team2PdfGameTeamId: uuid("team2_pdf_game_team_id"),
+    // Whichever game team the side played as, of either kind. Join to competition_game_side
+    // for its score and result.
     team1GameTeamId: uuid("team1_game_team_id")
       .notNull()
-      .references(() => sm5GameTeam.id),
+      .generatedAlwaysAs(
+        (): SQL =>
+          sql`coalesce(${competitionMatchGame.team1Sm5GameTeamId}, ${competitionMatchGame.team1PdfGameTeamId})`,
+      ),
     team2GameTeamId: uuid("team2_game_team_id")
       .notNull()
-      .references(() => sm5GameTeam.id),
+      .generatedAlwaysAs(
+        (): SQL =>
+          sql`coalesce(${competitionMatchGame.team2Sm5GameTeamId}, ${competitionMatchGame.team2PdfGameTeamId})`,
+      ),
   },
-  (t) => [unique().on(t.matchId, t.gameNumber), unique().on(t.gameId)],
+  (t) => [
+    unique().on(t.matchId, t.gameNumber),
+    unique().on(t.gameId),
+    // Named explicitly: drizzle's default names run past Postgres's 63-character limit.
+    foreignKey({
+      name: "cmg_team1_sm5_game_team_id_fk",
+      columns: [t.team1Sm5GameTeamId],
+      foreignColumns: [sm5GameTeam.id],
+    }),
+    foreignKey({
+      name: "cmg_team2_sm5_game_team_id_fk",
+      columns: [t.team2Sm5GameTeamId],
+      foreignColumns: [sm5GameTeam.id],
+    }),
+    foreignKey({
+      name: "cmg_team1_pdf_game_team_id_fk",
+      columns: [t.team1PdfGameTeamId],
+      foreignColumns: [sm5PdfGameTeam.id],
+    }),
+    foreignKey({
+      name: "cmg_team2_pdf_game_team_id_fk",
+      columns: [t.team2PdfGameTeamId],
+      foreignColumns: [sm5PdfGameTeam.id],
+    }),
+    check(
+      "competition_match_game_one_side_kind_check",
+      sql`(${t.team1Sm5GameTeamId} is not null and ${t.team2Sm5GameTeamId} is not null
+           and ${t.team1PdfGameTeamId} is null and ${t.team2PdfGameTeamId} is null)
+        or (${t.team1Sm5GameTeamId} is null and ${t.team2Sm5GameTeamId} is null
+           and ${t.team1PdfGameTeamId} is not null and ${t.team2PdfGameTeamId} is not null)`,
+    ),
+  ],
 );
+
+/**
+ * Every game team a competition match game can point at, TDF and PDF-era alike, with just
+ * what match points need. Join on competition_match_game.team1/team2_game_team_id.
+ */
+export const competitionGameSide = pgView("competition_game_side", {
+  id: uuid("id").notNull(),
+  gameId: uuid("game_id").notNull(),
+  score: integer("score"),
+  eliminationBonus: integer("elimination_bonus"),
+  penaltyScore: integer("penalty_score"),
+  result: teamResultEnum("result"),
+  eliminated: boolean("eliminated"),
+  colourEnum: integer("colour_enum").notNull(),
+}).as(sql`
+  select id, game_id, score, elimination_bonus, penalty_score, result, eliminated, colour_enum
+  from sm5_game_team
+  union all
+  select id, game_id, score, elimination_bonus, penalty_score, result, eliminated, colour_enum
+  from sm5_pdf_game_team
+`);
+
+/**
+ * Every scorecard a competition team's games can hold, TDF and PDF-era alike: just enough to
+ * say who played for which game team. `player_id` is null for TDF guests.
+ */
+export const competitionScorecard = pgView("competition_scorecard", {
+  id: uuid("id").notNull(),
+  gameId: uuid("game_id").notNull(),
+  teamId: uuid("team_id").notNull(),
+  playerId: uuid("player_id"),
+  isMercenary: boolean("is_mercenary").notNull(),
+}).as(sql`
+  select id, game_id, team_id, player_id, is_mercenary from sm5_scorecard
+  union all
+  select id, game_id, team_id, player_id, is_mercenary from sm5_pdf_scorecard
+`);
 
 // ---------------------------------------------------------------------------
 // Non-Player Entity Tables
@@ -1293,6 +1377,9 @@ export const sm5PdfScorecard = pgTable(
     callsign: text("callsign").notNull(),
     position: integer("position").notNull(),
     isSub: boolean("is_sub").notNull(),
+    // Stamped from competition_team_player when the game is assigned to a match, as on
+    // sm5_scorecard.
+    isMercenary: boolean("is_mercenary").notNull().default(false),
     // Derived from lives_left = 0; the PDFs record no elimination time.
     eliminated: boolean("eliminated").notNull(),
     // Seconds alive, when the PDF recorded it.

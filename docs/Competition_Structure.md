@@ -238,19 +238,32 @@ compares all six slots pairwise, so an empty (null) slot never fails it.
 
 Links an ingested game to a match slot and records which color each team played in that game.
 
-| Column               | Type                        | Notes                                                                      |
-| -------------------- | --------------------------- | -------------------------------------------------------------------------- |
-| `id`                 | uuid PK                     |                                                                            |
-| `match_id`           | uuid FK → competition_match | cascade delete                                                             |
-| `game_id`            | uuid FK → game              | cascade delete                                                             |
-| `game_number`        | integer                     | 1 or 2                                                                     |
-| `team1_game_team_id` | uuid FK → sm5_game_team     | Which `sm5_game_team` row is `match.team1` (and its partners) in this game |
-| `team2_game_team_id` | uuid FK → sm5_game_team     | Which `sm5_game_team` row is `match.team2` (and its partners) in this game |
+| Column                   | Type                        | Notes                                                                      |
+| ------------------------ | --------------------------- | -------------------------------------------------------------------------- |
+| `id`                     | uuid PK                     |                                                                            |
+| `match_id`               | uuid FK → competition_match | cascade delete                                                             |
+| `game_id`                | uuid FK → game              | cascade delete                                                             |
+| `game_number`            | integer                     | 1 or 2                                                                     |
+| `team1_sm5_game_team_id` | uuid FK → sm5_game_team     | TDF game: the game team that is `match.team1` (and its partners)           |
+| `team2_sm5_game_team_id` | uuid FK → sm5_game_team     | TDF game: the game team that is `match.team2` (and its partners)           |
+| `team1_pdf_game_team_id` | uuid FK → sm5_pdf_game_team | PDF-era legacy game: the game team that is `match.team1`                   |
+| `team2_pdf_game_team_id` | uuid FK → sm5_pdf_game_team | PDF-era legacy game: the game team that is `match.team2`                   |
+| `team1_game_team_id`     | uuid, generated, NOT NULL   | `coalesce(team1_sm5_…, team1_pdf_…)` — **read this**, write the pair above |
+| `team2_game_team_id`     | uuid, generated, NOT NULL   | `coalesce(team2_sm5_…, team2_pdf_…)`                                       |
 
 **Unique:** `(match_id, game_number)` — one game per slot  
-**Unique:** `(game_id)` — a game belongs to at most one match
+**Unique:** `(game_id)` — a game belongs to at most one match  
+**Check:** exactly one pair is set — both `sm5` columns or both `pdf` columns.
 
-`team1_game_team_id` / `team2_game_team_id` are the critical join point between competition team identity and per-game color assignments.
+`team1_game_team_id` / `team2_game_team_id` are the critical join point between competition team identity and per-game color assignments. They hold a game team of either kind, so join them to the `competition_game_side` view, never to `sm5_game_team` directly, wherever PDF-era games must count. `assignGameToMatch()` writes the right pair from the ids it is given.
+
+### `competition_game_side` / `competition_scorecard` (views)
+
+`competition_game_side` is `sm5_game_team` ∪ `sm5_pdf_game_team`, restricted to what match points and the match views need: `id`, `game_id`, `score`, `elimination_bonus`, `penalty_score`, `result`, `eliminated`, `colour_enum`. `competition_scorecard` is `sm5_scorecard` ∪ `sm5_pdf_scorecard` restricted to `id`, `game_id`, `team_id`, `player_id`, `is_mercenary` — enough for roster building (who played for which team). Per-player competition stats (top players, position leaders, team player stats) still read `sm5_scorecard`, so PDF-era games are absent from them.
+
+### `sm5_pdf_scorecard.is_mercenary` (added column)
+
+Same meaning as on `sm5_scorecard`, stamped by `assignGameToMatch()`.
 
 ### `sm5_scorecard.is_mercenary` (added column)
 
@@ -300,8 +313,8 @@ competition
         └── competition_match (team1_id, team2_id → competition_team, pool_id → competition_pool)
               └── competition_match_game                         │
                     ├── game.id                                  │
-                    ├── sm5_game_team (team1_game_team_id)       │
-                    └── sm5_game_team (team2_game_team_id)       │
+                    ├── competition_game_side (team1_…)          │
+                    └── competition_game_side (team2_…)          │
                                                                  ▼
 game.competition_id ──── competition        sm5_scorecard.is_mercenary
 
@@ -317,7 +330,7 @@ lb_match ──── lb_match_game ──── game.id
 Points are derived at query time — never stored. For each match:
 
 1. Fetch the `competition_match_game` rows.
-2. For each game, look up `sm5_game_team.result`, `score`, `elimination_bonus`, and `penalty_score` for each side via `team1/2_game_team_id`.
+2. For each game, look up `result`, `score`, `elimination_bonus`, and `penalty_score` for each side in `competition_game_side` via `team1/2_game_team_id` — an `sm5_game_team` for a TDF game, an `sm5_pdf_game_team` for a PDF-era legacy game. Both score the same way.
 3. **Game points:** win = 2, draw = 1 each, loss = 0. Awarded per game as results come in, so a half-played match still contributes.
 4. **Match bonus:** only once **both** games are recorded. Compare each side's combined total across the two games:
 
