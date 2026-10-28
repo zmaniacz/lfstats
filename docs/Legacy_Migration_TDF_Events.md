@@ -115,6 +115,67 @@ penalties in one game the pairing is applied but flagged — totals are correct 
 but the type/MVP split between them may be transposed. Run with `--report` for the
 current list.
 
+### Social games (`--social`)
+
+The pre-close run covered competitive events only, so legacy edits on TDF games in
+**social** events were never carried over. `--social` back-fills those with the same
+matching and pairing rules:
+
+```
+pnpm --filter @lfstats/db migrate-legacy-penalties --social --dry-run
+pnpm --filter @lfstats/db migrate-legacy-penalties --social --reopen-closed-migration
+```
+
+The two scopes cannot overlap. Legacy-side, `--social` takes games whose event is not
+`is_comp` (or that have no event). Modern-side it then drops any game that belongs to a
+competition — by `game.competition_id` or a `competition_match_game` row — because those
+penalties are admin-owned since the close and the hand-built competitions are not
+`is_comp` in legacy; it re-checks this immediately before writing and aborts if any target
+game has joined one. Writing still needs `--reopen-closed-migration`, and a reopened run
+without `--social` would still un-rescind the two Internationals 2024 awards, so never run
+the competitive scope again.
+
+Two changes made for this scope apply to both: the dry run now resolves manual entries
+to their scorecards (so it lists exactly what would be created) and projects each moved
+game's winner and its agreement with legacy's totals; and a manual entry that legacy
+holds as rescinded is created rescinded (`addPenalty()` always creates an active row).
+Team penalties are now filtered by scope too — the pre-close run read them unfiltered.
+
+**Applied 2026-10-28** (figures from the dry run; the write matched them exactly) — 1,323 social games, 2,596 legacy / 2,608 modern player
+penalties, no game excluded for being in a modern competition:
+
+| Change                     | Count | Notes                                                                |
+| -------------------------- | ----: | -------------------------------------------------------------------- |
+| Penalties updated          |   354 |                                                                      |
+| — score `0 → -1000`        |   344 | referee escalations; modern had 0 (pre-2.003 file or arena set to 0) |
+| — rescinded                |     9 | all retyped `Penalty Removed`, in 4 games                            |
+| — type only                |     1 | `Common Foul → Illegal Interaction`                                  |
+| — MVP value                |     0 | rescinding 9 still changes those players' MVP penalty component      |
+| Manual entries created     |     0 | 8 found, none placeable (below)                                      |
+| Team penalties             |     0 | none on social games that aren't already present                     |
+| Groups skipped             |    19 | 1 count mismatch (Loki, 24 vs 26), 10 modern-only, 8 manual unplaced |
+| Order-sensitive groups     |     0 |                                                                      |
+| Games whose total moves    |   209 | 259 team-games                                                       |
+| — matching legacy's total  |       | 3 before → 255 after; 3 stop matching, 1 matches neither             |
+| Games whose winner changes |     5 | the penalised side lands on legacy's total in each                   |
+
+The 344 escalations are not double counts: the projected totals converge on legacy's.
+The four team-games left off legacy's total (`4-19-20220223183943`, `4-19-20231115190723`,
+`4-19-20240625173639`, `4-19-20240103194146`) each end exactly 1,000 below it — legacy
+records the `-1000` on the penalty but its own `adj` column never counted it.
+
+The 8 unplaced manual entries sit in the same games as 7 of the 10 "modern-only" groups
+(Scout, Ember, Capsize, Spade, Maximus/Shadow, Roota, Phoenix): legacy has the player under
+a different `ipl_id` than modern, so the `(tdf_filename, ipl_id)` join cannot see they are
+the same penalty. The other three (9yrStrawberry, ˢᵖᵃᵃʳʳᵏʑ ×2) have no legacy entry at
+all. All are left as the TDF has them.
+
+After the write, team-game totals across the social scope agreeing with legacy went from
+2,360 to 2,612 (255 newly agreeing, the 3 above newly disagreeing), and a repeat dry run
+reports nothing left to update. Rating replays `sm5_game_team.result`, so `recalc-rating`
+was re-run the same day for the five flipped winners. The social scope is now done too: do
+not run it again.
+
 ## Standings will not match the legacy site exactly
 
 This is expected, and is **not** a migration defect. The full residue is enumerated by

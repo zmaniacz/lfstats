@@ -34,12 +34,30 @@
  *
  * **Closed 2026-10-17.** Writing runs exit unless given `--reopen-closed-migration`;
  * `--report` and `--dry-run` still work. See LEGACY_MIGRATION_CLOSED in legacy-events.ts.
+ *
+ * **Scopes.** By default the script covers legacy *competitive* events (`is_comp`), which
+ * is what was applied before the close. `--social` covers TDF games in legacy social
+ * events instead, which the original run never touched:
+ *
+ *   pnpm --filter @lfstats/db migrate-legacy-penalties --social --dry-run
+ *   pnpm --filter @lfstats/db migrate-legacy-penalties --social --reopen-closed-migration
+ *
+ * The two scopes never overlap. On top of the legacy `is_comp` split, `--social` drops any
+ * game that belongs to a competition in *modern* — admins have edited those penalties
+ * since the close, and the hand-built competitions are not `is_comp` in legacy's sense.
  */
 
 import postgres from "postgres";
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { initDb } from "../client";
-import { game, sm5GamePenalty, sm5GameTeam, sm5GameTeamPenalty, sm5Scorecard } from "../schema";
+import {
+  competitionMatchGame,
+  game,
+  sm5GamePenalty,
+  sm5GameTeam,
+  sm5GameTeamPenalty,
+  sm5Scorecard,
+} from "../schema";
 import { addPenalty, addTeamPenalty, updatePenalty } from "../queries/penalties";
 import { assertLegacyMigrationOpen } from "./legacy-events";
 
@@ -93,6 +111,8 @@ type ModernPenalty = {
   scoreValue: number;
   mvpValue: number;
   rescinded: boolean;
+  /** The scorecard's `sm5_game_team` id, for projecting the effect on the result. */
+  teamId: string;
 };
 
 type Mismatch = {
@@ -111,7 +131,15 @@ type Snapshot = Map<string, number>;
 // Loading
 // ---------------------------------------------------------------------------
 
-async function loadLegacyPenalties(legacy: Legacy): Promise<LegacyPenalty[]> {
+/**
+ * Legacy-side scope: competitive events, or (`social`) everything else. Every legacy
+ * query joins `events e` with a left join, so a game with no event counts as social.
+ */
+function eventScope(legacy: Legacy, social: boolean) {
+  return social ? legacy`not coalesce(e.is_comp, false)` : legacy`coalesce(e.is_comp, false)`;
+}
+
+async function loadLegacyPenalties(legacy: Legacy, social: boolean): Promise<LegacyPenalty[]> {
   return (await legacy`
     select p.id::int,
            replace(g.tdf_key, '_', '-') as fn,
@@ -122,17 +150,23 @@ async function loadLegacyPenalties(legacy: Legacy): Promise<LegacyPenalty[]> {
     from penalties p
      join scorecards s on s.id = p.scorecard_id
      join games g on g.id = s.game_id
-     join events e on e.id = g.event_id
+     left join events e on e.id = g.event_id
      left join players pl on pl.id = s.player_id
-    where e.is_comp and g.tdf_key is not null
+    where ${eventScope(legacy, social)} and g.tdf_key is not null
     order by s.game_id, s.player_id, p.id
   `) as unknown as LegacyPenalty[];
 }
 
-async function loadLegacyTeamPenalties(legacy: Legacy): Promise<LegacyTeamPenalty[]> {
+async function loadLegacyTeamPenalties(
+  legacy: Legacy,
+  social: boolean,
+): Promise<LegacyTeamPenalty[]> {
   // team_color is legacy's side discriminator ('red'/'green'), never a colour claim.
   // Resolve it to the TDF team index so the modern row is found by index, preserving
   // whatever colour the TDF actually recorded.
+  //
+  // The pre-close run had no event filter here, so it also considered team penalties
+  // on social games; those it inserted show up as "already present" in a social run.
   return (await legacy`
     select tp.id::int,
            replace(g.tdf_key, '_', '-') as fn,
@@ -140,8 +174,9 @@ async function loadLegacyTeamPenalties(legacy: Legacy): Promise<LegacyTeamPenalt
            gt.index::int as idx
     from team_penalties tp
      join games g on g.id = tp.game_id
+     left join events e on e.id = g.event_id
      join game_teams gt on gt.game_id = g.id and gt.color_normal = tp.team_color
-    where g.tdf_key is not null
+    where g.tdf_key is not null and ${eventScope(legacy, social)}
     order by tp.id
   `) as unknown as LegacyTeamPenalty[];
 }
@@ -161,6 +196,7 @@ async function loadModernPenalties(
       scoreValue: sm5GamePenalty.scoreValue,
       mvpValue: sm5GamePenalty.mvpValue,
       rescinded: sm5GamePenalty.rescinded,
+      teamId: sm5Scorecard.teamId,
       time: sm5GamePenalty.time,
     })
     .from(sm5GamePenalty)
@@ -188,16 +224,52 @@ async function snapshotTotals(
   return new Map(rows.map((r) => [`${r.fn}:${r.idx}`, r.total]));
 }
 
+type TeamRow = {
+  id: string;
+  gameId: string;
+  fn: string;
+  idx: number;
+  /** score + elimination bonus + penalty_score, as recalculateGameResult() sees it. */
+  total: number;
+  outcome: string;
+};
+
+async function loadTeams(
+  db: Awaited<ReturnType<typeof initDb>>,
+  filenames: string[],
+): Promise<TeamRow[]> {
+  if (filenames.length === 0) return [];
+  return db
+    .select({
+      id: sm5GameTeam.id,
+      gameId: game.id,
+      fn: game.tdfFilename,
+      idx: sm5GameTeam.tdfTeamIndex,
+      total: sql<number>`(coalesce(${sm5GameTeam.score},0) + coalesce(${sm5GameTeam.eliminationBonus},0) + coalesce(${sm5GameTeam.penaltyScore},0))::int`,
+      outcome: game.outcome,
+    })
+    .from(sm5GameTeam)
+    .innerJoin(game, eq(game.id, sm5GameTeam.gameId))
+    .where(and(inArray(game.tdfFilename, filenames), eq(sm5GameTeam.isNeutral, false)));
+}
+
+/** The winning team id, or "draw" — the same rule as recalculateGameResult(). */
+function winnerOf(teams: { id: string; total: number }[]): string {
+  const max = Math.max(...teams.map((t) => t.total));
+  const top = teams.filter((t) => t.total === max);
+  return top.length > 1 ? "draw" : top[0].id;
+}
+
 /** Legacy team-game totals: score plus the combined `adj` column. */
-async function legacyTotals(legacy: Legacy): Promise<Snapshot> {
+async function legacyTotals(legacy: Legacy, social: boolean): Promise<Snapshot> {
   const rows = (await legacy`
     select replace(g.tdf_key,'_','-') as fn, gt.index::int as idx,
            ((case when gt.color_normal='red' then g.red_score else g.green_score end)
           + (case when gt.color_normal='red' then g.red_adj   else g.green_adj   end))::int as total
     from games g
-     join events e on e.id = g.event_id
+     left join events e on e.id = g.event_id
      join game_teams gt on gt.game_id = g.id
-    where e.is_comp and g.tdf_key is not null
+    where ${eventScope(legacy, social)} and g.tdf_key is not null
       and gt.neutral_team is not true and coalesce(gt.color_normal,'') <> ''
   `) as unknown as { fn: string; idx: number; total: number }[];
   return new Map(rows.map((r) => [`${r.fn}:${r.idx}`, r.total]));
@@ -226,33 +298,41 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const reportOnly = args.includes("--report");
+  const social = args.includes("--social");
   if (!dryRun && !reportOnly) assertLegacyMigrationOpen(args);
 
   const legacy = connectLegacy();
   const db = await initDb();
 
   try {
-    const legacyPens = await loadLegacyPenalties(legacy);
-    const legacyTeamPens = await loadLegacyTeamPenalties(legacy);
+    const legacyPens = await loadLegacyPenalties(legacy, social);
+    const legacyTeamPens = await loadLegacyTeamPenalties(legacy, social);
     const filenames = [
       ...new Set(legacyPens.map((p) => p.fn).concat(legacyTeamPens.map((p) => p.fn))),
     ];
 
     // Only games that actually exist in the modern database.
-    const present = new Set(
-      (
-        await db
-          .select({ fn: game.tdfFilename })
-          .from(game)
-          .where(inArray(game.tdfFilename, filenames))
-      ).map((r) => r.fn),
-    );
+    const modernGames = await db
+      .select({
+        fn: game.tdfFilename,
+        inCompetition: sql<boolean>`(${game.competitionId} is not null or exists (
+          select 1 from ${competitionMatchGame} where ${competitionMatchGame.gameId} = ${game.id}))`,
+      })
+      .from(game)
+      .where(inArray(game.tdfFilename, filenames));
+    // A social run must never reach a game that is in a modern competition: admins have
+    // edited those penalties since the close, and legacy's is_comp does not cover the
+    // competitions that were built by hand in modern.
+    const compGames = social
+      ? new Set(modernGames.filter((r) => r.inCompetition).map((r) => r.fn))
+      : new Set<string>();
+    const present = new Set(modernGames.map((r) => r.fn).filter((f) => !compGames.has(f)));
     const scope = filenames.filter((f) => present.has(f));
-    const skippedGames = filenames.length - scope.length;
+    const skippedGames = filenames.length - scope.length - compGames.size;
 
     const modernPens = await loadModernPenalties(db, scope);
     const before = await snapshotTotals(db, scope);
-    const legacyTot = await legacyTotals(legacy);
+    const legacyTot = await legacyTotals(legacy, social);
 
     // --- pair up player penalties -----------------------------------------
     const lg = groupBy(
@@ -426,10 +506,128 @@ async function main() {
       }
     }
 
+    // --- manual entries: resolve the scorecard each attaches to ------------
+    // sm5_game_penalty requires a scorecard_id, so a penalty can only be created where
+    // the player actually has a scorecard in that game. Resolved before the report so
+    // a dry run shows exactly what a real run would create.
+    const placed: ((typeof inserts)[number] & {
+      scorecardId: string;
+      gameId: string;
+      teamId: string;
+    })[] = [];
+    if (inserts.length > 0) {
+      const scRows = await db
+        .select({
+          id: sm5Scorecard.id,
+          gameId: sm5Scorecard.gameId,
+          teamId: sm5Scorecard.teamId,
+          fn: game.tdfFilename,
+          iplId: sm5Scorecard.iplId,
+        })
+        .from(sm5Scorecard)
+        .innerJoin(game, eq(game.id, sm5Scorecard.gameId))
+        .where(
+          and(
+            inArray(game.tdfFilename, [...new Set(inserts.map((i) => i.fn))]),
+            isNotNull(sm5Scorecard.iplId),
+          ),
+        );
+      const scByKey = new Map(scRows.map((r) => [`${r.fn}|${r.iplId}`, r]));
+
+      // Manual legacy penalties often come in offsetting pairs on the same team — a
+      // score transfer between two players, netting zero. Creating only half of one
+      // because the other player has no scorecard in modern's version of the game
+      // leaves the team credited or docked for nothing. So if any manual penalty in a
+      // game cannot be placed, skip every manual penalty in that game.
+      const unplaceable = new Set(
+        inserts.filter((i) => !scByKey.has(`${i.fn}|${i.iplId}`)).map((i) => i.fn),
+      );
+      for (const i of inserts) {
+        const sc = scByKey.get(`${i.fn}|${i.iplId}`);
+        if (unplaceable.has(i.fn) || !sc) {
+          mismatches.push({
+            fn: i.fn,
+            callsign: i.legacy.callsign,
+            iplId: i.iplId,
+            legacy: 1,
+            modern: 0,
+            reason: sc
+              ? "manual penalty: withheld — another penalty in this game cannot be placed"
+              : "manual penalty: player has no scorecard in the modern game",
+          });
+          continue;
+        }
+        placed.push({ ...i, scorecardId: sc.id, gameId: sc.gameId, teamId: sc.teamId });
+      }
+    }
+
+    // --- projected effect on game results -----------------------------------
+    // What recalculateGameResult() will make of the game once everything above is
+    // applied: a rescinded penalty contributes nothing, an active one its score value.
+    const effective = (scoreValue: number, rescinded: boolean) => (rescinded ? 0 : scoreValue);
+    const delta = new Map<string, number>();
+    const bump = (teamId: string, by: number) =>
+      by !== 0 && delta.set(teamId, (delta.get(teamId) ?? 0) + by);
+    for (const u of updates) {
+      bump(
+        u.before.teamId,
+        effective(
+          u.data.scoreValue ?? u.before.scoreValue,
+          u.data.rescinded ?? u.before.rescinded,
+        ) - effective(u.before.scoreValue, u.before.rescinded),
+      );
+    }
+    for (const p of placed) bump(p.teamId, effective(p.legacy.value, p.legacy.rescinded === 1));
+    for (const t of teamTargets) bump(t.gameTeamId, t.tp.value);
+
+    const teamsByGame = groupBy(await loadTeams(db, scope), (t) => t.gameId);
+    const flips: string[] = [];
+    let flipsIgnored = 0;
+    let gamesMoved = 0;
+    // Projected agreement with legacy's team totals, over the team-games this run
+    // moves — the check that an added score value is an escalation legacy also counted,
+    // not a deduction the TDF score already holds.
+    let agreeBefore = 0,
+      agreeAfter = 0;
+    const projBroken: string[] = [];
+    for (const teams of teamsByGame.values()) {
+      if (teams.length < 2 || !teams.some((t) => delta.has(t.id))) continue;
+      gamesMoved++;
+      for (const t of teams) {
+        const l = legacyTot.get(`${t.fn}:${t.idx}`);
+        if (l === undefined || !delta.has(t.id)) continue;
+        const a = t.total + delta.get(t.id)!;
+        if (t.total === l) agreeBefore++;
+        if (a === l) agreeAfter++;
+        if (a !== l) {
+          projBroken.push(
+            `${t.fn}:${t.idx}  legacy=${l} now=${t.total} after=${a}${t.total === l ? "  (matches now)" : ""}`,
+          );
+        }
+      }
+      const was = winnerOf(teams);
+      const now = winnerOf(
+        teams.map((t) => ({ id: t.id, total: t.total + (delta.get(t.id) ?? 0) })),
+      );
+      if (was === now) continue;
+      // Elimination/forfeit results are not score-decided and are left alone.
+      if (teams[0].outcome === "elimination" || teams[0].outcome === "forfeit") {
+        flipsIgnored++;
+        continue;
+      }
+      const label = (w: string) =>
+        w === "draw" ? "draw" : `team ${teams.find((t) => t.id === w)!.idx}`;
+      const scores = teams
+        .map((t) => `${t.idx}: ${t.total} -> ${t.total + (delta.get(t.id) ?? 0)}`)
+        .join(", ");
+      flips.push(`${teams[0].fn}  ${label(was)} -> ${label(now)}  (${scores})`);
+    }
+
     // --- report ------------------------------------------------------------
     console.log(`\n${"=".repeat(76)}`);
     console.log(
-      `LEGACY PENALTY BACK-FILL${dryRun ? "  (dry run)" : reportOnly ? "  (report only)" : ""}`,
+      `LEGACY PENALTY BACK-FILL — ${social ? "SOCIAL" : "COMPETITIVE"} EVENTS` +
+        `${dryRun ? "  (dry run)" : reportOnly ? "  (report only)" : ""}`,
     );
     console.log("=".repeat(76));
     console.log(
@@ -439,13 +637,37 @@ async function main() {
     console.log(
       `  games in scope                   : ${scope.length}${skippedGames ? ` (${skippedGames} legacy game(s) not in modern)` : ""}`,
     );
+    if (social) {
+      console.log(
+        `  excluded: in a modern competition: ${compGames.size}${compGames.size ? `  (${[...compGames].sort().join(", ")})` : ""}`,
+      );
+    }
+    const count = (f: (u: (typeof updates)[number]) => boolean) => updates.filter(f).length;
     console.log(`  player penalties to update       : ${updates.length}`);
     console.log(
-      `  player penalties to create       : ${inserts.length}  (manual legacy entries with no TDF event)`,
+      `    rescinded ${count((u) => u.data.rescinded !== u.before.rescinded)}, ` +
+        `score ${count((u) => u.data.scoreValue !== u.before.scoreValue)}, ` +
+        `type ${count((u) => u.data.type !== u.before.type)}, ` +
+        `mvp ${count((u) => u.data.mvpValue !== u.before.mvpValue)}`,
+    );
+    console.log(
+      `  player penalties to create       : ${placed.length}  (manual legacy entries with no TDF event)`,
     );
     console.log(`  team penalties to insert         : ${teamTargets.length}`);
     console.log(`  groups skipped for review        : ${mismatches.length}`);
     console.log(`  groups applied but order-sensitive: ${ordering.length}`);
+    console.log(`  games whose total would move     : ${gamesMoved}`);
+    console.log(
+      `  games whose WINNER would change  : ${flips.length}` +
+        `${flipsIgnored ? `  (+${flipsIgnored} elimination/forfeit, result kept)` : ""}`,
+    );
+    console.log(
+      `  moved team-games matching legacy : ${agreeBefore} now -> ${agreeAfter} after  (of ${delta.size})`,
+    );
+    if (projBroken.length > 0) {
+      console.log(`  moved team-games that would not match legacy:`);
+      for (const b of projBroken.sort()) console.log(`    ${b}`);
+    }
 
     if (ordering.length > 0) {
       console.log(`
@@ -476,9 +698,9 @@ async function main() {
       }
     }
 
-    if (inserts.length > 0) {
+    if (placed.length > 0) {
       console.log(`\n--- CREATING (manual legacy penalties absent from modern) -------------`);
-      for (const i of inserts.sort((a, b) => a.fn.localeCompare(b.fn))) {
+      for (const i of placed.sort((a, b) => a.fn.localeCompare(b.fn))) {
         const v = i.legacy.value;
         console.log(
           `    ${i.fn}  ${i.legacy.callsign.padEnd(20)} ${i.legacy.type.padEnd(16)} ` +
@@ -500,13 +722,60 @@ async function main() {
       }
     }
 
+    if (teamTargets.length > 0) {
+      console.log(`\n--- INSERTING TEAM PENALTIES -----------------------------------------`);
+      for (const t of teamTargets.sort((a, b) => a.fn.localeCompare(b.fn))) {
+        const v = t.tp.value;
+        console.log(
+          `    ${t.fn}  team ${t.idx}  ${t.tp.type ?? ""}  score=${v >= 0 ? "+" : ""}${v}`,
+        );
+      }
+    }
+
+    if (flips.length > 0) {
+      console.log(`\n--- WINNER WOULD CHANGE ----------------------------------------------`);
+      for (const f of flips.sort()) console.log(`    ${f}`);
+    }
+
     if (reportOnly || dryRun) {
       if (dryRun) console.log(`\nDry run — nothing was written.`);
       return;
     }
 
     // --- apply -------------------------------------------------------------
-    console.log(`\n--- APPLYING ---------------------------------------------------------`);
+    if (social) {
+      // Belt and braces for the scope rule above: re-check, at write time, that no
+      // game this run touches has joined a competition since the scope was computed.
+      const touched = [
+        ...new Set([
+          ...updates.map((u) => u.before.gameId),
+          ...placed.map((p) => p.gameId),
+          ...teamTargets.map((t) => t.gameId),
+        ]),
+      ];
+      const inComp = touched.length
+        ? await db
+            .select({ fn: game.tdfFilename })
+            .from(game)
+            .where(
+              and(
+                inArray(game.id, touched),
+                or(
+                  isNotNull(game.competitionId),
+                  sql`exists (select 1 from ${competitionMatchGame} where ${competitionMatchGame.gameId} = ${game.id})`,
+                ),
+              ),
+            )
+        : [];
+      if (inComp.length > 0) {
+        throw new Error(
+          `--social would touch competition game(s): ${inComp.map((r) => r.fn).join(", ")}`,
+        );
+      }
+    }
+
+    console.log(`
+--- APPLYING ---------------------------------------------------------`);
     let n = 0;
     for (const u of updates) {
       await updatePenalty(u.id, u.data);
@@ -514,79 +783,21 @@ async function main() {
     }
     console.log(`  updated ${updates.length} player penalties`);
 
-    if (inserts.length > 0) {
-      // Resolve the scorecard each manual penalty attaches to. sm5_game_penalty
-      // requires a scorecard_id, so a penalty can only be created where the player
-      // actually has a scorecard in that game.
-      const scRows = await db
-        .select({
-          id: sm5Scorecard.id,
-          gameId: sm5Scorecard.gameId,
-          fn: game.tdfFilename,
-          iplId: sm5Scorecard.iplId,
-        })
-        .from(sm5Scorecard)
-        .innerJoin(game, eq(game.id, sm5Scorecard.gameId))
-        .where(
-          and(
-            inArray(game.tdfFilename, [...new Set(inserts.map((i) => i.fn))]),
-            isNotNull(sm5Scorecard.iplId),
-          ),
-        );
-      const scByKey = new Map(scRows.map((r) => [`${r.fn}|${r.iplId}`, r]));
-
-      // Manual legacy penalties often come in offsetting pairs on the same team — a
-      // score transfer between two players, netting zero. Creating only half of one
-      // because the other player has no scorecard in modern's version of the game
-      // leaves the team credited or docked for nothing. So if any manual penalty in a
-      // game cannot be placed, skip every manual penalty in that game.
-      const unplaceable = new Set(
-        inserts.filter((i) => !scByKey.has(`${i.fn}|${i.iplId}`)).map((i) => i.fn),
-      );
-      for (const fn of unplaceable) {
-        for (const i of inserts.filter((x) => x.fn === fn)) {
-          mismatches.push({
-            fn,
-            callsign: i.legacy.callsign,
-            iplId: i.iplId,
-            legacy: 1,
-            modern: 0,
-            reason: scByKey.has(`${fn}|${i.iplId}`)
-              ? "manual penalty: withheld — another penalty in this game cannot be placed"
-              : "manual penalty: player has no scorecard in the modern game",
-          });
-        }
-      }
-
-      let created = 0;
-      for (const i of inserts) {
-        if (unplaceable.has(i.fn)) continue;
-        const sc = scByKey.get(`${i.fn}|${i.iplId}`);
-        if (!sc) continue;
-        await addPenalty({
-          scorecardId: sc.id,
-          gameId: sc.gameId,
-          type: i.legacy.type,
-          description: i.legacy.description ?? "",
-          scoreValue: i.legacy.value,
-          mvpValue: i.legacy.mvp_value,
-          inGame: i.legacy.in_game === 1,
-        });
-        created++;
-      }
-      console.log(`  created ${created} manual player penalties`);
-      // Anything that fell out here was discovered after the skip list was printed,
-      // so surface it again rather than letting it vanish from the review list.
-      const late = inserts.length - created;
-      if (late > 0) {
-        console.log(`\n  ADDITIONAL SKIPS — no scorecard for this player in the modern game:`);
-        for (const m of mismatches.filter((x) =>
-          x.reason.startsWith("manual penalty: player has no scorecard"),
-        )) {
-          console.log(`    ${m.fn}  ${m.callsign}`);
-        }
-      }
+    for (const p of placed) {
+      const id = await addPenalty({
+        scorecardId: p.scorecardId,
+        gameId: p.gameId,
+        type: p.legacy.type,
+        description: p.legacy.description ?? "",
+        scoreValue: p.legacy.value,
+        mvpValue: p.legacy.mvp_value,
+        inGame: p.legacy.in_game === 1,
+      });
+      // addPenalty() always creates an active row; carry legacy's rescinded flag over
+      // so the record survives without counting.
+      if (p.legacy.rescinded === 1) await updatePenalty(id, { rescinded: true });
     }
+    console.log(`  created ${placed.length} manual player penalties`);
 
     for (const t of teamTargets) {
       await addTeamPenalty({
