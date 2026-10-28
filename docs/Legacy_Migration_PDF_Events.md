@@ -1,6 +1,6 @@
 # Legacy Migration — PDF-era Competitive Events (plan)
 
-> **Status: Phase 1 (schema + queries) built 2026-10-28, migration 0061 not yet applied.**
+> **Status: Phase 1 (schema + queries) done; migration 0061 applied to `lfstats_modern` 2026-10-28.**
 > No competition data has been written. Figures below come from read-only queries against
 > legacy `lfstats` and `lfstats_modern` on that date.
 
@@ -53,11 +53,11 @@ duplicates and 8 placeholder games ("Fake1", "Dummy Game"). None is in a competi
 | ----------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------- |
 | Player / team penalties on PDF games      | 3,255 / 27                                 | 3,226 / 23 (dupes + placeholders likely explain the gap — verify) | verify only                           |
 | `match_penalties`                         | 3 rows: JFK −1, −2 (566); FSA −2 (845)     | **no table**                                                      | new standings-adjustment table        |
-| Penalty overrides on **TDF social** games | 2,596 rows, 34 rescinded, 347 with a value | 2,616 rows, **0 rescinded**                                       | separate back-fill (see Phase 6)      |
+| Penalty overrides on **TDF social** games | 2,596 rows, 34 rescinded, 347 with a value | 2,616 rows, **0 rescinded**                                       | separate task (see Phase 6)           |
 | `events.description`, `challonge_link`    | 7 Challonge links, a few descriptions      | —                                                                 | carry onto `competition`              |
 | `event_teams.country_code`                | only Internationals 2017 (8 teams)         | no column                                                         | drop, or put in team name/description |
 | `event_teams.points`                      | only LTC Season 2 (18, 18, 6, 2)           | points are derived                                                | report against derived standings      |
-| `event_players.handicap`                  | event 895 only, 4 rows                     | `competition_player.handicap`                                     | carry if 895 becomes solo             |
+| `event_players.handicap`                  | event 895 only, 4 rows                     | `competition_player.handicap`                                     | record in the 895 description only    |
 | `games_tags`                              | `social` / `competition` only              | redundant with event type                                         | skip                                  |
 
 ## Matches holding PDF games (Phase 1, done)
@@ -125,14 +125,18 @@ type, description)`, summed into standings and shown on the standings page. Carr
    already sit).
 6. **TDF social-game penalty back-fill** — run the existing `migrate-legacy-penalties` matching
    rules over legacy TDF games outside competitive events (34 rescinded flags, 347 hand values
-   missing). Separate PR; needs the closed-migration guard reopened deliberately for that scope only.
+   missing). **Its own task**, outside this effort; needs the closed-migration guard reopened
+   deliberately for that scope only.
 7. **Close** — record final state in this doc and add `assertLegacyMigrationOpen` to the new
    script.
 
-## Decisions needed
+## Decisions (2026-10-28)
 
-1. ~~Schema approach for PDF games in matches~~ — the parallel FK pair with generated columns.
-2. Event 895 Brisbane 2019 Season 2: `team` (its matches) or `solo` (its scoring + handicaps)?
-3. Unplayed matches: keep matches with both teams set (schedule fidelity, show as unplayed) and
-   drop the 17 null-team bracket placeholders — or keep/drop all?
-4. Phase 6 in scope for this effort, or its own task?
+1. **Schema:** the parallel FK pair with generated columns (Phase 1).
+2. **Brisbane 2019 Season 2 (895)** migrates as a **team** event despite legacy `scoring = solo`:
+   its four teams are named for their captains (Rusty, Anarki, Glaedr, Tragedy) and every game is
+   between two of them. The four player handicaps have no team-format equivalent and are recorded
+   in the competition description only.
+3. **Unplayed matches:** keep the 18 with both teams set (they show as unplayed and score
+   nothing); drop the 17 with an empty slot, which are bracket placeholders never filled.
+4. **TDF social-game penalty back-fill** (Phase 6) is its own task, outside this effort.
