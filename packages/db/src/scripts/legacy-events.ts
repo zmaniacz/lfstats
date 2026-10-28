@@ -138,6 +138,11 @@ export type LegacyPdfEventConfig = {
   legacyId: number;
   shape: LegacyPdfEventShape;
   category: "internationals" | "tournament" | "league";
+  /**
+   * `sides` events only: the `games.league_round` values that were finals. Rounds and
+   * matches are rebuilt from each game's `league_round` / `league_match` / `league_game`.
+   */
+  finalsLeagueRounds?: number[];
   /** Legacy `events.name`, recorded so the config is readable without a DB query. */
   legacyName: string;
   /** Overrides the legacy name on the migrated competition. */
@@ -172,7 +177,15 @@ export const LEGACY_PDF_EVENTS: LegacyPdfEventConfig[] = [
   { legacyId: 7, shape: "matches", category: "internationals", legacyName: "Internationals 2014" },
   { legacyId: 1, shape: "matches", category: "league", legacyName: "LTC Season 1" },
   { legacyId: 2, shape: "matches", category: "league", legacyName: "LTC Season 2" },
-  { legacyId: 6, shape: "sides", category: "internationals", legacyName: "ECT 5" },
+  {
+    legacyId: 6,
+    shape: "sides",
+    category: "internationals",
+    legacyName: "ECT 5",
+    // Days 1 and 2 are each a full 15-match round robin; day 3 is a 10-match bracket ending
+    // in a one-game final, as ECT 6 and ECT 7 run their finals.
+    finalsLeagueRounds: [3],
+  },
   {
     legacyId: 194,
     shape: "shell",

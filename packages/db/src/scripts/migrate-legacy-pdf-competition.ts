@@ -625,10 +625,12 @@ async function buildPlan(
 
   const games = await resolveModernGames(db, legacy, data, warnings, notes);
   if (games.length === 0) throw new Error(`Legacy event ${cfg.legacyId} has no modern games`);
+  // Games already in this event's own competition are a rebuild (--force), not a conflict.
+  const own = await getCompetitionBySlug(slugify(name));
   for (const g of games) {
-    if (g.competitionId) {
+    if (g.competitionId && g.competitionId !== own?.id) {
       warnings.push(
-        `Game ${g.gameId} (legacy ${g.legacyGameId}) already belongs to a competition.`,
+        `Game ${g.gameId} (legacy ${g.legacyGameId}) already belongs to another competition.`,
       );
     }
   }
@@ -688,6 +690,7 @@ async function buildPlan(
   }
 
   if (cfg.shape === "matches") planMatches(plan, data, modernByLegacy);
+  if (cfg.shape === "sides") planMatches(plan, withLeagueStructure(cfg, data), modernByLegacy);
 
   // --- match penalties -> standings adjustments ----------------------------
   plan.adjustments = data.matchPenalties.map((p) => ({
@@ -702,6 +705,47 @@ async function buildPlan(
 
   await buildRoster(db, plan, gameTeamToEventTeam);
   return plan;
+}
+
+/**
+ * A `sides` event has no legacy rounds or matches, but each game still carries
+ * `league_round` / `league_match` / `league_game`. Builds the rounds and matches those imply,
+ * shaped like legacy's own (negative ids, no stored points), so planMatches treats the event
+ * like any other — including its check that every game of a match is the same two teams.
+ * The match's team 1 is the red side of its first game.
+ */
+function withLeagueStructure(cfg: LegacyPdfEventConfig, data: LegacyEventData): LegacyEventData {
+  const finals = new Set(cfg.finalsLeagueRounds ?? []);
+  const rounds = new Map<number, LegacyRound>();
+  const matches = new Map<number, LegacyMatch>();
+  const games = data.games.map((g) => {
+    if (g.league_round === null || g.league_match === null) {
+      return { ...g, match_id: null };
+    }
+    const roundId = -g.league_round;
+    const matchId = -(g.league_round * 1000 + g.league_match);
+    if (!rounds.has(roundId)) {
+      rounds.set(roundId, {
+        id: roundId,
+        round: g.league_round,
+        is_finals: finals.has(g.league_round) ? 1 : 0,
+        multiplier: 1,
+      });
+    }
+    if (!matches.has(matchId)) {
+      matches.set(matchId, {
+        id: matchId,
+        round_id: roundId,
+        match: g.league_match,
+        team_1_id: g.red_team_id,
+        team_2_id: g.green_team_id,
+        team_1_points: null,
+        team_2_points: null,
+      });
+    }
+    return { ...g, match_id: matchId };
+  });
+  return { ...data, games, rounds: [...rounds.values()], matches: [...matches.values()] };
 }
 
 function planMatches(
@@ -1069,7 +1113,7 @@ function printPlan(plan: Plan, v: Verification | null, verbose: boolean): void {
       }
     }
   }
-  if (cfg.shape === "matches") {
+  if (cfg.shape !== "shell") {
     console.log(`\n  Rounds (${plan.rounds.length}):`);
     for (const r of plan.rounds) {
       const n = plan.matches.filter((m) => m.roundLegacyId === r.legacyId).length;
@@ -1082,7 +1126,12 @@ function printPlan(plan: Plan, v: Verification | null, verbose: boolean): void {
     console.log(`  Adjustment   ${t?.shortName ?? a.teamLegacyId} ${a.points}: ${a.reason}`);
   }
 
-  if (v) {
+  if (v && cfg.shape === "sides") {
+    // Nothing to check against: legacy stored no match points for an event with no matches.
+    const standings = [...v.teamTotals].sort((a, b) => b.modern - a.modern);
+    console.log(`\n  Legacy stored no match points. Modern standings (non-finals):`);
+    console.log(`    ${standings.map((t) => `${t.team} ${t.modern}`).join(", ")}`);
+  } else if (v) {
     const ok = v.playedMatches - v.matchMismatches.length;
     console.log(`\n  Legacy points: ${ok}/${v.playedMatches} played matches agree`);
     for (const line of verbose ? v.matchMismatches : v.matchMismatches.slice(0, 5)) {
@@ -1369,7 +1418,7 @@ async function main(): Promise<void> {
     for (const cfg of configs) {
       const data = await fetchLegacyEvent(legacy, cfg.legacyId);
       const plan = await buildPlan(db, legacy, cfg, data);
-      const verification = cfg.shape === "matches" ? await verifyPoints(db, plan) : null;
+      const verification = cfg.shape === "shell" ? null : await verifyPoints(db, plan);
       printPlan(plan, verification, verbose);
       if (!dryRun) await applyPlan(db, plan, flag("--force"));
     }

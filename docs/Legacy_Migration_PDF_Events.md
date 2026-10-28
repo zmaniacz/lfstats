@@ -1,8 +1,8 @@
 # Legacy Migration — PDF-era Competitive Events (plan)
 
-> **Status: Phases 1–3 done 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era
-> events are built in `lfstats_modern` — see [Built](#built-phase-3). Still open: ECT 5's
-> matches (Phase 4), teams for the four shell events (Phase 5), closing the script (Phase 7).
+> **Status: Phases 1–4 done 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era
+> events are built in `lfstats_modern` — see [Built](#built-phase-3). Still open: teams for the
+> four shell events (Phase 5) and closing the script (Phase 7).
 > Inventory figures come from read-only queries against both databases on that date.
 
 The PDF-era games are in modern as social `sm5_pdf` games
@@ -106,11 +106,11 @@ pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 7 [--force]
 on 2026-10-28: **34 competitions, 2,283 games** (2,268 `sm5_pdf`, 15 TDF), 1,931 PDF match
 games, 3 standings adjustments. Every league PDF game now belongs to a competition.
 
-| Shape     | Events | What came across                                                           |
-| --------- | -----: | -------------------------------------------------------------------------- |
-| `matches` |     29 | teams, rounds, matches, match games, derived rosters, adjustments          |
-| `sides`   |      1 | ECT 5: teams and rosters (100% consistent); no rounds or matches — Phase 4 |
-| `shell`   |      4 | Nationals 2012/2013, Armageddon 2014/2015: competition and games only      |
+| Shape     | Events | What came across                                                        |
+| --------- | -----: | ----------------------------------------------------------------------- |
+| `matches` |     29 | teams, rounds, matches, match games, derived rosters, adjustments       |
+| `sides`   |      1 | ECT 5: teams, rosters (100% consistent), and matches rebuilt in Phase 4 |
+| `shell`   |      4 | Nationals 2012/2013, Armageddon 2014/2015: competition and games only   |
 
 How the script resolves things the plan left open:
 
@@ -178,9 +178,17 @@ renders its two totals with empty scoreboards; a shell event's standings say no 
      most-played team is the roster team, others mercenary; 90% consistency floor.
    - Match penalties → `competition_team_adjustment`.
    - Verification: legacy-vs-modern standings per event, as `legacy-variance` does for TDF.
-4. **Partial-structure events**
-   - **ECT 5**: synthesise one pool round; pair games by unordered team pair in time order
-     into 2-game matches; finals left to the admin if the bracket isn't evident.
+4. **Partial-structure events** — done 2026-10-28.
+   - **ECT 5**: no pairing heuristic was needed. Legacy kept no rounds or matches, but every game
+     carries `league_round` / `league_match` / `league_game`, and those give the whole
+     structure: days 1 and 2 are each a full 15-match round robin of the six teams, day 3 a
+     10-match bracket ending in a one-game final. `shape: "sides"` events now rebuild their
+     rounds and matches from those numbers (`withLeagueStructure()`), and the existing match
+     planner checks every game of a match is the same two teams. `finalsLeagueRounds: [3]`
+     marks day 3 as finals, as ECT 6 and ECT 7 run theirs. Rebuilt with `--force`: 3 rounds,
+     40 matches, 79 match games. Legacy stored no points to compare against; modern stands
+     Detroit A 54, Craig A 52, Syracuse 38, Detroit B 14, Craig B 14, Craig C 8, and Detroit A
+     won the final.
    - **LTC Season 1**: games `G1`–`G8` left assigned to the competition but not to a match.
 5. **Unstructured events** (Nationals 2012/2013, Armageddon 2014/2015): competition + game
    assignment only. Teams and rosters built by hand in the admin UI. To make that tractable,
