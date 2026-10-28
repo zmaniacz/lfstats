@@ -6,26 +6,28 @@
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelectFilter } from "@/components/filters/MultiSelectFilter";
-import { TEAM_STATS, resolveStatKeys } from "@/lib/team-stat-catalog";
+import { resolveStatKeys, type TeamStatDef } from "@/lib/team-stat-catalog";
 
 /**
  * The stat column chooser for the team player-comparison table: a grouped multi-select
  * dropdown, with the current selection echoed as removable pills.
  */
 export function StatPicker({
+  catalog,
   selected,
   onChange,
 }: {
+  catalog: readonly TeamStatDef[];
   selected: string[];
   onChange: (keys: string[]) => void;
 }) {
-  const selectedStats = resolveStatKeys(selected);
+  const selectedStats = resolveStatKeys(selected, catalog);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <MultiSelectFilter
         label="Stats"
-        options={TEAM_STATS.map((s) => ({ value: s.key, label: s.label, group: s.group }))}
+        options={catalog.map((s) => ({ value: s.key, label: s.label, group: s.group }))}
         selected={selected}
         onChange={onChange}
         alwaysShowLabel

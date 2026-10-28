@@ -13,6 +13,9 @@ import {
   getCompetitionPositionScorecards,
   getCompetitionTotalScore,
   getCompetitionTotalTime,
+  getLegacyCompetitionPlayerTotals,
+  getLegacyCompetitionPositionScorecards,
+  competitionHasLegacyGames,
   type GameScopeFilter,
   type CompetitionTopPlayersOptions,
 } from "@lfstats/db";
@@ -24,6 +27,16 @@ export async function LeaderboardsContent({
   scopeFilter: GameScopeFilter;
   options: CompetitionTopPlayersOptions;
 }) {
+  // One competition with PDF-era games gets the boards its scorecards can fill; every other
+  // scope stays TDF-only so PDF games never reach an aggregate.
+  if (
+    scopeFilter.scope === "competition" &&
+    scopeFilter.competitionId &&
+    (await competitionHasLegacyGames(scopeFilter.competitionId))
+  ) {
+    return <LegacyLeaderboards scopeFilter={scopeFilter} options={options} />;
+  }
+
   const [
     commanders,
     heavyPlayers,
@@ -344,6 +357,78 @@ export async function LeaderboardsContent({
               )
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.totalDoubleResuppliesGiven! }))}
+            format="integer"
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+async function LegacyLeaderboards({
+  scopeFilter,
+  options,
+}: {
+  scopeFilter: GameScopeFilter;
+  options: CompetitionTopPlayersOptions;
+}) {
+  const [commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers, totals] =
+    await Promise.all([
+      getLegacyCompetitionPositionScorecards(scopeFilter, 1, options),
+      getLegacyCompetitionPositionScorecards(scopeFilter, 2, options),
+      getLegacyCompetitionPositionScorecards(scopeFilter, 3, options),
+      getLegacyCompetitionPositionScorecards(scopeFilter, 4, options),
+      getLegacyCompetitionPositionScorecards(scopeFilter, 5, options),
+      getLegacyCompetitionPlayerTotals(scopeFilter, options),
+    ]);
+  const top = (value: (r: (typeof totals)[number]) => number) =>
+    totals
+      .filter((r) => value(r) > 0)
+      .sort((a, b) => value(b) - value(a))
+      .slice(0, 100)
+      .map((r) => ({ ...r, value: value(r) }));
+
+  return (
+    <>
+      <p className="text-sm text-muted-foreground max-w-3xl">
+        Legacy scorecards record only end-of-game totals, so the boards that need the event stream
+        (time played, missiles, nukes and the rest) are left out. Position boards rank printed
+        scorecards by MVP*, the legacy formula, which is not comparable with modern MVP.
+      </p>
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Positions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <PositionLeaderboardCard title="Commander" scorecards={commanders} mvpLabel="MVP*" />
+          <PositionLeaderboardCard
+            title="Heavy Weapons"
+            scorecards={heavyPlayers}
+            mvpLabel="MVP*"
+          />
+          <PositionLeaderboardCard title="Scout" scorecards={scoutPlayers} mvpLabel="MVP*" />
+          <PositionLeaderboardCard title="Ammo Carrier" scorecards={ammoPlayers} mvpLabel="MVP*" />
+          <PositionLeaderboardCard title="Medic" scorecards={medicPlayers} mvpLabel="MVP*" />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Games and Points</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatLeaderboardCard
+            title="Total Games Played"
+            colLabel="Games"
+            rows={top((r) => r.totalGames)}
+            format="integer"
+          />
+          <StatLeaderboardCard
+            title="Total Score"
+            colLabel="Score"
+            rows={top((r) => r.totalScore)}
+            format="score"
+          />
+          <StatLeaderboardCard
+            title="Total Medic Hits"
+            colLabel="Medic Hits"
+            rows={top((r) => r.totalMedicHits)}
             format="integer"
           />
         </div>

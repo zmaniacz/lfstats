@@ -53,9 +53,12 @@ function SortableHead({
 export function PositionLeaderboardCard({
   title,
   scorecards,
+  mvpLabel = "MVP",
 }: {
   title: string;
   scorecards: CompetitionPositionScorecard[];
+  /** "MVP*" when the scorecards carry the legacy MVP. */
+  mvpLabel?: string;
 }) {
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({
     col: "mvpPoints",
@@ -94,7 +97,7 @@ export function PositionLeaderboardCard({
                 Score
               </SortableHead>
               <SortableHead col="mvpPoints" sort={sort} onSort={handleSort}>
-                MVP
+                {mvpLabel}
               </SortableHead>
             </TableRow>
           </TableHeader>

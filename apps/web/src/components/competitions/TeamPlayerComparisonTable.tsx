@@ -20,10 +20,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { StatPicker } from "@/components/competitions/StatPicker";
 import { POSITIONS } from "@/lib/positions";
-import { DEFAULT_STAT_KEYS, TEAM_STATS, resolveStatKeys } from "@/lib/team-stat-catalog";
+import {
+  DEFAULT_STAT_KEYS,
+  LEGACY_DEFAULT_STAT_KEYS,
+  resolveStatKeys,
+  statCatalogFor,
+} from "@/lib/team-stat-catalog";
 
 const POSITION_IDS = [1, 2, 3, 4, 5];
-const VALID_STAT_KEYS = new Set(TEAM_STATS.map((s) => s.key));
 
 // With five positions and up to fourteen stats the table is far wider than the viewport, so the
 // callsign is frozen — a stat column is meaningless once you've lost track of whose row it is.
@@ -46,11 +50,16 @@ function sameKeys(a: string[], b: string[]): boolean {
 export function TeamPlayerComparisonTable({
   rows,
   stats,
+  legacy = false,
 }: {
   rows: ComparisonRosterRow[];
   stats: CompetitionTeamPlayerStat[];
+  /** The competition holds PDF-era games; see statCatalogFor. */
+  legacy?: boolean;
 }) {
   const searchParams = useSearchParams();
+  const catalog = useMemo(() => statCatalogFor(legacy, stats), [legacy, stats]);
+  const defaultStatKeys = legacy ? LEGACY_DEFAULT_STAT_KEYS : DEFAULT_STAT_KEYS;
 
   // Read the URL once for the initial view, then own the state locally. Every stat is already
   // on the client, so changing the view is pure rendering — the URL is updated in place with
@@ -58,24 +67,28 @@ export function TeamPlayerComparisonTable({
   const [pivot, setPivot] = useState(() => searchParams.get("pivot") !== "0");
   const [statKeys, setStatKeys] = useState<string[]>(() => {
     const raw = searchParams.get("stats");
-    if (raw === null) return DEFAULT_STAT_KEYS;
+    if (raw === null) return defaultStatKeys;
     // Drop unrecognised tokens so a stale or hand-edited link degrades rather than breaking.
-    return raw.split(",").filter((k) => VALID_STAT_KEYS.has(k));
+    const valid = new Set(catalog.map((s) => s.key));
+    return raw.split(",").filter((k) => valid.has(k));
   });
 
-  const writeUrl = useCallback((nextPivot: boolean, nextStatKeys: string[]) => {
-    const params = new URLSearchParams(window.location.search);
-    if (nextPivot) params.delete("pivot");
-    else params.set("pivot", "0");
-    if (sameKeys(nextStatKeys, DEFAULT_STAT_KEYS)) params.delete("stats");
-    else params.set("stats", nextStatKeys.join(","));
-    const qs = params.toString();
-    window.history.replaceState(
-      null,
-      "",
-      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-    );
-  }, []);
+  const writeUrl = useCallback(
+    (nextPivot: boolean, nextStatKeys: string[]) => {
+      const params = new URLSearchParams(window.location.search);
+      if (nextPivot) params.delete("pivot");
+      else params.set("pivot", "0");
+      if (sameKeys(nextStatKeys, defaultStatKeys)) params.delete("stats");
+      else params.set("stats", nextStatKeys.join(","));
+      const qs = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+      );
+    },
+    [defaultStatKeys],
+  );
 
   function handlePivotChange(next: boolean) {
     setPivot(next);
@@ -87,7 +100,7 @@ export function TeamPlayerComparisonTable({
     writeUrl(pivot, next);
   }
 
-  const selectedStats = useMemo(() => resolveStatKeys(statKeys), [statKeys]);
+  const selectedStats = useMemo(() => resolveStatKeys(statKeys, catalog), [statKeys, catalog]);
 
   // position null is the across-all-positions rollup row for that player.
   const statsByPlayer = useMemo(() => {
@@ -107,7 +120,7 @@ export function TeamPlayerComparisonTable({
           Break out by position
         </Label>
       </div>
-      <StatPicker selected={statKeys} onChange={handleStatsChange} />
+      <StatPicker catalog={catalog} selected={statKeys} onChange={handleStatsChange} />
     </div>
   );
 

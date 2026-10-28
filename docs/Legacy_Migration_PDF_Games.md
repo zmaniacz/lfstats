@@ -31,6 +31,7 @@ They are **shown, never aggregated**:
 | Game lists (`getGamesList`)             | Yes, badged "Legacy"                                                                                               |
 | Player page                             | In the Games tab's game log, badged "Legacy", with the legacy MVP; never in the charts or head-to-head             |
 | Nightly `/nightly`                      | Their dates are listed; a "Legacy scorecards" table and the games list show them; the summaries stay modern-only   |
+| Competition pages (one competition)     | Yes — team player stats, players and leaderboards, with MVP\*; see Competition_Structure.md                        |
 | Career stats, leaderboards, rating      | No                                                                                                                 |
 | Query API / MCP `search_games`, `games` | Yes, flagged `legacy: true` (`search_games` `legacy`: include/exclude/only); synthetic players have `ipl_id: null` |
 | Query API / MCP aggregates              | No — `player_stats` and `leaderboard` never read them                                                              |

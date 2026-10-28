@@ -22,6 +22,8 @@ export type TeamStatDef = {
   group: string;
   field: keyof CompetitionTeamPlayerStat;
   format: (n: number | null) => string;
+  /** Offered only in competitions with PDF-era games (the legacy MVP). */
+  legacyOnly?: boolean;
 };
 
 const formatAvgScore = (n: number | null): string =>
@@ -35,6 +37,15 @@ export const TEAM_STATS: readonly TeamStatDef[] = [
     group: "Core",
     field: "avgMvp",
     format: formatMVP,
+  },
+  {
+    key: "legacyMvp",
+    label: "Avg MVP* (legacy)",
+    short: "MVP*",
+    group: "Core",
+    field: "avgLegacyMvp",
+    format: formatMVP,
+    legacyOnly: true,
   },
   {
     key: "score",
@@ -145,12 +156,28 @@ export const TEAM_STATS: readonly TeamStatDef[] = [
 /** The stats the table has always shown, so an untouched page looks exactly as it did. */
 export const DEFAULT_STAT_KEYS = ["mvp", "score"];
 
+/** A PDF-era competition leads with the legacy MVP, the only MVP most of its games have. */
+export const LEGACY_DEFAULT_STAT_KEYS = ["legacyMvp", "score"];
+
+/**
+ * The stats a team table offers. A TDF competition gets the catalog as it always was. One
+ * with PDF-era games adds the legacy MVP and drops every stat no game in it supplies — the
+ * event-derived ones, when all its games are PDF-era — rather than show a column of dashes.
+ */
+export function statCatalogFor(
+  legacy: boolean,
+  stats: readonly CompetitionTeamPlayerStat[],
+): TeamStatDef[] {
+  if (!legacy) return TEAM_STATS.filter((s) => !s.legacyOnly);
+  return TEAM_STATS.filter((s) => stats.some((row) => row[s.field] !== null));
+}
+
 /**
  * Resolves URL stat tokens to catalog entries, dropping anything unrecognised so a stale or
  * hand-edited link degrades instead of rendering an undefined column. Always returns catalog
  * order, never the order the tokens arrived in.
  */
-export function resolveStatKeys(keys: string[]): TeamStatDef[] {
+export function resolveStatKeys(keys: string[], catalog: readonly TeamStatDef[]): TeamStatDef[] {
   const wanted = new Set(keys);
-  return TEAM_STATS.filter((s) => wanted.has(s.key));
+  return catalog.filter((s) => wanted.has(s.key));
 }

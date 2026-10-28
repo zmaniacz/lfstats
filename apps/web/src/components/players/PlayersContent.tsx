@@ -9,6 +9,8 @@ import {
   getCompetitionAmmoPlayers,
   getCompetitionMedicPlayers,
   getCompetitionMedicHitsLeaderboard,
+  getLegacyCompetitionTopPlayers,
+  competitionHasLegacyGames,
   type GameScopeFilter,
   type CompetitionTopPlayersOptions,
 } from "@lfstats/db";
@@ -19,6 +21,7 @@ import { HeavyPlayersTable } from "@/components/competitions/HeavyPlayersTable";
 import { ScoutPlayersTable } from "@/components/competitions/ScoutPlayersTable";
 import { AmmoPlayersTable } from "@/components/competitions/AmmoPlayersTable";
 import { MedicPlayersTable } from "@/components/competitions/MedicPlayersTable";
+import { LegacyTopPlayersTable } from "@/components/competitions/LegacyTopPlayersTable";
 
 export async function PlayersContent({
   options,
@@ -27,6 +30,17 @@ export async function PlayersContent({
   options: CompetitionTopPlayersOptions;
   scopeFilter: GameScopeFilter;
 }) {
+  // One competition with PDF-era games gets its own table; every other scope, including all
+  // competitions together, stays TDF-only so PDF games never reach an aggregate.
+  if (
+    scopeFilter.scope === "competition" &&
+    scopeFilter.competitionId &&
+    (await competitionHasLegacyGames(scopeFilter.competitionId))
+  ) {
+    const legacyPlayers = await getLegacyCompetitionTopPlayers(scopeFilter, options);
+    return <LegacyTopPlayersTable players={legacyPlayers} />;
+  }
+
   const [players, commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers, medicHits] =
     await Promise.all([
       getCompetitionTopPlayers(scopeFilter, options),

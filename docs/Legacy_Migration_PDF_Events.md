@@ -258,10 +258,13 @@ Left for admins, in the admin UI:
 
 Still open in the code, not the data:
 
-- Per-player competition pages (top players, position leaders, team player stats) read
-  `sm5_scorecard` only, so they show "—" for PDF games.
-- A result-only game's page renders empty scoreboard tables; an empty-state message would read
-  better.
+- ~~Per-player competition pages read `sm5_scorecard` only.~~ **Done** 2026-10-28: a
+  competition with PDF-era games reads both scorecard kinds (`competition-legacy.ts`), showing
+  what printed scorecards supply and the legacy MVP as MVP\*; see
+  [Competition_Structure.md](Competition_Structure.md#competition_game_side--competition_scorecard-views).
+  Still TDF-only there: the per-position detail tables and the event-stream leaderboards.
+- ~~A result-only game's page renders empty scoreboard tables.~~ **Done** 2026-10-28: it shows
+  an empty state instead.
 - `fix-legacy-pdf-start-times --apply` is not gated: it only re-applies the start times printed
   on the PDFs, which admins cannot edit.
 
