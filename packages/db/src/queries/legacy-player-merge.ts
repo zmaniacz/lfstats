@@ -10,7 +10,9 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../client";
 import { isSyntheticIplId } from "../lib/synthetic-ipl-id";
 import {
+  competition,
   competitionPlayer,
+  competitionTeam,
   competitionTeamPlayer,
   gameReferee,
   gameVideo,
@@ -29,6 +31,8 @@ export type MergeSyntheticPlayerCounts = {
   legacyIds: number;
   favorites: number;
   videos: number;
+  competitions: number;
+  teamRosters: number;
 };
 
 export type MergeSyntheticPlayerResult =
@@ -44,6 +48,8 @@ export type MergeSyntheticPlayerResult =
  *   `first_seen_at` and the latest `last_seen_at`.
  * - `legacy_player_map` rows are re-pointed and marked `synthetic = false`.
  * - favorites and POV videos follow the player rather than cascading away with the row.
+ * - `competition_player` / `competition_team_player` rows (PDF-era event rosters) follow
+ *   the player too, unless the target is on a different team of the same competition.
  * - the target's `first_seen_at` moves earlier when the legacy games predate it.
  *
  * The target keeps its own `current_callsign`.
@@ -72,20 +78,36 @@ export async function mergeSyntheticPlayer(
       return { ok: false, error: "The target must be a real IPL player, not another legacy one." };
     }
 
-    // A synthetic player only ever exists in PDF-era data. Anything modern pointing at it
+    // A synthetic player only ever plays in PDF-era games. A modern game pointing at it
     // means the assumption is broken — stop rather than cascade-delete or orphan it.
+    // (Competition rosters are expected: the PDF-era event rebuild rosters synthetic players.)
     const [modern] = await tx.execute<{ n: number }>(sql`
       select (
         (select count(*) from ${sm5Scorecard} where player_id = ${sourceId}) +
         (select count(*) from ${lbScorecard} where player_id = ${sourceId}) +
-        (select count(*) from ${gameReferee} where player_id = ${sourceId}) +
-        (select count(*) from ${competitionPlayer} where player_id = ${sourceId}) +
-        (select count(*) from ${competitionTeamPlayer} where player_id = ${sourceId})
+        (select count(*) from ${gameReferee} where player_id = ${sourceId})
       )::int as n`);
     if (modern.n > 0) {
       return {
         ok: false,
-        error: "This legacy player has modern games or competition entries; merge it by hand.",
+        error: "This legacy player has modern games; merge it by hand.",
+      };
+    }
+
+    // Both on different teams of one competition would leave one person on two rosters.
+    const [clash] = await tx.execute<{ name: string }>(sql`
+      select c.name
+      from ${competitionTeamPlayer} s
+      join ${competitionTeam} st on st.id = s.competition_team_id
+      join ${competitionTeam} tt on tt.competition_id = st.competition_id and tt.id <> st.id
+      join ${competitionTeamPlayer} t on t.competition_team_id = tt.id and t.player_id = ${targetId}
+      join ${competition} c on c.id = st.competition_id
+      where s.player_id = ${sourceId}
+      limit 1`);
+    if (clash) {
+      return {
+        ok: false,
+        error: `Both players are on different teams in ${clash.name}; fix that roster first.`,
       };
     }
 
@@ -146,6 +168,25 @@ export async function mergeSyntheticPlayer(
         )
       returning v.id`);
 
+    // Competition rosters: where the target is already on the same team (or entered in
+    // the same competition), its row stands and the source's cascades away.
+    const teamRosters = await tx.execute(sql`
+      update ${competitionTeamPlayer} p set player_id = ${targetId}
+      where p.player_id = ${sourceId}
+        and not exists (
+          select 1 from ${competitionTeamPlayer} t
+          where t.competition_team_id = p.competition_team_id and t.player_id = ${targetId}
+        )
+      returning p.id`);
+    const competitions = await tx.execute(sql`
+      update ${competitionPlayer} p set player_id = ${targetId}
+      where p.player_id = ${sourceId}
+        and not exists (
+          select 1 from ${competitionPlayer} t
+          where t.competition_id = p.competition_id and t.player_id = ${targetId}
+        )
+      returning p.id`);
+
     if (source.firstSeenAt < target.firstSeenAt) {
       await tx
         .update(player)
@@ -164,6 +205,8 @@ export async function mergeSyntheticPlayer(
         legacyIds: legacyIds.length,
         favorites: favorites.length,
         videos: videos.length,
+        competitions: competitions.length,
+        teamRosters: teamRosters.length,
       },
     };
   });
