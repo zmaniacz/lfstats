@@ -39,10 +39,10 @@ import { promisify } from "node:util";
 import { sql } from "drizzle-orm";
 import { initDb } from "../client";
 import { parseHeaderTime } from "../lib/pdf-header-time";
+import { getLegacyPdfUrl } from "../lib/tdf";
 
 const execFileAsync = promisify(execFile);
 
-const PDF_BASE_URL = "https://lfstats-scorecards.s3.amazonaws.com";
 const DUPLICATE_WINDOW_SECONDS = 120;
 
 type Db = Awaited<ReturnType<typeof initDb>>;
@@ -68,7 +68,7 @@ function loadCache(path: string): Map<string, CacheEntry> {
 }
 
 async function readPdf(pdfId: string, dir: string): Promise<CacheEntry> {
-  const res = await fetch(`${PDF_BASE_URL}/${pdfId}.pdf`);
+  const res = await fetch(getLegacyPdfUrl(pdfId));
   if (!res.ok) return { pdfId, printed: null, error: `HTTP ${res.status}` };
   const file = join(dir, `${pdfId}.pdf`);
   await writeFile(file, Buffer.from(await res.arrayBuffer()));

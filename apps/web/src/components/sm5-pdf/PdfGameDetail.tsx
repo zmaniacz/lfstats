@@ -5,6 +5,7 @@ import { PdfTeamStatsTable } from "@/components/sm5-pdf/PdfTeamStatsTable";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
+import { getLegacyPdfUrl } from "@/lib/tdf";
 import type { PdfGameDetail as PdfGameDetailData } from "@lfstats/db";
 import { Info } from "lucide-react";
 
@@ -20,6 +21,18 @@ export function PdfGameDetail({ game }: { game: PdfGameDetailData }) {
         <p className="text-muted-foreground text-sm">
           {game.centerName} · {formatDateTime(game.startTime)} · {formatMs(game.actualDuration)}
         </p>
+        {game.pdfId && (
+          <p className="text-muted-foreground text-sm">
+            <a
+              href={getLegacyPdfUrl(game.pdfId)}
+              className="hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {game.pdfId}.pdf
+            </a>
+          </p>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="secondary">Legacy scorecard</Badge>
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}

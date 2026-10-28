@@ -113,6 +113,9 @@ export type PdfGameDetail = {
   exclude: boolean;
   gameName: string | null;
   legacyType: string;
+  /** Key of the printed scorecard in the public bucket; null for 335 games that never had one. */
+  pdfId: string | null;
+  /** Winner first, then by final score. */
   teams: PdfGameTeam[];
 };
 
@@ -145,6 +148,7 @@ export async function getPdfGameDetailBySlug(slug: string): Promise<PdfGameDetai
       exclude: game.exclude,
       gameName: sm5PdfGame.gameName,
       legacyType: sm5PdfGame.legacyType,
+      pdfId: sm5PdfGame.pdfId,
     })
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
@@ -229,6 +233,14 @@ export async function getPdfGameDetailBySlug(slug: string): Promise<PdfGameDetai
     }
     return [...byOther.values()];
   };
+
+  // Winner on top, as the scorecards were printed; a draw or unknown result falls back to
+  // the higher final score, then colour.
+  const finalScore = (t: (typeof teams)[number]) => t.score + t.eliminationBonus + t.penaltyScore;
+  teams.sort(
+    (a, b) =>
+      Number(b.result === "win") - Number(a.result === "win") || finalScore(b) - finalScore(a),
+  );
 
   return {
     ...g,
