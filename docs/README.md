@@ -14,7 +14,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | Work on tournaments, standings, or rosters  | [Competition_Structure.md](Competition_Structure.md)                           |
 | See how legacy events were migrated         | [Legacy_Migration_TDF_Events.md](Legacy_Migration_TDF_Events.md)               |
 | See how PDF-scorecard games were migrated   | [Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)                 |
-| Rebuild PDF-era competitive events          | [Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md)               |
+| See how PDF-era events were rebuilt         | [Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md)               |
 | Change the global player ranking            | [Player_Rating.md](Player_Rating.md)                                           |
 | Change how TDFs are parsed or simulated     | [chomper-design.md](chomper-design.md)                                         |
 | Change Laserball ingestion specifically     | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
@@ -53,8 +53,9 @@ Specifications and design docs for the LFstats monorepo. Start here.
 - **[Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)** — the pre-TDF games ingested
   from printed PDF scorecards: the `sm5_pdf_*` tables, synthetic `L-…` players, the timestamp
   rule, and every anomaly left as the data has it.
-- **[Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md)** — rebuilding the PDF-era
-  competitive events around those games: inventory, data quality, phases and open decisions. In progress.
+- **[Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md)** — the rebuild of the
+  PDF-era competitive events around those games: method, verification against legacy points,
+  co-play teams, and what was left for admins. Closed 2026-10-28.
 - **[SM5-penalty-definitions.md](SM5-penalty-definitions.md)** — standard penalty types and their
   default score and MVP impact.
 

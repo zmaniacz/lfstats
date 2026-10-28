@@ -305,12 +305,29 @@ const REOPEN_FLAG = "--reopen-closed-migration";
  * `--report` and `--dry-run` stay available, as does the read-only legacy-variance.
  */
 export function assertLegacyMigrationOpen(argv: string[]): void {
+  assertOpen(argv, LEGACY_MIGRATION_CLOSED, "docs/Legacy_Migration_TDF_Events.md");
+}
+
+/**
+ * The PDF-era migrations — the games (migrate-legacy-pdf-games) and the events around them
+ * (migrate-legacy-pdf-competition) — were declared complete on this date. From here admins
+ * finish the work in the admin UI (Nationals 2013's matches, naming the co-play teams) and
+ * may edit anything else, and a re-run would replace it: `--force` deletes and rebuilds a
+ * competition, `--reset` deletes every PDF game. So their writing paths refuse to run.
+ */
+export const LEGACY_PDF_MIGRATION_CLOSED = "2026-10-28";
+
+/** As assertLegacyMigrationOpen, for the two PDF-era migration scripts. */
+export function assertLegacyPdfMigrationOpen(argv: string[]): void {
+  assertOpen(argv, LEGACY_PDF_MIGRATION_CLOSED, "docs/Legacy_Migration_PDF_Events.md");
+}
+
+function assertOpen(argv: string[], closedOn: string, doc: string): void {
   if (argv.includes(REOPEN_FLAG)) return;
   console.error(
-    `The legacy migration was closed on ${LEGACY_MIGRATION_CLOSED}; this script would ` +
+    `This legacy migration was closed on ${closedOn}; this script would ` +
       `overwrite data edited in the modern database since then.\n` +
-      `See docs/Legacy_Migration_TDF_Events.md. ` +
-      `Pass ${REOPEN_FLAG} only if you mean to reopen it.`,
+      `See ${doc}. Pass ${REOPEN_FLAG} only if you mean to reopen it.`,
   );
   process.exit(1);
 }

@@ -74,6 +74,7 @@ import {
 } from "../queries/competition-tournament";
 import {
   ALREADY_MIGRATED,
+  assertLegacyPdfMigrationOpen,
   LEGACY_CENTER_OVERRIDES,
   LEGACY_PDF_EVENTS,
   deriveShortName,
@@ -1766,6 +1767,7 @@ async function main(): Promise<void> {
   const eventId = eventArg >= 0 ? Number(argv[eventArg + 1]) : null;
   const dryRun = flag("--dry-run");
   const verbose = flag("--verbose");
+  if (!dryRun && !flag("--report") && !flag("--coplay")) assertLegacyPdfMigrationOpen(argv);
 
   const legacy = connectLegacy();
   const db = await initDb();

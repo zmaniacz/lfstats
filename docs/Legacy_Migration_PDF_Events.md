@@ -1,9 +1,12 @@
-# Legacy Migration — PDF-era Competitive Events (plan)
+# Legacy Migration — PDF-era Competitive Events
 
-> **Status: Phases 1–5 done 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era
-> events are built in `lfstats_modern` — see [Built](#built-phase-3). Still open: Nationals
-> 2013's matches and every co-play team's real name (admin UI), and closing the script (Phase 7).
-> Inventory figures come from read-only queries against both databases on that date.
+> **Status: closed on 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era events
+> are built in `lfstats_modern` — see [Built](#built-phase-3) and [Final state](#final-state).
+> The modern database is now the source of truth for them: `migrate-legacy-pdf-competition` and
+> `migrate-legacy-pdf-games` refuse to write unless given `--reopen-closed-migration`, since
+> `--force` and `--reset` would delete admin work. `--report`, `--dry-run` and `--coplay` still
+> work. The rest of this doc records how it was done. Inventory figures come from read-only
+> queries against both databases on that date.
 
 The PDF-era games are in modern as social `sm5_pdf` games
 ([Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)). This phase rebuilds the
@@ -221,8 +224,46 @@ renders its two totals with empty scoreboards; a shell event's standings say no 
    rules over legacy TDF games outside competitive events (34 rescinded flags, 347 hand values
    missing). **Its own task**, outside this effort; needs the closed-migration guard reopened
    deliberately for that scope only.
-7. **Close** — record final state in this doc and add `assertLegacyMigrationOpen` to the new
-   script.
+7. **Close** — done 2026-10-28. `assertLegacyPdfMigrationOpen()` (`legacy-events.ts`,
+   `LEGACY_PDF_MIGRATION_CLOSED`) gates the writing paths of both PDF-era scripts, alongside
+   the TDF-era guard; see [Final state](#final-state).
+
+## Final state
+
+What is in `lfstats_modern` at close, and what was left for admins.
+
+- **34 competitions, 2,283 games**: 2,268 `sm5_pdf` (7 of them result-only), 15 TDF. Every
+  legacy league PDF game is in a competition. 33 of the 34 have matches; 1,931 PDF games and 15
+  TDF games sit in match slots.
+- **Standings** reproduce legacy's stored match points everywhere except the six matches in
+  [Against legacy's own points](#against-legacys-own-points) — four where modern counts
+  penalties legacy ignored or where a PDF side total differs, two where legacy had points for a
+  game that does not exist. Team totals differ only in LTC Season 1 (Guardians 32 v legacy 30,
+  Team Fat Guy 24 v 26). Legacy's figures are not the authority: modern's penalty rule is the
+  one the rest of the site uses.
+- **3 standings adjustments** carry the legacy `match_penalties` (Team JFK −1 and −2 in
+  Brisbane 2018 Season 2, FSA −2 in Armageddon 2019).
+- **Rosters** are derived from who played; nine league seasons have roster consistency under
+  90% because players changed teams, and legacy's points confirm every side mapping.
+
+Left for admins, in the admin UI:
+
+- **Nationals 2013 matches.** Its seven teams and rosters are built, but its pairings met 4, 6
+  or 7 times — pools and finals that could not be told apart — so it has no rounds or matches.
+- **Team names** for every "Team &lt;letter&gt;" in the four co-play events (Nationals 2012's Team
+  A/C, Nationals 2013's Teams A/B/D/E, all of both Armageddons), and a check of the
+  center-derived ones. `--coplay` lists each team's players.
+- **Internationals 2017** legacy games 3248/3249 (played by teams 71 v 72, filed under match
+  71 v 78) are in the competition but in no match.
+
+Still open in the code, not the data:
+
+- Per-player competition pages (top players, position leaders, team player stats) read
+  `sm5_scorecard` only, so they show "—" for PDF games.
+- A result-only game's page renders empty scoreboard tables; an empty-state message would read
+  better.
+- `fix-legacy-pdf-start-times --apply` is not gated: it only re-applies the start times printed
+  on the PDFs, which admins cannot edit.
 
 ## Decisions (2026-10-28)
 

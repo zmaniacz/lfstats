@@ -51,7 +51,7 @@ import postgres from "postgres";
 import { inArray, sql } from "drizzle-orm";
 import { initDb } from "../client";
 import { SYNTHETIC_IPL_PREFIX, syntheticIplId } from "../lib/synthetic-ipl-id";
-import { LEGACY_CENTER_OVERRIDES } from "./legacy-events";
+import { LEGACY_CENTER_OVERRIDES, assertLegacyPdfMigrationOpen } from "./legacy-events";
 import {
   center,
   game,
@@ -1037,6 +1037,7 @@ async function main(): Promise<void> {
     console.error("--game takes a legacy game id.");
     process.exit(1);
   }
+  if (!dryRun && !reportOnly) assertLegacyPdfMigrationOpen(argv);
 
   const db = await initDb();
   const legacy = connectLegacy();
