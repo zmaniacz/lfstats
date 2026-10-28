@@ -11,6 +11,7 @@
  *   pnpm --filter @lfstats/db migrate-legacy-pdf-competition --all --dry-run
  *   pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 7
  *   pnpm --filter @lfstats/db migrate-legacy-pdf-competition --all
+ *   pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 4 --coplay   # candidate teams
  *   add --force to delete and rebuild a competition that already exists, --verbose to list
  *   every roster entry and match mismatch
  *
@@ -662,7 +663,11 @@ async function buildPlan(
   };
 
   if (cfg.shape === "shell") {
-    notes.push("No teams in legacy: competition and games only; build teams and rosters by hand.");
+    if (cfg.coplay) {
+      await planFromCoplay(db, plan);
+    } else {
+      notes.push("No teams in legacy: competition and games only; build teams by hand.");
+    }
     return plan;
   }
 
@@ -1092,7 +1097,7 @@ function printPlan(plan: Plan, v: Verification | null, verbose: boolean): void {
   if (plan.challongeLink) console.log(`  challonge    ${plan.challongeLink}`);
   if (plan.description) console.log(`  description  ${plan.description.replace(/\n+/g, " / ")}`);
 
-  if (cfg.shape !== "shell") {
+  if (plan.teams.length > 0) {
     console.log(`\n  Teams (${plan.teams.length}):`);
     for (const t of plan.teams) {
       const roster = plan.roster.filter((r) => r.teamLegacyId === t.legacyId);
@@ -1113,7 +1118,7 @@ function printPlan(plan: Plan, v: Verification | null, verbose: boolean): void {
       }
     }
   }
-  if (cfg.shape !== "shell") {
+  if (plan.rounds.length > 0) {
     console.log(`\n  Rounds (${plan.rounds.length}):`);
     for (const r of plan.rounds) {
       const n = plan.matches.filter((m) => m.roundLegacyId === r.legacyId).length;
@@ -1126,7 +1131,7 @@ function printPlan(plan: Plan, v: Verification | null, verbose: boolean): void {
     console.log(`  Adjustment   ${t?.shortName ?? a.teamLegacyId} ${a.points}: ${a.reason}`);
   }
 
-  if (v && cfg.shape === "sides") {
+  if (v && cfg.shape !== "matches") {
     // Nothing to check against: legacy stored no match points for an event with no matches.
     const standings = [...v.teamTotals].sort((a, b) => b.modern - a.modern);
     console.log(`\n  Legacy stored no match points. Modern standings (non-finals):`);
@@ -1386,6 +1391,371 @@ async function applyPlan(db: Db, plan: Plan, force: boolean): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Co-play (shell events)
+// ---------------------------------------------------------------------------
+
+/** Two players are teammates when they share a side in at least this share of their games. */
+const COPLAY_AFFINITY = 0.6;
+/** …and at least this many times, so one shared game between occasional players doesn't. */
+const COPLAY_MIN_GAMES = 2;
+/** A side belongs to a group when at least this share of its players are in it. */
+const COPLAY_SIDE_PURITY = 0.75;
+
+type CoplaySide = {
+  gameId: string;
+  legacyGameId: number;
+  side: "red" | "green";
+  gameTeamId: string;
+  startTime: Date;
+  players: string[];
+};
+
+type Coplay = {
+  sides: CoplaySide[];
+  /** Groups of player ids, largest first, labelled A, B, … in that order. */
+  groups: string[][];
+  /** Group index for each `gameTeamId` whose side is clearly one group. */
+  sideGroup: Map<string, number>;
+  /** Players who never settled into a group (subs, one-game fill-ins). */
+  loners: string[];
+  gamesPlayed: Map<string, number>;
+  callsign: Map<string, string>;
+};
+
+const groupLetter = (i: number) => String.fromCharCode(65 + i);
+
+/**
+ * Groups an event's players into teams by who keeps sharing a side: two players are linked
+ * when they shared a side in at least COPLAY_AFFINITY of the games either of them played, and
+ * the groups are the connected sets.
+ */
+async function coplayGroups(db: Db, games: ModernGame[]): Promise<Coplay> {
+  const teamIds = games.flatMap((g) => (g.sides ? [g.sides.red, g.sides.green] : []));
+  const rows =
+    teamIds.length === 0
+      ? []
+      : await db
+          .select({
+            teamId: competitionScorecard.teamId,
+            playerId: competitionScorecard.playerId,
+            callsign: player.currentCallsign,
+          })
+          .from(competitionScorecard)
+          .innerJoin(player, eq(player.id, competitionScorecard.playerId))
+          .where(inArray(competitionScorecard.teamId, teamIds));
+
+  const playersByTeam = new Map<string, string[]>();
+  for (const r of rows) {
+    playersByTeam.set(r.teamId, [...(playersByTeam.get(r.teamId) ?? []), r.playerId!]);
+  }
+  const sides: CoplaySide[] = games
+    .flatMap((g) =>
+      g.sides
+        ? (["red", "green"] as const).map((side) => ({
+            gameId: g.gameId,
+            legacyGameId: g.legacyGameId,
+            side,
+            gameTeamId: g.sides![side],
+            startTime: g.startTime,
+            players: playersByTeam.get(g.sides![side]) ?? [],
+          }))
+        : [],
+    )
+    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime() || a.side.localeCompare(b.side));
+
+  const gamesPlayed = new Map<string, number>();
+  const together = new Map<string, number>();
+  const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  for (const s of sides) {
+    for (const p of s.players) gamesPlayed.set(p, (gamesPlayed.get(p) ?? 0) + 1);
+    for (let i = 0; i < s.players.length; i++) {
+      for (let j = i + 1; j < s.players.length; j++) {
+        const k = pairKey(s.players[i], s.players[j]);
+        together.set(k, (together.get(k) ?? 0) + 1);
+      }
+    }
+  }
+
+  // Union-find over the teammate pairs.
+  const parent = new Map<string, string>([...gamesPlayed.keys()].map((p) => [p, p]));
+  const find = (p: string): string => {
+    while (parent.get(p) !== p) {
+      parent.set(p, parent.get(parent.get(p)!)!);
+      p = parent.get(p)!;
+    }
+    return p;
+  };
+  for (const [k, n] of together) {
+    const [a, b] = k.split("|");
+    const affinity = n / Math.min(gamesPlayed.get(a)!, gamesPlayed.get(b)!);
+    if (n >= COPLAY_MIN_GAMES && affinity >= COPLAY_AFFINITY) parent.set(find(a), find(b));
+  }
+  const members = new Map<string, string[]>();
+  for (const p of gamesPlayed.keys()) {
+    const root = find(p);
+    members.set(root, [...(members.get(root) ?? []), p]);
+  }
+  const clusters = [...members.values()]
+    .map((ps) => ps.sort((a, b) => gamesPlayed.get(b)! - gamesPlayed.get(a)!))
+    .sort((a, b) => b.length - a.length);
+  const groups = clusters.filter((c) => c.length > 1);
+  const groupOf = new Map<string, number>();
+  groups.forEach((c, i) => c.forEach((p) => groupOf.set(p, i)));
+
+  const sideGroup = new Map<string, number>();
+  for (const s of sides) {
+    const counts = new Map<number, number>();
+    for (const p of s.players) {
+      const g = groupOf.get(p);
+      if (g !== undefined) counts.set(g, (counts.get(g) ?? 0) + 1);
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] / s.players.length >= COPLAY_SIDE_PURITY) sideGroup.set(s.gameTeamId, top[0]);
+  }
+
+  return {
+    sides,
+    groups,
+    sideGroup,
+    loners: clusters.filter((c) => c.length === 1).map((c) => c[0]),
+    gamesPlayed,
+    callsign: new Map(rows.map((r) => [r.playerId!, r.callsign])),
+  };
+}
+
+/**
+ * Names each group after the center most of its players call home, decided 2026-10-28.
+ * A player's home is the center of most of their social games within a year of the event,
+ * else of all their social games. A group takes a center's name when at least half its
+ * players share it; groups sharing a center get A, B, … suffixes; anything else stays
+ * "Team <letter>", the co-play report's label, for an admin to rename.
+ */
+async function coplayTeamNames(
+  db: Db,
+  plan: Plan,
+  groups: string[][],
+): Promise<{ name: string; short: string | null }[]> {
+  const playerIds = groups.flat();
+  const times = plan.games.map((g) => g.startTime.getTime());
+  // Wall-time strings: raw sql parameters do not serialise a Date.
+  const wall = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+  const from = wall(Math.min(...times) - 365 * 86_400_000);
+  const to = wall(Math.max(...times) + 365 * 86_400_000);
+  const rows = (await db.execute<{ player_id: string; name: string }>(sql`
+    with social as (
+      select s.player_id, g.center_id,
+             count(*) filter (where g.start_time between ${from}::timestamp and ${to}::timestamp) as era,
+             count(*) as total
+      from competition_scorecard s join game g on g.id = s.game_id
+      where s.player_id in (${sql.join(
+        playerIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )})
+        and g.competition_id is null
+      group by 1, 2
+    )
+    select distinct on (social.player_id) social.player_id, c.name, c.short_name
+    from social join center c on c.id = social.center_id
+    order by social.player_id, (social.era > 0) desc, social.era desc, social.total desc
+  `)) as unknown as { player_id: string; name: string; short_name: string | null }[];
+  const home = new Map([...rows].map((r) => [r.player_id, r.name]));
+  const shortOf = new Map([...rows].map((r) => [r.name, r.short_name]));
+
+  const centerOf = groups.map((g) => {
+    const counts = new Map<string, number>();
+    for (const p of g) {
+      const h = home.get(p);
+      if (h) counts.set(h, (counts.get(h) ?? 0) + 1);
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    return top && top[1] * 2 >= g.length ? top[0] : null;
+  });
+  const shared = new Map<string, number>();
+  for (const c of centerOf) if (c) shared.set(c, (shared.get(c) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return centerOf.map((c, i) => {
+    // A center-named team takes the center's own short code ("LTC"), which reads better than
+    // one derived from a long name ("Lasertag of Carmichael" -> "LASER").
+    if (!c) return { name: `Team ${groupLetter(i)}`, short: null };
+    const code = shortOf.get(c) ?? null;
+    if (shared.get(c) === 1) return { name: c, short: code };
+    const n = seen.get(c) ?? 0;
+    seen.set(c, n + 1);
+    return { name: `${c} ${groupLetter(n)}`, short: code && `${code}${groupLetter(n)}` };
+  });
+}
+
+/**
+ * Builds teams, rosters and (per `coplay.matches`) rounds and matches for a shell event from
+ * its co-play groups. Teams take negative legacy ids (-1 for group A, …) since legacy has none.
+ *
+ * - `pairs`: a pairing's games, in time order, make two-game matches; the nth match of a
+ *   pairing goes in round n (each round is one round robin).
+ * - `single`: one round, every game its own one-game match.
+ * - `none`: teams and rosters only.
+ */
+async function planFromCoplay(db: Db, plan: Plan): Promise<void> {
+  const mode = plan.cfg.coplay!.matches;
+  const coplay = await coplayGroups(db, plan.games);
+  const names = await coplayTeamNames(db, plan, coplay.groups);
+  const used = new Set<string>();
+  plan.teams = coplay.groups.map((_, i) => ({
+    legacyId: -(i + 1),
+    name: names[i].name,
+    shortName: uniquifyShortName(names[i].short ?? deriveShortName(names[i].name), used),
+  }));
+  const teamOf = (gameTeamId: string) => {
+    const g = coplay.sideGroup.get(gameTeamId);
+    return g === undefined ? null : -(g + 1);
+  };
+
+  const gameTeamToEventTeam = new Map<string, number>();
+  for (const s of coplay.sides) {
+    const t = teamOf(s.gameTeamId);
+    if (t === null) {
+      plan.warnings.push(`Legacy game ${s.legacyGameId} ${s.side} side has no clear group.`);
+      continue;
+    }
+    gameTeamToEventTeam.set(s.gameTeamId, t);
+  }
+  plan.notes.push(
+    `Teams from co-play groups (${coplay.groups.length}): ` +
+      plan.teams.map((t, i) => `${groupLetter(i)} = ${t.name}`).join(", ") +
+      (coplay.loners.length > 0 ? `; ${coplay.loners.length} ungrouped sub(s)` : ""),
+  );
+
+  if (mode !== "none") {
+    // Games with both sides in a group, by pairing, in time order.
+    const byPairing = new Map<string, ModernGame[]>();
+    for (const g of plan.games) {
+      if (!g.sides) continue;
+      const red = teamOf(g.sides.red);
+      const green = teamOf(g.sides.green);
+      if (red === null || green === null || red === green) {
+        plan.notes.push(`Legacy game ${g.legacyGameId} has no clear pairing; competition only.`);
+        continue;
+      }
+      const k = [red, green].sort((a, b) => a - b).join(":");
+      byPairing.set(k, [...(byPairing.get(k) ?? []), g]);
+    }
+
+    type Pending = { round: number; first: Date; games: ModernGame[] };
+    const pending: Pending[] = [];
+    for (const games of byPairing.values()) {
+      games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+      const size = mode === "pairs" ? 2 : 1;
+      for (let i = 0; i < games.length; i += size) {
+        const chunk = games.slice(i, i + size);
+        pending.push({
+          round: mode === "pairs" ? i / 2 + 1 : 1,
+          first: chunk[0].startTime,
+          games: chunk,
+        });
+        if (mode === "pairs" && chunk.length === 1) {
+          plan.notes.push(
+            `Legacy game ${chunk[0].legacyGameId} has no partner game: a one-game match.`,
+          );
+        }
+      }
+    }
+
+    const roundNumbers = [...new Set(pending.map((p) => p.round))].sort((a, b) => a - b);
+    plan.rounds = roundNumbers.map((r) => ({
+      legacyId: -r,
+      name: `Round ${r}`,
+      roundNumber: r,
+      type: "pool" as const,
+      multiplier: 1,
+    }));
+    let matchSeq = 0;
+    for (const r of roundNumbers) {
+      const inRound = pending
+        .filter((p) => p.round === r)
+        .sort((a, b) => a.first.getTime() - b.first.getTime());
+      inRound.forEach((p, i) => {
+        const matchId = -++matchSeq;
+        const first = p.games[0].sides!;
+        const team1 = teamOf(first.red)!;
+        const team2 = teamOf(first.green)!;
+        plan.matches.push({
+          legacyId: matchId,
+          roundLegacyId: -r,
+          matchNumber: i + 1,
+          team1LegacyId: team1,
+          team2LegacyId: team2,
+          legacyPoints: [null, null],
+        });
+        p.games.forEach((g, n) => {
+          const team1IsRed = teamOf(g.sides!.red) === team1;
+          plan.matchGames.push({
+            matchLegacyId: matchId,
+            legacyGameId: g.legacyGameId,
+            gameNumber: n + 1,
+            gameId: g.gameId,
+            team1GameTeamId: team1IsRed ? g.sides!.red : g.sides!.green,
+            team2GameTeamId: team1IsRed ? g.sides!.green : g.sides!.red,
+          });
+        });
+      });
+    }
+  }
+
+  await buildRoster(db, plan, gameTeamToEventTeam);
+}
+
+/**
+ * Prints an event's co-play groups and how cleanly they explain its games. Read-only; a
+ * shell event configured with `coplay` is built from exactly these groups.
+ */
+async function runCoplayReport(db: Db, plan: Plan): Promise<void> {
+  const c = await coplayGroups(db, plan.games);
+  const names = await coplayTeamNames(db, plan, c.groups);
+  const label = (p: string) => `${c.callsign.get(p)} (${c.gamesPlayed.get(p)})`;
+
+  console.log(`\n${"=".repeat(78)}`);
+  console.log(
+    `Co-play: "${plan.name}" — ${c.sides.length / 2} games, ${c.gamesPlayed.size} players`,
+  );
+  console.log("=".repeat(78));
+  console.log(
+    `  Teammates share a side in ≥${COPLAY_AFFINITY * 100}% of their games (and ≥${COPLAY_MIN_GAMES}).`,
+  );
+  c.groups.forEach((g, i) => {
+    const sides = [...c.sideGroup.values()].filter((x) => x === i).length;
+    console.log(
+      `\n  Group ${groupLetter(i)} "${names[i].name}" — ${g.length} players, ${sides} sides:`,
+    );
+    console.log(`    ${g.map(label).join(", ")}`);
+  });
+  if (c.loners.length > 0) {
+    console.log(`\n  Ungrouped (${c.loners.length}): ${c.loners.map(label).join(", ")}`);
+  }
+  const pure = c.sides.filter((s) => c.sideGroup.has(s.gameTeamId)).length;
+  console.log(
+    `\n  Sides ≥${COPLAY_SIDE_PURITY * 100}% one group: ${pure}/${c.sides.length} ` +
+      `(${((pure / c.sides.length) * 100).toFixed(0)}%) — the higher, the more these are real teams.`,
+  );
+  const meetings = new Map<string, number>();
+  for (const g of plan.games) {
+    if (!g.sides) continue;
+    const red = c.sideGroup.get(g.sides.red);
+    const green = c.sideGroup.get(g.sides.green);
+    const k = [red, green]
+      .map((x) => (x === undefined ? "?" : groupLetter(x)))
+      .sort()
+      .join(" v ");
+    meetings.set(k, (meetings.get(k) ?? 0) + 1);
+  }
+  console.log(`  Meetings (games per pairing; ? = no clear group):`);
+  console.log(
+    `    ${[...meetings.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, n]) => `${k}: ${n}`)
+      .join(", ")}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
@@ -1411,6 +1781,11 @@ async function main(): Promise<void> {
       const cfg = findLegacyPdfEvent(eventId);
       if (!cfg) throw new Error(`Legacy event ${eventId} is not in LEGACY_PDF_EVENTS`);
       configs = [cfg];
+      if (flag("--coplay")) {
+        const data = await fetchLegacyEvent(legacy, eventId);
+        await runCoplayReport(db, await buildPlan(db, legacy, cfg, data));
+        return;
+      }
     } else {
       throw new Error("Pass --report, --event <legacy id> or --all (with --dry-run to preview)");
     }
@@ -1418,7 +1793,7 @@ async function main(): Promise<void> {
     for (const cfg of configs) {
       const data = await fetchLegacyEvent(legacy, cfg.legacyId);
       const plan = await buildPlan(db, legacy, cfg, data);
-      const verification = cfg.shape === "shell" ? null : await verifyPoints(db, plan);
+      const verification = plan.matches.length === 0 ? null : await verifyPoints(db, plan);
       printPlan(plan, verification, verbose);
       if (!dryRun) await applyPlan(db, plan, flag("--force"));
     }

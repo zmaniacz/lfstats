@@ -143,6 +143,13 @@ export type LegacyPdfEventConfig = {
    * matches are rebuilt from each game's `league_round` / `league_match` / `league_game`.
    */
   finalsLeagueRounds?: number[];
+  /**
+   * `shell` events only: build teams and rosters from co-play groups (players who keep sharing
+   * a side), named for their players' home center. `matches` says how its games become
+   * matches: `pairs` (two-game matches, one round robin per round), `single` (one round of
+   * one-game matches) or `none` (teams and rosters only). Decided 2026-10-28.
+   */
+  coplay?: { matches: "pairs" | "single" | "none" };
   /** Legacy `events.name`, recorded so the config is readable without a DB query. */
   legacyName: string;
   /** Overrides the legacy name on the migrated competition. */
@@ -164,8 +171,23 @@ export type LegacyPdfEventConfig = {
  * single-site seasons `league`, everything else `tournament`).
  */
 export const LEGACY_PDF_EVENTS: LegacyPdfEventConfig[] = [
-  { legacyId: 4, shape: "shell", category: "internationals", legacyName: "Nationals 2012" },
-  { legacyId: 5, shape: "shell", category: "internationals", legacyName: "Nationals 2013" },
+  {
+    legacyId: 4,
+    shape: "shell",
+    category: "internationals",
+    legacyName: "Nationals 2012",
+    // Six fixed teams of six; three round robins of two-game matches.
+    coplay: { matches: "pairs" },
+  },
+  {
+    legacyId: 5,
+    shape: "shell",
+    category: "internationals",
+    legacyName: "Nationals 2013",
+    // Seven clean teams, but pairings met 4, 6 or 7 times (pools and finals that cannot be
+    // told apart), so matches are left for an admin.
+    coplay: { matches: "none" },
+  },
   {
     legacyId: 130,
     shape: "shell",
@@ -173,6 +195,8 @@ export const LEGACY_PDF_EVENTS: LegacyPdfEventConfig[] = [
     legacyName: "Socials 2014-06-30",
     // Legacy filed it as a social event at a pseudo-center named after the event.
     name: "Armageddon 2014",
+    // Nine teams of eight; one round robin of one-game matches (G v H never played).
+    coplay: { matches: "single" },
   },
   { legacyId: 7, shape: "matches", category: "internationals", legacyName: "Internationals 2014" },
   { legacyId: 1, shape: "matches", category: "league", legacyName: "LTC Season 1" },
@@ -192,6 +216,8 @@ export const LEGACY_PDF_EVENTS: LegacyPdfEventConfig[] = [
     category: "tournament",
     legacyName: "Socials 2015-06-27",
     name: "Armageddon 2015",
+    // Seven teams of eight; one complete round robin of one-game matches.
+    coplay: { matches: "single" },
   },
   { legacyId: 8, shape: "matches", category: "internationals", legacyName: "Internationals 2015" },
   { legacyId: 9, shape: "matches", category: "internationals", legacyName: "WCT 3" },

@@ -1,8 +1,8 @@
 # Legacy Migration — PDF-era Competitive Events (plan)
 
-> **Status: Phases 1–4 done 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era
-> events are built in `lfstats_modern` — see [Built](#built-phase-3). Still open: teams for the
-> four shell events (Phase 5) and closing the script (Phase 7).
+> **Status: Phases 1–5 done 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era
+> events are built in `lfstats_modern` — see [Built](#built-phase-3). Still open: Nationals
+> 2013's matches and every co-play team's real name (admin UI), and closing the script (Phase 7).
 > Inventory figures come from read-only queries against both databases on that date.
 
 The PDF-era games are in modern as social `sm5_pdf` games
@@ -99,6 +99,7 @@ Still open from this area:
 pnpm --filter @lfstats/db migrate-legacy-pdf-competition --report
 pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 7 --dry-run [--verbose]
 pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 7 [--force]
+pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 4 --coplay   # co-play groups
 ```
 
 `src/scripts/migrate-legacy-pdf-competition.ts`, configured by `LEGACY_PDF_EVENTS` in
@@ -110,7 +111,7 @@ games, 3 standings adjustments. Every league PDF game now belongs to a competiti
 | --------- | -----: | ----------------------------------------------------------------------- |
 | `matches` |     29 | teams, rounds, matches, match games, derived rosters, adjustments       |
 | `sides`   |      1 | ECT 5: teams, rosters (100% consistent), and matches rebuilt in Phase 4 |
-| `shell`   |      4 | Nationals 2012/2013, Armageddon 2014/2015: competition and games only   |
+| `shell`   |      4 | Nationals 2012/2013, Armageddon 2014/2015: teams from co-play (Phase 5) |
 
 How the script resolves things the plan left open:
 
@@ -190,11 +191,32 @@ renders its two totals with empty scoreboards; a shell event's standings say no 
      Detroit A 54, Craig A 52, Syracuse 38, Detroit B 14, Craig B 14, Craig C 8, and Detroit A
      won the final.
    - **LTC Season 1**: games `G1`–`G8` left assigned to the competition but not to a match.
-5. **Unstructured events** (Nationals 2012/2013, Armageddon 2014/2015): competition + game
-   assignment only. Teams and rosters built by hand in the admin UI. To make that tractable,
-   the script prints a **co-play report** per event: clusters of players who repeatedly share a
-   side, as candidate teams. Armageddon 2014/2015 host at Syracuse `4-23` (where their games
-   already sit).
+5. **Unstructured events** (Nationals 2012/2013, Armageddon 2014/2015) — done 2026-10-28.
+   Legacy kept no teams, but the players group cleanly by who keeps sharing a side: two
+   players are linked when they shared a side in ≥60% of the games either played (and ≥2), and
+   the groups are the connected sets. **Every side of every game in all four events is ≥75% one
+   group**, so the groups are the real teams. `--coplay` prints them; with `coplay` set in the
+   config (decided 2026-10-28) the script builds from them:
+
+   | Event           | Teams          | Matches built                                                                                     |
+   | --------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+   | Nationals 2012  | 6 × 6          | `pairs`: 3 round robins of 15 two-game matches (one C v E game has no partner)                    |
+   | Nationals 2013  | 7, plus 2 subs | `none`: pairings met 4, 6 or 7 times — pools and finals that can't be told apart; matches by hand |
+   | Armageddon 2014 | 9 × 8, 3 subs  | `single`: one round robin of 35 one-game matches (G v H never played)                             |
+   | Armageddon 2015 | 7 × 8          | `single`: the complete 21-game round robin                                                        |
+
+   **Names.** Legacy has none, so a team is named for its players' home center — the center of
+   most of a player's social games within a year of the event, else of all their social games —
+   when at least half the team shares it, with A/B suffixes for two teams from one center and
+   the center's own code as short name (`BRI`, `DET`, `LTCA`). Otherwise it is "Team &lt;letter&gt;",
+   the co-play group's letter, for an admin to rename. Nationals 2012 came out Brisbane,
+   Detroit, Lasertag of Carmichael A/B, Team A, Team C; Nationals 2013 Detroit A/B, Lasertag of
+   Carmichael, Teams A/B/D/E; both Armageddons (mixed draws) are all letters.
+
+   One-game matches earn no match bonus, so the Armageddon standings rank on game points with
+   every M W-L-D at 0-0-0 — as Armageddon 2024 already does. All four host at Syracuse `4-23`
+   or their own center as before.
+
 6. **TDF social-game penalty back-fill** — run the existing `migrate-legacy-penalties` matching
    rules over legacy TDF games outside competitive events (34 rescinded flags, 347 hand values
    missing). **Its own task**, outside this effort; needs the closed-migration guard reopened
