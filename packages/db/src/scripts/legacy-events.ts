@@ -100,6 +100,156 @@ export const ALREADY_MIGRATED: Record<number, string> = {
   2024: "internationals_2026",
 };
 
+// ---------------------------------------------------------------------------
+// PDF-era events (pre-TDF): see docs/Legacy_Migration_PDF_Events.md
+// ---------------------------------------------------------------------------
+
+/**
+ * Legacy centers with no IPL id, mapped to a modern `country-site` code. Decided with
+ * the site owner, 2026-10-17: two are aliases of a live center, the Armageddon events
+ * were played at Syracuse, and closed centers take a `-999` site code. Shared by the PDF
+ * game and PDF event migrations.
+ */
+export const LEGACY_CENTER_OVERRIDES: Record<number, string> = {
+  1: "4-3", // Lasertag of Carmichael (Legacy)
+  3: "4-23", // Armageddon 2014 — an event, played at Syracuse
+  9: "4-23", // Armageddon 2015 — an event, played at Syracuse
+  11: "4-999", // Lasertag of Santa Rosa — closed
+  12: "4-6", // Laser Tag of Clinton Township — Detroit
+  13: "4-43", // Invasion Laser Tag - San Marcos
+  19: "4-6", // Detroit Training
+  21: "7-999", // LaserZone Yorkshire — closed
+};
+
+/**
+ * How much structure a PDF-era event has in legacy:
+ *
+ * - `matches` — event teams, rounds and matches; games carry their match and sides. Gets the
+ *   full treatment.
+ * - `sides` — event teams, and each game's two sides, but no rounds or matches (ECT 5).
+ *   Teams and rosters come across; matches are left for a later pass that pairs the games.
+ * - `shell` — no teams at all, only "Red Team" v "Green Team" games. A competition and its
+ *   game assignments; teams and rosters are built by hand in the admin UI.
+ */
+export type LegacyPdfEventShape = "matches" | "sides" | "shell";
+
+export type LegacyPdfEventConfig = {
+  /** `events.id` in the legacy database. */
+  legacyId: number;
+  shape: LegacyPdfEventShape;
+  category: "internationals" | "tournament" | "league";
+  /** Legacy `events.name`, recorded so the config is readable without a DB query. */
+  legacyName: string;
+  /** Overrides the legacy name on the migrated competition. */
+  name?: string;
+  /**
+   * Legacy game ids to keep out of every match, with the reason. They still belong to the
+   * competition and still count towards rosters.
+   */
+  unmatchedGames?: Record<number, string>;
+  /** Appended to the legacy description on the migrated competition. */
+  descriptionNote?: string;
+  /** Pins `competition_team.short_name` for a legacy `event_teams.id`. */
+  shortNames?: Record<number, string>;
+};
+
+/**
+ * Every PDF-era competitive event, oldest first. Names are legacy's except where noted;
+ * categories follow backfill-competition-category.ts (championships are `internationals`,
+ * single-site seasons `league`, everything else `tournament`).
+ */
+export const LEGACY_PDF_EVENTS: LegacyPdfEventConfig[] = [
+  { legacyId: 4, shape: "shell", category: "internationals", legacyName: "Nationals 2012" },
+  { legacyId: 5, shape: "shell", category: "internationals", legacyName: "Nationals 2013" },
+  {
+    legacyId: 130,
+    shape: "shell",
+    category: "tournament",
+    legacyName: "Socials 2014-06-30",
+    // Legacy filed it as a social event at a pseudo-center named after the event.
+    name: "Armageddon 2014",
+  },
+  { legacyId: 7, shape: "matches", category: "internationals", legacyName: "Internationals 2014" },
+  { legacyId: 1, shape: "matches", category: "league", legacyName: "LTC Season 1" },
+  { legacyId: 2, shape: "matches", category: "league", legacyName: "LTC Season 2" },
+  { legacyId: 6, shape: "sides", category: "internationals", legacyName: "ECT 5" },
+  {
+    legacyId: 194,
+    shape: "shell",
+    category: "tournament",
+    legacyName: "Socials 2015-06-27",
+    name: "Armageddon 2015",
+  },
+  { legacyId: 8, shape: "matches", category: "internationals", legacyName: "Internationals 2015" },
+  { legacyId: 9, shape: "matches", category: "internationals", legacyName: "WCT 3" },
+  { legacyId: 10, shape: "matches", category: "internationals", legacyName: "Nats 2016" },
+  { legacyId: 11, shape: "matches", category: "league", legacyName: "LTC Season 3" },
+  { legacyId: 12, shape: "matches", category: "internationals", legacyName: "WCT4", name: "WCT 4" },
+  { legacyId: 13, shape: "matches", category: "internationals", legacyName: "ECT6", name: "ECT 6" },
+  { legacyId: 14, shape: "matches", category: "league", legacyName: "Brisbane Season 1" },
+  { legacyId: 15, shape: "matches", category: "league", legacyName: "LTC Season 4" },
+  {
+    legacyId: 16,
+    shape: "matches",
+    category: "internationals",
+    legacyName: "Internationals 2017",
+    unmatchedGames: {
+      3248: "played by teams 71 v 72 but filed under match 71 v 78",
+      3249: "played by teams 71 v 72 but filed under match 71 v 78",
+    },
+  },
+  { legacyId: 17, shape: "matches", category: "internationals", legacyName: "ECT7", name: "ECT 7" },
+  { legacyId: 18, shape: "matches", category: "internationals", legacyName: "WCT 2018" },
+  { legacyId: 413, shape: "matches", category: "league", legacyName: "Brisbane 2018 Season 1" },
+  { legacyId: 419, shape: "matches", category: "league", legacyName: "LTC 2018 Season 1" },
+  {
+    legacyId: 434,
+    shape: "matches",
+    category: "tournament",
+    legacyName: "Detroit Invitational 2018",
+  },
+  {
+    legacyId: 507,
+    shape: "matches",
+    category: "internationals",
+    legacyName: "Internationals 2018",
+  },
+  { legacyId: 566, shape: "matches", category: "league", legacyName: "Brisbane 2018 Season 2" },
+  { legacyId: 557, shape: "matches", category: "league", legacyName: "LLT Season 4" },
+  {
+    legacyId: 687,
+    shape: "matches",
+    category: "tournament",
+    legacyName: "Syracuse Random Draw 2019",
+  },
+  { legacyId: 764, shape: "matches", category: "league", legacyName: "Brisbane 2019 Season 1" },
+  { legacyId: 808, shape: "matches", category: "league", legacyName: "LLT Season 5" },
+  { legacyId: 845, shape: "matches", category: "tournament", legacyName: "Armageddon 2019" },
+  {
+    legacyId: 853,
+    shape: "matches",
+    category: "internationals",
+    legacyName: "Internationals 2019",
+  },
+  {
+    legacyId: 895,
+    shape: "matches",
+    category: "league",
+    legacyName: "Brisbane 2019 Season 2",
+    // Legacy scored it `solo` and kept player handicaps, but it was played as four
+    // captain-named teams in matches; decided 2026-10-28 to migrate it as a team event.
+    descriptionNote:
+      "Legacy player handicaps, not applied to team standings: Tragedy 4, Screaver 6, Anarki 9.",
+  },
+  { legacyId: 911, shape: "matches", category: "internationals", legacyName: "WCT 5" },
+  { legacyId: 948, shape: "matches", category: "tournament", legacyName: "SM5 Holiday Tournament" },
+  { legacyId: 959, shape: "matches", category: "internationals", legacyName: "ECT 2020" },
+];
+
+export function findLegacyPdfEvent(legacyId: number): LegacyPdfEventConfig | undefined {
+  return LEGACY_PDF_EVENTS.find((e) => e.legacyId === legacyId);
+}
+
 /**
  * The legacy migration of TDF-based events was declared complete on this date. Since
  * then the modern database is the source of truth: admins edit competitions and

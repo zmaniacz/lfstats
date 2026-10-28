@@ -230,7 +230,8 @@ turned up during the migration.
 
 1. **Competitive (league) events.** 2,228 PDF games are legacy `type = 'league'`, staged on
    `sm5_pdf_game` with `legacy_event_id`, `legacy_match_id` and `league_round/match/game`.
-   Build their competitions the way `migrate-legacy-competition.ts` did for the TDF era
+   Built 2026-10-28 by `migrate-legacy-pdf-competition` — see the events doc. Originally:
+   build their competitions the way `migrate-legacy-competition.ts` did for the TDF era
    (teams, rounds, matches, rosters with mercenaries, solo events as `format = 'solo'`), and
    carry the 3 legacy `match_penalties`. Rosters should derive from `sm5_pdf_scorecard`
    (every row has a player, synthetic or real). Planned and in progress in

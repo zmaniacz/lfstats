@@ -1,8 +1,9 @@
 # Legacy Migration — PDF-era Competitive Events (plan)
 
-> **Status: Phases 1–2 done; migrations 0061–0062 applied to `lfstats_modern` 2026-10-28.**
-> No competition data has been written. Figures below come from read-only queries against
-> legacy `lfstats` and `lfstats_modern` on that date.
+> **Status: Phases 1–3 done 2026-10-28.** Migrations 0061–0062 are applied and all 34 PDF-era
+> events are built in `lfstats_modern` — see [Built](#built-phase-3). Still open: ECT 5's
+> matches (Phase 4), teams for the four shell events (Phase 5), closing the script (Phase 7).
+> Inventory figures come from read-only queries against both databases on that date.
 
 The PDF-era games are in modern as social `sm5_pdf` games
 ([Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)). This phase rebuilds the
@@ -52,7 +53,7 @@ duplicates and 8 placeholder games ("Fake1", "Dummy Game"). None is in a competi
 | Item                                      | Legacy                                     | Modern today                                                      | Plan                                  |
 | ----------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------- |
 | Player / team penalties on PDF games      | 3,255 / 27                                 | 3,226 / 23 (dupes + placeholders likely explain the gap — verify) | verify only                           |
-| `match_penalties`                         | 3 rows: JFK −1, −2 (566); FSA −2 (845)     | `competition_team_adjustment` (Phase 2)                           | carry in Phase 3                      |
+| `match_penalties`                         | 3 rows: JFK −1, −2 (566); FSA −2 (845)     | `competition_team_adjustment` (Phase 2)                           | carried (Phase 3)                     |
 | Penalty overrides on **TDF social** games | 2,596 rows, 34 rescinded, 347 with a value | 2,616 rows, **0 rescinded**                                       | separate task (see Phase 6)           |
 | `events.description`, `challonge_link`    | 7 Challonge links, a few descriptions      | —                                                                 | carry onto `competition`              |
 | `event_teams.country_code`                | only Internationals 2017 (8 teams)         | no column                                                         | drop, or put in team name/description |
@@ -92,6 +93,66 @@ Still open from this area:
 - `getNightlyPdfScorecards` (`sm5-pdf.ts`) filters `competition_id IS NULL`, so these games
   drop out of the nightly legacy table once assigned — the same as TDF games do.
 
+## Built (Phase 3)
+
+```
+pnpm --filter @lfstats/db migrate-legacy-pdf-competition --report
+pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 7 --dry-run [--verbose]
+pnpm --filter @lfstats/db migrate-legacy-pdf-competition --event 7 [--force]
+```
+
+`src/scripts/migrate-legacy-pdf-competition.ts`, configured by `LEGACY_PDF_EVENTS` in
+`legacy-events.ts` (each event's `shape`, `category`, any name override). Applied event by event
+on 2026-10-28: **34 competitions, 2,283 games** (2,268 `sm5_pdf`, 15 TDF), 1,931 PDF match
+games, 3 standings adjustments. Every league PDF game now belongs to a competition.
+
+| Shape     | Events | What came across                                                           |
+| --------- | -----: | -------------------------------------------------------------------------- |
+| `matches` |     29 | teams, rounds, matches, match games, derived rosters, adjustments          |
+| `sides`   |      1 | ECT 5: teams and rosters (100% consistent); no rounds or matches — Phase 4 |
+| `shell`   |      4 | Nationals 2012/2013, Armageddon 2014/2015: competition and games only      |
+
+How the script resolves things the plan left open:
+
+- **Brisbane 2019 Season 2's 15 TDF games** are found by the PDF migration's own rule (a modern
+  game at the same center within two minutes) and their sides mapped by who played: legacy
+  player → `legacy_player_map`, else IPL id → the `sm5_game_team` they played on. All 15 mapped
+  on 7 + 7 players. PDF-era legacy scorecards often have no `team_id`; their side is the `team`
+  text.
+- **Result-only games.** Seven legacy in-match games had no scorecards — hand-entered forfeits
+  (`Fake1`, `G545454`, …) and real games whose PDF was lost (`R1M10G2`, Nats 2016 `G1`). The
+  PDF migration had skipped them as placeholders. Decided 2026-10-28: they come across as
+  `sm5_pdf` games with both team totals and no scorecards, described "Result only — no
+  scorecard in legacy." Each side's total is legacy `score + adj`; an `adj` carrying the
+  10,000 against an eliminated opponent becomes `elimination_bonus`, the rest is `score`.
+- **Names.** Legacy's except: WCT4 → WCT 4, ECT6 → ECT 6, ECT7 → ECT 7, and the two Armageddon
+  events (legacy: "Socials 2014-06-30" / "Socials 2015-06-27").
+- **Roster consistency** is under 90% in nine league seasons (as low as 74.7%, Brisbane 2018
+  Season 1). It is reported as a note, not a warning: legacy's match points independently
+  confirm every side mapping, and players genuinely moved between teams across a season.
+
+### Against legacy's own points
+
+Legacy stored its points for every played match (`matches.team_1_points` / `team_2_points`);
+the dry run scores each match the modern way and compares. Every match agrees except six, and
+every team total (pool rounds plus adjustments) agrees except in LTC Season 1:
+
+| Event                     | Match                     | Legacy | Modern | Why                                                |
+| ------------------------- | ------------------------- | -----: | -----: | -------------------------------------------------- |
+| LTC Season 1              | R3 M1 Fat v Guardians     |    6-0 |    4-2 | legacy ignored a −1,000 penalty deciding game 2    |
+| Internationals 2015       | Finals M10 Lov 1 v Sac B  |    2-4 |    4-2 | side total disagrees with legacy (PDF-era residue) |
+| Detroit Invitational 2018 | Finals M1 M1cro v Beanz   |    4-2 |    6-0 | legacy ignored penalties                           |
+| Detroit Invitational 2018 | Finals M13 Scythe v Baden |    2-4 |    4-2 | legacy's match bonus ignored Scythe's −3,000       |
+| Internationals 2019       | Finals M7                 |    4-2 |    2-0 | legacy has points for two games but only one game  |
+| LLT Season 4              | Finals M3                 |    6-0 |    2-0 | the same                                           |
+
+LTC Season 1 therefore stands Guardians 32 (legacy 30), Team Fat Guy 24 (legacy 26). Modern
+counts penalties in results and the match bonus — the rule the rest of the site uses.
+
+Checked in the browser: Internationals 2014 standings equal legacy's for all 7 teams; Brisbane
+2018 Season 2 shows Team JFK at 17\* with both deductions listed; a result-only game page
+renders its two totals with empty scoreboards; a shell event's standings say no teams yet.
+
 ## Phases
 
 1. **Schema + queries** — done, see above. Apply migration 0061 with `pnpm db:migrate`.
@@ -100,7 +161,8 @@ Still open from this area:
    whole-competition standings, listed under the standings table, and edited on the admin Teams
    page. Phase 3 writes the 3 legacy `match_penalties` there (`type` and `description` joined
    into `reason`).
-3. **`migrate-legacy-pdf-competition` script** — modelled on `migrate-legacy-competition.ts`,
+3. **Done** — see [Built](#built-phase-3). The original plan for it:
+   **`migrate-legacy-pdf-competition` script** — modelled on `migrate-legacy-competition.ts`,
    own config entries in `legacy-events.ts` (new `LEGACY_PDF_EVENTS` list), `--report`,
    `--dry-run`, `--event`, `--all`, `--force`; writes guarded the same way and closed when done.
    - Competition: name, host center (by `CENTER_OVERRIDES` for the legacy-only centers),

@@ -51,6 +51,7 @@ import postgres from "postgres";
 import { inArray, sql } from "drizzle-orm";
 import { initDb } from "../client";
 import { SYNTHETIC_IPL_PREFIX, syntheticIplId } from "../lib/synthetic-ipl-id";
+import { LEGACY_CENTER_OVERRIDES } from "./legacy-events";
 import {
   center,
   game,
@@ -83,21 +84,7 @@ function connectLegacy(): Legacy {
 // Configuration
 // ---------------------------------------------------------------------------
 
-/**
- * Legacy centers with no IPL id, mapped to a modern `country-site` code. Decided with
- * the site owner, 2026-10-17: two are aliases of a live center, the Armageddon events
- * were played at Syracuse, and closed centers take a `-999` site code.
- */
-const CENTER_OVERRIDES: Record<number, string> = {
-  1: "4-3", // Lasertag of Carmichael (Legacy)
-  3: "4-23", // Armageddon 2014 — an event, played at Syracuse
-  9: "4-23", // Armageddon 2015 — an event, played at Syracuse
-  11: "4-999", // Lasertag of Santa Rosa — closed
-  12: "4-6", // Laser Tag of Clinton Township — Detroit
-  13: "4-43", // Invasion Laser Tag - San Marcos
-  19: "4-6", // Detroit Training
-  21: "7-999", // LaserZone Yorkshire — closed
-};
+const CENTER_OVERRIDES = LEGACY_CENTER_OVERRIDES;
 
 /** Modern centers to create when absent. Every other code must already exist. */
 const CREATE_CENTERS: Record<string, string> = {
