@@ -141,7 +141,7 @@ game's winner and its agreement with legacy's totals; and a manual entry that le
 holds as rescinded is created rescinded (`addPenalty()` always creates an active row).
 Team penalties are now filtered by scope too — the pre-close run read them unfiltered.
 
-**Dry run, 2026-10-28** — 1,323 social games, 2,596 legacy / 2,608 modern player
+**Applied 2026-10-28** (figures from the dry run; the write matched them exactly) — 1,323 social games, 2,596 legacy / 2,608 modern player
 penalties, no game excluded for being in a modern competition:
 
 | Change                     | Count | Notes                                                                |
@@ -168,9 +168,13 @@ The 8 unplaced manual entries sit in the same games as 7 of the 10 "modern-only"
 (Scout, Ember, Capsize, Spade, Maximus/Shadow, Roota, Phoenix): legacy has the player under
 a different `ipl_id` than modern, so the `(tdf_filename, ipl_id)` join cannot see they are
 the same penalty. The other three (9yrStrawberry, ˢᵖᵃᵃʳʳᵏʑ ×2) have no legacy entry at
-all. All are left as the TDF has them. Rating replays
-`sm5_game_team.result`, so the five flipped winners need `pnpm --filter @lfstats/db
-recalc-rating` after the write.
+all. All are left as the TDF has them.
+
+After the write, team-game totals across the social scope agreeing with legacy went from
+2,360 to 2,612 (255 newly agreeing, the 3 above newly disagreeing), and a repeat dry run
+reports nothing left to update. Rating replays `sm5_game_team.result`, so `recalc-rating`
+was re-run the same day for the five flipped winners. The social scope is now done too: do
+not run it again.
 
 ## Standings will not match the legacy site exactly
 
