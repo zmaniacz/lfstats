@@ -8,6 +8,11 @@ export function formatScore(n: number | null): string {
   return n.toLocaleString("en-US");
 }
 
+// A signed points delta, e.g. a standings adjustment: "+4", "−2" (true minus sign).
+export function formatSignedPoints(n: number): string {
+  return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0";
+}
+
 export function formatPct(n: number | null): string {
   if (n === null) return EM_DASH;
   return `${(n * 100).toFixed(1)}%`;

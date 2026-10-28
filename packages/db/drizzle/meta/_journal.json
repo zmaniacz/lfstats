@@ -435,6 +435,13 @@
       "when": 1793205533464,
       "tag": "0061_pdf_competition_match_games",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793206178335,
+      "tag": "0062_competition_team_adjustment",
+      "breakpoints": true
     }
   ]
 }

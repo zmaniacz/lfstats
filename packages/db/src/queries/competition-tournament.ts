@@ -6,6 +6,7 @@ import { SYNTHETIC_IPL_PREFIX } from "../lib/synthetic-ipl-id";
 import {
   competitionTeam,
   competitionTeamPlayer,
+  competitionTeamAdjustment,
   competitionPlayer,
   competitionRound,
   competitionPool,
@@ -51,6 +52,7 @@ import {
   compareStandings,
   computeTeamStats,
   emptyTeamStats,
+  applyTeamAdjustments,
   sideTeamIds,
   type StandingsGameRow,
 } from "../lib/match-points";
@@ -611,6 +613,81 @@ export async function getCompetitionTeamResultsByColor(
  * reported as a return value the caller can display, not a throw.
  */
 export type RosterMutationResult = { ok: true } | { ok: false; error: string };
+
+// ---------------------------------------------------------------------------
+// Standings adjustments
+// ---------------------------------------------------------------------------
+
+export type CompetitionTeamAdjustment = {
+  id: string;
+  teamId: string;
+  teamName: string;
+  points: number;
+  reason: string;
+  createdAt: Date;
+};
+
+export async function getCompetitionTeamAdjustments(
+  competitionId: string,
+): Promise<CompetitionTeamAdjustment[]> {
+  return db
+    .select({
+      id: competitionTeamAdjustment.id,
+      teamId: competitionTeamAdjustment.teamId,
+      teamName: competitionTeam.name,
+      points: competitionTeamAdjustment.points,
+      reason: competitionTeamAdjustment.reason,
+      createdAt: competitionTeamAdjustment.createdAt,
+    })
+    .from(competitionTeamAdjustment)
+    .innerJoin(competitionTeam, eq(competitionTeam.id, competitionTeamAdjustment.teamId))
+    .where(eq(competitionTeamAdjustment.competitionId, competitionId))
+    .orderBy(asc(competitionTeam.name), asc(competitionTeamAdjustment.createdAt));
+}
+
+export async function addCompetitionTeamAdjustment(data: {
+  competitionId: string;
+  teamId: string;
+  points: number;
+  reason: string;
+}): Promise<RosterMutationResult> {
+  const reason = data.reason.trim();
+  if (!Number.isInteger(data.points) || data.points === 0) {
+    return { ok: false, error: "Points must be a whole number other than 0." };
+  }
+  if (!reason) return { ok: false, error: "Give a reason for the adjustment." };
+  const [team] = await db
+    .select({ id: competitionTeam.id })
+    .from(competitionTeam)
+    .where(
+      and(
+        eq(competitionTeam.id, data.teamId),
+        eq(competitionTeam.competitionId, data.competitionId),
+      ),
+    );
+  if (!team) return { ok: false, error: "That team is not in this competition." };
+  await db.insert(competitionTeamAdjustment).values({
+    competitionId: data.competitionId,
+    teamId: data.teamId,
+    points: data.points,
+    reason,
+  });
+  return { ok: true };
+}
+
+export async function deleteCompetitionTeamAdjustment(
+  competitionId: string,
+  id: string,
+): Promise<void> {
+  await db
+    .delete(competitionTeamAdjustment)
+    .where(
+      and(
+        eq(competitionTeamAdjustment.id, id),
+        eq(competitionTeamAdjustment.competitionId, competitionId),
+      ),
+    );
+}
 
 // A player may only be a non-mercenary roster member of one team per
 // competition (mercenary appearances on other teams are unrestricted).
@@ -1737,6 +1814,9 @@ export type CompetitionStandingsRow = {
   // they faced (see getPartnerScoreTotals). Otherwise the side's team score for and against.
   scoreFor: number;
   scoreAgainst: number;
+  // Net competition_team_adjustment points, already included in matchPoints. Always 0 on a
+  // single round's or pool's standings, which adjustments don't apply to.
+  adjustmentPoints: number;
 };
 
 // Trios/duos tiebreak totals, keyed by competition team id. A trio's (or duo's) score is the sum
@@ -1863,6 +1943,10 @@ export async function getCompetitionStandings(
       s.scoreFor = own.scoreFor;
       s.scoreAgainst = own.scoreAgainst;
     }
+  }
+  // Adjustments belong to no round, so they count on the whole-competition standings only.
+  if (!roundId && !poolId) {
+    applyTeamAdjustments(stats, await getCompetitionTeamAdjustments(competitionId));
   }
 
   // Fetch team names (including 0-game teams). For a specific pool, only include teams

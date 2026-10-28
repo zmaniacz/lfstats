@@ -317,6 +317,31 @@ export const competitionTeamPlayer = pgTable(
 );
 
 /**
+ * A standings-point adjustment to one team, outside any match: a deduction for a referee
+ * no-show, a sanction, a correction. Summed into the team's points on the whole-competition
+ * standings (not the per-round views, since it belongs to no round). `points` is signed.
+ */
+export const competitionTeamAdjustment = pgTable(
+  "competition_team_adjustment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    competitionId: uuid("competition_id")
+      .notNull()
+      .references(() => competition.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => competitionTeam.id, { onDelete: "cascade" }),
+    points: integer("points").notNull(),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("competition_team_adjustment_competition_id_idx").on(t.competitionId),
+    check("competition_team_adjustment_points_nonzero_check", sql`${t.points} <> 0`),
+  ],
+);
+
+/**
  * Enrollment in a solo-format competition, and the player's handicap for it. Only enrolled
  * players appear in solo standings; the handicap is added to each of their counted games'
  * MVP when computing Total MVP, and may be negative. `playerId` is NOT NULL, so guest

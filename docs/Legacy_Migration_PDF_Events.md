@@ -1,6 +1,6 @@
 # Legacy Migration — PDF-era Competitive Events (plan)
 
-> **Status: Phase 1 (schema + queries) done; migration 0061 applied to `lfstats_modern` 2026-10-28.**
+> **Status: Phases 1–2 done; migrations 0061–0062 applied to `lfstats_modern` 2026-10-28.**
 > No competition data has been written. Figures below come from read-only queries against
 > legacy `lfstats` and `lfstats_modern` on that date.
 
@@ -52,7 +52,7 @@ duplicates and 8 placeholder games ("Fake1", "Dummy Game"). None is in a competi
 | Item                                      | Legacy                                     | Modern today                                                      | Plan                                  |
 | ----------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------- |
 | Player / team penalties on PDF games      | 3,255 / 27                                 | 3,226 / 23 (dupes + placeholders likely explain the gap — verify) | verify only                           |
-| `match_penalties`                         | 3 rows: JFK −1, −2 (566); FSA −2 (845)     | **no table**                                                      | new standings-adjustment table        |
+| `match_penalties`                         | 3 rows: JFK −1, −2 (566); FSA −2 (845)     | `competition_team_adjustment` (Phase 2)                           | carry in Phase 3                      |
 | Penalty overrides on **TDF social** games | 2,596 rows, 34 rescinded, 347 with a value | 2,616 rows, **0 rescinded**                                       | separate task (see Phase 6)           |
 | `events.description`, `challonge_link`    | 7 Challonge links, a few descriptions      | —                                                                 | carry onto `competition`              |
 | `event_teams.country_code`                | only Internationals 2017 (8 teams)         | no column                                                         | drop, or put in team name/description |
@@ -95,9 +95,11 @@ Still open from this area:
 ## Phases
 
 1. **Schema + queries** — done, see above. Apply migration 0061 with `pnpm db:migrate`.
-2. **Standings adjustments** — `competition_team_adjustment(competition_id, team_id, points,
-type, description)`, summed into standings and shown on the standings page. Carries the 3
-   `match_penalties`, and is generally useful (forfeit penalties, ref no-shows).
+2. **Standings adjustments** — done (migration 0062, applied 2026-10-28):
+   `competition_team_adjustment(competition_id, team_id, points, reason)`, added to the
+   whole-competition standings, listed under the standings table, and edited on the admin Teams
+   page. Phase 3 writes the 3 legacy `match_penalties` there (`type` and `description` joined
+   into `reason`).
 3. **`migrate-legacy-pdf-competition` script** — modelled on `migrate-legacy-competition.ts`,
    own config entries in `legacy-events.ts` (new `LEGACY_PDF_EVENTS` list), `--report`,
    `--dry-run`, `--event`, `--all`, `--force`; writes guarded the same way and closed when done.

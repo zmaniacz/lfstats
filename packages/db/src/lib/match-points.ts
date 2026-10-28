@@ -47,6 +47,8 @@ export type TeamStatsAccumulator = {
   teamEliminations: number;
   scoreFor: number;
   scoreAgainst: number;
+  // Net standings adjustments (competition_team_adjustment), already included in matchPoints.
+  adjustmentPoints: number;
 };
 
 export function emptyTeamStats(): TeamStatsAccumulator {
@@ -61,6 +63,7 @@ export function emptyTeamStats(): TeamStatsAccumulator {
     teamEliminations: 0,
     scoreFor: 0,
     scoreAgainst: 0,
+    adjustmentPoints: 0,
   };
 }
 
@@ -164,6 +167,22 @@ export function computeTeamStats(gameRows: StandingsGameRow[]): Map<string, Team
   }
 
   return stats;
+}
+
+/**
+ * Folds standings adjustments into each team's points. An adjusted team with no games yet gets
+ * a stats entry of its own, so a deduction still shows before it has played.
+ */
+export function applyTeamAdjustments(
+  stats: Map<string, TeamStatsAccumulator>,
+  adjustments: { teamId: string; points: number }[],
+): void {
+  for (const a of adjustments) {
+    if (!stats.has(a.teamId)) stats.set(a.teamId, emptyTeamStats());
+    const t = stats.get(a.teamId)!;
+    t.matchPoints += a.points;
+    t.adjustmentPoints += a.points;
+  }
 }
 
 function scoreRatio(s: { scoreFor: number; scoreAgainst: number }): number {

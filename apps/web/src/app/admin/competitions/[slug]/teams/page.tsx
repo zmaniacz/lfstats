@@ -5,8 +5,14 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCompetitionBySlug, getCompetitionTeams } from "@lfstats/db";
+import {
+  getCompetitionBySlug,
+  getCompetitionTeamAdjustments,
+  getCompetitionTeams,
+} from "@lfstats/db";
 import { CompetitionTeamForm } from "@/components/admin/competition/CompetitionTeamForm";
+import { TeamAdjustmentForm } from "@/components/admin/competition/TeamAdjustmentForm";
+import { formatSignedPoints } from "@/lib/format";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
 import {
@@ -17,9 +23,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { createCompetitionTeamAction, deleteCompetitionTeamAction } from "./actions";
+import {
+  addTeamAdjustmentAction,
+  createCompetitionTeamAction,
+  deleteCompetitionTeamAction,
+  deleteTeamAdjustmentAction,
+} from "./actions";
 
 const getCompetition = cache(getCompetitionBySlug);
 
@@ -44,10 +55,15 @@ export default async function CompetitionTeamsPage({
   const comp = await getCompetition(slug);
   if (!comp) notFound();
 
-  const teams = await getCompetitionTeams(comp.id);
+  const [teams, adjustments] = await Promise.all([
+    getCompetitionTeams(comp.id),
+    getCompetitionTeamAdjustments(comp.id),
+  ]);
 
   const boundCreate = createCompetitionTeamAction.bind(null, comp.id);
   const boundDelete = deleteCompetitionTeamAction.bind(null, comp.id);
+  const boundAddAdjustment = addTeamAdjustmentAction.bind(null, comp.id);
+  const boundDeleteAdjustment = deleteTeamAdjustmentAction.bind(null, comp.id);
 
   return (
     <div className="space-y-6">
@@ -131,6 +147,57 @@ export default async function CompetitionTeamsPage({
           )}
         </CardContent>
       </Card>
+
+      {teams.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Standings Adjustments</CardTitle>
+            <CardDescription>
+              Points added to or taken from a team outside any match — a missed referee duty, a
+              sanction, a correction. They count on the overall standings only, not on a single
+              round&apos;s.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <TeamAdjustmentForm
+              teams={teams.map((t) => ({ id: t.id, name: t.name }))}
+              action={boundAddAdjustment}
+            />
+            {adjustments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No adjustments.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-right">Points</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adjustments.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">{a.teamName}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatSignedPoints(a.points)}
+                      </TableCell>
+                      <TableCell>{a.reason}</TableCell>
+                      <TableCell className="text-right">
+                        <DeleteEntityButton
+                          id={a.id}
+                          label={`the ${formatSignedPoints(a.points)} adjustment for "${a.teamName}"`}
+                          action={boundDeleteAdjustment}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

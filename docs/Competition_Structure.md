@@ -165,6 +165,27 @@ do not use this table; solo competitions do not use `competition_team_player`.
 
 **Unique:** `(competition_id, player_id)` · **Index:** `player_id`
 
+### `competition_team_adjustment`
+
+A standings-point adjustment to one team, outside any match: a deduction for a missed referee
+duty, a sanction, a correction. Also where legacy `match_penalties` land.
+
+| Column           | Type                       | Notes                       |
+| ---------------- | -------------------------- | --------------------------- |
+| `id`             | uuid PK                    |                             |
+| `competition_id` | uuid FK → competition      | cascade delete              |
+| `team_id`        | uuid FK → competition_team | cascade delete              |
+| `points`         | integer                    | signed; a CHECK forbids `0` |
+| `reason`         | text                       | shown on the standings page |
+| `created_at`     | timestamp                  | defaults to now             |
+
+**Index:** `competition_id`
+
+Adjustments belong to no round, so they count only on the **whole-competition** standings (no
+round or pool selected) — see [Points Calculation](#points-calculation). Admins add and remove
+them on `/admin/competitions/[slug]/teams`; `addCompetitionTeamAdjustment()` refuses a team from
+another competition, a zero or fractional value, and an empty reason.
+
 ### `competition_round`
 
 A named phase of a competition (e.g. "Round 1", "Quarterfinals"). Rounds are ordered by `round_number`.
@@ -343,6 +364,11 @@ Points are derived at query time — never stored. For each match:
 5. **Incomplete matches.** With fewer than 2 games recorded, `matchWinner` is `"incomplete"` and both sides get 0 match points. Game points already earned still count. Once the competition's `state` is `completed`, a match left with a **single** game (a one-game round, or a second game that was never played) is final instead: `matchWinner` takes that game's result, so the match card shows a winner rather than "In progress". It still earns no match bonus, so standings are unchanged.
 6. **Round multiplier.** Both game points and the match bonus are multiplied by `competition_round.multiplier` (default `1`), so a round can be made worth double or more. Win/loss/draw _counts_ are never scaled — only points. Admins set the multiplier per round in `/admin/competitions/[slug]/rounds`; a non-1 multiplier is surfaced as a "N× points" badge on the round.
 7. Sum per team across all matches in a round or the full competition for standings.
+8. **Adjustments.** On the whole-competition standings only, each team's
+   `competition_team_adjustment.points` are added to its points (`applyTeamAdjustments()` in
+   `lib/match-points.ts`) before sorting, and reported separately as `adjustmentPoints`. The
+   standings table marks an adjusted total with `*` and lists every adjustment under the table.
+   A single round's or pool's standings ignore them.
 
 Implemented in `packages/db/src/queries/competition-tournament.ts`.
 
