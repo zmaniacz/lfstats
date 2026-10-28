@@ -195,13 +195,18 @@ does it in one transaction, with both `player` rows locked:
 - `legacy_player_map` rows → the target, with `synthetic = false`.
 - Favorites and POV `game_video` rows follow the player, except where the target already has the
   same one (those duplicates cascade away with the synthetic row).
+- `competition_player` and `competition_team_player` rows — the PDF-era event rebuild
+  ([Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md)) rosters synthetic players —
+  follow the player the same way: where the target is already entered in that competition or on
+  that team, the target's row stands.
 - The target's `first_seen_at` moves earlier if the legacy games predate it. Its
   `current_callsign` is unchanged.
 - The synthetic `player` row is deleted.
 
 It refuses a source that isn't synthetic, a target that is, and — as a guard on the assumption that
-synthetic players exist only in PDF-era data — a source with any modern scorecard, referee or
-competition row. Nothing needs recomputing afterwards: PDF games feed no rating or aggregate.
+synthetic players play only in PDF-era games — a source with any modern scorecard or referee
+row. It also refuses when the two players are on different teams of the same competition, naming
+it, since merging would put one person on two rosters. Nothing needs recomputing afterwards: PDF games feed no rating or aggregate.
 After the merge the browser goes to the target's page; the synthetic URL is gone.
 
 There is no undo in the app. To reverse one by hand, re-create the synthetic player and point its
