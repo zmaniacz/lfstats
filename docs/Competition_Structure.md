@@ -280,7 +280,21 @@ Links an ingested game to a match slot and records which color each team played 
 
 ### `competition_game_side` / `competition_scorecard` (views)
 
-`competition_game_side` is `sm5_game_team` ∪ `sm5_pdf_game_team`, restricted to what match points and the match views need: `id`, `game_id`, `score`, `elimination_bonus`, `penalty_score`, `result`, `eliminated`, `colour_enum`. `competition_scorecard` is `sm5_scorecard` ∪ `sm5_pdf_scorecard` restricted to `id`, `game_id`, `team_id`, `player_id`, `is_mercenary` — enough for roster building (who played for which team). Per-player competition stats (top players, position leaders, team player stats) still read `sm5_scorecard`, so PDF-era games are absent from them.
+`competition_game_side` is `sm5_game_team` ∪ `sm5_pdf_game_team`, restricted to what match points and the match views need: `id`, `game_id`, `score`, `elimination_bonus`, `penalty_score`, `result`, `eliminated`, `colour_enum`. `competition_scorecard` is `sm5_scorecard` ∪ `sm5_pdf_scorecard` restricted to `id`, `game_id`, `team_id`, `player_id`, `is_mercenary` — enough for roster building (who played for which team).
+
+**Per-player stats in PDF-era competitions.** The per-player queries in `competition-tournament.ts` (team player stats, top players, the position tables and the leaderboards) read `sm5_scorecard` only. A competition holding any `sm5_pdf` game (`competitionHasLegacyGames`) is served instead by `competition-legacy.ts`, which reads both scorecard kinds in one row shape; the page picks the query, so TDF competitions take exactly the path they always did. PDF scorecards hold end-of-game totals only, so:
+
+| Stat                                                                                   | PDF-era competition                                                                        |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Games, score, accuracy, hit diff, medic hits, times hit, survival, penalties, win rate | Over every game, TDF and PDF                                                               |
+| Legacy MVP, shown as **MVP\***                                                         | Over PDF games only — a different formula, never averaged with modern MVP                  |
+| Modern MVP, deacs, assists, resets, eliminations, uptime                               | Over TDF games only; hidden when the competition has none (all but Brisbane 2019 Season 2) |
+
+- **Team page** — the stat picker offers MVP\* (the default column, with score) and drops every stat no game in the competition supplies.
+- **Players** (`/players?scope=competition&competition=…`) — one table ranked by MVP\*, with per-position MVP\*, accuracy and win rate; a TDF-games-only "Avg MVP (TDF)" column appears when the competition has TDF games. The per-position detail tables (nukes, rapid fire, uptime …) are left out.
+- **Leaderboards** — position boards rank PDF scorecards by MVP\*; games played, total score and medic hits cover every game. The boards that need the event stream are left out.
+
+Only a single competition's scope reads PDF games. "All competitions", social and all-games scopes stay TDF-only, so PDF games never reach career stats, leaderboards or the rating.
 
 ### `sm5_pdf_scorecard.is_mercenary` (added column)
 

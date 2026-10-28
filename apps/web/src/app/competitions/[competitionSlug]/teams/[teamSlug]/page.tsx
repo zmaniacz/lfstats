@@ -11,11 +11,13 @@ import {
   getCompetitionTeamRoster,
   getTeamGameParticipants,
   getCompetitionTeamPlayerStats,
+  getLegacyCompetitionTeamPlayerStats,
+  competitionHasLegacyGames,
   getCompetitionTeamResultsByColor,
   getCompetitionMatchResults,
   type CompetitionMatchResult,
 } from "@lfstats/db";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { MatchCardSections } from "@/components/competitions/MatchCardSections";
 import { TeamPlayerComparisonTable } from "@/components/competitions/TeamPlayerComparisonTable";
@@ -61,10 +63,14 @@ export default async function CompetitionTeamPage({
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
 
+  // A competition with PDF-era games reads both scorecard kinds; every other competition keeps
+  // the TDF-only query.
+  const legacy = await competitionHasLegacyGames(competition.id);
+
   const [roster, unassigned, playerStats, resultsByColor, matchResults] = await Promise.all([
     getCompetitionTeamRoster(team.id),
     getTeamGameParticipants(team.id),
-    getCompetitionTeamPlayerStats(team.id),
+    legacy ? getLegacyCompetitionTeamPlayerStats(team.id) : getCompetitionTeamPlayerStats(team.id),
     getCompetitionTeamResultsByColor(team.id),
     // "all" so finals matches sit alongside round play in the match list below.
     getCompetitionMatchResults(team.competitionId, undefined, "all"),
@@ -155,9 +161,16 @@ export default async function CompetitionTeamPage({
       <Card>
         <CardHeader>
           <CardTitle>Roster</CardTitle>
+          {legacy && (
+            <CardDescription>
+              Played from printed scorecards, which record end-of-game totals only. MVP* is the
+              legacy formula and is not comparable with modern MVP; stats that need the event stream
+              exist only for TDF games.
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
-          <TeamPlayerComparisonTable rows={rosterRows} stats={playerStats} />
+          <TeamPlayerComparisonTable rows={rosterRows} stats={playerStats} legacy={legacy} />
         </CardContent>
       </Card>
 

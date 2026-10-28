@@ -3,17 +3,26 @@
 
 import { PdfTeamStatsTable } from "@/components/sm5-pdf/PdfTeamStatsTable";
 import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { getLegacyPdfUrl } from "@/lib/tdf";
 import type { PdfGameDetail as PdfGameDetailData } from "@lfstats/db";
-import { Info } from "lucide-react";
+import { FileX, Info } from "lucide-react";
 
 /**
  * A legacy PDF-era game: end-of-game scorecards only, so there is no momentum, replay or
  * timeline, and nothing here is editable yet.
  */
 export function PdfGameDetail({ game }: { game: PdfGameDetailData }) {
+  // Result-only games: legacy kept the sides' scores but no scorecard, so there are no players.
+  const resultOnly = game.teams.every((t) => t.players.length === 0);
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
@@ -90,10 +99,25 @@ export function PdfGameDetail({ game }: { game: PdfGameDetailData }) {
                 ))}
               </ul>
             )}
-            <PdfTeamStatsTable team={team} />
+            {!resultOnly && <PdfTeamStatsTable team={team} />}
           </section>
         );
       })}
+
+      {resultOnly && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FileX />
+            </EmptyMedia>
+            <EmptyTitle>No scorecards for this game</EmptyTitle>
+            <EmptyDescription>
+              The legacy site kept only this game&apos;s result and each side&apos;s score, so there
+              are no player stats, hits or MVP to show.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
     </div>
   );
 }

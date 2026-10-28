@@ -143,7 +143,7 @@ function teamGameTeamIdsSql(teamId: string | Column): SQL {
 // True when a scorecard counts for a competition team: it is on the team's side, and — for a
 // trio or duo — the player is not rostered on one of that match's partner teams instead. For
 // an ordinary team the partners are null, so this reduces to "on the team's side".
-function teamScorecardSql(
+export function teamScorecardSql(
   teamId: string | Column,
   scTeamId: SQL | Column,
   scPlayerId: SQL | Column,
@@ -485,16 +485,22 @@ export type CompetitionTeamPlayerStat = {
   /** The position these stats cover, or null for the player's games across all positions. */
   position: number | null;
   gamesPlayed: number;
-  avgMvp: number;
+  /**
+   * Modern MVP. Event-derived stats like this one are null when every game is PDF-era, and in
+   * a competition mixing the two they average over the TDF games only.
+   */
+  avgMvp: number | null;
+  /** The legacy site's MVP, over PDF-era games only; null when there are none. */
+  avgLegacyMvp: number | null;
   avgScore: number;
   avgHitDiff: number;
   avgMedicHits: number;
   avgAccuracy: number;
-  avgDeactivations: number;
-  avgAssists: number;
+  avgDeactivations: number | null;
+  avgAssists: number | null;
   avgTimesHit: number;
-  avgResets: number;
-  avgEliminations: number;
+  avgResets: number | null;
+  avgEliminations: number | null;
   winRate: number;
   survivalRate: number;
   avgUptimePct: number | null;
@@ -557,6 +563,7 @@ export async function getCompetitionTeamPlayerStats(
   return rows.map((r) => ({
     ...r,
     playerId: r.playerId!,
+    avgLegacyMvp: null,
     avgUptimePct: r.avgUptimePct === null ? null : Number(r.avgUptimePct),
   }));
 }
@@ -2988,40 +2995,59 @@ function scopeWhereForAlias(scopeFilter: GameScopeFilter): SQL {
  * Mercenaries are excluded unless `showMercs`. Returns null when a specific
  * competition's round selection is empty (caller should return no rows).
  */
-function leaderboardScopeConditions(
-  scopeFilter: GameScopeFilter,
+/**
+ * The non-excluded games a competition-scoped leaderboard covers, as a `SELECT game_id`
+ * subquery, or null when the round toggles select nothing. Shared with the PDF-era variants in
+ * competition-legacy.ts, which read a different scorecard source over the same games.
+ */
+export function competitionScopeGameIdsSql(
+  competitionId: string,
+  format: CompetitionFormat | undefined,
   options: CompetitionTopPlayersOptions,
-  extra: SQL[] = [],
-): SQL[] | null {
-  const { showPool = true, showFinals = false, showMercs = false } = options;
-
-  let gameSelect: SQL;
-  if (scopeFilter.scope === "competition" && scopeFilter.competitionId) {
-    if (scopeFilter.format && !hasMatchStructure(scopeFilter.format)) {
-      // No matches or rounds: take every non-excluded game assigned to the competition.
-      // Covers both `solo` and `none` — neither has a match structure to select through.
-      // Deliberately does not consult roundTypeSqlCondition — that returns null when both
-      // toggles are off, which would blank such a leaderboard for no reason.
-      gameSelect = sql`${sm5GameTeam.gameId} IN (
+): SQL | null {
+  const { showPool = true, showFinals = false } = options;
+  if (format && !hasMatchStructure(format)) {
+    // No matches or rounds: take every non-excluded game assigned to the competition.
+    // Covers both `solo` and `none` — neither has a match structure to select through.
+    // Deliberately does not consult roundTypeSqlCondition — that returns null when both
+    // toggles are off, which would blank such a leaderboard for no reason.
+    return sql`
         SELECT g.id
         FROM game g
-        WHERE g.competition_id = ${scopeFilter.competitionId}
+        WHERE g.competition_id = ${competitionId}
           AND g.exclude = false
-      )`;
-    } else {
-      const roundTypeCondition = roundTypeSqlCondition(showPool, showFinals);
-      if (!roundTypeCondition) return null;
-      gameSelect = sql`${sm5GameTeam.gameId} IN (
+      `;
+  }
+  const roundTypeCondition = roundTypeSqlCondition(showPool, showFinals);
+  if (!roundTypeCondition) return null;
+  return sql`
         SELECT cmg.game_id
         FROM competition_match_game cmg
         JOIN competition_match cm ON cm.id = cmg.match_id
         JOIN competition_round cr ON cr.id = cm.round_id
         JOIN game g ON g.id = cmg.game_id
-        WHERE cm.competition_id = ${scopeFilter.competitionId}
+        WHERE cm.competition_id = ${competitionId}
           AND ${roundTypeCondition}
           AND g.exclude = false
-      )`;
-    }
+      `;
+}
+
+function leaderboardScopeConditions(
+  scopeFilter: GameScopeFilter,
+  options: CompetitionTopPlayersOptions,
+  extra: SQL[] = [],
+): SQL[] | null {
+  const { showMercs = false } = options;
+
+  let gameSelect: SQL;
+  if (scopeFilter.scope === "competition" && scopeFilter.competitionId) {
+    const gameIds = competitionScopeGameIdsSql(
+      scopeFilter.competitionId,
+      scopeFilter.format,
+      options,
+    );
+    if (!gameIds) return null;
+    gameSelect = sql`${sm5GameTeam.gameId} IN (${gameIds})`;
   } else {
     gameSelect = sql`${sm5GameTeam.gameId} IN (
       SELECT g.id FROM game g WHERE g.exclude = false AND (${scopeWhereForAlias(scopeFilter)})
