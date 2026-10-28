@@ -830,6 +830,7 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
   "cursor": null,
   "fields": ["game_slug", "start_time", "center", "competition", "outcome", "margin", "teams"],
   "include_rosters": false, // true adds players[] (ipl_id, callsign, position, score, mvp) to each team
+  "legacy": "include", // legacy PDF-era SM5 games: "include" (default) | "exclude" | "only"
 }
 ```
 
@@ -838,6 +839,7 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
   "data": [
     {
       "game_slug": "4-19-20260614193012",
+      "legacy": false, // always returned, like game_slug
       "start_time": "2026-06-14T19:30:12",
       "center": { "slug": "4-19", "name": "Loveland" },
       "competition": {
@@ -914,6 +916,15 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
 - **Pagination** is keyset pagination on `(sort key, game.id)`, with an opaque cursor. A cursor
   only works with the `sort` that produced it. Sorting by margin leaves out games with fewer than
   two scored teams, with a warning.
+- **Legacy games** (`legacy: true`) are the 2012–2020 SM5 games migrated from printed PDF
+  scorecards ([Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)). They are listed
+  and searchable but never aggregated: `player_stats`, `leaderboard` and the rating never read
+  them, whatever the scope. `search_games` includes them by default (`legacy: "include"`);
+  `"exclude"` and `"only"` narrow it, and `"only"` is a `400` for Laserball. They are all social,
+  so `competition` is `null`. Players with no recorded IPL id (synthetic `L-…` players) appear
+  with `ipl_id: null`, as guests do, and cannot be passed to `players.include`. In rosters,
+  `mvp` is `null` and `legacy_mvp` carries the old site's MVP. Any page holding a legacy game
+  carries a warning saying so.
 - **Laserball** (`scope.game_type: "lb"`):
   - Margins are goal differences.
   - Teams carry only `name`, `colour_enum`, `score` and `result`.
@@ -992,7 +1003,7 @@ the full standard stat set, which is small enough for one game.
 
 Implemented details:
 
-- **Header:** `game_slug`, `game_type`, `start_time`, `center`, `competition` (with round and
+- **Header:** `game_slug`, `game_type`, `legacy`, `start_time`, `center`, `competition` (with round and
   match when scheduled, otherwise `null` for those parts), `outcome`, `excluded`, `description`,
   `scheduled_length` and `actual_length` (`m:ss`), `tdf_url`, `web_url`.
 - **Teams** are the same objects as in `search_games`, each with every player's `ipl_id`,
@@ -1007,6 +1018,12 @@ Implemented details:
   each with `type`, `description`, `score_value`, `mvp_value` (null for team penalties), `time`
   and `rescinded`.
 - **Guests** appear with `ipl_id: null`, as in the existing route.
+- **Legacy games** resolve with `game_type: "sm5"`, `legacy: true`, `competition: null`,
+  `tdf_url: null` and a warning. Players carry the printed scorecard's end-of-game totals: no
+  `eliminations`, `assists` or `uptime_pct`; `resupplies` (the scorecard's count, given or
+  received by position) in place of `resupplies_given`; `mvp: null` and `legacy_mvp` (the old
+  site's formula, not comparable with `mvp`). Penalties have `time: null`, and
+  `include_mvp_components` is ignored with a warning.
 - **Excluded games** still resolve, but carry `"excluded": true` and a warning so the model does
   not quote them as typical.
 - **Laserball** games return:

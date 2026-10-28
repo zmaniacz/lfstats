@@ -229,6 +229,24 @@ describe("scopeGameConditions", () => {
     assert.deepEqual(params, ["sm5", false]);
   });
 
+  it("leaves legacy PDF-era games out unless search asks for them", () => {
+    const scope = resolved(normalize({}));
+    assert.deepEqual(render(scopeGameConditions(scope, "include")).params.slice(0, 2), [
+      "sm5",
+      "sm5_pdf",
+    ]);
+    assert.equal(render(scopeGameConditions(scope, "only")).params[0], "sm5_pdf");
+    assert.equal(render(scopeGameConditions(scope, "exclude")).params[0], "sm5");
+  });
+
+  it("never adds legacy games to Laserball", () => {
+    const { params } = render(
+      scopeGameConditions(resolved(normalize({ game_type: "lb" })), "include"),
+    );
+    assert.equal(params[0], "lb");
+    assert.ok(!params.includes("sm5_pdf"));
+  });
+
   it("keeps excluded games only when asked", () => {
     const { sql } = render(scopeGameConditions(resolved(normalize({ include_excluded: true }))));
     assert.doesNotMatch(sql, /exclude/);

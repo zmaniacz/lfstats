@@ -25,13 +25,16 @@ games without opting in. Table reference: [Core_Schema.md — PDF-era Tables](Co
 
 They are **shown, never aggregated**:
 
-| Surface                                     | PDF games                                                     |
-| ------------------------------------------- | ------------------------------------------------------------- |
-| Game page `/games/{slug}`                   | Yes — `PdfGameDetail`, scoreboard + hit matrix + legacy MVP   |
-| Game lists (`getGamesList`)                 | Yes, badged "Legacy"                                          |
-| Player page                                 | A separate "Legacy games" card; synthetic players get only it |
-| Career stats, leaderboards, rating, nightly | No                                                            |
-| Query API / MCP, `/api/games` export        | No — `game_not_found`, and synthetic players are not resolved |
+| Surface                                 | PDF games                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Game page `/games/{slug}`               | Yes — `PdfGameDetail`, scoreboard + hit matrix + legacy MVP                                                        |
+| Game lists (`getGamesList`)             | Yes, badged "Legacy"                                                                                               |
+| Player page                             | In the Games tab's game log, badged "Legacy", with the legacy MVP; never in the charts or head-to-head             |
+| Nightly `/nightly`                      | Their dates are listed; a "Legacy scorecards" table and the games list show them; the summaries stay modern-only   |
+| Career stats, leaderboards, rating      | No                                                                                                                 |
+| Query API / MCP `search_games`, `games` | Yes, flagged `legacy: true` (`search_games` `legacy`: include/exclude/only); synthetic players have `ipl_id: null` |
+| Query API / MCP aggregates              | No — `player_stats` and `leaderboard` never read them                                                              |
+| `/api/games` export                     | No — there is no TDF to export                                                                                     |
 
 ## Running it
 

@@ -17,6 +17,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { eq, and, asc, desc, count, sql, inArray } from "drizzle-orm";
 import type { MvpBoxPlotItem } from "./centers";
 import type { GameTeamSummary, MvpComponentRow } from "./games";
+import type { LegacyMvpComponent } from "./sm5-pdf";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type PlayerDetail = {
@@ -255,6 +256,13 @@ export type PlayerGameListItem = {
   teamColourEnum: number;
   callsign: string;
   mvpComponents: MvpComponentRow[];
+  /**
+   * A legacy PDF-era game (game.type = "sm5_pdf"): listed alongside modern games but
+   * never aggregated. `mvpPoints` is then the legacy site's MVP, broken down in
+   * `legacyMvp`, and `mvpComponents` is empty.
+   */
+  legacy: boolean;
+  legacyMvp: LegacyMvpComponent[];
 };
 
 export type PlayerMedicHitsItem = {
@@ -471,6 +479,8 @@ export async function getPlayerGames(
     teamColourEnum: row.teamColourEnum,
     teams: teamsByGame.get(row.id) ?? [],
     mvpComponents: mvpByScorecard.get(row.scorecardId) ?? [],
+    legacy: false,
+    legacyMvp: [],
   }));
 }
 

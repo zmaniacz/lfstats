@@ -8,7 +8,7 @@ import { ExternalLink } from "lucide-react";
 import {
   getPlayerByIplId,
   getPlayerCallsignHistory,
-  getPlayerPdfGames,
+  getPlayerPdfGameList,
   getPlayerVideos,
   isPlayerFavorite,
   isSyntheticIplId,
@@ -27,7 +27,8 @@ import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
 import { MergeLegacyPlayer } from "@/components/players/MergeLegacyPlayer";
-import { PlayerLegacyGames } from "@/components/players/PlayerLegacyGames";
+import { PlayerGamesTable } from "@/components/players/PlayerGamesTable";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerVideos } from "@/components/players/PlayerVideos";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 
@@ -71,16 +72,16 @@ export default async function PlayerDetailPage({
   ]);
   if (!playerDetail) notFound();
 
-  const [callsignHistory, favorited, videos, legacyGames] = await Promise.all([
+  const [callsignHistory, favorited, videos] = await Promise.all([
     getPlayerCallsignHistory(playerDetail.id),
     session?.user?.id ? isPlayerFavorite(session.user.id, playerDetail.id) : Promise.resolve(false),
     getPlayerVideos(playerDetail.id),
-    getPlayerPdfGames(playerDetail.id),
   ]);
 
   // A legacy PDF-era player with no known IPL id has only legacy games: no modern stats,
   // no filters and no iPlayLaserforce profile.
   if (isSyntheticIplId(playerDetail.iplId)) {
+    const legacyGames = await getPlayerPdfGameList(playerDetail.id);
     const aliases = callsignHistory.filter((h) => h.callsign !== playerDetail.currentCallsign);
     const canMerge = (session?.user?.roles ?? []).some(
       (r) => r.role === "superAdmin" || r.role === "admin",
@@ -99,7 +100,18 @@ export default async function PlayerDetailPage({
             are known.
           </p>
         </div>
-        <PlayerLegacyGames games={legacyGames} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Games</CardTitle>
+            <CardDescription>
+              Legacy games from printed scorecards: end-of-game totals only, and MVP uses the legacy
+              formula. They don&apos;t count toward any stats or the rating.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PlayerGamesTable games={legacyGames} />
+          </CardContent>
+        </Card>
         {canMerge && (
           <MergeLegacyPlayer
             sourceCallsign={playerDetail.currentCallsign}
@@ -186,8 +198,6 @@ export default async function PlayerDetailPage({
           <PlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
         )}
       </Suspense>
-
-      {gameType === "sm5" && <PlayerLegacyGames games={legacyGames} />}
     </div>
   );
 }
