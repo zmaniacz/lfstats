@@ -100,8 +100,6 @@ export default async function Home() {
             <div className="mb-4">
               <b>To-Do</b>
               <ul className="list-disc pl-6">
-                <li>Migrate legacy (pre-2020) stats to new website</li>
-                <li>Rebuild recent competitions to match legacy</li>
                 <li>Implement Laserball competition tracking</li>
               </ul>
             </div>
