@@ -33,6 +33,8 @@ import { gameScopeConditions, type GameScopeFilter } from "./scope";
 export type GameListFilters = {
   centerId?: string;
   scopeFilter?: GameScopeFilter;
+  /** Narrow to modern ("sm5") or legacy PDF-era ("sm5_pdf") games. Default: both. */
+  gameTypes?: ("sm5" | "sm5_pdf")[];
 };
 
 export type GameTeamSummary = {
@@ -61,7 +63,7 @@ export type GameListItem = {
 function buildGameListConditions(filters: GameListFilters): SQL[] {
   // SM5 games, including legacy PDF-era ones — Laserball lives in the same `game`
   // table (type = "lb").
-  const conditions: SQL[] = [inArray(game.type, ["sm5", "sm5_pdf"])];
+  const conditions: SQL[] = [inArray(game.type, filters.gameTypes ?? ["sm5", "sm5_pdf"])];
   if (filters.scopeFilter) {
     // A game list, not an aggregate: excluded games stay listed.
     conditions.push(...gameScopeConditions(filters.scopeFilter, { includeExcluded: true }));

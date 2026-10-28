@@ -102,6 +102,7 @@ export async function getRecentSocialLbEvents(limit: number): Promise<RecentSoci
     .limit(limit);
 }
 
+/** Dates with social SM5 games at a center, newest first — legacy PDF-era nights included. */
 export async function getGameDatesForCenter(centerId: string): Promise<string[]> {
   const rows = await db
     .selectDistinct({
@@ -110,7 +111,7 @@ export async function getGameDatesForCenter(centerId: string): Promise<string[]>
     .from(game)
     .where(
       and(
-        eq(game.type, "sm5"),
+        inArray(game.type, ["sm5", "sm5_pdf"]),
         eq(game.centerId, centerId),
         isNull(game.competitionId),
         eq(game.exclude, false),

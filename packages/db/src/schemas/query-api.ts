@@ -305,6 +305,12 @@ export const SEARCH_GAMES_FIELDS = [
   "excluded",
   "web_url",
 ] as const;
+/**
+ * Whether search_games returns legacy PDF-era SM5 games (2012–2020, from printed scorecards).
+ * They are listed and searchable but never aggregated: no other endpoint reads them.
+ */
+export const LEGACY_MODES = ["include", "exclude", "only"] as const;
+export type LegacyMode = (typeof LEGACY_MODES)[number];
 export const SEARCH_GAMES_LIMITS = { max_limit: 100, default_limit: 20, max_players: 10 } as const;
 
 export const SearchGamesRequestSchema = z
@@ -353,6 +359,12 @@ export const SearchGamesRequestSchema = z
       .optional()
       .describe(
         "Add each team's players (callsign, position, score, MVP). Needs 'teams' in fields.",
+      ),
+    legacy: z
+      .enum(LEGACY_MODES)
+      .optional()
+      .describe(
+        "Legacy SM5 games (2012–2020, from printed scorecards; every result carries `legacy`): 'include' (default), 'exclude' or 'only'. They are never counted in player_stats or leaderboards.",
       ),
   })
   .describe("Finds games and returns compact summaries; follow up with game_detail for one game.");

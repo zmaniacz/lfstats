@@ -100,7 +100,7 @@ export function mcpTools(): McpTool[] {
       name: "lfstats_search_games",
       title: "Search games",
       description:
-        "Find games: by scope (center, competition, round type, dates), by players (callsigns; all or any of them; as teammates or opponents), by score margin and by outcome. Returns compact summaries with teams and scores, newest first or by margin, and meta.total_matches counts every match ('how many times did X play Y?' is one call with limit 1). Use lfstats_game_detail to look inside one game.",
+        "Find games: by scope (center, competition, round type, dates), by players (callsigns; all or any of them; as teammates or opponents), by score margin and by outcome. Returns compact summaries with teams and scores, newest first or by margin, and meta.total_matches counts every match ('how many times did X play Y?' is one call with limit 1). Legacy SM5 games (2012–2020, from printed scorecards) are included and flagged legacy: true; pass legacy 'exclude' or 'only' to change that. Use lfstats_game_detail to look inside one game.",
       schema: SearchGamesRequestSchema,
       run: (args: z.infer<typeof SearchGamesRequestSchema>) => searchGames(args, localToday()),
     },
@@ -108,7 +108,7 @@ export function mcpTools(): McpTool[] {
       name: "lfstats_game_detail",
       title: "Game detail",
       description:
-        "One game in full: teams, every player's stats, penalties, and optionally how each player's MVP points were earned. Laserball games return goals, steals, blocks and the like, plus the other half when the game is part of a two-half match. Takes a game slug from lfstats_search_games or a game page URL.",
+        "One game in full: teams, every player's stats, penalties, and optionally how each player's MVP points were earned. Laserball games return goals, steals, blocks and the like, plus the other half when the game is part of a two-half match. Legacy games (legacy: true) return the printed scorecard's end-of-game totals and the old site's legacy_mvp. Takes a game slug from lfstats_search_games or a game page URL.",
       schema: GameDetailToolSchema,
       run: ({ slug, ...options }: z.infer<typeof GameDetailToolSchema>) =>
         getGameDetail(slug, options),

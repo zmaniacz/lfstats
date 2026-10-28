@@ -19,6 +19,7 @@ import {
   type DatePreset,
   type GameKind,
   type GameType,
+  type LegacyMode,
   type Position,
   type ScopeInput,
   type ScopeOverride,
@@ -285,9 +286,20 @@ export function sourceFor(gameType: GameType): ScorecardSource {
   return gameType === "sm5" ? SM5_SOURCE : LB_SOURCE;
 }
 
-/** Game-level conditions over the `game` table. */
-export function scopeGameConditions(scope: ResolvedScope): SQL[] {
-  const conditions: SQL[] = [eq(game.type, scope.game_type)];
+/**
+ * Game-level conditions over the `game` table. Legacy PDF-era SM5 games (`sm5_pdf`) are
+ * left out unless `legacy` asks for them, which only search_games does: no aggregate
+ * reads them.
+ */
+export function scopeGameConditions(scope: ResolvedScope, legacy: LegacyMode = "exclude"): SQL[] {
+  const conditions: SQL[] = [];
+  if (scope.game_type === "lb" || legacy === "exclude") {
+    conditions.push(eq(game.type, scope.game_type));
+  } else if (legacy === "only") {
+    conditions.push(eq(game.type, "sm5_pdf"));
+  } else {
+    conditions.push(inArray(game.type, ["sm5", "sm5_pdf"]));
+  }
 
   if (!scope.include_excluded) conditions.push(eq(game.exclude, false));
   if (scope.centerRefs) {

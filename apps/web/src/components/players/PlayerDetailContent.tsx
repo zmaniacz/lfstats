@@ -10,6 +10,7 @@ import {
   getGlobalAvgScoreByPosition,
   getPlayerGames,
   getPlayerHeadToHead,
+  getPlayerPdfGameList,
   type GameScopeFilter,
 } from "@lfstats/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +43,7 @@ export async function PlayerDetailContent({
     globalScore,
     playerGames,
     headToHeadRows,
+    legacyGames,
   ] = await Promise.all([
     getPlayerResultsByColor(playerId, scopeFilter),
     getPlayerAvgMvpByPosition(playerId, scopeFilter),
@@ -51,7 +53,14 @@ export async function PlayerDetailContent({
     getGlobalAvgScoreByPosition(scopeFilter),
     getPlayerGames(playerId, scopeFilter),
     getPlayerHeadToHead(playerId, scopeFilter),
+    getPlayerPdfGameList(playerId, scopeFilter),
   ]);
+
+  // Legacy PDF-era games join the game log but never the charts or head-to-head, which
+  // read playerGames alone.
+  const gameLog = [...playerGames, ...legacyGames].sort(
+    (a, b) => b.startTime.getTime() - a.startTime.getTime(),
+  );
 
   const playerMvpByPosition = new Map(playerMvp.map((p) => [p.position, p.avgMvp]));
   const globalMvpByPosition = new Map(globalMvp.map((p) => [p.position, p.avgMvp]));
@@ -171,7 +180,7 @@ export async function PlayerDetailContent({
           </div>
         </div>
       }
-      gamesContent={<PlayerGamesTable games={playerGames} />}
+      gamesContent={<PlayerGamesTable games={gameLog} />}
       headToHeadContent={<HeadToHeadTable rows={headToHeadRows} />}
     />
   );

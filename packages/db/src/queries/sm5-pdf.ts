@@ -5,11 +5,11 @@
  * Reads for legacy PDF-era SM5 games (game.type = "sm5_pdf"), which keep their data in
  * the sm5_pdf_* tables — see the schema comment and docs/Legacy_Migration_PDF_Games.md.
  *
- * These games are shown, never aggregated: they appear in game lists and a player's game
- * log, but no career stat, leaderboard or rating reads them.
+ * These games are shown, never aggregated: they appear in game lists, a player's game log
+ * and the nightly page, but no career stat, leaderboard or rating reads them.
  */
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../client";
 import { parseGameSlug } from "../lib/game-slug";
 import {
@@ -23,7 +23,9 @@ import {
   sm5PdfScorecard,
   player,
 } from "../schema";
-import type { PlayerHitData } from "./games";
+import type { GameTeamSummary, PlayerHitData } from "./games";
+import type { PlayerGameListItem } from "./players";
+import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 const slugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`;
 
@@ -290,41 +292,150 @@ export async function getPdfGameDetailBySlug(slug: string): Promise<PdfGameDetai
   };
 }
 
-export type PlayerPdfGame = {
-  slug: string;
-  startTime: Date;
-  centerName: string;
-  callsign: string;
-  position: number;
-  side: "red" | "green";
-  result: "win" | "loss" | "draw" | null;
-  score: number;
-  accuracy: number;
-  legacyMvpPoints: number;
-};
-
-/** A player's PDF-era game log, newest first. Display only — never aggregated. */
-export async function getPlayerPdfGames(playerId: string): Promise<PlayerPdfGame[]> {
+/**
+ * A player's PDF-era games, newest first, in the same shape as getPlayerGames() so the two
+ * lists can be shown as one game log. Display only — never aggregated. Every PDF game is
+ * social, so a competition scope yields none.
+ */
+export async function getPlayerPdfGameList(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<PlayerGameListItem[]> {
   const rows = await db
     .select({
-      slug: slugSql,
+      id: game.id,
+      gameSlug: slugSql,
       startTime: game.startTime,
+      outcome: game.outcome,
+      centerId: center.id,
+      centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       centerName: center.name,
+      description: game.description,
       callsign: sm5PdfScorecard.callsign,
       position: sm5PdfScorecard.position,
-      side: sm5PdfGameTeam.side,
-      result: sm5PdfGameTeam.result,
       score: sm5PdfScorecard.score,
       accuracy: sm5PdfScorecard.accuracy,
+      hitDiff: sm5PdfScorecard.hitDiff,
+      medicHits: sm5PdfScorecard.medicHits,
       legacyMvpPoints: sm5PdfScorecard.legacyMvpPoints,
+      legacyMvpDetails: sm5PdfScorecard.legacyMvpDetails,
+      teamColourEnum: sm5PdfGameTeam.colourEnum,
     })
     .from(sm5PdfScorecard)
     .innerJoin(game, eq(game.id, sm5PdfScorecard.gameId))
     .innerJoin(center, eq(center.id, game.centerId))
     .innerJoin(sm5PdfGameTeam, eq(sm5PdfGameTeam.id, sm5PdfScorecard.teamId))
-    .where(eq(sm5PdfScorecard.playerId, playerId))
+    .where(
+      and(
+        eq(game.type, "sm5_pdf"),
+        eq(sm5PdfScorecard.playerId, playerId),
+        ...gameScopeConditions(scopeFilter),
+      ),
+    )
     .orderBy(desc(game.startTime));
-  return rows;
+  if (rows.length === 0) return [];
+
+  const teams = await pdfTeamSummaries([...new Set(rows.map((r) => r.id))]);
+  return rows.map(({ legacyMvpPoints, legacyMvpDetails, ...row }) => ({
+    ...row,
+    outcome: row.outcome as PlayerGameListItem["outcome"],
+    teams: teams.get(row.id) ?? [],
+    mvpPoints: legacyMvpPoints,
+    mvpComponents: [],
+    legacy: true,
+    legacyMvp: legacyMvp(legacyMvpDetails),
+  }));
+}
+
+async function pdfTeamSummaries(gameIds: string[]): Promise<Map<string, GameTeamSummary[]>> {
+  const rows = await db
+    .select({
+      gameId: sm5PdfGameTeam.gameId,
+      colourEnum: sm5PdfGameTeam.colourEnum,
+      score: sm5PdfGameTeam.score,
+      eliminationBonus: sm5PdfGameTeam.eliminationBonus,
+      penaltyScore: sm5PdfGameTeam.penaltyScore,
+      result: sm5PdfGameTeam.result,
+    })
+    .from(sm5PdfGameTeam)
+    .where(inArray(sm5PdfGameTeam.gameId, gameIds))
+    .orderBy(asc(sm5PdfGameTeam.colourEnum));
+  const byGame = new Map<string, GameTeamSummary[]>();
+  for (const { gameId, ...team } of rows) byGame.set(gameId, [...(byGame.get(gameId) ?? []), team]);
+  return byGame;
+}
+
+/** One scorecard from a legacy PDF-era game, as listed on the nightly page. */
+export type PdfNightlyScorecard = {
+  id: string;
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  position: number;
+  eliminated: boolean;
+  score: number;
+  accuracy: number;
+  hitDiff: number;
+  medicHits: number;
+  shotsHitTeam: number;
+  legacyMvpPoints: number;
+  legacyMvp: LegacyMvpComponent[];
+  teamColourEnum: number;
+  teamResult: "win" | "loss" | "draw" | null;
+  gameSlug: string;
+  gameStartTime: Date;
+  gameDescription: string | null;
+};
+
+/**
+ * Every scorecard from the PDF-era social games a center played on one date — the legacy
+ * half of the nightly page. Listed only; the nightly summaries and lifetime averages
+ * stay modern-only.
+ */
+export async function getNightlyPdfScorecards(
+  centerId: string,
+  date: string,
+): Promise<PdfNightlyScorecard[]> {
+  const rows = await db
+    .select({
+      id: sm5PdfScorecard.id,
+      playerId: sm5PdfScorecard.playerId,
+      iplId: player.iplId,
+      callsign: sm5PdfScorecard.callsign,
+      position: sm5PdfScorecard.position,
+      eliminated: sm5PdfScorecard.eliminated,
+      score: sm5PdfScorecard.score,
+      accuracy: sm5PdfScorecard.accuracy,
+      hitDiff: sm5PdfScorecard.hitDiff,
+      medicHits: sm5PdfScorecard.medicHits,
+      shotsHitTeam: sm5PdfScorecard.shotsHitTeam,
+      legacyMvpPoints: sm5PdfScorecard.legacyMvpPoints,
+      legacyMvpDetails: sm5PdfScorecard.legacyMvpDetails,
+      teamColourEnum: sm5PdfGameTeam.colourEnum,
+      teamResult: sm5PdfGameTeam.result,
+      gameSlug: slugSql,
+      gameStartTime: game.startTime,
+      gameDescription: game.description,
+    })
+    .from(sm5PdfScorecard)
+    .innerJoin(game, eq(game.id, sm5PdfScorecard.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .innerJoin(sm5PdfGameTeam, eq(sm5PdfGameTeam.id, sm5PdfScorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5PdfScorecard.playerId))
+    .where(
+      and(
+        eq(game.type, "sm5_pdf"),
+        eq(game.centerId, centerId),
+        sql`date(${game.startTime}) = ${date}::date`,
+        isNull(game.competitionId),
+        eq(game.exclude, false),
+      ),
+    )
+    .orderBy(desc(game.startTime), desc(sm5PdfScorecard.score));
+  return rows.map(({ legacyMvpDetails, ...row }) => ({
+    ...row,
+    legacyMvp: legacyMvp(legacyMvpDetails),
+  }));
 }
 
 /** How many PDF-era games each of these players has. */

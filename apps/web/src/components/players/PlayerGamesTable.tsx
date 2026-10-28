@@ -15,11 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatGameName, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { POSITIONS } from "@/lib/positions";
 import { MvpBreakdownDialog } from "@/components/games/MvpBreakdownDialog";
+import { LegacyMvpDialog } from "@/components/sm5-pdf/LegacyMvpDialog";
 import { MultiSelectFilter } from "@/components/filters/MultiSelectFilter";
 
 const PAGE_SIZE = 10;
@@ -270,6 +272,11 @@ export function PlayerGamesTable({ games }: { games: PlayerGameListItem[] }) {
                   >
                     {formatGameName(game.description, game.startTime)}
                   </Link>
+                  {game.legacy && (
+                    <Badge variant="outline" className="ml-2 text-xs px-1 py-0">
+                      Legacy
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Link href={`/centers/${game.centerSlug}`} className="hover:underline">
@@ -296,11 +303,19 @@ export function PlayerGamesTable({ games }: { games: PlayerGameListItem[] }) {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <MvpBreakdownDialog
-                    callsign={game.callsign}
-                    totalMvp={game.mvpPoints}
-                    components={game.mvpComponents}
-                  />
+                  {game.legacy ? (
+                    <LegacyMvpDialog
+                      callsign={game.callsign}
+                      totalMvp={game.mvpPoints}
+                      components={game.legacyMvp}
+                    />
+                  ) : (
+                    <MvpBreakdownDialog
+                      callsign={game.callsign}
+                      totalMvp={game.mvpPoints}
+                      components={game.mvpComponents}
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="tabular-nums">{formatScore(game.score)}</TableCell>
               </TableRow>
