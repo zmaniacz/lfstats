@@ -4,7 +4,14 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
-import { createCompetitionTeam, deleteCompetitionTeam, getCompetitionById } from "@lfstats/db";
+import {
+  addCompetitionTeamAdjustment,
+  createCompetitionTeam,
+  deleteCompetitionTeam,
+  deleteCompetitionTeamAdjustment,
+  getCompetitionById,
+  type RosterMutationResult,
+} from "@lfstats/db";
 import { auth } from "@/auth";
 
 async function requireAdmin() {
@@ -24,6 +31,39 @@ export async function createCompetitionTeamAction(
   await createCompetitionTeam({ competitionId, name, shortName });
   const comp = await getCompetitionById(competitionId);
   if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`);
+  refresh();
+}
+
+export async function addTeamAdjustmentAction(
+  competitionId: string,
+  formData: FormData,
+): Promise<RosterMutationResult> {
+  await requireAdmin();
+  const result = await addCompetitionTeamAdjustment({
+    competitionId,
+    teamId: formData.get("teamId") as string,
+    points: Number(formData.get("points")),
+    reason: (formData.get("reason") as string) ?? "",
+  });
+  if (!result.ok) return result;
+  await revalidateAdjustmentPages(competitionId);
+  return { ok: true };
+}
+
+export async function deleteTeamAdjustmentAction(
+  competitionId: string,
+  adjustmentId: string,
+): Promise<void> {
+  await requireAdmin();
+  await deleteCompetitionTeamAdjustment(competitionId, adjustmentId);
+  await revalidateAdjustmentPages(competitionId);
+}
+
+// Adjustments change the public standings as well as this admin page.
+async function revalidateAdjustmentPages(competitionId: string): Promise<void> {
+  const comp = await getCompetitionById(competitionId);
+  if (comp) revalidatePath(`/admin/competitions/${comp.slug}/teams`);
+  revalidatePath("/standings");
   refresh();
 }
 

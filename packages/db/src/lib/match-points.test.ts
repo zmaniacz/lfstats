@@ -3,7 +3,12 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { compareStandings, computeTeamStats, type StandingsGameRow } from "./match-points";
+import {
+  applyTeamAdjustments,
+  compareStandings,
+  computeTeamStats,
+  type StandingsGameRow,
+} from "./match-points";
 
 function game(
   gameNumber: number,
@@ -124,4 +129,25 @@ test("standings sort on points, then score ratio, then game wins", () => {
   assert.ok(compareStandings(high, low) < 0);
   assert.ok(compareStandings({ ...low, matchPoints: 7 }, high) < 0);
   assert.equal(compareStandings(high, high), 0);
+});
+
+test("standings adjustments add to points and can reorder teams", () => {
+  const stats = computeTeamStats([game(1, 100, 50), game(2, 50, 100)]);
+  // A 1-1 split with level totals: 3 points each.
+  assert.equal(stats.get("A")!.matchPoints, 3);
+  applyTeamAdjustments(stats, [
+    { teamId: "A", points: -2 },
+    { teamId: "A", points: -1 },
+    { teamId: "G", points: 4 },
+  ]);
+  assert.equal(stats.get("A")!.matchPoints, 0);
+  assert.equal(stats.get("A")!.adjustmentPoints, -3);
+  assert.equal(stats.get("C")!.adjustmentPoints, 0);
+  // A team with no games still carries its adjustment.
+  assert.equal(stats.get("G")!.matchPoints, 4);
+  assert.equal(stats.get("G")!.gameWins, 0);
+  const order = [...stats.entries()]
+    .sort(([, x], [, y]) => compareStandings(x, y))
+    .map(([id]) => id);
+  assert.deepEqual(order, ["G", "C", "A"]);
 });

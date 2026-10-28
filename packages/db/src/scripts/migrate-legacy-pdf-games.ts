@@ -42,7 +42,8 @@
  *   add --verbose to list every anomaly rather than the first few
  *
  * Re-runs skip games already present in `sm5_pdf_game`; `--reset` deletes every sm5_pdf game
- * first (players and the legacy player map are kept and reused). Requires `LEGACY_DATABASE_URL`
+ * first (players and the legacy player map are kept and reused), and refuses once any PDF game
+ * belongs to a competition. Requires `LEGACY_DATABASE_URL`
  * alongside `DATABASE_URL`; the legacy connection is read-only.
  */
 
@@ -50,6 +51,7 @@ import postgres from "postgres";
 import { inArray, sql } from "drizzle-orm";
 import { initDb } from "../client";
 import { SYNTHETIC_IPL_PREFIX, syntheticIplId } from "../lib/synthetic-ipl-id";
+import { LEGACY_CENTER_OVERRIDES, assertLegacyPdfMigrationOpen } from "./legacy-events";
 import {
   center,
   game,
@@ -82,21 +84,7 @@ function connectLegacy(): Legacy {
 // Configuration
 // ---------------------------------------------------------------------------
 
-/**
- * Legacy centers with no IPL id, mapped to a modern `country-site` code. Decided with
- * the site owner, 2026-10-17: two are aliases of a live center, the Armageddon events
- * were played at Syracuse, and closed centers take a `-999` site code.
- */
-const CENTER_OVERRIDES: Record<number, string> = {
-  1: "4-3", // Lasertag of Carmichael (Legacy)
-  3: "4-23", // Armageddon 2014 — an event, played at Syracuse
-  9: "4-23", // Armageddon 2015 — an event, played at Syracuse
-  11: "4-999", // Lasertag of Santa Rosa — closed
-  12: "4-6", // Laser Tag of Clinton Township — Detroit
-  13: "4-43", // Invasion Laser Tag - San Marcos
-  19: "4-6", // Detroit Training
-  21: "7-999", // LaserZone Yorkshire — closed
-};
+const CENTER_OVERRIDES = LEGACY_CENTER_OVERRIDES;
 
 /** Modern centers to create when absent. Every other code must already exist. */
 const CREATE_CENTERS: Record<string, string> = {
@@ -1049,6 +1037,7 @@ async function main(): Promise<void> {
     console.error("--game takes a legacy game id.");
     process.exit(1);
   }
+  if (!dryRun && !reportOnly) assertLegacyPdfMigrationOpen(argv);
 
   const db = await initDb();
   const legacy = connectLegacy();
@@ -1075,6 +1064,17 @@ async function main(): Promise<void> {
       throw new Error("sm5_pdf tables are missing — run pnpm db:migrate first.");
     }
     if (reset && !dryRun) {
+      // Deleting a game cascades to its competition_match_game row, so a reset would silently
+      // drop every competition's PDF match assignments along with the games.
+      const [{ n: inCompetitions }] = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from game where type = 'sm5_pdf' and competition_id is not null`,
+      );
+      if (inCompetitions > 0) {
+        throw new Error(
+          `--reset refused: ${inCompetitions} PDF games belong to competitions, and deleting them ` +
+            `would drop those competitions' match assignments. See docs/Legacy_Migration_PDF_Events.md.`,
+        );
+      }
       const deleted = await db.execute<{ n: number }>(
         sql`with d as (delete from game where type = 'sm5_pdf' returning 1) select count(*)::int as n from d`,
       );

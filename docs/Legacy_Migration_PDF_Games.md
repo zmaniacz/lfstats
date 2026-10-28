@@ -230,21 +230,19 @@ turned up during the migration.
 
 1. **Competitive (league) events.** 2,228 PDF games are legacy `type = 'league'`, staged on
    `sm5_pdf_game` with `legacy_event_id`, `legacy_match_id` and `league_round/match/game`.
-   Build their competitions the way `migrate-legacy-competition.ts` did for the TDF era
+   Built 2026-10-28 by `migrate-legacy-pdf-competition` — see the events doc. Originally:
+   build their competitions the way `migrate-legacy-competition.ts` did for the TDF era
    (teams, rounds, matches, rosters with mercenaries, solo events as `format = 'solo'`), and
-   carry the 3 legacy `match_penalties`. **Schema gap:** `competition_match_game` points at
-   `sm5_game_team` (`team1_game_team_id` / `team2_game_team_id`), and standings read the
-   `sm5_*` tables, so PDF games can't be assigned to matches or scored until the competition
-   tables and standings queries learn about `sm5_pdf_game_team`. Rosters should derive from
-   `sm5_pdf_scorecard` (every row has a player, synthetic or real).
+   carry the 3 legacy `match_penalties`. **Done** — see
+   [Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md), closed 2026-10-28.
 2. **Armageddon 2014 and 2015.** Legacy recorded these as their own "centers" (legacy ids 3
-   and 9, 35 and 21 games); they were mapped to Syracuse (`4-23`) and need recreating as
-   competitions. Their start times now match the printed PDFs (55 of 56; one PDF is missing),
-   early-morning clock readings included.
-3. **Lock the migration script.** `migrate-legacy-pdf-games --reset` deletes every
-   `sm5_pdf` game. Once admins edit these games (descriptions, exclusions, competition
-   assignments) or merge players, gate the writing paths behind `assertLegacyMigrationOpen`
-   as was done for the TDF-era scripts.
+   and 9, 35 and 21 games); they were mapped to Syracuse (`4-23`). **Done**: recreated as
+   competitions with teams from co-play groups. Their start times match the printed PDFs (55 of
+   56; one PDF is missing), early-morning clock readings included.
+3. **Lock the migration script.** **Done** 2026-10-28: `migrate-legacy-pdf-games` refuses to
+   write (`--all`, `--game`, `--reset`) unless given `--reopen-closed-migration`
+   (`assertLegacyPdfMigrationOpen`), and `--reset` also refuses while any PDF game belongs to a
+   competition.
 4. **Timestamp leftovers.** Start times were corrected from the PDFs (see
    [Start time](#start-time)). Still open: 540 unchecked games (536 with no readable PDF,
    4 blocked by a collision), whose DST-season times are probably still an hour late.

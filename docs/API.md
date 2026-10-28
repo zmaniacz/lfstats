@@ -251,7 +251,9 @@ standings shape applies; the route says so rather than returning a misleading em
 
 `format = 'team'` — team standings, backed by `getCompetitionStandingsData` in
 `packages/db/src/queries/competition-tournament.ts`: one row per team with match/game records,
-points, and score ratio.
+points, and score ratio. `matchPoints` includes any standings adjustments, whose net is also
+given as `adjustmentPoints` (`0` for a team with none) — see
+[Competition_Structure.md](Competition_Structure.md#competition_team_adjustment).
 
 `format = 'trios'` — the same shape and query, one row per **trio**. Each trio is credited with
 everything its side earned, and `scoreFor` / `scoreAgainst` hold the trio's own player score and

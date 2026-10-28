@@ -631,7 +631,7 @@ export async function getScorecardsIsMercenaryForReingest(gameId: string) {
 }
 
 export async function deleteGameChildren(tx: Tx, gameId: string) {
-  // Must go first: team1GameTeamId/team2GameTeamId FKs have no cascade (would restrict)
+  // Must go first: the team1/team2_sm5_game_team_id FKs have no cascade (would restrict)
   await tx.delete(competitionMatchGame).where(eq(competitionMatchGame.gameId, gameId));
   // Cascades to: sm5Scorecard (→ sm5GamePenalty, sm5GamePlayerInteraction, sm5ScorecardMvp,
   //   sm5GameTargetDestruction, sm5GamePlayerState, sm5GameEvent actor/target);

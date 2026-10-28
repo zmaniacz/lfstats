@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -14,9 +15,10 @@ import { TeamLogo } from "@/components/teams/TeamLogo";
 import type {
   CompetitionFormat,
   CompetitionStandingsRow,
+  CompetitionTeamAdjustment,
   CompetitionTeamListItem,
 } from "@lfstats/db";
-import { formatScore } from "@/lib/format";
+import { formatScore, formatSignedPoints } from "@/lib/format";
 import { competitionTeamNoun } from "@/lib/competition-format";
 
 export function StandingsTable({
@@ -24,10 +26,13 @@ export function StandingsTable({
   teams,
   competitionSlug,
   format = "team",
+  adjustments = [],
 }: {
   standings: CompetitionStandingsRow[];
   teams: CompetitionTeamListItem[];
   competitionSlug: string;
+  // Listed under the table. Pass them only where they count: the whole-competition standings.
+  adjustments?: CompetitionTeamAdjustment[];
   // Trios and duos rank on each trio's or duo's own player score (scoreFor/scoreAgainst),
   // which is shown as well.
   format?: CompetitionFormat;
@@ -135,6 +140,14 @@ export function StandingsTable({
               </TableCell>
               <TableCell className="text-right tabular-nums font-semibold">
                 {row.matchPoints}
+                {row.adjustmentPoints !== 0 && (
+                  <span
+                    className="text-muted-foreground font-normal"
+                    title={`Includes ${formatSignedPoints(row.adjustmentPoints)} in adjustments`}
+                  >
+                    *
+                  </span>
+                )}
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {row.matchWins}-{row.matchLosses}-{row.matchDraws}
@@ -153,6 +166,20 @@ export function StandingsTable({
           );
         })}
       </TableBody>
+      {adjustments.length > 0 && (
+        <TableCaption className="text-left">
+          <span className="font-medium">* Includes standings adjustments:</span>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {adjustments.map((a) => (
+              <li key={a.id}>
+                {a.teamName}{" "}
+                <span className="tabular-nums font-medium">{formatSignedPoints(a.points)}</span> —{" "}
+                {a.reason}
+              </li>
+            ))}
+          </ul>
+        </TableCaption>
+      )}
     </Table>
   );
 }

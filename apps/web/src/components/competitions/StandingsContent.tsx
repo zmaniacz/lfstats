@@ -6,6 +6,7 @@ import {
   getCompetitionMatchResults,
   getCompetitionTeams,
   getCompetitionPoolsForStandings,
+  getCompetitionTeamAdjustments,
   type CompetitionFormat,
   type CompetitionMatchResult,
   type CompetitionRoundType,
@@ -103,9 +104,11 @@ export async function StandingsContent({
     );
   }
 
-  const [standings, matchResults] = await Promise.all([
+  const [standings, matchResults, adjustments] = await Promise.all([
     getCompetitionStandings(activeId, activeRoundId ?? undefined),
     getCompetitionMatchResults(activeId, activeRoundId ?? undefined),
+    // Adjustments belong to no round, so they count (and are listed) on the overall view only.
+    activeRoundId ? Promise.resolve([]) : getCompetitionTeamAdjustments(activeId),
   ]);
 
   const sortedRounds = groupMatchesByRound(matchResults);
@@ -122,6 +125,7 @@ export async function StandingsContent({
             teams={teams}
             competitionSlug={competitionSlug}
             format={format}
+            adjustments={adjustments}
           />
         </CardContent>
       </Card>
