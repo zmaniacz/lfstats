@@ -150,6 +150,7 @@ export type LbCompetitionMatchTeam = {
   id: string;
   name: string;
   slug: string;
+  shortName: string | null;
   hasLogo: boolean;
   logoVersion: number;
 };
@@ -172,6 +173,7 @@ export type LbCompetitionMatchResult = {
   roundName: string;
   roundNumber: number;
   roundType: CompetitionRoundType;
+  roundMultiplier: number;
   matchNumber: number;
   team1: LbCompetitionMatchTeam | null;
   team2: LbCompetitionMatchTeam | null;
@@ -202,6 +204,7 @@ export async function getLbCompetitionMatchResults(
       roundName: competitionRound.name,
       roundNumber: competitionRound.roundNumber,
       roundType: competitionRound.type,
+      roundMultiplier: competitionRound.multiplier,
       matchNumber: competitionMatch.matchNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
@@ -234,6 +237,7 @@ export async function getLbCompetitionMatchResults(
             id: competitionTeam.id,
             name: competitionTeam.name,
             slug: competitionTeam.slug,
+            shortName: competitionTeam.shortName,
             hasLogo: competitionTeam.hasLogo,
             logoVersion: competitionTeam.logoVersion,
           })
@@ -256,6 +260,7 @@ export async function getLbCompetitionMatchResults(
       roundName: m.roundName,
       roundNumber: m.roundNumber,
       roundType: m.roundType,
+      roundMultiplier: m.roundMultiplier,
       matchNumber: m.matchNumber,
       team1: m.team1Id ? (teamById.get(m.team1Id) ?? null) : null,
       team2: m.team2Id ? (teamById.get(m.team2Id) ?? null) : null,

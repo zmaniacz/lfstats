@@ -19,7 +19,8 @@ import {
   getLbCompetitionPlayerStats,
   type CompetitionMatchResult,
 } from "@lfstats/db";
-import { LbMatchList } from "@/components/competitions/LbStandingsContent";
+import { lbMatchSections } from "@/components/competitions/LbStandingsContent";
+import { LbMatchCardSections } from "@/components/competitions/LbMatchCardSections";
 import { LbTeamRosterTable } from "@/components/competitions/LbTeamRosterTable";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/TeamLogo";
@@ -114,10 +115,9 @@ export default async function CompetitionTeamPage({
             <LbTeamRosterTable roster={roster} stats={stats} />
           </CardContent>
         </Card>
-        <LbMatchList
-          matches={matches}
+        <LbMatchCardSections
+          sections={lbMatchSections(matches)}
           competitionSlug={competition.slug}
-          highlightTeamId={team.id}
         />
       </div>
     );

@@ -115,6 +115,12 @@ export function formatDateIso(d: Date | null): string {
   return `${d.getUTCFullYear()}-${MM}-${DD}`;
 }
 
+/** `15:50` — hours and minutes of a stored local timestamp. */
+export function formatHourMinute(d: Date | null): string {
+  if (d === null) return EM_DASH;
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 /** `15:50:24` — the wall-clock half of a stored local timestamp. */
 export function formatTimeOfDay(d: Date | null): string {
   if (d === null) return EM_DASH;
