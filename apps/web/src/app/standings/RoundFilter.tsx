@@ -10,10 +10,12 @@ export function RoundFilter({
   competitionSlug,
   rounds,
   activeRoundId,
+  gameType = "sm5",
 }: {
   competitionSlug: string;
   rounds: { id: string; name: string }[];
   activeRoundId: string | null;
+  gameType?: "sm5" | "lb";
 }) {
   const router = useRouter();
   const value = activeRoundId ?? "all";
@@ -21,6 +23,7 @@ export function RoundFilter({
   function handleChange(next: string) {
     if (!next) return;
     const params = new URLSearchParams({ scope: "competition", competition: competitionSlug });
+    if (gameType === "lb") params.set("game", "lb");
     if (next !== "all") params.set("round", next);
     router.push(`/standings?${params.toString()}`);
   }

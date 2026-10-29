@@ -14,6 +14,7 @@ import {
   getSoloCompetitionEnrollments,
   hasMatchStructure,
   getCompetitionAssignedGamesForAdmin,
+  getLbCompetitionMatchResults,
 } from "@lfstats/db";
 import { CompetitionDetailsCard } from "@/components/admin/CompetitionDetailsCard";
 import { BulkAssignForm } from "@/components/admin/BulkAssignForm";
@@ -67,15 +68,20 @@ export default async function CompetitionDetailPage({
   // and there is no roster or round structure to count. Only solo has enrolments — a
   // no-scoring event has no participant list at all, just its games.
   const hasMatches = hasMatchStructure(comp.format);
+  // A Laserball match is filled by an lb_match, not game slots: list matches instead.
+  const isLb = comp.gameType === "lb";
 
-  const [unassignedGames, assignedGames, centers, teams, rounds, soloPlayers] = await Promise.all([
-    getCompetitionUnassignedGamesForAdmin(comp.id),
-    hasMatches ? getCompetitionAssignedGamesForAdmin(comp.id) : Promise.resolve([]),
-    getCenterList(),
-    hasMatches ? getCompetitionTeams(comp.id) : Promise.resolve([]),
-    hasMatches ? getCompetitionRounds(comp.id) : Promise.resolve([]),
-    isSolo ? getSoloCompetitionEnrollments(comp.id) : Promise.resolve([]),
-  ]);
+  const [unassignedGames, assignedGames, centers, teams, rounds, soloPlayers, lbMatches] =
+    await Promise.all([
+      getCompetitionUnassignedGamesForAdmin(comp.id),
+      hasMatches && !isLb ? getCompetitionAssignedGamesForAdmin(comp.id) : Promise.resolve([]),
+      getCenterList(),
+      hasMatches ? getCompetitionTeams(comp.id) : Promise.resolve([]),
+      hasMatches ? getCompetitionRounds(comp.id) : Promise.resolve([]),
+      isSolo ? getSoloCompetitionEnrollments(comp.id) : Promise.resolve([]),
+      isLb ? getLbCompetitionMatchResults(comp.id) : Promise.resolve([]),
+    ]);
+  const assignedLbMatches = lbMatches.filter((m) => m.lbMatchId);
 
   const boundUpdate = updateCompetitionAction.bind(null, comp.id);
   const boundRemoveGame = removeGameFromCompetitionAction.bind(null, comp.id);
@@ -188,7 +194,12 @@ export default async function CompetitionDetailPage({
                 {unassignedGames.map((g) => (
                   <TableRow key={g.id}>
                     <TableCell>
-                      <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
+                      <Link
+                        href={
+                          g.gameType === "lb" ? `/laserball/games/${g.slug}` : `/games/${g.slug}`
+                        }
+                        className="hover:underline font-medium"
+                      >
                         {formatGameName(g.description, g.startTime)}
                       </Link>
                     </TableCell>
@@ -212,7 +223,49 @@ export default async function CompetitionDetailPage({
         </CardContent>
       </Card>
 
-      {hasMatches && (
+      {isLb && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Assigned Matches ({assignedLbMatches.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assignedLbMatches.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No halves assigned to matches yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Match</TableHead>
+                    <TableHead>Halves</TableHead>
+                    <TableHead>Goals</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignedLbMatches.map((m) => (
+                    <TableRow key={m.matchId}>
+                      <TableCell>
+                        <Link
+                          href={`/admin/competitions/${comp.slug}/rounds/${m.roundId}/matches/${m.matchId}`}
+                          className="hover:underline font-medium"
+                        >
+                          {m.roundName} · Match {m.matchNumber} · {m.team1?.name ?? "TBD"} vs{" "}
+                          {m.team2?.name ?? "TBD"}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{m.halves.length}</TableCell>
+                      <TableCell className="tabular-nums">
+                        {m.outcome.team1Goals}–{m.outcome.team2Goals}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {hasMatches && !isLb && (
         <Card>
           <CardHeader>
             <CardTitle>Assigned Games ({assignedGames.length})</CardTitle>

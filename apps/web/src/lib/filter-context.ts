@@ -45,10 +45,7 @@ export type ResolveFilterContextOptions = {
   defaultScope?: Scope;
   /** Restrict the page to a subset of scopes (e.g. competition-only pages). */
   allowedScopes?: Scope[];
-  /**
-   * Game type whose competitions populate the competition filter. Defaults to
-   * "sm5". Laserball has no competitions yet, so "lb" yields an empty list.
-   */
+  /** Game type whose competitions populate the competition filter. Defaults to "sm5". */
   gameType?: "sm5" | "lb";
 };
 
@@ -69,13 +66,13 @@ export async function resolveFilterContext(
 
   // Laserball is displayed fully separately: it keeps its own filter cookies
   // (so an SM5 center selection can't hide Laserball games) and defaults to
-  // "social" since all Laserball games are social.
+  // "social", where almost all Laserball games are.
   const cookieNames = filterCookieNames(gameType);
   const defaultScope: Scope = options.defaultScope ?? (gameType === "lb" ? "social" : "all");
 
   const [centers, competitions, cookieStore] = await Promise.all([
     getCenterList(),
-    gameType === "lb" ? Promise.resolve([]) : getCompetitiveCompetitions(),
+    getCompetitiveCompetitions(gameType),
     cookies(),
   ]);
 

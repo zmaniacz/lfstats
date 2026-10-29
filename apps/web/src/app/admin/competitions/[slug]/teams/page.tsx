@@ -162,6 +162,7 @@ export default async function CompetitionTeamsPage({
             <TeamAdjustmentForm
               teams={teams.map((t) => ({ id: t.id, name: t.name }))}
               action={boundAddAdjustment}
+              step={comp.gameType === "lb" ? 0.5 : 1}
             />
             {adjustments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No adjustments.</p>

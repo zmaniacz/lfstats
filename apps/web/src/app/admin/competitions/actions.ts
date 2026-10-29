@@ -14,7 +14,7 @@ import {
   removeGameFromMatch,
   getCompetitionById,
 } from "@lfstats/db";
-import type { CompetitionCategory, CompetitionFormat } from "@lfstats/db";
+import type { CompetitionCategory, CompetitionFormat, CompetitionGameType } from "@lfstats/db";
 import { redirect } from "next/navigation";
 
 const CATEGORIES: CompetitionCategory[] = ["internationals", "tournament", "league"];
@@ -39,13 +39,23 @@ function readFormat(formData: FormData): CompetitionFormat {
   return FORMATS.find((f) => f === raw) ?? "team";
 }
 
+/**
+ * Set at creation only: an existing competition's games, matches and stat pages are all of one
+ * game type, so the update action never reads it.
+ */
+function readGameType(formData: FormData): CompetitionGameType {
+  return formData.get("gameType") === "lb" ? "lb" : "sm5";
+}
+
 export async function createCompetitionAction(formData: FormData) {
   const hostCenterId = (formData.get("hostCenterId") as string) || null;
   await requireCompetitionAccess(hostCenterId);
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
-  const format = readFormat(formData);
+  const gameType = readGameType(formData);
+  // Laserball competitions are tournaments only (a CHECK enforces it).
+  const format = gameType === "lb" ? "team" : readFormat(formData);
   const category = readCategory(formData);
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;
@@ -60,6 +70,7 @@ export async function createCompetitionAction(formData: FormData) {
   const { slug } = await createCompetition({
     name,
     type,
+    gameType,
     format,
     category,
     state,
@@ -81,7 +92,7 @@ export async function updateCompetitionAction(id: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const type = formData.get("type") as "competitive" | "social";
-  const format = readFormat(formData);
+  const format = competition.gameType === "lb" ? "team" : readFormat(formData);
   const category = readCategory(formData);
   const state = formData.get("state") as "preshow" | "upcoming" | "active" | "completed";
   const startDate = formData.get("startDate") as string;

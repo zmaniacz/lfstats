@@ -25,6 +25,8 @@ import {
   sm5PdfScorecard,
   center,
   competition,
+  lbMatch,
+  lbMatchGame,
 } from "../schema";
 import {
   eq,
@@ -43,7 +45,12 @@ import {
 } from "drizzle-orm";
 import type { PlayerMedicHitsItem } from "./players";
 import { hasMatchStructure, isPartnerFormat } from "./admin";
-import type { CompetitionCategory, CompetitionFormat, CompetitionState } from "./admin";
+import type {
+  CompetitionCategory,
+  CompetitionFormat,
+  CompetitionGameType,
+  CompetitionState,
+} from "./admin";
 import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
@@ -659,8 +666,20 @@ export async function addCompetitionTeamAdjustment(data: {
   reason: string;
 }): Promise<RosterMutationResult> {
   const reason = data.reason.trim();
-  if (!Number.isInteger(data.points) || data.points === 0) {
-    return { ok: false, error: "Points must be a whole number other than 0." };
+  const [comp] = await db
+    .select({ gameType: competition.gameType })
+    .from(competition)
+    .where(eq(competition.id, data.competitionId));
+  // A Laserball match is worth 1 point and a tie 0.5, so its adjustments come in halves.
+  const step = comp?.gameType === "lb" ? 0.5 : 1;
+  if (!Number.isInteger(data.points / step) || data.points === 0) {
+    return {
+      ok: false,
+      error:
+        step === 1
+          ? "Points must be a whole number other than 0."
+          : "Points must be a multiple of 0.5 other than 0.",
+    };
   }
   if (!reason) return { ok: false, error: "Give a reason for the adjustment." };
   const [team] = await db
@@ -1000,6 +1019,18 @@ export async function getCompetitionMatchesByRound(
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .where(inArray(competitionMatchGame.matchId, matchIds));
+  // A Laserball match is one lb_match; its halves 1 and 2 fill the same two slots.
+  const lbHalves = await db
+    .select({
+      matchId: sql<string>`${lbMatch.competitionMatchId}`,
+      gameNumber: lbMatchGame.half,
+      startTime: game.startTime,
+    })
+    .from(lbMatchGame)
+    .innerJoin(lbMatch, eq(lbMatch.id, lbMatchGame.matchId))
+    .innerJoin(game, eq(game.id, lbMatchGame.gameId))
+    .where(and(inArray(lbMatch.competitionMatchId, matchIds), ne(lbMatchGame.half, 3)));
+  gameAssignments.push(...lbHalves);
 
   const assignedMap = new Map<string, { numbers: Set<number>; startTimes: Map<number, Date> }>();
   for (const a of gameAssignments) {
@@ -1557,6 +1588,8 @@ export async function getAvailableMatchesForGame(competitionId: string): Promise
 export type CompetitionUnassignedGame = {
   id: string;
   slug: string;
+  // `sm5` or `lb` — Laserball games live under /laserball/games.
+  gameType: string;
   startTime: Date;
   description: string | null;
   centerName: string;
@@ -1587,11 +1620,19 @@ export async function getCompetitionUnassignedGamesForAdmin(
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .where(eq(competitionMatch.competitionId, competitionId));
+  // A Laserball game is assigned once its lb_match fills a competition match.
+  const lbAssignedIds = db
+    .select({ gameId: lbMatchGame.gameId })
+    .from(lbMatchGame)
+    .innerJoin(lbMatch, eq(lbMatch.id, lbMatchGame.matchId))
+    .innerJoin(competitionMatch, eq(competitionMatch.id, lbMatch.competitionMatchId))
+    .where(eq(competitionMatch.competitionId, competitionId));
 
   return db
     .select({
       id: game.id,
       slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      gameType: game.type,
       startTime: game.startTime,
       description: game.description,
       centerName: center.name,
@@ -1603,6 +1644,7 @@ export async function getCompetitionUnassignedGamesForAdmin(
       and(
         eq(game.competitionId, competitionId),
         not(inArray(game.id, assignedIds)),
+        not(inArray(game.id, lbAssignedIds)),
         eq(game.exclude, false),
       ),
     )
@@ -1714,6 +1756,7 @@ export type CompetitiveCompetitionSummary = {
   id: string;
   name: string;
   slug: string;
+  gameType: CompetitionGameType;
   format: CompetitionFormat;
   state: "preshow" | "upcoming" | "active" | "completed";
   startDate: string;
@@ -1722,12 +1765,16 @@ export type CompetitiveCompetitionSummary = {
   challongeBracketHeight: number | null;
 };
 
-export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetitionSummary[]> {
+/** The competition picker: competitive, public (not preshow) events of one game type. */
+export async function getCompetitiveCompetitions(
+  gameType: CompetitionGameType = "sm5",
+): Promise<CompetitiveCompetitionSummary[]> {
   return db
     .select({
       id: competition.id,
       name: competition.name,
       slug: competition.slug,
+      gameType: competition.gameType,
       format: competition.format,
       state: competition.state,
       startDate: competition.startDate,
@@ -1736,7 +1783,13 @@ export async function getCompetitiveCompetitions(): Promise<CompetitiveCompetiti
       challongeBracketHeight: competition.challongeBracketHeight,
     })
     .from(competition)
-    .where(and(eq(competition.type, "competitive"), ne(competition.state, "preshow")))
+    .where(
+      and(
+        eq(competition.type, "competitive"),
+        ne(competition.state, "preshow"),
+        eq(competition.gameType, gameType),
+      ),
+    )
     .orderBy(desc(competition.startDate));
 }
 
@@ -1745,6 +1798,7 @@ export type BrowsableCompetition = {
   name: string;
   slug: string;
   category: CompetitionCategory;
+  gameType: CompetitionGameType;
   format: CompetitionFormat;
   state: CompetitionState;
   startDate: string;
@@ -1763,7 +1817,8 @@ export type BrowsableCompetition = {
  * Every competition the public browse page (`/competitions`) lists, newest first.
  *
  * Scoped the same way as `getCompetitiveCompetitions()` — competitive only, and no
- * preshow events, which are not public yet. Callers group the result by `category`.
+ * preshow events, which are not public yet — but across both game types, since one page
+ * lists them all. Callers group the result by `category` and link by `gameType`.
  */
 export async function getBrowsableCompetitions(): Promise<BrowsableCompetition[]> {
   const rows = await db
@@ -1772,6 +1827,7 @@ export async function getBrowsableCompetitions(): Promise<BrowsableCompetition[]
       name: competition.name,
       slug: competition.slug,
       category: competition.category,
+      gameType: competition.gameType,
       format: competition.format,
       state: competition.state,
       startDate: competition.startDate,

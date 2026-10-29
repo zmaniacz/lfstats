@@ -12,7 +12,11 @@ import {
   getUnassignedCompetitionGames,
   getCompetitionTeams,
   teamsPerSide,
+  getAssignableLbMatches,
+  getLbCompetitionGames,
+  getLbCompetitionMatchResults,
 } from "@lfstats/db";
+import { LbMatchAssignForm } from "@/components/admin/competition/LbMatchAssignForm";
 import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
 import { EditMatchTeamsForm } from "@/components/admin/competition/EditMatchTeamsForm";
@@ -27,6 +31,9 @@ import {
   createForfeitAction,
   updateMatchTeamsAction,
   updateMatchScheduleAction,
+  assignLbMatchAction,
+  linkLbHalvesAction,
+  unassignLbMatchAction,
 } from "./actions";
 import { ForfeitButtons } from "./ForfeitButtons";
 
@@ -75,6 +82,113 @@ export default async function MatchDetailPage({
   const boundUpdateTeams = updateMatchTeamsAction.bind(null, comp.id, matchId);
   const boundUpdateSchedule = updateMatchScheduleAction.bind(null, comp.id, matchId);
 
+  const teamsCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Teams</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <EditMatchTeamsForm
+          teams={teams}
+          initialTeam1Id={match.team1Id}
+          initialTeam2Id={match.team2Id}
+          initialTeam1PartnerId={match.team1PartnerId}
+          initialTeam1Partner2Id={match.team1Partner2Id}
+          initialTeam2PartnerId={match.team2PartnerId}
+          initialTeam2Partner2Id={match.team2Partner2Id}
+          teamsPerSide={teamsPerSide(comp.format)}
+          action={boundUpdateTeams}
+        />
+      </CardContent>
+    </Card>
+  );
+
+  // A Laserball match is one lb_match — its two halves (and any overtime) — not two game
+  // slots, and has no forfeit flow.
+  if (comp.gameType === "lb") {
+    const [result] = await getLbCompetitionMatchResults(comp.id, { matchId });
+    const [assignable, unlinked] = result?.lbMatchId
+      ? [[], []]
+      : await Promise.all([
+          getAssignableLbMatches(comp.id),
+          getLbCompetitionGames(comp.id, { unlinkedOnly: true }),
+        ]);
+    return (
+      <div className="space-y-6">
+        <div>
+          <Link
+            href={`/admin/competitions/${comp.slug}/rounds/${roundId}`}
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            ← Round Matches
+          </Link>
+          <h2 className="text-xl font-semibold mt-1">
+            {match.team1Name} vs {match.team2Name}
+          </h2>
+        </div>
+
+        {teamsCard}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Halves</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {result?.lbMatchId ? (
+              <>
+                <div className="divide-y border rounded-md">
+                  {result.halves.map((h) => (
+                    <div key={h.half} className="flex items-center gap-3 px-3 py-2 text-sm">
+                      <Badge variant="secondary">
+                        {h.half === 3 ? "Overtime" : `Half ${h.half}`}
+                      </Badge>
+                      <Link href={`/laserball/games/${h.gameSlug}`} className="hover:underline">
+                        {formatDateTime(h.startTime)}
+                      </Link>
+                      <span className={TEAM_COLORS[h.team1ColourEnum]?.text}>
+                        {match.team1Name} {h.team1Goals}
+                      </span>
+                      <span>–</span>
+                      <span className={TEAM_COLORS[h.team2ColourEnum]?.text}>
+                        {h.team2Goals} {match.team2Name}
+                      </span>
+                      {h.excluded && <Badge variant="destructive">Excluded</Badge>}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Overtime is linked from either half&apos;s game page.
+                  </p>
+                  <DeleteEntityButton
+                    id={matchId}
+                    label="these halves"
+                    description="This empties the match. The two games stay linked to each other and in the competition, so they can be assigned again."
+                    action={unassignLbMatchAction.bind(null, comp.id)}
+                    confirmLabel="Unassign"
+                  />
+                </div>
+              </>
+            ) : !match.team1Id || !match.team2Id ? (
+              <p className="text-sm text-muted-foreground">
+                Set both teams before assigning halves.
+              </p>
+            ) : (
+              <LbMatchAssignForm
+                team1Name={match.team1Name}
+                team2Name={match.team2Name}
+                assignableMatches={assignable}
+                unlinkedGames={unlinked}
+                assignAction={assignLbMatchAction.bind(null, comp.id, matchId)}
+                linkAction={linkLbHalvesAction.bind(null, comp.id, matchId)}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -89,24 +203,7 @@ export default async function MatchDetailPage({
         </h2>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Teams</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <EditMatchTeamsForm
-            teams={teams}
-            initialTeam1Id={match.team1Id}
-            initialTeam2Id={match.team2Id}
-            initialTeam1PartnerId={match.team1PartnerId}
-            initialTeam1Partner2Id={match.team1Partner2Id}
-            initialTeam2PartnerId={match.team2PartnerId}
-            initialTeam2Partner2Id={match.team2Partner2Id}
-            teamsPerSide={teamsPerSide(comp.format)}
-            action={boundUpdateTeams}
-          />
-        </CardContent>
-      </Card>
+      {teamsCard}
 
       <Card>
         <CardHeader>

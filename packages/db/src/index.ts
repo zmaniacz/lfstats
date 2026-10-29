@@ -13,6 +13,7 @@ export * from "./queries/penalties";
 export * from "./queries/competition-tournament";
 export * from "./queries/competition-legacy";
 export * from "./queries/competition-solo";
+export * from "./queries/competition-laserball";
 export * from "./queries/centers";
 export * from "./queries/chomper";
 export * from "./queries/favorites";

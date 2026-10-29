@@ -467,6 +467,7 @@ to show the user candidates before querying.
             "slug": "internationals_2026",
             "name": "Internationals 2026",
             "type": "competitive",
+            "game_type": "sm5", // query it with scope.game_type set to this
             "format": "team",
             "category": "internationals",
             "state": "completed",
