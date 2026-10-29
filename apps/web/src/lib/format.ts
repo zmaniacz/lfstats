@@ -74,6 +74,11 @@ export function formatWinRate(wins: number, total: number): string {
   return `${pct}% (${wins}/${total})`;
 }
 
+/** A win-loss-draw record: 12-8-1. */
+export function formatRecord(wins: number, losses: number, draws: number): string {
+  return `${wins}-${losses}-${draws}`;
+}
+
 export function formatRatio(numerator: number, denominator: number): string {
   if (denominator === 0) return numerator === 0 ? EM_DASH : "∞";
   return (numerator / denominator).toFixed(2);

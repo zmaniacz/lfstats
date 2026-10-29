@@ -46,6 +46,9 @@ type Row = {
   iplId: string;
   callsign: string;
   value: number;
+  /** Set when the row is one game's scorecard: the value links to that game. */
+  scorecardId?: string;
+  gameSlug?: string;
 };
 
 function SortableHead({
@@ -78,11 +81,14 @@ export function StatLeaderboardCard({
   colLabel,
   rows,
   format,
+  gameType = "sm5",
 }: {
   title: string;
   colLabel: string;
   rows: Row[];
   format: StatFormat;
+  /** Laserball rows link to the player's Laserball view and Laserball games. */
+  gameType?: "sm5" | "lb";
 }) {
   const [sort, setSort] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
@@ -118,15 +124,28 @@ export function StatLeaderboardCard({
           <TableBody>
             {pageRows.map((r) => {
               const iplIdForUrl = r.iplId.startsWith("#") ? r.iplId.slice(1) : r.iplId;
+              const value = applyFormat(r.value, format);
               return (
-                <TableRow key={r.playerId}>
+                <TableRow key={r.scorecardId ?? r.playerId}>
                   <TableCell className="font-medium">
-                    <Link href={`/players/${iplIdForUrl}`} className="hover:underline">
+                    <Link
+                      href={`/players/${iplIdForUrl}${gameType === "lb" ? "?game=lb" : ""}`}
+                      className="hover:underline"
+                    >
                       {r.callsign}
                     </Link>
                   </TableCell>
                   <TableCell className="tabular-nums text-right">
-                    {applyFormat(r.value, format)}
+                    {r.gameSlug ? (
+                      <Link
+                        href={`${gameType === "lb" ? "/laserball/games" : "/games"}/${r.gameSlug}`}
+                        className="hover:underline"
+                      >
+                        {value}
+                      </Link>
+                    ) : (
+                      value
+                    )}
                   </TableCell>
                 </TableRow>
               );

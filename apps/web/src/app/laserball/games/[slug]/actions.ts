@@ -6,6 +6,7 @@
 import { auth } from "@/auth";
 import { parseYoutubeLink, resolveVideoOffsets } from "@/lib/youtube";
 import {
+  addFavorite,
   addGameVideo,
   addLbMatchOvertimeGame,
   assignLbMatchToCompetitionMatch,
@@ -22,6 +23,9 @@ import {
   getLbMatchDetail,
   getLbMatchIdForGame,
   linkLbMatch,
+  markGameAsAborted,
+  markGameAsReplay,
+  removeFavorite,
   removeGameVideo,
   removeLbMatchOvertimeGame,
   setGameExcluded,
@@ -59,6 +63,41 @@ async function revalidateLbMatchGames(matchId: string) {
   const matchDetail = await getLbMatchDetail(matchId);
   if (!matchDetail) return;
   await Promise.all(matchDetail.halves.map((h) => revalidateLbGame(h.gameId)));
+}
+
+/** A linked match renders on every half's page, so a change to one half refreshes them all. */
+async function revalidateLbGameOrMatch(gameId: string) {
+  const matchId = await getLbMatchIdForGame(gameId);
+  if (matchId) await revalidateLbMatchGames(matchId);
+  else await revalidateLbGame(gameId);
+}
+
+export async function addLbFavoriteAction(gameId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  await addFavorite(session.user.id, gameId);
+  await revalidateLbGameOrMatch(gameId);
+}
+
+export async function removeLbFavoriteAction(gameId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  await removeFavorite(session.user.id, gameId);
+  await revalidateLbGameOrMatch(gameId);
+}
+
+export async function markLbGameAsReplayAction(gameId: string) {
+  await requireCenterAdmin(gameId);
+  await markGameAsReplay(gameId);
+  await revalidateLbGameOrMatch(gameId);
+  refresh();
+}
+
+export async function markLbGameAsAbortedAction(gameId: string) {
+  await requireCenterAdmin(gameId);
+  await markGameAsAborted(gameId);
+  await revalidateLbGameOrMatch(gameId);
+  refresh();
 }
 
 export async function toggleExcludeAction(gameId: string, exclude: boolean) {

@@ -23,10 +23,10 @@ function TableSkeleton() {
   );
 }
 
-export function PlayersSkeleton() {
+export function PlayersSkeleton({ tables = 7 }: { tables?: number }) {
   return (
     <>
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: tables }).map((_, i) => (
         <TableSkeleton key={i} />
       ))}
     </>

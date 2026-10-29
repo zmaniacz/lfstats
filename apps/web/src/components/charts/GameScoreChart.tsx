@@ -22,9 +22,11 @@ type Props = {
   duration: number;
   teamA: MomentumTeam;
   teamB: MomentumTeam;
+  /** Y ticks are whole multiples of this: 1000 for SM5 points, 1 for Laserball goals. */
+  tickUnit?: number;
 };
 
-export function GameScoreChart({ series, duration, teamA, teamB }: Props) {
+export function GameScoreChart({ series, duration, teamA, teamB, tickUnit = 1000 }: Props) {
   if (series.length === 0) {
     return <p className="text-sm text-muted-foreground">Not enough score data for this game.</p>;
   }
@@ -41,7 +43,7 @@ export function GameScoreChart({ series, duration, teamA, teamB }: Props) {
   // spurious "-9,500" tick above a 0 floor), so compute clean round ticks
   // ourselves instead of trusting its default nice-tick algorithm.
   const maxScore = Math.max(0, ...series.flatMap((p) => [p.teamAScore, p.teamBScore]));
-  const step = Math.ceil((maxScore || 1) / 4 / 1000) * 1000;
+  const step = Math.ceil((maxScore || 1) / 4 / tickUnit) * tickUnit;
   const yMax = step * 4;
   const yTicks = [0, step, step * 2, step * 3, yMax];
 

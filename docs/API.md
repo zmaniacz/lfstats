@@ -156,9 +156,34 @@ persist on the scorecard, so **a guest is identifiable only by codename** — th
 
 Returns overall and per-position career averages for every player. Defined in
 `apps/web/src/app/api/players/averages/route.ts`, backed by `getPlayerOverallAverages` in
-`packages/db/src/queries/players.ts`. No query parameters. Response: `{ "data": [...] }`, one
-object per player (`player_IPL_ID`, `player_name`, MVP/accuracy/games-played/games-won broken out
-overall and per position — commander/heavy/scout/ammo/medic).
+`packages/db/src/queries/players.ts`. Response: `{ "data": [...] }`, one object per player
+(`player_IPL_ID`, `player_name`, MVP/accuracy/games-played/games-won broken out overall and per
+position — commander/heavy/scout/ammo/medic).
+
+One optional query parameter, `game_type` — `sm5` (the default) or `lb`; anything else is a `400`.
+`?game_type=lb` returns Laserball career averages instead, from `getLbPlayerAverages` in
+`packages/db/src/queries/laserball.ts`, over every non-excluded game including mercenary ones:
+
+```jsonc
+{
+  "data": [
+    {
+      "player_IPL_ID": "#bfCFgk8",
+      "player_name": "Perc Muncher",
+      "games_won": 104,
+      "games_played": 222,
+      "total_goals": 427,
+      "avg_goals": 1.92, // per game; likewise assists, steals, blocks, clears, passes
+      "avg_assists": 0.21,
+      "avg_steals": 6.18,
+      "avg_blocks": 20.23,
+      "avg_clears": 0.2,
+      "avg_passes": 1.09,
+      "avg_possession_ms": 33349.3,
+    },
+  ],
+}
+```
 
 ---
 
@@ -233,16 +258,78 @@ For a **no-scoring** competition (`competition.format = 'none'`) there is no ros
 the player list is every player holding a scorecard in one of the competition's non-excluded games.
 Game scoping and the empty `team_name` / null `team_logo_url` match the solo case.
 
+For a **Laserball** competition (`competition.game_type = 'lb'`) the response is
+`{ "<slug>": [...] }` with no `alltime` key, from `getLbCompetitionPlayerStats` in
+`packages/db/src/queries/competition-laserball.ts`: one row per player and the team they played
+for, totalled over the competition's non-excluded halves (finals included, mercenary halves left
+out). Only players with a half played appear.
+
+```jsonc
+{
+  "syracuse_laserball_tournament_2026": [
+    {
+      "ipl_id": "#rhypLSR",
+      "player_name": "anchovy!",
+      "team_name": "Savory Not Sweet",
+      "games_played": 20, // halves
+      "goals": 15,
+      "assists": 0,
+      "steals": 50,
+      "blocks": 100,
+      "passes": 20,
+      "clears": 0,
+      "possession_ms": 290742,
+    },
+  ],
+}
+```
+
 ## `GET /api/competitions/[slug]/schedule`
 
 Competition schedule (rounds/matches), keyed by competition slug. Backed by
 `getCompetitionSchedule` in `packages/db/src/queries/competition-tournament.ts`. `404` if the slug
 doesn't match a competition.
 
+For a **Laserball** competition the entries come from `getLbCompetitionSchedule` in
+`packages/db/src/queries/competition-laserball.ts`: one per **half** rather than per game slot, named
+`R1 M5 H1`, `R1 M5 H2`, then `R1 M5 OT1`, `OT2`… for overtime halves (`Finals M5 H1` in a finals
+round). Halves 1 and 2 take the match's two scheduled start times; overtime halves have none. The
+score fields are goals: `team1Goals`, `team2Goals` and `goalDifferential` in place of
+`team1Score`, `team2Score` and `scoreDifferential`. Ordering and the skipping of halves with
+neither a scheduled time nor a game match the SM5 route.
+
 ## `GET /api/competitions/[slug]/standings`
 
 Competition standings/leaderboard, keyed by competition slug. `404` if the slug doesn't match a
 competition. **The response shape depends on `competition.format`.**
+
+A **Laserball** competition (`competition.game_type = 'lb'`, always `format = 'team'`) gets its own
+rows, from `getLbCompetitionStandingsData` in `packages/db/src/queries/competition-laserball.ts`,
+ranked as the standings page ranks them (finals rounds left out, adjustments included):
+
+```jsonc
+[
+  {
+    "teamId": "…",
+    "teamName": "Gabe's Babes",
+    "teamSlug": "gb",
+    "teamShortName": "GB",
+    "teamLogoUrl": null,
+    "matchesPlayed": 5,
+    "wins": 4,
+    "ties": 1,
+    "losses": 0,
+    "points": 4.5, // a tied match is worth half a point; includes adjustmentPoints
+    "goalsFor": 29,
+    "goalsAgainst": 11,
+    "goalDifference": 18,
+    "adjustmentPoints": 0,
+  },
+]
+```
+
+See [Competition_Structure.md](Competition_Structure.md#laserball-competitions) for how a match's
+result comes from its halves. The format-specific shapes below are SM5 only.
 
 `format = 'none'` — **`404`**, with
 `{ "error": "This competition has no standings; its scoring is maintained elsewhere." }`. A

@@ -18,7 +18,7 @@ import { MvpBoxPlotChart } from "@/components/centers/MvpBoxPlotChart";
 import { MvpComponentsChart } from "@/components/centers/MvpComponentsChart";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
-import { LaserballStub } from "@/components/laserball/LaserballStub";
+import { LbCenterDetailContent } from "@/components/laserball/LbCenterDetailContent";
 import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
 
 const getCenter = cache(getCenterBySlug);
@@ -114,7 +114,7 @@ export default async function CenterDetailPage({
           {header}
           {filterBar}
         </div>
-        <LaserballStub feature="center stats" />
+        <LbCenterDetailContent centerId={centerDetail.id} scopeFilter={scopeFilter} />
       </div>
     );
   }

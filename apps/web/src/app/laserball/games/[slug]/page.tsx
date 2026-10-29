@@ -15,8 +15,12 @@ import { haltCaveat, halfLabel } from "@/components/laserball/lb-match-shared";
 import { LbMatchScorecards } from "@/components/laserball/LbMatchScorecards";
 import { LbMatchSideSummary } from "@/components/laserball/LbMatchSideSummary";
 import { LbPossessionBar } from "@/components/laserball/LbPossessionBar";
+import { LbMomentumTab } from "@/components/laserball/LbMomentumTab";
 import { LbReplayTab } from "@/components/laserball/LbReplayTab";
 import { LbTeamScoreboard } from "@/components/laserball/LbTeamScoreboard";
+import { FavoriteButton } from "@/components/games/FavoriteButton";
+import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
+import { MarkReplayButton } from "@/components/games/MarkReplayButton";
 import { VideoManager } from "@/components/games/VideoManager";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,12 +46,14 @@ import {
   getOpenLbCompetitionMatches,
   getCompetitionsByState,
   getLbMatchRosterWarnings,
+  isFavorite,
   type LbGameDetailTeam,
 } from "@lfstats/db";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
+  addLbFavoriteAction,
   addLbGameVideoAction,
   addLbMatchOvertimeAction,
   addLbGameToCompetitionAction,
@@ -55,6 +61,9 @@ import {
   removeLbGameFromCompetitionAction,
   unassignLbGameMatchAction,
   linkLbMatchAction,
+  markLbGameAsAbortedAction,
+  markLbGameAsReplayAction,
+  removeLbFavoriteAction,
   removeLbGameVideoAction,
   updateLbGameVideoAction,
   removeLbMatchOvertimeAction,
@@ -110,12 +119,14 @@ export default async function LaserballGameDetailPage({
   const canEdit = canManage && editMode;
 
   const matchId = await getMatchId(game.id);
-  const [matchDetail, rosterWarnings, candidateGames, competitionMatch] = await Promise.all([
-    matchId ? getMatchDetail(matchId) : Promise.resolve(null),
-    matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
-    !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
-    matchId ? getCompetitionMatch(game.id) : Promise.resolve(null),
-  ]);
+  const [matchDetail, rosterWarnings, candidateGames, competitionMatch, favorited] =
+    await Promise.all([
+      matchId ? getMatchDetail(matchId) : Promise.resolve(null),
+      matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
+      !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
+      matchId ? getCompetitionMatch(game.id) : Promise.resolve(null),
+      session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
+    ]);
 
   const half2GameId = matchDetail?.halves.find((h) => h.half === 2)?.gameId;
   // In a competition, Side 1 is always the match's team 1: label the sides with the teams.
@@ -193,11 +204,22 @@ export default async function LaserballGameDetailPage({
             {competitionMatch.team2Name ?? "TBD"}
           </Link>
         )}
-        <h1 className="text-2xl font-bold">
-          {matchDetail
-            ? formatMatchName(matchDetail.halves[0]!.gameStartTime)
-            : formatGameName(game.description, game.startTime)}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">
+            {matchDetail
+              ? formatMatchName(matchDetail.halves[0]!.gameStartTime)
+              : formatGameName(game.description, game.startTime)}
+          </h1>
+          {/* In a match this favorites the half whose page was loaded. */}
+          {session?.user && (
+            <FavoriteButton
+              gameId={game.id}
+              isFavorited={favorited}
+              addAction={addLbFavoriteAction}
+              removeAction={removeLbFavoriteAction}
+            />
+          )}
+        </div>
         {matchDetail ? (
           <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <span>{game.centerName}</span>
@@ -250,6 +272,8 @@ export default async function LaserballGameDetailPage({
           ))}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
+          {game.outcome === "aborted" && <Badge variant="destructive">Aborted</Badge>}
+          {game.outcome === "replay" && <Badge variant="destructive">Replay</Badge>}
           {game.exclude && <Badge variant="destructive">Excluded from Stats</Badge>}
         </div>
         {canManage && <EditModeToggle editMode={editMode} />}
@@ -260,6 +284,16 @@ export default async function LaserballGameDetailPage({
               gameId={game.id}
               excluded={game.exclude}
               action={toggleExcludeAction}
+            />
+            <MarkReplayButton
+              gameId={game.id}
+              isReplay={game.outcome === "replay"}
+              action={markLbGameAsReplayAction}
+            />
+            <MarkAbortedButton
+              gameId={game.id}
+              isAborted={game.outcome === "aborted"}
+              action={markLbGameAsAbortedAction}
             />
           </div>
         )}
@@ -315,6 +349,7 @@ export default async function LaserballGameDetailPage({
       <Tabs defaultValue="scoreboard">
         <TabsList>
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
+          <TabsTrigger value="momentum">Momentum</TabsTrigger>
           <TabsTrigger value="replay">Replay</TabsTrigger>
           {showVideosTab && <TabsTrigger value="videos">Videos</TabsTrigger>}
         </TabsList>
@@ -368,6 +403,15 @@ export default async function LaserballGameDetailPage({
               </section>
             </>
           )}
+        </TabsContent>
+        <TabsContent value="momentum" className="mt-6">
+          <LbMomentumTab
+            games={
+              matchDetail
+                ? matchDetail.halves.map((h) => ({ gameId: h.gameId, label: halfLabel(h.half) }))
+                : [{ gameId: game.id, label: null }]
+            }
+          />
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
           {matchDetail ? (

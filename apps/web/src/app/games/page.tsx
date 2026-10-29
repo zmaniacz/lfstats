@@ -29,7 +29,8 @@ export default async function GamesPage({
 
   const ctx = await resolveFilterContext(sp, { gameType });
 
-  // Specific competition selected → use the match-aware competition games view (SM5 only).
+  // Specific competition selected → use the match-aware competition games view. Laserball
+  // decides this itself (LaserballGamesContent shows the competition's matches).
   const useCompetitionView =
     gameType === "sm5" && ctx.scope === "competition" && ctx.competition !== null;
 

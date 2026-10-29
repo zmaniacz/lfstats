@@ -3,7 +3,7 @@
 
 import type { GameMomentumData } from "@lfstats/db";
 
-export type MomentumMarkerKind = "nuke" | "elimination";
+export type MomentumMarkerKind = "nuke" | "elimination" | "goal";
 
 export type MomentumPoint = { time: number; teamAValue: number; teamBValue: number };
 export type MomentumMarker = {
@@ -35,11 +35,18 @@ export const EVENT_WEIGHTS: Record<string, number> = {
   "0B03": 3, // base award
   "0405": 10, // nuke detonate
   ELIM: 5, // player eliminated
+  // Laserball (11xx codes, which SM5 never uses). A goal dominates the way a nuke does.
+  "1101": 10, // goal
+  "1102": 10, // goal (alternate code)
+  "1103": 2, // steal
+  "1104": 1, // block
 };
 
 const MARKER_EVENT_TYPES: Record<string, MomentumMarkerKind> = {
   "0405": "nuke",
   ELIM: "elimination",
+  "1101": "goal",
+  "1102": "goal",
 };
 
 // Decay time constant: an event's influence drops to ~37% after 1 minute,
@@ -95,7 +102,7 @@ export function buildMomentumSeries(
     .filter((c) => c.eventType in MARKER_EVENT_TYPES)
     .map((c) => {
       const kind = MARKER_EVENT_TYPES[c.eventType];
-      // Nuke markers are colored by the detonating (benefiting) team.
+      // Nuke and goal markers are colored by the acting (benefiting) team.
       // Elimination markers are colored by the eliminated player's own team,
       // not the opponent who gets the momentum credit.
       const markerTeamId =

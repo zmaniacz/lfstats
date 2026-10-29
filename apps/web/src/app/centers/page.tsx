@@ -7,7 +7,7 @@ import Link from "next/link";
 import { getCenterList } from "@lfstats/db";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
-import { LaserballStub } from "@/components/laserball/LaserballStub";
+import { LbCentersContent } from "@/components/laserball/LbCentersContent";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 import { CentersContent } from "@/components/centers/CentersContent";
 import { CentersSkeleton } from "@/components/centers/CentersSkeleton";
@@ -72,7 +72,9 @@ export default async function CentersPage({
       </div>
 
       {gameType === "lb" ? (
-        <LaserballStub feature="center stats" />
+        <Suspense key={contentKey} fallback={<CentersSkeleton />}>
+          <LbCentersContent scopeFilter={scopeFilter} />
+        </Suspense>
       ) : (
         <>
           <Table>

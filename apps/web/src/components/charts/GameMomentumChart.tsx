@@ -68,6 +68,7 @@ function TeamHeader({ team, color }: { team: MomentumTeam; color: string }) {
 const MARKER_GLYPHS: Record<MomentumMarkerKind, string> = {
   nuke: "☢",
   elimination: "✕",
+  goal: "●",
 };
 
 // Pixel gap between icons that fall at (or very near) the same chart position —
@@ -154,6 +155,26 @@ function MarkerIcon({
   );
 }
 
+/**
+ * Both teams on one line, for a header over the momentum and score charts together. Team
+ * colours mark whose momentum runs which way: team A above the axis, team B below.
+ */
+export function MomentumMatchupHeader({
+  teamA,
+  teamB,
+}: {
+  teamA: MomentumTeam;
+  teamB: MomentumTeam;
+}) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <TeamHeader team={teamA} color={getTeamColor(teamA.colourEnum)?.hex ?? "#6b7280"} />
+      <span className="text-sm text-muted-foreground">vs</span>
+      <TeamHeader team={teamB} color={getTeamColor(teamB.colourEnum)?.hex ?? "#6b7280"} />
+    </div>
+  );
+}
+
 export function GameMomentumChart({ series, markers, yDomain, duration, teamA, teamB }: Props) {
   const [hoveredMarkerKey, setHoveredMarkerKey] = useState<string | null>(null);
 
@@ -174,7 +195,6 @@ export function GameMomentumChart({ series, markers, yDomain, duration, teamA, t
 
   return (
     <div className="space-y-1">
-      <TeamHeader team={teamA} color={teamAColor} />
       <ChartContainer config={chartConfig} className="aspect-auto h-90">
         <AreaChart data={series} margin={{ top: 24, right: 16, left: 16, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -255,7 +275,6 @@ export function GameMomentumChart({ series, markers, yDomain, duration, teamA, t
           })}
         </AreaChart>
       </ChartContainer>
-      <TeamHeader team={teamB} color={teamBColor} />
     </div>
   );
 }

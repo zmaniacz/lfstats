@@ -6,7 +6,8 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getUserFavorites, getUserFavoritePlayers } from "@lfstats/db";
+import { getUserFavorites, getUserFavoritePlayers, getUserLbFavorites } from "@lfstats/db";
+import { LaserballGamesTable } from "@/components/laserball/LaserballGamesTable";
 import {
   Table,
   TableBody,
@@ -24,8 +25,9 @@ export default async function FavoritesPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
 
-  const [games, favoritePlayers] = await Promise.all([
+  const [games, lbGames, favoritePlayers] = await Promise.all([
     getUserFavorites(session.user.id),
+    getUserLbFavorites(session.user.id),
     getUserFavoritePlayers(session.user.id),
   ]);
 
@@ -33,11 +35,11 @@ export default async function FavoritesPage() {
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">Favorites</h1>
 
-      {games.length === 0 ? (
+      {games.length === 0 && lbGames.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No favorites yet. Heart a game on its detail page to save it here.
         </p>
-      ) : (
+      ) : games.length === 0 ? null : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -89,6 +91,13 @@ export default async function FavoritesPage() {
             })}
           </TableBody>
         </Table>
+      )}
+
+      {lbGames.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Favorite Laserball Games</h2>
+          <LaserballGamesTable games={lbGames} />
+        </div>
       )}
 
       <div className="space-y-4">

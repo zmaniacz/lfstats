@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import {
   getCompetitionBySlug,
   getCompetitionStandingsData,
+  getLbCompetitionStandingsData,
   getSoloCompetitionStandingsData,
 } from "@lfstats/db";
 
@@ -21,6 +22,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       { error: "This competition has no standings; its scoring is maintained elsewhere." },
       { status: 404 },
     );
+  }
+
+  // Laserball scores each match from its halves and ranks on points then goals: its own rows.
+  if (comp.gameType === "lb") {
+    return NextResponse.json(await getLbCompetitionStandingsData(comp.id));
   }
 
   // Solo competitions have no matches, so the team standings query would always be empty.

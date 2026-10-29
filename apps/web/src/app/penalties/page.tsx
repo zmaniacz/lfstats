@@ -5,12 +5,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
-import { LaserballStub } from "@/components/laserball/LaserballStub";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerPenaltiesContent, TeamPenaltiesContent } from "./PenaltiesContent";
 import { PenaltiesSkeleton } from "./PenaltiesSkeleton";
-import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
+import { resolveFilterContext, toGameScopeFilter } from "@/lib/filter-context";
 
 export const metadata: Metadata = { title: "Penalties" };
 
@@ -23,17 +21,15 @@ export default async function PenaltiesPage({
     competition?: string;
     from?: string;
     to?: string;
-    game?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const gameType = await resolveGameType(sp.game);
-  const [ctx, session] = await Promise.all([resolveFilterContext(sp, { gameType }), auth()]);
+  // Laserball has no penalties, so this page is SM5 only and offers no game-type toggle.
+  const [ctx, session] = await Promise.all([resolveFilterContext(sp, { gameType: "sm5" }), auth()]);
 
   const roles = session?.user?.roles ?? [];
   // Editing rewrites competition results, so only enable it for a specific competition.
   const canEdit =
-    gameType === "sm5" &&
     ctx.scope === "competition" &&
     ctx.competition !== null &&
     roles.some((r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin");
@@ -46,7 +42,6 @@ export default async function PenaltiesPage({
         : "All Penalties";
 
   const contentKey = [
-    gameType,
     ctx.scope,
     ctx.center?.slug ?? null,
     ctx.competition?.slug ?? null,
@@ -57,12 +52,15 @@ export default async function PenaltiesPage({
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Penalties</h1>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold">Penalties</h1>
+          <p className="text-sm text-muted-foreground">
+            Space Marines 5 only. Laserball has no penalties.
+          </p>
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <GameTypeToggle active={gameType} />
           <FilterBar
             basePath="/penalties"
-            gameType={gameType}
             scope={ctx.scope}
             activeCenterSlug={ctx.center?.slug ?? null}
             activeCompetitionSlug={ctx.competition?.slug ?? null}
@@ -70,41 +68,36 @@ export default async function PenaltiesPage({
             activeDateTo={ctx.dateTo}
             centers={ctx.centers}
             competitions={ctx.competitions}
-            extras={{ game: gameType === "lb" ? "lb" : null }}
           />
         </div>
       </div>
 
-      {gameType === "lb" ? (
-        <LaserballStub feature="penalties" />
-      ) : (
-        <Tabs defaultValue="players">
-          <TabsList>
-            <TabsTrigger value="players">Players</TabsTrigger>
-            <TabsTrigger value="teams">Teams</TabsTrigger>
-          </TabsList>
-          <TabsContent value="players" className="mt-4">
-            <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
-              <PlayerPenaltiesContent
-                scopeFilter={toGameScopeFilter(ctx)}
-                competitionId={ctx.competition?.id ?? ""}
-                canEdit={canEdit}
-                heading={heading}
-              />
-            </Suspense>
-          </TabsContent>
-          <TabsContent value="teams" className="mt-4">
-            <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
-              <TeamPenaltiesContent
-                scopeFilter={toGameScopeFilter(ctx)}
-                competitionId={ctx.competition?.id ?? ""}
-                canEdit={canEdit}
-                heading={heading}
-              />
-            </Suspense>
-          </TabsContent>
-        </Tabs>
-      )}
+      <Tabs defaultValue="players">
+        <TabsList>
+          <TabsTrigger value="players">Players</TabsTrigger>
+          <TabsTrigger value="teams">Teams</TabsTrigger>
+        </TabsList>
+        <TabsContent value="players" className="mt-4">
+          <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
+            <PlayerPenaltiesContent
+              scopeFilter={toGameScopeFilter(ctx)}
+              competitionId={ctx.competition?.id ?? ""}
+              canEdit={canEdit}
+              heading={heading}
+            />
+          </Suspense>
+        </TabsContent>
+        <TabsContent value="teams" className="mt-4">
+          <Suspense key={contentKey} fallback={<PenaltiesSkeleton />}>
+            <TeamPenaltiesContent
+              scopeFilter={toGameScopeFilter(ctx)}
+              competitionId={ctx.competition?.id ?? ""}
+              canEdit={canEdit}
+              heading={heading}
+            />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
