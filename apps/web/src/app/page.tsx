@@ -97,12 +97,6 @@ export default async function Home() {
               </a>
               . That site is now read-only.
             </p>
-            <div className="mb-4">
-              <b>To-Do</b>
-              <ul className="list-disc pl-6">
-                <li>Implement Laserball competition tracking</li>
-              </ul>
-            </div>
           </CardContent>
         </Card>
       </div>
