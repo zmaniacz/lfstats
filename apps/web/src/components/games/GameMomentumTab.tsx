@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { GameMomentumChart } from "@/components/charts/GameMomentumChart";
+import { GameMomentumChart, MomentumMatchupHeader } from "@/components/charts/GameMomentumChart";
 import { GameScoreChart } from "@/components/charts/GameScoreChart";
 import { buildMomentumSeries, buildScoreSeries } from "@/lib/game-momentum-series";
 import { getGameMomentumData } from "@lfstats/db";
@@ -26,6 +26,7 @@ export async function GameMomentumTab({ gameId, teamNames }: Props) {
 
   return (
     <div className="space-y-6">
+      <MomentumMatchupHeader teamA={teamA} teamB={teamB} />
       <GameMomentumChart
         series={series}
         markers={markers}

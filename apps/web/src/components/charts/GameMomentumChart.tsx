@@ -28,11 +28,6 @@ type Props = {
   duration: number;
   teamA: MomentumTeam;
   teamB: MomentumTeam;
-  /**
-   * Team A's name above the chart and team B's below, marking whose momentum runs which way.
-   * Off when the caller shows both teams in one header (MomentumMatchupHeader) instead.
-   */
-  showTeamHeaders?: boolean;
 };
 
 function TeamHeader({ team, color }: { team: MomentumTeam; color: string }) {
@@ -160,7 +155,10 @@ function MarkerIcon({
   );
 }
 
-/** Both teams on one line, for a header over the momentum and score charts together. */
+/**
+ * Both teams on one line, for a header over the momentum and score charts together. Team
+ * colours mark whose momentum runs which way: team A above the axis, team B below.
+ */
 export function MomentumMatchupHeader({
   teamA,
   teamB,
@@ -177,15 +175,7 @@ export function MomentumMatchupHeader({
   );
 }
 
-export function GameMomentumChart({
-  series,
-  markers,
-  yDomain,
-  duration,
-  teamA,
-  teamB,
-  showTeamHeaders = true,
-}: Props) {
+export function GameMomentumChart({ series, markers, yDomain, duration, teamA, teamB }: Props) {
   const [hoveredMarkerKey, setHoveredMarkerKey] = useState<string | null>(null);
 
   if (series.length === 0) {
@@ -205,7 +195,6 @@ export function GameMomentumChart({
 
   return (
     <div className="space-y-1">
-      {showTeamHeaders && <TeamHeader team={teamA} color={teamAColor} />}
       <ChartContainer config={chartConfig} className="aspect-auto h-90">
         <AreaChart data={series} margin={{ top: 24, right: 16, left: 16, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -286,7 +275,6 @@ export function GameMomentumChart({
           })}
         </AreaChart>
       </ChartContainer>
-      {showTeamHeaders && <TeamHeader team={teamB} color={teamBColor} />}
     </div>
   );
 }

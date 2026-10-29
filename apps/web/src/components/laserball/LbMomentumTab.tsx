@@ -29,7 +29,6 @@ async function LbGameMomentumCharts({ gameId }: { gameId: string }) {
         duration={data.duration}
         teamA={teamA}
         teamB={teamB}
-        showTeamHeaders={false}
       />
       <GameScoreChart
         series={buildScoreSeries(data)}
