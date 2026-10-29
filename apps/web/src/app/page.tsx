@@ -76,9 +76,9 @@ export default async function Home() {
       <div className="grid grid-cols-1 max-w-2xl">
         <Card>
           <CardContent>
-            <p className="mb-4">
+            <div className="mb-4">
               <b>October 2026 Updates</b>
-              <ul>
+              <ul className="list-disc pl-6">
                 <li>
                   Big Laserball Update: Player aggregate stats, center stats, player detail pages,
                   game details including momentum graphs. provide feedback or ask for new stuff on
@@ -91,7 +91,7 @@ export default async function Home() {
                   see any weirdness or errors in the legacy data.
                 </li>
               </ul>
-            </p>
+            </div>
             <p className="mb-4">
               <b>Need access to upload stats?</b> Login with a Google account and let me know on{" "}
               <a
