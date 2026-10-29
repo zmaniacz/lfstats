@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
 import { halfLabel } from "@/components/laserball/lb-match-shared";
 import { formatDateTime } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
@@ -61,6 +62,8 @@ type Props = {
   removeOvertimeAction: (gameId: string, matchId: string, otGameId: string) => Promise<void>;
   // The competition teams on Side 1 and Side 2, when the match fills a competition match.
   sideNames?: [string, string];
+  // "Finals · Match 2" when the match fills a competition slot, for the unlink warning.
+  competitionMatchLabel?: string;
 };
 
 const WARNING_LABEL: Record<LbMatchRosterWarning["kind"], string> = {
@@ -81,6 +84,7 @@ export function LbMatchManager({
   addOvertimeAction,
   removeOvertimeAction,
   sideNames,
+  competitionMatchLabel,
 }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
@@ -280,6 +284,30 @@ export function LbMatchManager({
   // ── Linked ───────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-3 flex-wrap text-sm">
+        <span className="text-muted-foreground">Linked halves</span>
+        {matchDetail.halves.map((h) => (
+          <Badge key={h.gameId} variant={h.half > 2 ? "outline" : "secondary"}>
+            {halfLabel(h.half)} · {formatDateTime(h.gameStartTime)}
+          </Badge>
+        ))}
+        <DeleteEntityButton
+          id={matchDetail.id}
+          label="the link between these halves"
+          description={
+            "The games themselves are untouched; they stop being one match and can be linked " +
+            "again, or added to another match as overtime. Overtime halves are unlinked too." +
+            (competitionMatchLabel
+              ? ` This match fills ${competitionMatchLabel}, which will be left empty.`
+              : "")
+          }
+          action={async () => {
+            await handleUnlink();
+          }}
+          confirmLabel="Unlink Halves"
+        />
+      </div>
+
       {rosterWarnings.length > 0 && (
         <details className="text-sm border border-amber-400/50 bg-amber-500/10 rounded-md p-2">
           <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">
@@ -372,18 +400,6 @@ export function LbMatchManager({
             </Button>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          disabled={isPending}
-          onClick={handleUnlink}
-        >
-          Unlink Match
-        </Button>
       </div>
     </div>
   );

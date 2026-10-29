@@ -295,6 +295,11 @@ export default async function LaserballGameDetailPage({
               callsigns: t.players.map((p) => p.callsign),
             }))}
             sideNames={sideNames}
+            competitionMatchLabel={
+              competitionMatch
+                ? `${competitionMatch.roundName} · Match ${competitionMatch.matchNumber}`
+                : undefined
+            }
             matchDetail={matchDetail}
             rosterWarnings={rosterWarnings}
             candidateGames={candidateGames}
