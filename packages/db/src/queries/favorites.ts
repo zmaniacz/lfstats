@@ -12,8 +12,9 @@ import {
   competition,
   player,
 } from "../schema";
-import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
+import { eq, and, desc, inArray, ne, sql, count } from "drizzle-orm";
 import type { GameListItem } from "./games";
+import { getLbGamesList, type LbGameListItem } from "./laserball";
 
 export type FavoritePlayerItem = {
   id: string;
@@ -49,7 +50,8 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
     .from(game)
     .innerJoin(center, eq(game.centerId, center.id))
     .leftJoin(competition, eq(game.competitionId, competition.id))
-    .where(inArray(game.id, gameIds));
+    // Laserball favorites have their own list (getUserLbFavorites): no SM5 teams to show.
+    .where(and(inArray(game.id, gameIds), ne(game.type, "lb")));
 
   const teamRows = await db
     .select({
@@ -94,6 +96,16 @@ export async function getUserFavorites(userId: string): Promise<GameListItem[]> 
         result: t.result,
       })),
     }));
+}
+
+/** The user's favorite Laserball games, newest first. */
+export async function getUserLbFavorites(userId: string): Promise<LbGameListItem[]> {
+  const favoriteRows = await db
+    .select({ gameId: userFavoriteGame.gameId })
+    .from(userFavoriteGame)
+    .where(eq(userFavoriteGame.userId, userId));
+  if (favoriteRows.length === 0) return [];
+  return getLbGamesList({ gameIds: favoriteRows.map((r) => r.gameId) });
 }
 
 export async function addFavorite(userId: string, gameId: string, note?: string): Promise<void> {

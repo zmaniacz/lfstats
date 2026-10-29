@@ -28,6 +28,11 @@ type Props = {
   duration: number;
   teamA: MomentumTeam;
   teamB: MomentumTeam;
+  /**
+   * Team A's name above the chart and team B's below, marking whose momentum runs which way.
+   * Off when the caller shows both teams in one header (MomentumMatchupHeader) instead.
+   */
+  showTeamHeaders?: boolean;
 };
 
 function TeamHeader({ team, color }: { team: MomentumTeam; color: string }) {
@@ -68,6 +73,7 @@ function TeamHeader({ team, color }: { team: MomentumTeam; color: string }) {
 const MARKER_GLYPHS: Record<MomentumMarkerKind, string> = {
   nuke: "☢",
   elimination: "✕",
+  goal: "●",
 };
 
 // Pixel gap between icons that fall at (or very near) the same chart position —
@@ -154,7 +160,32 @@ function MarkerIcon({
   );
 }
 
-export function GameMomentumChart({ series, markers, yDomain, duration, teamA, teamB }: Props) {
+/** Both teams on one line, for a header over the momentum and score charts together. */
+export function MomentumMatchupHeader({
+  teamA,
+  teamB,
+}: {
+  teamA: MomentumTeam;
+  teamB: MomentumTeam;
+}) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <TeamHeader team={teamA} color={getTeamColor(teamA.colourEnum)?.hex ?? "#6b7280"} />
+      <span className="text-sm text-muted-foreground">vs</span>
+      <TeamHeader team={teamB} color={getTeamColor(teamB.colourEnum)?.hex ?? "#6b7280"} />
+    </div>
+  );
+}
+
+export function GameMomentumChart({
+  series,
+  markers,
+  yDomain,
+  duration,
+  teamA,
+  teamB,
+  showTeamHeaders = true,
+}: Props) {
   const [hoveredMarkerKey, setHoveredMarkerKey] = useState<string | null>(null);
 
   if (series.length === 0) {
@@ -174,7 +205,7 @@ export function GameMomentumChart({ series, markers, yDomain, duration, teamA, t
 
   return (
     <div className="space-y-1">
-      <TeamHeader team={teamA} color={teamAColor} />
+      {showTeamHeaders && <TeamHeader team={teamA} color={teamAColor} />}
       <ChartContainer config={chartConfig} className="aspect-auto h-90">
         <AreaChart data={series} margin={{ top: 24, right: 16, left: 16, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -255,7 +286,7 @@ export function GameMomentumChart({ series, markers, yDomain, duration, teamA, t
           })}
         </AreaChart>
       </ChartContainer>
-      <TeamHeader team={teamB} color={teamBColor} />
+      {showTeamHeaders && <TeamHeader team={teamB} color={teamBColor} />}
     </div>
   );
 }

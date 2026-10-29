@@ -15,6 +15,7 @@ import {
   lbGamePlayerState,
   player,
 } from "../schema";
+import type { GameMomentumData, MomentumEvent, ScoreEvent } from "./games";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -28,6 +29,8 @@ const overtimeHalfSql = sql<boolean>`exists (select 1 from lb_match_game where l
 
 export type LbGameListFilters = {
   scopeFilter?: GameScopeFilter;
+  /** Only these games (e.g. a user's favorites). */
+  gameIds?: string[];
 };
 
 export type LbGameTeamSummary = {
@@ -56,6 +59,7 @@ function buildLbGameListConditions(filters: LbGameListFilters): SQL[] {
   if (filters.scopeFilter) {
     conditions.push(...gameScopeConditions(filters.scopeFilter, { includeExcluded: true }));
   }
+  if (filters.gameIds) conditions.push(inArray(game.id, filters.gameIds));
   return conditions;
 }
 
@@ -961,4 +965,82 @@ export async function getLbResultsByColor(
     .where(and(eq(lbGameTeam.isNeutral, false), ...lbCenterConditions(scopeFilter, centerId)))
     .groupBy(lbGameTeam.colourEnum)
     .orderBy(asc(lbGameTeam.colourEnum));
+}
+
+// ---------------------------------------------------------------------------
+// Laserball Momentum (read)
+// ---------------------------------------------------------------------------
+
+// The events the momentum chart weighs: goal, steal, block (docs/Laserball_TDF_Spec.md).
+const LB_MOMENTUM_EVENT_TYPES = ["1101", "1102", "1103", "1104"];
+const LB_GOAL_EVENT_TYPES = new Set(["1101", "1102"]);
+
+/**
+ * One Laserball game in the shape the SM5 momentum and score charts take: goals, steals and
+ * blocks as momentum events, and each team's running goal total as score events.
+ */
+export async function getLbGameMomentumData(gameId: string): Promise<GameMomentumData | null> {
+  const [gameRow] = await db
+    .select({ actualDuration: game.actualDuration })
+    .from(game)
+    .where(and(eq(game.id, gameId), eq(game.type, "lb")));
+  if (!gameRow) return null;
+
+  const actorSc = alias(lbScorecard, "actor_sc");
+  const targetSc = alias(lbScorecard, "target_sc");
+
+  const [teamRows, eventRows] = await Promise.all([
+    db
+      .select({
+        teamId: lbGameTeam.id,
+        teamName: lbGameTeam.name,
+        colourEnum: lbGameTeam.colourEnum,
+        score: lbGameTeam.score,
+        result: lbGameTeam.result,
+      })
+      .from(lbGameTeam)
+      .where(and(eq(lbGameTeam.gameId, gameId), eq(lbGameTeam.isNeutral, false)))
+      .orderBy(asc(lbGameTeam.tdfTeamIndex)),
+    db
+      .select({
+        time: lbGameEvent.time,
+        eventType: lbGameEvent.eventType,
+        actorTeamId: actorSc.teamId,
+        markerLabel: actorSc.callsign,
+        targetTeamId: targetSc.teamId,
+      })
+      .from(lbGameEvent)
+      .innerJoin(actorSc, eq(lbGameEvent.actorScorecardId, actorSc.id))
+      .leftJoin(targetSc, eq(lbGameEvent.targetScorecardId, targetSc.id))
+      .where(
+        and(
+          eq(lbGameEvent.gameId, gameId),
+          inArray(lbGameEvent.eventType, LB_MOMENTUM_EVENT_TYPES),
+        ),
+      )
+      .orderBy(asc(lbGameEvent.time)),
+  ]);
+
+  const events: MomentumEvent[] = eventRows.map((e) => ({ ...e, markerPosition: null }));
+
+  const goalsByTeam = new Map<string, number>();
+  const scoreEvents: ScoreEvent[] = [];
+  for (const e of eventRows) {
+    if (!LB_GOAL_EVENT_TYPES.has(e.eventType)) continue;
+    const score = (goalsByTeam.get(e.actorTeamId) ?? 0) + 1;
+    goalsByTeam.set(e.actorTeamId, score);
+    scoreEvents.push({ time: e.time, teamId: e.actorTeamId, score });
+  }
+
+  return {
+    duration: gameRow.actualDuration,
+    teams: teamRows.map((t) => ({
+      ...t,
+      eliminationBonus: null,
+      penaltyScore: null,
+      eliminated: null,
+    })),
+    events,
+    scoreEvents,
+  };
 }
