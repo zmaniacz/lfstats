@@ -408,7 +408,16 @@ export default async function LaserballGameDetailPage({
           <LbMomentumTab
             games={
               matchDetail
-                ? matchDetail.halves.map((h) => ({ gameId: h.gameId, label: halfLabel(h.half) }))
+                ? matchDetail.halves.map((h) => ({
+                    gameId: h.gameId,
+                    label: halfLabel(h.half),
+                    teamNames: sideNames
+                      ? new Map([
+                          [h.side1.gameTeamId, sideNames[0]],
+                          [h.side2.gameTeamId, sideNames[1]],
+                        ])
+                      : undefined,
+                  }))
                 : [{ gameId: game.id, label: null }]
             }
           />

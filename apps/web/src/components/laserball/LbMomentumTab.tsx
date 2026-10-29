@@ -6,13 +6,24 @@ import { GameScoreChart } from "@/components/charts/GameScoreChart";
 import { buildMomentumSeries, buildScoreSeries } from "@/lib/game-momentum-series";
 import { getLbGameMomentumData } from "@lfstats/db";
 
-type Props = {
-  /** One game, or every half of a linked match; `label` heads each half's charts. */
-  games: { gameId: string; label: string | null }[];
+type MomentumGame = {
+  gameId: string;
+  label: string | null;
+  /** Game-team id → display name, overriding the TDF team name (e.g. competition teams). */
+  teamNames?: Map<string, string>;
 };
 
-async function LbGameMomentumCharts({ gameId }: { gameId: string }) {
-  const data = await getLbGameMomentumData(gameId);
+type Props = {
+  /** One game, or every half of a linked match; `label` heads each half's charts. */
+  games: MomentumGame[];
+};
+
+async function LbGameMomentumCharts({ gameId, teamNames }: MomentumGame) {
+  const raw = await getLbGameMomentumData(gameId);
+  const data = raw && {
+    ...raw,
+    teams: raw.teams.map((t) => ({ ...t, teamName: teamNames?.get(t.teamId) ?? t.teamName })),
+  };
   const [teamA, teamB] = data?.teams ?? [];
   if (!data || !teamA || !teamB) {
     return <p className="text-sm text-muted-foreground">Not enough team data for this game.</p>;
@@ -50,7 +61,7 @@ export function LbMomentumTab({ games }: Props) {
       {games.map((g) => (
         <section key={g.gameId} className="space-y-4">
           {g.label && <h3 className="text-lg font-semibold">{g.label}</h3>}
-          <LbGameMomentumCharts gameId={g.gameId} />
+          <LbGameMomentumCharts {...g} />
         </section>
       ))}
     </div>
