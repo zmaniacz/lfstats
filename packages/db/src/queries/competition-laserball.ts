@@ -296,6 +296,7 @@ async function getLbHalves(
 
 /** The competition match a Laserball game's lb_match fills, for the game page's label. */
 export type LbGameCompetitionMatch = {
+  competitionMatchId: string;
   competitionSlug: string;
   competitionName: string;
   roundName: string;
@@ -312,6 +313,7 @@ export async function getLbGameCompetitionMatch(
   const team2 = alias(competitionTeam, "team2");
   const [row] = await db
     .select({
+      competitionMatchId: competitionMatch.id,
       competitionSlug: competition.slug,
       competitionName: competition.name,
       roundName: competitionRound.name,
@@ -329,6 +331,49 @@ export async function getLbGameCompetitionMatch(
     .leftJoin(team2, eq(team2.id, competitionMatch.team2Id))
     .where(eq(lbMatchGame.gameId, gameId));
   return row ?? null;
+}
+
+/** The competition a Laserball game is filed in, for the game page's admin controls. */
+export async function getLbGameCompetition(
+  gameId: string,
+): Promise<{ competitionId: string; competitionName: string } | null> {
+  const [row] = await db
+    .select({ competitionId: competition.id, competitionName: competition.name })
+    .from(game)
+    .innerJoin(competition, eq(competition.id, game.competitionId))
+    .where(eq(game.id, gameId));
+  return row ?? null;
+}
+
+export type LbOpenCompetitionMatch = {
+  id: string;
+  roundName: string;
+  matchNumber: number;
+  team1Name: string;
+  team2Name: string;
+};
+
+/** Match slots with both teams set and no halves yet — where a linked lb_match can go. */
+export async function getOpenLbCompetitionMatches(
+  competitionId: string,
+): Promise<LbOpenCompetitionMatch[]> {
+  const team1 = alias(competitionTeam, "team1");
+  const team2 = alias(competitionTeam, "team2");
+  return db
+    .select({
+      id: competitionMatch.id,
+      roundName: competitionRound.name,
+      matchNumber: competitionMatch.matchNumber,
+      team1Name: team1.name,
+      team2Name: team2.name,
+    })
+    .from(competitionMatch)
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(team1, eq(team1.id, competitionMatch.team1Id))
+    .innerJoin(team2, eq(team2.id, competitionMatch.team2Id))
+    .leftJoin(lbMatch, eq(lbMatch.competitionMatchId, competitionMatch.id))
+    .where(and(eq(competitionMatch.competitionId, competitionId), isNull(lbMatch.id)))
+    .orderBy(asc(competitionRound.roundNumber), asc(competitionMatch.matchNumber));
 }
 
 // ---------------------------------------------------------------------------

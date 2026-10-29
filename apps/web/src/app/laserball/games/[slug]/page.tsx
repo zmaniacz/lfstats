@@ -9,6 +9,7 @@ import { EditModeToggle } from "@/components/games/EditModeToggle";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { LbMatchCombinedScoreboard } from "@/components/laserball/LbMatchCombinedScoreboard";
 import { LbMatchDetailsDisclosure } from "@/components/laserball/LbMatchDetailsDisclosure";
+import { LbGameCompetitionManager } from "@/components/laserball/LbGameCompetitionManager";
 import { LbMatchManager } from "@/components/laserball/LbMatchManager";
 import { haltCaveat, halfLabel } from "@/components/laserball/lb-match-shared";
 import { LbMatchScorecards } from "@/components/laserball/LbMatchScorecards";
@@ -37,6 +38,9 @@ import {
   getLbMatchGamesDetail,
   getLbMatchIdForGame,
   getLbGameCompetitionMatch,
+  getLbGameCompetition,
+  getOpenLbCompetitionMatches,
+  getCompetitionsByState,
   getLbMatchRosterWarnings,
   type LbGameDetailTeam,
 } from "@lfstats/db";
@@ -46,6 +50,10 @@ import Link from "next/link";
 import {
   addLbGameVideoAction,
   addLbMatchOvertimeAction,
+  addLbGameToCompetitionAction,
+  assignLbGameMatchAction,
+  removeLbGameFromCompetitionAction,
+  unassignLbGameMatchAction,
   linkLbMatchAction,
   removeLbGameVideoAction,
   updateLbGameVideoAction,
@@ -104,6 +112,17 @@ export default async function LaserballGameDetailPage({
   ]);
 
   const half2GameId = matchDetail?.halves.find((h) => h.half === 2)?.gameId;
+
+  const gameCompetition = canEdit ? await getLbGameCompetition(game.id) : null;
+  const [availableCompetitions, openMatches] = await Promise.all([
+    // Completed events too: correcting a finished tournament is the usual reason to be here.
+    canEdit && !gameCompetition
+      ? getCompetitionsByState(["active", "completed"], { order: "desc", gameType: "lb" })
+      : Promise.resolve([]),
+    gameCompetition && !competitionMatch
+      ? getOpenLbCompetitionMatches(gameCompetition.competitionId)
+      : Promise.resolve([]),
+  ]);
 
   // A match renders as one page regardless of which half's slug was loaded, so
   // the Videos tab unions every game in the match (halves plus overtime).
@@ -223,6 +242,28 @@ export default async function LaserballGameDetailPage({
               action={toggleExcludeAction}
             />
           </div>
+        )}
+        {canEdit && (
+          <LbGameCompetitionManager
+            gameId={game.id}
+            competition={gameCompetition}
+            availableCompetitions={availableCompetitions}
+            assignment={competitionMatch}
+            openMatches={openMatches}
+            gameTeams={teams.map((t) => ({
+              id: t.id,
+              name: t.name,
+              colourEnum: t.colourEnum,
+              callsigns: t.players.map((p) => p.callsign),
+            }))}
+            side1GameTeamId={
+              matchDetail?.halves.find((h) => h.gameId === game.id)?.side1.gameTeamId ?? null
+            }
+            addToCompetitionAction={addLbGameToCompetitionAction}
+            removeFromCompetitionAction={removeLbGameFromCompetitionAction}
+            assignAction={assignLbGameMatchAction}
+            unassignAction={unassignLbGameMatchAction}
+          />
         )}
         {canEdit && (
           <LbMatchManager
