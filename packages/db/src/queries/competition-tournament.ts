@@ -1131,8 +1131,36 @@ export async function createCompetitionMatch(data: {
   return row.id;
 }
 
+/**
+ * Deletes a match and closes the gap it leaves, so the round's matches stay numbered 1-N
+ * (match numbers are the per-round sequence admins see and reorder).
+ */
 export async function deleteCompetitionMatch(id: string): Promise<void> {
-  await db.delete(competitionMatch).where(eq(competitionMatch.id, id));
+  await db.transaction(async (tx) => {
+    const [deleted] = await tx
+      .delete(competitionMatch)
+      .where(eq(competitionMatch.id, id))
+      .returning({ roundId: competitionMatch.roundId, matchNumber: competitionMatch.matchNumber });
+    if (!deleted) return;
+    const later = await tx
+      .select({ id: competitionMatch.id, matchNumber: competitionMatch.matchNumber })
+      .from(competitionMatch)
+      .where(
+        and(
+          eq(competitionMatch.roundId, deleted.roundId),
+          sql`${competitionMatch.matchNumber} > ${deleted.matchNumber}`,
+        ),
+      )
+      .orderBy(asc(competitionMatch.matchNumber));
+    // Ascending, one at a time, so each step lands on the number just vacated and
+    // (round_id, match_number) stays unique throughout.
+    for (const m of later) {
+      await tx
+        .update(competitionMatch)
+        .set({ matchNumber: m.matchNumber - 1 })
+        .where(eq(competitionMatch.id, m.id));
+    }
+  });
 }
 
 export async function updateCompetitionMatchTeams(
