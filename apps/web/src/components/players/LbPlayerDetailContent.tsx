@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerStatLineChart } from "@/components/charts/PlayerStatLineChart";
 import { LbCareerAveragesCard } from "@/components/players/LbCareerAveragesCard";
 import { LbHeadToHeadTable } from "@/components/players/LbHeadToHeadTable";
-import { LbResultsByColorTable } from "@/components/players/LbResultsByColorTable";
+import {
+  LbResultsByColorTable,
+  colorResultsFromGames,
+} from "@/components/players/LbResultsByColorTable";
 import { LbWinLossChart } from "@/components/players/LbWinLossChart";
 import { LbPlayerGamesTable } from "@/components/players/LbPlayerGamesTable";
 import { PlayerTabs } from "@/components/players/PlayerTabs";
@@ -59,7 +62,7 @@ export async function LbPlayerDetailContent({
                 <CardTitle>Results by Team Colour</CardTitle>
               </CardHeader>
               <CardContent>
-                <LbResultsByColorTable games={games} />
+                <LbResultsByColorTable results={colorResultsFromGames(games)} />
               </CardContent>
             </Card>
           </div>

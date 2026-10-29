@@ -659,6 +659,8 @@ export type LbLeaderboardOptions = {
   showMercs?: boolean;
   /** Narrow to one player, for their profile. */
   playerId?: string;
+  /** Narrow to one center, for its page (applies in every scope, competition included). */
+  centerId?: string;
 };
 
 function lbLeaderboardConditions(
@@ -672,6 +674,7 @@ function lbLeaderboardConditions(
   ];
   if (!options.showMercs) conditions.push(eq(lbScorecard.isMercenary, false));
   if (options.playerId) conditions.push(eq(lbScorecard.playerId, options.playerId));
+  if (options.centerId) conditions.push(eq(game.centerId, options.centerId));
   return conditions;
 }
 
@@ -870,4 +873,92 @@ export async function getLbPlayerHeadToHead(
       ),
     )
     .groupBy(tgtPlayer.id, tgtPlayer.iplId, tgtPlayer.currentCallsign, isSameTeam);
+}
+
+// ---------------------------------------------------------------------------
+// Laserball Center Stats (read)
+// ---------------------------------------------------------------------------
+
+function lbCenterConditions(scopeFilter: GameScopeFilter, centerId?: string): SQL[] {
+  const conditions = [eq(game.type, "lb"), ...gameScopeConditions(scopeFilter)];
+  if (centerId) conditions.push(eq(game.centerId, centerId));
+  return conditions;
+}
+
+export type LbCenterSummary = {
+  centerId: string;
+  centerSlug: string;
+  centerName: string;
+  games: number;
+  /** Distinct ranked players; guests aren't counted. */
+  players: number;
+  draws: number;
+  /** Both teams' goals together. */
+  avgGoalsPerGame: number;
+  avgDurationMs: number;
+};
+
+/** One row per center with Laserball games in scope (or just `centerId`), busiest first. */
+export async function getLbCenterSummaries(
+  scopeFilter: GameScopeFilter,
+  centerId?: string,
+): Promise<LbCenterSummary[]> {
+  const conditions = lbCenterConditions(scopeFilter, centerId);
+  const [gameRows, playerRows] = await Promise.all([
+    db
+      .select({
+        centerId: center.id,
+        centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
+        centerName: center.name,
+        games: sql<number>`count(*)::int`,
+        draws: sql<number>`(count(*) filter (where ${game.outcome} = 'draw'))::int`,
+        avgGoalsPerGame: sql<number>`avg((
+          select coalesce(sum(${lbGameTeam.score}), 0) from ${lbGameTeam}
+          where ${lbGameTeam.gameId} = ${game.id} and ${lbGameTeam.isNeutral} = false
+        ))::float8`,
+        avgDurationMs: sql<number>`avg(${game.actualDuration})::float8`,
+      })
+      .from(game)
+      .innerJoin(center, eq(center.id, game.centerId))
+      .where(and(...conditions))
+      .groupBy(center.id)
+      .orderBy(sql`count(*) desc`),
+    db
+      .select({
+        centerId: game.centerId,
+        players: sql<number>`count(distinct ${lbScorecard.playerId})::int`,
+      })
+      .from(lbScorecard)
+      .innerJoin(game, eq(game.id, lbScorecard.gameId))
+      .where(and(...conditions))
+      .groupBy(game.centerId),
+  ]);
+  const playersByCenter = new Map(playerRows.map((r) => [r.centerId, r.players]));
+  return gameRows.map((r) => ({ ...r, players: playersByCenter.get(r.centerId) ?? 0 }));
+}
+
+export type LbColorResults = {
+  colourEnum: number;
+  wins: number;
+  losses: number;
+  draws: number;
+};
+
+/** Each team colour's results over the Laserball games in scope (or at `centerId`). */
+export async function getLbResultsByColor(
+  scopeFilter: GameScopeFilter,
+  centerId?: string,
+): Promise<LbColorResults[]> {
+  return db
+    .select({
+      colourEnum: lbGameTeam.colourEnum,
+      wins: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'win'))::int`,
+      losses: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'loss'))::int`,
+      draws: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'draw'))::int`,
+    })
+    .from(lbGameTeam)
+    .innerJoin(game, eq(game.id, lbGameTeam.gameId))
+    .where(and(eq(lbGameTeam.isNeutral, false), ...lbCenterConditions(scopeFilter, centerId)))
+    .groupBy(lbGameTeam.colourEnum)
+    .orderBy(asc(lbGameTeam.colourEnum));
 }

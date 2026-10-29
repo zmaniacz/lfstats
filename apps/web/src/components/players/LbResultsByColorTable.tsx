@@ -9,15 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatWinRate } from "@/lib/format";
+import { formatPct } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
-import type { LbPlayerGameListItem } from "@lfstats/db";
+import type { LbColorResults, LbPlayerGameListItem } from "@lfstats/db";
 
-type ColorRow = { colourEnum: number; wins: number; losses: number; draws: number };
-
-/** The player's record on each team colour they played as. */
-export function LbResultsByColorTable({ games }: { games: LbPlayerGameListItem[] }) {
-  const byColor = new Map<number, ColorRow>();
+/** A player's record on each team colour they played as, from their game list. */
+export function colorResultsFromGames(games: LbPlayerGameListItem[]): LbColorResults[] {
+  const byColor = new Map<number, LbColorResults>();
   for (const g of games) {
     const row = byColor.get(g.teamColourEnum) ?? {
       colourEnum: g.teamColourEnum,
@@ -30,7 +28,12 @@ export function LbResultsByColorTable({ games }: { games: LbPlayerGameListItem[]
     else if (g.result === "draw") row.draws++;
     byColor.set(g.teamColourEnum, row);
   }
-  const rows = [...byColor.values()].sort(
+  return [...byColor.values()];
+}
+
+/** Results on each team colour, most-played first. */
+export function LbResultsByColorTable({ results }: { results: LbColorResults[] }) {
+  const rows = [...results].sort(
     (a, b) => b.wins + b.losses + b.draws - (a.wins + a.losses + a.draws),
   );
 
@@ -64,7 +67,7 @@ export function LbResultsByColorTable({ games }: { games: LbPlayerGameListItem[]
               <TableCell className="text-right tabular-nums">{r.losses}</TableCell>
               <TableCell className="text-right tabular-nums">{r.draws}</TableCell>
               <TableCell className="text-right tabular-nums">
-                {formatWinRate(r.wins, total)}
+                {formatPct(total === 0 ? null : r.wins / total)}
               </TableCell>
             </TableRow>
           );
