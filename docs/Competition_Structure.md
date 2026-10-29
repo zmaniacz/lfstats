@@ -555,8 +555,11 @@ are left out of a team's player totals.
 
 ### Display
 
-- `/standings?game=lb&scope=competition&competition=<slug>` — the table, then every match by
-  round, each half's score linking to its game. Finals rounds sit on the Finals tab.
+- `/standings?scope=competition&competition=<slug>` — the same URL as SM5. The standings page
+  has no SM5/Laserball toggle: its picker lists competitions of both types (Laserball ones
+  labelled) and the selected competition's `game_type` decides what renders — here the table,
+  then a match card per match by round, each half's goals linking to its game. Finals rounds
+  sit on the Finals tab with the Challonge bracket.
 - `/competitions/<slug>/teams/<team>` — the roster with goals, assists, steals, blocks, passes,
   clears and possession over the competition, then the team's matches.
 - The Laserball game page shows _Competition · Round · Match · A vs B_ above the title.

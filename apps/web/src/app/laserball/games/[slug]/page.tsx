@@ -185,7 +185,7 @@ export default async function LaserballGameDetailPage({
       <div className="space-y-2">
         {competitionMatch && (
           <Link
-            href={`/standings?game=lb&scope=competition&competition=${competitionMatch.competitionSlug}`}
+            href={`/standings?scope=competition&competition=${competitionMatch.competitionSlug}`}
             className="text-sm text-muted-foreground hover:underline"
           >
             {competitionMatch.competitionName} · {competitionMatch.roundName} · Match{" "}

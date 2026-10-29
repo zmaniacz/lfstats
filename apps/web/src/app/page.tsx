@@ -40,7 +40,7 @@ function CompetitionListCard({
             {competitions.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-2">
                 <Link
-                  href={`/standings?${c.gameType === "lb" ? "game=lb&" : ""}scope=competition&competition=${c.slug}`}
+                  href={`/standings?scope=competition&competition=${c.slug}`}
                   className="hover:underline"
                 >
                   {c.name}

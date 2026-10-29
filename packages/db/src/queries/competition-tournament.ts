@@ -1794,9 +1794,12 @@ export type CompetitiveCompetitionSummary = {
   challongeBracketHeight: number | null;
 };
 
-/** The competition picker: competitive, public (not preshow) events of one game type. */
+/**
+ * The competition picker: competitive, public (not preshow) events of one game type, or of both
+ * for the standings page, where the competition itself decides which standings to show.
+ */
 export async function getCompetitiveCompetitions(
-  gameType: CompetitionGameType = "sm5",
+  gameType: CompetitionGameType | "all" = "sm5",
 ): Promise<CompetitiveCompetitionSummary[]> {
   return db
     .select({
@@ -1816,7 +1819,7 @@ export async function getCompetitiveCompetitions(
       and(
         eq(competition.type, "competitive"),
         ne(competition.state, "preshow"),
-        eq(competition.gameType, gameType),
+        gameType === "all" ? undefined : eq(competition.gameType, gameType),
       ),
     )
     .orderBy(desc(competition.startDate));

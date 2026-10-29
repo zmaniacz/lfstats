@@ -19,6 +19,8 @@ import { ALL_VALUE, type FilterGameType, type Scope } from "@/lib/filter-cookies
 import { buildFilterUrl, writeFilterCookies } from "./filter-url";
 
 type Option = { slug: string; name: string };
+// A competition says which game it is for, so a mixed list (standings) can label Laserball ones.
+type CompetitionOption = Option & { gameType?: "sm5" | "lb" };
 
 export type FilterBarMode = "generic" | "competition-only" | "social-only" | "center-detail";
 
@@ -45,7 +47,7 @@ export function FilterBar({
   activeDateFrom?: string | null;
   activeDateTo?: string | null;
   centers: Option[];
-  competitions: Option[];
+  competitions: CompetitionOption[];
   /** Page-specific params (e.g. pool/finals/mercs) to carry across changes. */
   extras?: Record<string, string | null | undefined>;
   /**
@@ -125,6 +127,7 @@ export function FilterBar({
   const showScopeToggle = mode === "generic" || mode === "center-detail";
   const showCenterSelect =
     mode === "social-only" || (mode === "generic" && scope !== "competition");
+  const mixedGameTypes = new Set(competitions.map((c) => c.gameType)).size > 1;
   const showCompetitionSelect = scope === "competition" || mode === "competition-only";
   const showDateRange = (mode === "generic" || mode === "center-detail") && scope !== "competition";
   const allowAllOption = mode === "generic" || mode === "center-detail";
@@ -176,6 +179,10 @@ export function FilterBar({
               {competitions.map((c) => (
                 <SelectItem key={c.slug} value={c.slug}>
                   {c.name}
+                  {/* Only a list mixing both game types (standings) needs to say which is which. */}
+                  {mixedGameTypes && c.gameType === "lb" && (
+                    <span className="text-muted-foreground"> · Laserball</span>
+                  )}
                 </SelectItem>
               ))}
             </SelectGroup>
