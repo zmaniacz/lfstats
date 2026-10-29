@@ -9,7 +9,7 @@ import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { MinGamesProvider } from "@/components/players/MinGamesContext";
 import { PlayersContent } from "@/components/players/PlayersContent";
 import { PlayersSkeleton } from "@/components/players/PlayersSkeleton";
-import { LaserballStub } from "@/components/laserball/LaserballStub";
+import { LbPlayersContent } from "@/components/laserball/LbPlayersContent";
 import { hasMatchStructure } from "@lfstats/db";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
@@ -34,8 +34,8 @@ export default async function PlayersPage({
   const gameType = await resolveGameType(sp.game);
   const ctx = await resolveFilterContext(sp, { gameType });
 
-  const useCompetitionView =
-    gameType === "sm5" && ctx.scope === "competition" && ctx.competition !== null;
+  const specificCompetition = ctx.scope === "competition" && ctx.competition !== null;
+  const useCompetitionView = gameType === "sm5" && specificCompetition;
 
   const showPool = sp.pool !== "0";
   const showFinals = sp.finals === "1";
@@ -81,7 +81,12 @@ export default async function PlayersPage({
       </div>
 
       {gameType === "lb" ? (
-        <LaserballStub feature="player rankings" />
+        // One competition is a small sample, so no minimum, as for SM5.
+        <MinGamesProvider enabled={!specificCompetition}>
+          <Suspense key={contentKey} fallback={<PlayersSkeleton tables={1} />}>
+            <LbPlayersContent scopeFilter={toGameScopeFilter(ctx)} />
+          </Suspense>
+        </MinGamesProvider>
       ) : (
         <MinGamesProvider enabled={!useCompetitionView}>
           {/* Rounds/finals/mercs are match-structure concepts; only a team competition has them. */}

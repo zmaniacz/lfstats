@@ -745,3 +745,49 @@ export async function getLbLeaderboardTotals(
     .where(and(...lbLeaderboardConditions(scopeFilter, options)))
     .groupBy(player.id, player.iplId, player.currentCallsign);
 }
+
+export type LbPlayerAverages = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  gamesPlayed: number;
+  wins: number;
+  totalGoals: number;
+  avgGoals: number;
+  avgAssists: number;
+  avgSteals: number;
+  avgBlocks: number;
+  avgClears: number;
+  avgPasses: number;
+  avgPossessionMs: number;
+};
+
+/** Every ranked player's per-game averages over the games in scope, one row per player. */
+export async function getLbPlayerAverages(
+  scopeFilter: GameScopeFilter,
+  options: LbLeaderboardOptions = {},
+): Promise<LbPlayerAverages[]> {
+  const sc = lbScorecard;
+  return db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      gamesPlayed: sql<number>`count(*)::int`,
+      wins: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'win'))::int`,
+      totalGoals: sql<number>`sum(${sc.goals})::int`,
+      avgGoals: sql<number>`avg(${sc.goals})::float8`,
+      avgAssists: sql<number>`avg(${sc.assists1} + ${sc.assists2})::float8`,
+      avgSteals: sql<number>`avg(${sc.stealsDone})::float8`,
+      avgBlocks: sql<number>`avg(${sc.blocksDone})::float8`,
+      avgClears: sql<number>`avg(${sc.clearsDone})::float8`,
+      avgPasses: sql<number>`avg(${sc.passesDone})::float8`,
+      avgPossessionMs: sql<number>`avg(${sc.possessionTimeMs})::float8`,
+    })
+    .from(sc)
+    .innerJoin(lbGameTeam, eq(lbGameTeam.id, sc.teamId))
+    .innerJoin(game, eq(game.id, sc.gameId))
+    .innerJoin(player, eq(player.id, sc.playerId))
+    .where(and(...lbLeaderboardConditions(scopeFilter, options)))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+}
