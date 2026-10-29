@@ -19,6 +19,7 @@ import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
 import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesBlock";
 import { UnenrolledPlayersBlock } from "@/components/competitions/UnenrolledPlayersBlock";
 import { StandingsTabs } from "./StandingsTabs";
+import { ChallongeBracketCard } from "@/components/competitions/ChallongeBracketCard";
 import { LbStandingsContent } from "@/components/competitions/LbStandingsContent";
 import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
 import {
@@ -170,6 +171,10 @@ export default async function StandingsPage({
           }
           finalsContent={
             <Suspense fallback={<StandingsSkeleton />}>
+              <ChallongeBracketCard
+                challongeLink={activeComp.challongeLink}
+                challongeBracketHeight={activeComp.challongeBracketHeight}
+              />
               <LbStandingsContent
                 activeId={activeId}
                 activeRoundId={null}
