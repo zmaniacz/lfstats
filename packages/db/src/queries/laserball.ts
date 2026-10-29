@@ -12,6 +12,7 @@ import {
   lbGamePlayerInteraction,
   lbGameEvent,
   lbGamePlayerState,
+  player,
 } from "../schema";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
@@ -637,4 +638,110 @@ export async function insertLbGamePlayerStates(
   for (let i = 0; i < rows.length; i += CHUNK) {
     await tx.insert(lbGamePlayerState).values(rows.slice(i, i + CHUNK));
   }
+}
+
+// ---------------------------------------------------------------------------
+// Laserball Leaderboards (read)
+// ---------------------------------------------------------------------------
+
+export type LbLeaderboardOptions = {
+  /** Count mercenary scorecards. Off by default, as on the SM5 boards. */
+  showMercs?: boolean;
+};
+
+function lbLeaderboardConditions(
+  scopeFilter: GameScopeFilter,
+  options: LbLeaderboardOptions,
+): SQL[] {
+  // Guests have no profile to rank.
+  const conditions = [
+    ...gameScopeConditions(scopeFilter),
+    sql`${lbScorecard.playerId} IS NOT NULL`,
+  ];
+  if (!options.showMercs) conditions.push(eq(lbScorecard.isMercenary, false));
+  return conditions;
+}
+
+/** The per-game stats a "best single game" board can rank by. */
+export type LbGameLeaderboardStat = "goals" | "assists" | "steals" | "blocks" | "clears" | "passes";
+
+const lbGameStatSql: Record<LbGameLeaderboardStat, SQL<number>> = {
+  goals: sql<number>`${lbScorecard.goals}`,
+  assists: sql<number>`(${lbScorecard.assists1} + ${lbScorecard.assists2})`,
+  steals: sql<number>`${lbScorecard.stealsDone}`,
+  blocks: sql<number>`${lbScorecard.blocksDone}`,
+  clears: sql<number>`${lbScorecard.clearsDone}`,
+  passes: sql<number>`${lbScorecard.passesDone}`,
+};
+
+export type LbGameLeaderboardRow = {
+  scorecardId: string;
+  gameSlug: string;
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  value: number;
+};
+
+/** The 100 best single-game scorecards in scope for one stat (zeroes left out). */
+export async function getLbGameLeaderboard(
+  scopeFilter: GameScopeFilter,
+  stat: LbGameLeaderboardStat,
+  options: LbLeaderboardOptions = {},
+): Promise<LbGameLeaderboardRow[]> {
+  const value = lbGameStatSql[stat];
+  const rows = await db
+    .select({
+      scorecardId: lbScorecard.id,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      value: sql<number>`${value}::int`,
+    })
+    .from(lbScorecard)
+    .innerJoin(game, eq(game.id, lbScorecard.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
+    .innerJoin(player, eq(player.id, lbScorecard.playerId))
+    .where(and(...lbLeaderboardConditions(scopeFilter, options), sql`${value} > 0`))
+    .orderBy(desc(value), asc(game.startTime))
+    .limit(100);
+  return rows;
+}
+
+export type LbLeaderboardTotals = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  gamesPlayed: number;
+  timePlayedMs: number;
+  goals: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+};
+
+/** Every ranked player's totals over the games in scope, one row per player. */
+export async function getLbLeaderboardTotals(
+  scopeFilter: GameScopeFilter,
+  options: LbLeaderboardOptions = {},
+): Promise<LbLeaderboardTotals[]> {
+  const sc = lbScorecard;
+  return db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      gamesPlayed: sql<number>`count(*)::int`,
+      timePlayedMs: sql<number>`sum(${sc.timePlayedMs})::float8`,
+      goals: sql<number>`sum(${sc.goals})::int`,
+      assists: sql<number>`sum(${sc.assists1} + ${sc.assists2})::int`,
+      steals: sql<number>`sum(${sc.stealsDone})::int`,
+      blocks: sql<number>`sum(${sc.blocksDone})::int`,
+    })
+    .from(sc)
+    .innerJoin(game, eq(game.id, sc.gameId))
+    .innerJoin(player, eq(player.id, sc.playerId))
+    .where(and(...lbLeaderboardConditions(scopeFilter, options)))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
 }

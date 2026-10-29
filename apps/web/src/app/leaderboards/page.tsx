@@ -8,7 +8,7 @@ import { LeaderboardsSkeleton } from "@/components/competitions/LeaderboardsSkel
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
-import { LaserballStub } from "@/components/laserball/LaserballStub";
+import { LbLeaderboardsContent } from "@/components/laserball/LbLeaderboardsContent";
 import { hasMatchStructure } from "@lfstats/db";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 
@@ -82,7 +82,9 @@ export default async function LeaderboardsPage({
       </div>
 
       {gameType === "lb" ? (
-        <LaserballStub feature="leaderboards" />
+        <Suspense key={contentKey} fallback={<LeaderboardsSkeleton />}>
+          <LbLeaderboardsContent scopeFilter={scopeFilter} />
+        </Suspense>
       ) : (
         <>
           {/* Rounds/finals/mercs are match-structure concepts; only a team competition has them. */}

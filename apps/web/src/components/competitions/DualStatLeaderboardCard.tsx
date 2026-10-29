@@ -82,6 +82,7 @@ export function DualStatLeaderboardCard({
   rows,
   format1,
   format2,
+  gameType = "sm5",
 }: {
   title: string;
   col1Label: string;
@@ -89,6 +90,8 @@ export function DualStatLeaderboardCard({
   rows: Row[];
   format1: StatFormat;
   format2: StatFormat;
+  /** Laserball rows link to the player's Laserball view. */
+  gameType?: "sm5" | "lb";
 }) {
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: "value1", dir: "desc" });
   const [page, setPage] = useState(1);
@@ -136,7 +139,10 @@ export function DualStatLeaderboardCard({
               return (
                 <TableRow key={r.playerId}>
                   <TableCell className="font-medium">
-                    <Link href={`/players/${iplIdForUrl}`} className="hover:underline">
+                    <Link
+                      href={`/players/${iplIdForUrl}${gameType === "lb" ? "?game=lb" : ""}`}
+                      className="hover:underline"
+                    >
                       {r.callsign}
                     </Link>
                   </TableCell>
