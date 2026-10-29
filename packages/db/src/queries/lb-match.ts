@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, asc, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, not, sql } from "drizzle-orm";
 import { db } from "../client";
 import { center, game, lbGameTeam, lbMatch, lbMatchGame, lbScorecard } from "../schema";
 import { getLbGameReplayData } from "./laserball";
@@ -260,7 +260,12 @@ export async function getLbMatchCandidateGames(
   limit = 25,
 ): Promise<LbMatchCandidateGame[]> {
   const [current] = await db
-    .select({ centerId: game.centerId, startTime: game.startTime, type: game.type })
+    .select({
+      centerId: game.centerId,
+      startTime: game.startTime,
+      type: game.type,
+      competitionId: game.competitionId,
+    })
     .from(game)
     .where(eq(game.id, gameId));
   if (!current || current.type !== "lb") return [];
@@ -284,6 +289,11 @@ export async function getLbMatchCandidateGames(
         eq(game.centerId, current.centerId),
         ne(game.id, gameId),
         not(inArray(game.id, linkedGameIds)),
+        // A half or overtime half comes from the same event: the game's own competition, or
+        // social play when it has none — never a social game into a tournament match.
+        current.competitionId
+          ? eq(game.competitionId, current.competitionId)
+          : isNull(game.competitionId),
       ),
     )
     .orderBy(sql`abs(extract(epoch from (${game.startTime} - ${currentStartTime}::timestamp)))`)
