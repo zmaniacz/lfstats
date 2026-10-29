@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { EntityCombobox } from "@/components/filters/EntityCombobox";
+import { competitionGroups } from "@/components/filters/entity-options";
 import { TEAM_COLORS } from "@/lib/team-colors";
 import type { CompetitionListItem, AvailableMatch, GameMatchAssignment } from "@lfstats/db";
 
@@ -139,28 +141,18 @@ export function GameCompetitionManager({
   if (!competitionId) {
     return (
       <div className="flex items-center gap-3 flex-wrap">
-        <Select
-          value={selectedCompetitionId}
+        <EntityCombobox
+          groups={competitionGroups(availableCompetitions, { getValue: (c) => c.id })}
+          value={selectedCompetitionId || null}
           onValueChange={setSelectedCompetitionId}
           disabled={availableCompetitions.length === 0}
-        >
-          <SelectTrigger className="w-56">
-            <SelectValue
-              placeholder={
-                availableCompetitions.length === 0
-                  ? "No Active Competitions"
-                  : "Assign to competition…"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {availableCompetitions.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder={
+            availableCompetitions.length === 0 ? "No Active Competitions" : "Assign to competition…"
+          }
+          emptyText="No competitions found"
+          aria-label="Competition"
+          className="w-64"
+        />
         <Button
           size="sm"
           disabled={!selectedCompetitionId || isPending}

@@ -5,22 +5,20 @@
 
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ALL_VALUE, type FilterGameType, type Scope } from "@/lib/filter-cookies";
+import { EntityCombobox } from "./EntityCombobox";
+import { centerGroups, competitionGroups } from "./entity-options";
 import { buildFilterUrl, writeFilterCookies } from "./filter-url";
 
-type Option = { slug: string; name: string };
-// A competition says which game it is for, so a mixed list (standings) can label Laserball ones.
-type CompetitionOption = Option & { gameType?: "sm5" | "lb" };
+type Option = { slug: string; name: string; gameCount?: number };
+// A competition says which game it is for, so a mixed list (standings) can label Laserball ones;
+// its state and start date group the picker into Active / Upcoming / past years.
+type CompetitionOption = Option & {
+  gameType?: "sm5" | "lb";
+  state?: "preshow" | "upcoming" | "active" | "completed";
+  startDate?: string;
+};
 
 export type FilterBarMode = "generic" | "competition-only" | "social-only" | "center-detail";
 
@@ -149,45 +147,33 @@ export function FilterBar({
       )}
 
       {showCenterSelect && (
-        <Select value={activeCenterSlug ?? ALL_VALUE} onValueChange={handleCenter}>
-          <SelectTrigger className="w-full sm:w-[240px]">
-            <SelectValue placeholder="Select a center…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel>Centers</SelectLabel>
-              {allowAllOption && <SelectItem value={ALL_VALUE}>All Centers</SelectItem>}
-              {centers.map((c) => (
-                <SelectItem key={c.slug} value={c.slug}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        <EntityCombobox
+          groups={centerGroups(centers, {
+            all: allowAllOption ? { value: ALL_VALUE, label: "All Centers" } : null,
+          })}
+          value={activeCenterSlug ?? (allowAllOption ? ALL_VALUE : null)}
+          onValueChange={handleCenter}
+          placeholder="Search centers…"
+          emptyText="No centers found"
+          aria-label="Center"
+          className="w-full sm:w-[240px]"
+        />
       )}
 
       {showCompetitionSelect && (
-        <Select value={activeCompetitionSlug ?? ALL_VALUE} onValueChange={handleCompetition}>
-          <SelectTrigger className="w-full sm:w-64">
-            <SelectValue placeholder="Select a competition…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel>Competitions</SelectLabel>
-              {allowAllOption && <SelectItem value={ALL_VALUE}>All Competitions</SelectItem>}
-              {competitions.map((c) => (
-                <SelectItem key={c.slug} value={c.slug}>
-                  {c.name}
-                  {/* Only a list mixing both game types (standings) needs to say which is which. */}
-                  {mixedGameTypes && c.gameType === "lb" && (
-                    <span className="text-muted-foreground"> · Laserball</span>
-                  )}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        <EntityCombobox
+          groups={competitionGroups(competitions, {
+            all: allowAllOption ? { value: ALL_VALUE, label: "All Competitions" } : null,
+            // Only a list mixing both game types (standings) needs to say which is which.
+            labelLaserball: mixedGameTypes,
+          })}
+          value={activeCompetitionSlug ?? (allowAllOption ? ALL_VALUE : null)}
+          onValueChange={handleCompetition}
+          placeholder="Search competitions…"
+          emptyText="No competitions found"
+          aria-label="Competition"
+          className="w-full sm:w-72"
+        />
       )}
 
       {showDateRange && (

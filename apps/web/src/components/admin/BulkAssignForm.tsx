@@ -6,13 +6,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { EntityCombobox } from "@/components/filters/EntityCombobox";
+import { centerGroups } from "@/components/filters/entity-options";
 import type { CenterListItem } from "@lfstats/db";
 import { useState } from "react";
 
@@ -54,18 +49,15 @@ export function BulkAssignForm({ competitionId, centers, action }: Props) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <Label>Center</Label>
-        <Select value={centerId} onValueChange={setCenterId} name="centerId" required>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a center" />
-          </SelectTrigger>
-          <SelectContent>
-            {centers.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <EntityCombobox
+          groups={centerGroups(centers, { getValue: (c) => c.id })}
+          value={centerId || null}
+          onValueChange={setCenterId}
+          placeholder="Search centers…"
+          emptyText="No centers found"
+          aria-label="Center"
+          className="w-full"
+        />
       </div>
       <div className="flex gap-4">
         <div className="space-y-1.5 flex-1">
