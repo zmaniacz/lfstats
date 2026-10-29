@@ -39,6 +39,7 @@ import {
   type LbStandingsHalfRow,
   type LbTeamStats,
 } from "../lib/lb-match-points";
+import { getTeamLogoUrl } from "../lib/team-logos";
 import { getCompetitionTeamAdjustments, type CompetitionRoundType } from "./competition-tournament";
 import { linkLbMatch } from "./lb-match";
 
@@ -140,6 +141,22 @@ export async function getLbCompetitionStandings(
     };
   });
   return sortLbStandings(rows, halves);
+}
+
+/** The public standings API's rows: the standings with each team's logo as a URL. */
+export type LbCompetitionStandingsApiRow = Omit<
+  LbCompetitionStandingsRow,
+  "teamHasLogo" | "teamLogoVersion"
+> & { teamLogoUrl: string | null };
+
+export async function getLbCompetitionStandingsData(
+  competitionId: string,
+): Promise<LbCompetitionStandingsApiRow[]> {
+  const rows = await getLbCompetitionStandings(competitionId);
+  return rows.map(({ teamHasLogo, teamLogoVersion, ...row }) => ({
+    ...row,
+    teamLogoUrl: teamHasLogo ? getTeamLogoUrl(row.teamId, teamLogoVersion) : null,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -899,4 +916,88 @@ export async function restampLbMercenariesForTeam(competitionTeamId: string): Pr
       sql`${competitionTeamId}::uuid in (${competitionMatch.team1Id}, ${competitionMatch.team2Id})`,
     );
   for (const r of rows) await stampLbMercenaries(db, r.id);
+}
+
+// ---------------------------------------------------------------------------
+// Schedule (public API)
+// ---------------------------------------------------------------------------
+
+/** One half of a match, the Laserball counterpart of SM5's CompetitionScheduleEntry. */
+export type LbCompetitionScheduleEntry = {
+  gameName: string;
+  team1Name: string;
+  team2Name: string;
+  team1LogoUrl: string | null;
+  team2LogoUrl: string | null;
+  scheduledStartTime: Date | null;
+  actualStartTime: Date | null;
+  team1Goals: number | null;
+  team2Goals: number | null;
+  goalDifferential: number | null;
+};
+
+/**
+ * Every half scheduled or played, one entry each: halves 1 and 2 take the slot's scheduled
+ * times, overtime halves have none. Ordered by scheduled time, unscheduled last, like SM5.
+ */
+export async function getLbCompetitionSchedule(
+  competitionId: string,
+): Promise<LbCompetitionScheduleEntry[]> {
+  const [matches, slots] = await Promise.all([
+    getLbCompetitionMatchResults(competitionId),
+    db
+      .select({
+        id: competitionMatch.id,
+        game1ScheduledStartTime: competitionMatch.game1ScheduledStartTime,
+        game2ScheduledStartTime: competitionMatch.game2ScheduledStartTime,
+      })
+      .from(competitionMatch)
+      .where(eq(competitionMatch.competitionId, competitionId)),
+  ]);
+  const scheduled = new Map(slots.map((s) => [s.id, s]));
+
+  const entries: LbCompetitionScheduleEntry[] = [];
+  for (const m of matches) {
+    const roundPrefix = m.roundType === "finals" ? "Finals" : `R${m.roundNumber}`;
+    const logo = (t: LbCompetitionMatchTeam | null) =>
+      t?.hasLogo ? getTeamLogoUrl(t.id, t.logoVersion) : null;
+    const slot = scheduled.get(m.matchId);
+    const halfNumbers = new Set([1, 2, ...m.halves.map((h) => h.half)]);
+
+    for (const halfNumber of [...halfNumbers].sort((a, b) => a - b)) {
+      const half = m.halves.find((h) => h.half === halfNumber);
+      const scheduledStart =
+        halfNumber === 1
+          ? (slot?.game1ScheduledStartTime ?? null)
+          : halfNumber === 2
+            ? (slot?.game2ScheduledStartTime ?? null)
+            : null;
+      // Skip halves with no scheduled time and no game, as SM5 skips empty slots.
+      if (!scheduledStart && !half) continue;
+
+      const team1Goals = half?.team1Goals ?? null;
+      const team2Goals = half?.team2Goals ?? null;
+      entries.push({
+        gameName: `${roundPrefix} M${m.matchNumber} ${halfNumber > 2 ? `OT${halfNumber - 2}` : `H${halfNumber}`}`,
+        team1Name: m.team1?.name ?? "TBD",
+        team2Name: m.team2?.name ?? "TBD",
+        team1LogoUrl: logo(m.team1),
+        team2LogoUrl: logo(m.team2),
+        scheduledStartTime: scheduledStart,
+        actualStartTime: half?.startTime ?? null,
+        team1Goals,
+        team2Goals,
+        goalDifferential:
+          team1Goals !== null && team2Goals !== null ? team1Goals - team2Goals : null,
+      });
+    }
+  }
+
+  entries.sort((a, b) => {
+    if (!a.scheduledStartTime && !b.scheduledStartTime) return 0;
+    if (!a.scheduledStartTime) return 1;
+    if (!b.scheduledStartTime) return -1;
+    return a.scheduledStartTime.getTime() - b.scheduledStartTime.getTime();
+  });
+  return entries;
 }

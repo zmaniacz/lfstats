@@ -2,9 +2,35 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { NextResponse } from "next/server";
-import { getPlayerOverallAverages } from "@lfstats/db";
+import { getLbPlayerAverages, getPlayerOverallAverages } from "@lfstats/db";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const gameType = new URL(request.url).searchParams.get("game_type");
+  if (gameType && gameType !== "sm5" && gameType !== "lb") {
+    return NextResponse.json({ error: "game_type must be 'sm5' or 'lb'" }, { status: 400 });
+  }
+
+  if (gameType === "lb") {
+    // Career averages: every game the player played, mercenary ones included.
+    const lbPlayers = await getLbPlayerAverages({ scope: "all" }, { showMercs: true });
+    return NextResponse.json({
+      data: lbPlayers.map((p) => ({
+        player_IPL_ID: p.iplId,
+        player_name: p.callsign,
+        games_won: p.wins,
+        games_played: p.gamesPlayed,
+        total_goals: p.totalGoals,
+        avg_goals: p.avgGoals,
+        avg_assists: p.avgAssists,
+        avg_steals: p.avgSteals,
+        avg_blocks: p.avgBlocks,
+        avg_clears: p.avgClears,
+        avg_passes: p.avgPasses,
+        avg_possession_ms: p.avgPossessionMs,
+      })),
+    });
+  }
+
   const players = await getPlayerOverallAverages();
 
   const data = players.map((p) => ({
