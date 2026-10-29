@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/chart";
 import { MultiSelectFilter } from "@/components/filters/MultiSelectFilter";
 import { POSITIONS } from "@/lib/positions";
-import { formatMVP, formatScore, formatPct, formatHitDiff } from "@/lib/format";
+import { formatAvg, formatMVP, formatScore, formatPct, formatHitDiff } from "@/lib/format";
 import { smoothStatSeries, type PlayerStatPoint } from "@/lib/player-stat-series";
 
 const POSITION_KEYS = ["pos1", "pos2", "pos3", "pos4", "pos5"] as const;
@@ -25,6 +25,7 @@ const FORMATTERS = {
   score: formatScore,
   pct: formatPct,
   hitDiff: formatHitDiff,
+  avg: formatAvg,
 } as const;
 
 type ValueFormat = keyof typeof FORMATTERS;
@@ -51,9 +52,16 @@ type Props = {
   data: PlayerStatPoint[];
   format: ValueFormat;
   emptyMessage?: string;
+  /** Off for Laserball, which has no positions: just the overall line. */
+  showPositionFilter?: boolean;
 };
 
-export function PlayerStatLineChart({ data, format, emptyMessage }: Props) {
+export function PlayerStatLineChart({
+  data,
+  format,
+  emptyMessage,
+  showPositionFilter = true,
+}: Props) {
   const [selected, setSelected] = useState<string[]>(["all"]);
   const valueFormatter = FORMATTERS[format];
   const smoothedData = useMemo(() => smoothStatSeries(data), [data]);
@@ -66,12 +74,14 @@ export function PlayerStatLineChart({ data, format, emptyMessage }: Props) {
 
   return (
     <div className="space-y-3">
-      <MultiSelectFilter
-        label="Positions"
-        options={FILTER_OPTIONS}
-        selected={selected}
-        onChange={setSelected}
-      />
+      {showPositionFilter && (
+        <MultiSelectFilter
+          label="Positions"
+          options={FILTER_OPTIONS}
+          selected={selected}
+          onChange={setSelected}
+        />
+      )}
       <ChartContainer config={chartConfig} className="aspect-auto h-75">
         <LineChart data={smoothedData} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -105,7 +115,7 @@ export function PlayerStatLineChart({ data, format, emptyMessage }: Props) {
               />
             }
           />
-          <ChartLegend content={<ChartLegendContent />} />
+          {showPositionFilter && <ChartLegend content={<ChartLegendContent />} />}
           {selected.includes("all") && (
             <Line
               dataKey="all"

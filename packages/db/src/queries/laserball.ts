@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, asc, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "../client";
 import { parseGameSlug } from "../lib/game-slug";
 import {
@@ -165,6 +166,9 @@ export type LbPlayerGameListItem = {
   teamColourEnum: number;
   result: "win" | "loss" | "draw" | null;
   goals: number;
+  assists: number;
+  steals: number;
+  blocks: number;
 };
 
 export async function getLbPlayerGames(
@@ -185,6 +189,9 @@ export async function getLbPlayerGames(
       teamColourEnum: lbGameTeam.colourEnum,
       result: lbGameTeam.result,
       goals: lbScorecard.goals,
+      assists: sql<number>`(${lbScorecard.assists1} + ${lbScorecard.assists2})::int`,
+      steals: lbScorecard.stealsDone,
+      blocks: lbScorecard.blocksDone,
     })
     .from(lbScorecard)
     .innerJoin(lbGameTeam, eq(lbScorecard.teamId, lbGameTeam.id))
@@ -234,6 +241,9 @@ export async function getLbPlayerGames(
     teamColourEnum: row.teamColourEnum,
     result: row.result,
     goals: row.goals,
+    assists: row.assists,
+    steals: row.steals,
+    blocks: row.blocks,
   }));
 }
 
@@ -647,6 +657,8 @@ export async function insertLbGamePlayerStates(
 export type LbLeaderboardOptions = {
   /** Count mercenary scorecards. Off by default, as on the SM5 boards. */
   showMercs?: boolean;
+  /** Narrow to one player, for their profile. */
+  playerId?: string;
 };
 
 function lbLeaderboardConditions(
@@ -659,6 +671,7 @@ function lbLeaderboardConditions(
     sql`${lbScorecard.playerId} IS NOT NULL`,
   ];
   if (!options.showMercs) conditions.push(eq(lbScorecard.isMercenary, false));
+  if (options.playerId) conditions.push(eq(lbScorecard.playerId, options.playerId));
   return conditions;
 }
 
@@ -790,4 +803,71 @@ export async function getLbPlayerAverages(
     .innerJoin(player, eq(player.id, sc.playerId))
     .where(and(...lbLeaderboardConditions(scopeFilter, options)))
     .groupBy(player.id, player.iplId, player.currentCallsign);
+}
+
+export type LbHeadToHeadRow = {
+  targetPlayerId: string;
+  targetIplId: string;
+  targetCallsign: string;
+  isSameTeam: boolean;
+  games: number;
+  /** The main player's results in those games. */
+  wins: number;
+  losses: number;
+  draws: number;
+  steals: number;
+  stolenBy: number;
+  blocks: number;
+  blockedBy: number;
+  passesTo: number;
+  passesFrom: number;
+};
+
+/**
+ * Every ranked player who shared a game with this one, split by whether they were on the same
+ * side, with the record and the steals, blocks and passes between the two.
+ */
+export async function getLbPlayerHeadToHead(
+  playerId: string,
+  scopeFilter?: GameScopeFilter,
+): Promise<LbHeadToHeadRow[]> {
+  const mainSc = alias(lbScorecard, "main_sc");
+  const tgtSc = alias(lbScorecard, "tgt_sc");
+  const fwd = alias(lbGamePlayerInteraction, "fwd");
+  const rev = alias(lbGamePlayerInteraction, "rev");
+  const tgtPlayer = alias(player, "tgt_player");
+  const isSameTeam = sql<boolean>`(${mainSc.teamId} = ${tgtSc.teamId})`;
+
+  return db
+    .select({
+      targetPlayerId: tgtPlayer.id,
+      targetIplId: tgtPlayer.iplId,
+      targetCallsign: tgtPlayer.currentCallsign,
+      isSameTeam,
+      games: sql<number>`count(distinct ${mainSc.gameId})::int`,
+      wins: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'win'))::int`,
+      losses: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'loss'))::int`,
+      draws: sql<number>`(count(*) filter (where ${lbGameTeam.result} = 'draw'))::int`,
+      steals: sql<number>`coalesce(sum(${fwd.steals}), 0)::int`,
+      stolenBy: sql<number>`coalesce(sum(${rev.steals}), 0)::int`,
+      blocks: sql<number>`coalesce(sum(${fwd.blocks}), 0)::int`,
+      blockedBy: sql<number>`coalesce(sum(${rev.blocks}), 0)::int`,
+      passesTo: sql<number>`coalesce(sum(${fwd.passes}), 0)::int`,
+      passesFrom: sql<number>`coalesce(sum(${rev.passes}), 0)::int`,
+    })
+    .from(mainSc)
+    .innerJoin(lbGameTeam, eq(lbGameTeam.id, mainSc.teamId))
+    .innerJoin(game, eq(game.id, mainSc.gameId))
+    .innerJoin(tgtSc, and(eq(tgtSc.gameId, mainSc.gameId), ne(tgtSc.id, mainSc.id)))
+    .innerJoin(tgtPlayer, eq(tgtPlayer.id, tgtSc.playerId))
+    .leftJoin(fwd, and(eq(fwd.scorecardId, mainSc.id), eq(fwd.targetScorecardId, tgtSc.id)))
+    .leftJoin(rev, and(eq(rev.scorecardId, tgtSc.id), eq(rev.targetScorecardId, mainSc.id)))
+    .where(
+      and(
+        eq(mainSc.playerId, playerId),
+        ne(tgtPlayer.id, playerId),
+        ...gameScopeConditions(scopeFilter),
+      ),
+    )
+    .groupBy(tgtPlayer.id, tgtPlayer.iplId, tgtPlayer.currentCallsign, isSameTeam);
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import type { PlayerGameListItem } from "@lfstats/db";
+import type { LbPlayerGameListItem, PlayerGameListItem } from "@lfstats/db";
 import { formatDateTime } from "@/lib/format";
 
 export type PlayerStatPoint = {
@@ -41,6 +41,28 @@ export function buildStatSeries(
       pos5: g.position === 5 ? value : null,
     };
   });
+}
+
+export type LbPlayerStatKey = "goals" | "assists" | "steals" | "blocks";
+
+/** Laserball has no positions, so only the "all" line is filled. */
+export function buildLbStatSeries(
+  games: LbPlayerGameListItem[],
+  statKey: LbPlayerStatKey,
+): PlayerStatPoint[] {
+  const sorted = [...games].sort(
+    (a, b) => a.startTime.getTime() - b.startTime.getTime() || a.id.localeCompare(b.id),
+  );
+  return sorted.map((g) => ({
+    gameId: g.id,
+    label: formatDateTime(g.startTime),
+    all: g[statKey],
+    pos1: null,
+    pos2: null,
+    pos3: null,
+    pos4: null,
+    pos5: null,
+  }));
 }
 
 const MIN_SMOOTHING_WINDOW = 3;
