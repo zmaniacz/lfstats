@@ -28,7 +28,13 @@ type GameTeam = {
   id: string;
   name: string;
   colourEnum: number;
+  callsigns: string[];
 };
+
+/** "Fire: TheBabe, Asra, …" — colour plus who played, so teams are told apart by players. */
+function teamOptionLabel(t: GameTeam): string {
+  return `${getTeamColor(t.colourEnum)?.label ?? t.name}: ${t.callsigns.join(", ") || "no players"}`;
+}
 
 type Pairing = {
   gameSide1TeamId: string;
@@ -53,6 +59,8 @@ type Props = {
     pairing: LbMatchOvertimePairing,
   ) => Promise<void>;
   removeOvertimeAction: (gameId: string, matchId: string, otGameId: string) => Promise<void>;
+  // The competition teams on Side 1 and Side 2, when the match fills a competition match.
+  sideNames?: [string, string];
 };
 
 const WARNING_LABEL: Record<LbMatchRosterWarning["kind"], string> = {
@@ -72,6 +80,7 @@ export function LbMatchManager({
   unlinkAction,
   addOvertimeAction,
   removeOvertimeAction,
+  sideNames,
 }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
@@ -203,13 +212,13 @@ export function LbMatchManager({
             <div className="space-y-1">
               <Label className="text-xs">This game&apos;s Side 1 team</Label>
               <Select value={gameSide1TeamId} onValueChange={setGameSide1TeamId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-96">
                   <SelectValue placeholder="Select team…" />
                 </SelectTrigger>
                 <SelectContent>
                   {gameTeams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
+                      {teamOptionLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -219,13 +228,13 @@ export function LbMatchManager({
             <div className="space-y-1">
               <Label className="text-xs">Other game&apos;s Side 1 team</Label>
               <Select value={otherSide1TeamId} onValueChange={setOtherSide1TeamId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-96">
                   <SelectValue placeholder="Select team…" />
                 </SelectTrigger>
                 <SelectContent>
                   {selectedCandidate.teams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
+                      {teamOptionLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -339,15 +348,17 @@ export function LbMatchManager({
 
           {selectedOtCandidate && (
             <div className="space-y-1">
-              <Label className="text-xs">Overtime game&apos;s Side 1 team</Label>
+              <Label className="text-xs">
+                {sideNames ? `${sideNames[0]} played as` : "Overtime game's Side 1 team"}
+              </Label>
               <Select value={otSide1TeamId} onValueChange={setOtSide1TeamId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-96">
                   <SelectValue placeholder="Select team…" />
                 </SelectTrigger>
                 <SelectContent>
                   {selectedOtCandidate.teams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
+                      {teamOptionLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>

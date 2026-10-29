@@ -60,7 +60,8 @@ export type LbMatchCandidateGame = {
   startTime: Date;
   description: string | null;
   outcome: string;
-  teams: { id: string; name: string; colourEnum: number }[];
+  // callsigns: who played on the team, so an admin can tell the teams apart by players.
+  teams: { id: string; name: string; colourEnum: number; callsigns: string[] }[];
 };
 
 const gameSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`;
@@ -302,10 +303,25 @@ export async function getLbMatchCandidateGames(
     .where(and(inArray(lbGameTeam.gameId, gameIds), eq(lbGameTeam.isNeutral, false)))
     .orderBy(lbGameTeam.tdfTeamIndex);
 
-  const teamsByGame = new Map<string, { id: string; name: string; colourEnum: number }[]>();
+  const cards = await db
+    .select({ teamId: lbScorecard.teamId, callsign: lbScorecard.callsign })
+    .from(lbScorecard)
+    .where(inArray(lbScorecard.gameId, gameIds))
+    .orderBy(asc(lbScorecard.callsign));
+  const callsignsByTeam = new Map<string, string[]>();
+  for (const c of cards) {
+    callsignsByTeam.set(c.teamId, [...(callsignsByTeam.get(c.teamId) ?? []), c.callsign]);
+  }
+
+  const teamsByGame = new Map<string, LbMatchCandidateGame["teams"]>();
   for (const t of teamRows) {
     const list = teamsByGame.get(t.gameId) ?? [];
-    list.push({ id: t.id, name: t.name, colourEnum: t.colourEnum });
+    list.push({
+      id: t.id,
+      name: t.name,
+      colourEnum: t.colourEnum,
+      callsigns: callsignsByTeam.get(t.id) ?? [],
+    });
     teamsByGame.set(t.gameId, list);
   }
 

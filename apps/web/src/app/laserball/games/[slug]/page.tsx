@@ -288,7 +288,13 @@ export default async function LaserballGameDetailPage({
         {canEdit && (
           <LbMatchManager
             gameId={game.id}
-            gameTeams={teams.map((t) => ({ id: t.id, name: t.name, colourEnum: t.colourEnum }))}
+            gameTeams={teams.map((t) => ({
+              id: t.id,
+              name: t.name,
+              colourEnum: t.colourEnum,
+              callsigns: t.players.map((p) => p.callsign),
+            }))}
+            sideNames={sideNames}
             matchDetail={matchDetail}
             rosterWarnings={rosterWarnings}
             candidateGames={candidateGames}
