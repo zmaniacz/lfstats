@@ -32,6 +32,7 @@ import {
   eq,
   and,
   ne,
+  lte,
   asc,
   desc,
   ilike,
@@ -1019,7 +1020,7 @@ export async function getCompetitionMatchesByRound(
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .where(inArray(competitionMatchGame.matchId, matchIds));
-  // A Laserball match is one lb_match; its halves 1 and 2 fill the same two slots.
+  // A Laserball match is one lb_match; its regulation halves 1 and 2 fill the same two slots.
   const lbHalves = await db
     .select({
       matchId: sql<string>`${lbMatch.competitionMatchId}`,
@@ -1029,7 +1030,7 @@ export async function getCompetitionMatchesByRound(
     .from(lbMatchGame)
     .innerJoin(lbMatch, eq(lbMatch.id, lbMatchGame.matchId))
     .innerJoin(game, eq(game.id, lbMatchGame.gameId))
-    .where(and(inArray(lbMatch.competitionMatchId, matchIds), ne(lbMatchGame.half, 3)));
+    .where(and(inArray(lbMatch.competitionMatchId, matchIds), lte(lbMatchGame.half, 2)));
   gameAssignments.push(...lbHalves);
 
   const assignedMap = new Map<string, { numbers: Set<number>; startTimes: Map<number, Date> }>();

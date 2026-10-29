@@ -139,9 +139,11 @@ export default async function LaserballGameDetailPage({
   // the Videos tab unions every game in the match (halves plus overtime).
   const matchGameIds = matchDetail?.halves.map((h) => h.gameId) ?? [game.id];
 
+  // Overtime halves are added after the last half played, so offer games near it.
+  const lastHalfGameId = matchDetail?.halves.at(-1)?.gameId;
   const [otCandidateGames, matchGamesDetail, videos] = await Promise.all([
-    canEdit && matchDetail?.halves.length === 2 && half2GameId
-      ? getLbMatchCandidateGames(half2GameId)
+    canEdit && half2GameId && lastHalfGameId
+      ? getLbMatchCandidateGames(lastHalfGameId)
       : Promise.resolve([]),
     matchId
       ? getLbMatchGamesDetail(matchId)
@@ -203,7 +205,14 @@ export default async function LaserballGameDetailPage({
               const caveat = haltCaveat(h.gameOutcome, h.gameExcluded);
               return (
                 <span key={h.gameId} className="flex items-center gap-1.5">
-                  {halfLabel(h.half)}: {formatDateTime(h.gameStartTime)}
+                  {h.half > 2 ? (
+                    <Badge variant="outline" className="text-xs px-1 py-0">
+                      {halfLabel(h.half)}
+                    </Badge>
+                  ) : (
+                    `${halfLabel(h.half)}:`
+                  )}{" "}
+                  {formatDateTime(h.gameStartTime)}
                   {caveat && (
                     <Badge variant="destructive" className="text-xs px-1 py-0">
                       {caveat}

@@ -94,7 +94,7 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 - **Multi-center support.** Games in a competition can be played at different centers with no constraint.
 - **Game type is fixed per competition.** `game_type` is `sm5` or `lb`, chosen at creation. A
   Laserball competition reuses teams, rosters, rounds, pools, matches and adjustments, but a match
-  is played as one `lb_match` (two halves and an optional overtime) and scored on match results and
+  is played as one `lb_match` (two halves and any overtime halves) and scored on match results and
   goals. See [Laserball Competitions](#laserball-competitions).
 
 ---
@@ -312,7 +312,7 @@ Same meaning as on `sm5_scorecard`, stamped by `assignGameToMatch()`.
 
 ### `lb_match` / `lb_match_game`
 
-Laserball's match model: a link between the two halves of one match (and an optional overtime). It stands alone for social games; in a [Laserball competition](#laserball-competitions) it is what fills a `competition_match`.
+Laserball's match model: a link between the two halves of one match (and any overtime halves). It stands alone for social games; in a [Laserball competition](#laserball-competitions) it is what fills a `competition_match`.
 
 `lb_match`:
 
@@ -330,13 +330,13 @@ Laserball's match model: a link between the two halves of one match (and an opti
 | `id`                 | uuid PK                |                                                         |
 | `match_id`           | uuid FK → lb_match     | cascade delete                                          |
 | `game_id`            | uuid FK → game         | cascade delete                                          |
-| `half`               | integer                | `1` = first half, `2` = second (post side-swap) half    |
+| `half`               | integer                | `1`, `2` regulation; `3`+ overtime (OT 1, OT 2, …)      |
 | `side1_game_team_id` | uuid FK → lb_game_team | Which `lb_game_team` row is match "Side 1" in this game |
 | `side2_game_team_id` | uuid FK → lb_game_team | Which `lb_game_team` row is match "Side 2" in this game |
 
 **Unique:** `(match_id, half)` and `(game_id)` · **Index:** `match_id`
 
-Side identity is **match-scoped** — colour and name are just center display strings. In a competition, Side 1 is the competition match's team 1. `half = 3` is an overtime, played only to break a tie over halves 1 and 2. That Side 1 in half 1 and Side 1 in half 2 are "the same real-world team" is asserted by the admin at link time, and the two will normally carry a _different_ `tdf_team_index` / `colour_enum` in each half, which is the whole point of the swap.
+Side identity is **match-scoped** — colour and name are just center display strings. In a competition, Side 1 is the competition match's team 1. Halves 3 and up are overtime halves (half 3 is OT 1), played only from a level score; there can be any number, numbered in play order with no gaps — removing one renumbers the rest. That Side 1 in half 1 and Side 1 in half 2 are "the same real-world team" is asserted by the admin at link time, and the two will normally carry a _different_ `tdf_team_index` / `colour_enum` in each half, which is the whole point of the swap.
 
 Served by `GET /api/laserball/matches/[matchId]/replay` — see [API.md](API.md).
 
@@ -521,10 +521,14 @@ Queries live in `packages/db/src/queries/competition-laserball.ts`; the arithmet
 
 ### Points
 
-- The match goes to the team with more **goals over halves 1 and 2** (`lb_game_team.score`) —
-  the aggregate, not the number of halves won.
-- Level after two halves: the **overtime** (half 3) decides it. With no overtime, or a level one,
-  the match is a **tie**.
+- The match goes to the team with more **goals over every half played** (`lb_game_team.score`)
+  — the aggregate, not the number of halves won.
+- **Overtime** is extra halves (usually two, so each team plays a side again), played only when
+  the regulation halves are level. Their goals are summed with the rest, so in practice the
+  overtime halves' sum decides it. Level totals, with or without overtime, are a **tie**.
+- Wherever a result is shown — the standings match list, team pages, the game page, game lists
+  and the admin pages — a match that went to overtime carries an **OT** badge, and each overtime
+  half is labelled OT 1, OT 2, …
 - **Win = 1 point, tie = 0.5 each, loss = 0**, multiplied by the round multiplier. Nothing is
   awarded per half.
 - A match missing a regulation half earns nothing. Once the competition is `completed`, such a
@@ -568,8 +572,10 @@ Choose **Laserball** as the game when creating the competition; it cannot be cha
 Bulk-assign games by center and date range — it only takes games of the competition's own type.
 On each match page, either pick halves already linked as a match (from the game page) and say
 which side team 1 was, or pick two of the competition's unlinked games and the team team 1
-played as in each; the earlier game becomes half 1. Overtime is linked from the game page as
-before. There is no forfeit flow.
+played as in each; the earlier game becomes half 1. Overtime halves are added one at a time
+from the game page (each says which team was Side 1), and any can be removed. A match already in
+a competition files a new overtime half into it and stamps its mercenaries. There is no forfeit
+flow.
 
 Ingest files a game into a competition from its S3 key prefix only when the game types match; a
 mismatched game is ingested as social, with a warning.

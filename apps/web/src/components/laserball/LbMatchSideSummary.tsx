@@ -13,6 +13,7 @@ export function LbMatchSideSummary({
   // The competition teams playing Side 1 and Side 2, when the match fills a competition match.
   sideNames?: [string, string];
 }) {
+  const overtime = matchDetail.halves.some((h) => h.half > 2);
   const sides = [
     { side: 1 as const, total: matchDetail.side1TotalScore, label: sideNames?.[0] ?? "Side 1" },
     { side: 2 as const, total: matchDetail.side2TotalScore, label: sideNames?.[1] ?? "Side 2" },
@@ -35,6 +36,9 @@ export function LbMatchSideSummary({
             </span>
             {isWinner && <Badge variant="default">Winner</Badge>}
             {matchDetail.winnerSide === "draw" && <Badge variant="secondary">Draw</Badge>}
+            {overtime && (isWinner || matchDetail.winnerSide === "draw") && (
+              <Badge variant="outline">OT</Badge>
+            )}
           </div>
         );
       })}

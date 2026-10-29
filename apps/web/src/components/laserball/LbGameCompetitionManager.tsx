@@ -147,7 +147,7 @@ export function LbGameCompetitionManager({
         <div className="flex items-center gap-3 text-sm flex-wrap">
           <span className="text-muted-foreground">
             {assignment.roundName} · Match {assignment.matchNumber} ·{" "}
-            {assignment.half === 3 ? "Overtime" : `Half ${assignment.half}`}
+            {assignment.half > 2 ? `OT ${assignment.half - 2}` : `Half ${assignment.half}`}
           </span>
           <span className="font-medium">
             {assignment.team1Name ?? "TBD"} vs {assignment.team2Name ?? "TBD"}

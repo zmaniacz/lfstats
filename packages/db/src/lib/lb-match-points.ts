@@ -6,18 +6,24 @@
  * unit-tested directly; competition-laserball.ts feeds it rows.
  *
  * A Laserball match is one lb_match: half 1 and half 2, with the teams swapping sides between
- * them, plus an optional overtime (half 3) played only to break a tie. The match goes to the
- * team with more goals over halves 1 and 2; if those are level, the overtime decides it, and
- * with no overtime (or a level one) it is a tie. A win is worth 1 point and a tie 0.5 each,
- * scaled by the round multiplier. Nothing is awarded per half.
+ * them, plus any number of overtime halves (half 3 = OT 1, half 4 = OT 2, ...) played only when
+ * the regulation halves are level. The match goes to the team with more goals over every half
+ * played. Overtime starts from a tie, so that is the overtime halves' sum deciding it. Level
+ * totals are a tie. A win is worth 1 point and a tie 0.5 each, scaled by the round multiplier.
+ * Nothing is awarded per half.
  */
+
+/** Halves 1 and 2 are regulation; every later half is overtime (OT 1 is half 3). */
+export function isOvertimeHalf(half: number): boolean {
+  return half > 2;
+}
 
 export type LbStandingsHalfRow = {
   competitionMatchId: string;
   roundMultiplier: number;
   team1Id: string | null;
   team2Id: string | null;
-  // 1, 2 or 3 (overtime). Side 1 is always the competition match's team 1.
+  // 1 or 2, or 3+ for overtime. Side 1 is always the competition match's team 1.
   half: number;
   team1Goals: number;
   team2Goals: number;
@@ -32,6 +38,7 @@ export type LbMatchOutcome = {
   winner: 1 | 2 | "tie" | null;
   // Whether the match counts in the standings: both regulation halves are linked.
   complete: boolean;
+  // Whether any overtime half was played.
   overtime: boolean;
 };
 
@@ -40,8 +47,8 @@ export function lbMatchOutcome(
   halves: { half: number; team1Goals: number; team2Goals: number }[],
   completedCompetition = false,
 ): LbMatchOutcome {
-  const regulation = halves.filter((h) => h.half === 1 || h.half === 2);
-  const overtime = halves.find((h) => h.half === 3);
+  const regulation = halves.filter((h) => !isOvertimeHalf(h.half));
+  const overtime = halves.some((h) => isOvertimeHalf(h.half));
   const team1Goals = halves.reduce((n, h) => n + h.team1Goals, 0);
   const team2Goals = halves.reduce((n, h) => n + h.team2Goals, 0);
   const compare = (a: number, b: number): 1 | 2 | "tie" => (a > b ? 1 : b > a ? 2 : "tie");
@@ -58,11 +65,13 @@ export function lbMatchOutcome(
     };
   }
 
-  const reg1 = regulation.reduce((n, h) => n + h.team1Goals, 0);
-  const reg2 = regulation.reduce((n, h) => n + h.team2Goals, 0);
-  let winner = compare(reg1, reg2);
-  if (winner === "tie" && overtime) winner = compare(overtime.team1Goals, overtime.team2Goals);
-  return { team1Goals, team2Goals, winner, complete: true, overtime: !!overtime };
+  return {
+    team1Goals,
+    team2Goals,
+    winner: compare(team1Goals, team2Goals),
+    complete: true,
+    overtime,
+  };
 }
 
 export type LbTeamStats = {

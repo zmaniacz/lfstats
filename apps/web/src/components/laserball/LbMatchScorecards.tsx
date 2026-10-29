@@ -39,6 +39,7 @@ export function LbMatchScorecards({ matchDetail, gamesById, sideNames }: Props) 
           <section key={h.matchGameId} className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold">{halfLabel(h.half)}</h2>
+              {h.half > 2 && <Badge variant="outline">Overtime</Badge>}
               {caveat && <Badge variant="destructive">{caveat}</Badge>}
             </div>
 

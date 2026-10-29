@@ -145,18 +145,13 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
 
   const side1TotalScore = halves.reduce((sum, h) => sum + (h.side1.score ?? 0), 0);
   const side2TotalScore = halves.reduce((sum, h) => sum + (h.side2.score ?? 0), 0);
-  const overtime = halves.find((h) => h.half === 3);
 
+  // Decided on the total over every half once both regulation halves are in. Overtime halves
+  // (3, 4, ...) are only played from a level score, so their sum is what breaks the tie.
   let winnerSide: LbMatchDetail["winnerSide"] = null;
-  if (halves.length === 2) {
+  if (halves.some((h) => h.half === 1) && halves.some((h) => h.half === 2)) {
     winnerSide =
       side1TotalScore === side2TotalScore ? "draw" : side1TotalScore > side2TotalScore ? 1 : 2;
-  } else if (halves.length === 3 && overtime) {
-    // Overtime is only played to break a half 1+2 tie — its own result alone
-    // decides the match, not the (still tied) cumulative total.
-    const otSide1 = overtime.side1.score ?? 0;
-    const otSide2 = overtime.side2.score ?? 0;
-    winnerSide = otSide1 === otSide2 ? "draw" : otSide1 > otSide2 ? 1 : 2;
   }
 
   return {
@@ -407,8 +402,8 @@ export async function addLbMatchOvertimeGame(
   const half2 = existing.find((h) => h.half === 2);
   if (!half1 || !half2)
     throw new Error("Match must have both halves linked before adding overtime");
-  if (existing.some((h) => h.half === 3))
-    throw new Error("Overtime is already linked to this match");
+  // Overtime can run to several halves: each new one follows the last (OT 1 is half 3).
+  const nextHalf = Math.max(...existing.map((h) => h.half)) + 1;
 
   const [halfGame] = await db
     .select({ centerId: game.centerId })
@@ -431,16 +426,44 @@ export async function addLbMatchOvertimeGame(
   await db.insert(lbMatchGame).values({
     matchId,
     gameId,
-    half: 3,
+    half: nextHalf,
     side1GameTeamId: pairing.side1TeamId,
     side2GameTeamId: pairing.side2TeamId,
   });
 }
 
-export async function removeLbMatchOvertimeGame(matchId: string): Promise<void> {
-  await db
-    .delete(lbMatchGame)
-    .where(and(eq(lbMatchGame.matchId, matchId), eq(lbMatchGame.half, 3)));
+/**
+ * Removes one overtime half and closes the gap, so the remaining overtime halves stay numbered
+ * 3, 4, ... in play order. The game's mercenary flags are cleared: they mean nothing outside a
+ * match.
+ */
+export async function removeLbMatchOvertimeGame(matchId: string, gameId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [removed] = await tx
+      .delete(lbMatchGame)
+      .where(
+        and(
+          eq(lbMatchGame.matchId, matchId),
+          eq(lbMatchGame.gameId, gameId),
+          sql`${lbMatchGame.half} > 2`,
+        ),
+      )
+      .returning({ half: lbMatchGame.half });
+    if (!removed) return;
+    const later = await tx
+      .select({ id: lbMatchGame.id, half: lbMatchGame.half })
+      .from(lbMatchGame)
+      .where(and(eq(lbMatchGame.matchId, matchId), sql`${lbMatchGame.half} > ${removed.half}`))
+      .orderBy(asc(lbMatchGame.half));
+    // Ascending, one at a time, so (match_id, half) stays unique throughout.
+    for (const h of later) {
+      await tx
+        .update(lbMatchGame)
+        .set({ half: h.half - 1 })
+        .where(eq(lbMatchGame.id, h.id));
+    }
+    await tx.update(lbScorecard).set({ isMercenary: false }).where(eq(lbScorecard.gameId, gameId));
+  });
 }
 
 // ---------------------------------------------------------------------------

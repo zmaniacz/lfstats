@@ -9,6 +9,7 @@ import {
   type CompetitionTeamAdjustment,
   type LbCompetitionMatchResult,
   type LbCompetitionStandingsRow,
+  isOvertimeHalf,
 } from "@lfstats/db";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,7 +234,9 @@ export function LbMatchList({
                         <>
                           {m.outcome.team1Goals}–{m.outcome.team2Goals}
                           {m.outcome.overtime && (
-                            <span className="text-muted-foreground text-xs ml-1">OT</span>
+                            <Badge variant="outline" className="ml-2">
+                              OT
+                            </Badge>
                           )}
                           {m.outcome.winner === null && (
                             <Badge variant="outline" className="ml-2">
@@ -262,8 +265,13 @@ export function LbMatchList({
                           key={h.half}
                           href={`/laserball/games/${h.gameSlug}`}
                           className="mr-3 hover:underline tabular-nums"
-                          title={h.half === 3 ? "Overtime" : `Half ${h.half}`}
+                          title={isOvertimeHalf(h.half) ? `OT ${h.half - 2}` : `Half ${h.half}`}
                         >
+                          {isOvertimeHalf(h.half) && (
+                            <Badge variant="outline" className="mr-1 px-1 py-0 text-[10px]">
+                              OT{h.half - 2}
+                            </Badge>
+                          )}
                           <span className={TEAM_COLORS[h.team1ColourEnum]?.text}>
                             {h.team1Goals}
                           </span>
@@ -271,7 +279,6 @@ export function LbMatchList({
                           <span className={TEAM_COLORS[h.team2ColourEnum]?.text}>
                             {h.team2Goals}
                           </span>
-                          {h.half === 3 && " OT"}
                           {h.excluded && " (excl.)"}
                         </Link>
                       ))}

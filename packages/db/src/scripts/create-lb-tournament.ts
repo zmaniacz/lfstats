@@ -53,7 +53,8 @@ type ManifestMatch = {
   // Game slugs. Omit both to create the match slot with no halves yet.
   half1?: string;
   half2?: string;
-  overtime?: string;
+  // Overtime halves, any number, each played after the last.
+  overtime?: string[];
 };
 
 type Manifest = {
@@ -101,7 +102,9 @@ async function main() {
       // --- games ---
       const allSlugs = [
         ...manifest.rounds.flatMap((r) =>
-          r.matches.flatMap((m) => [m.half1, m.half2, m.overtime].filter((s) => s !== undefined)),
+          r.matches.flatMap((m) =>
+            [m.half1, m.half2, ...(m.overtime ?? [])].filter((s) => s !== undefined),
+          ),
         ),
         ...manifest.unassignedGames,
       ];
@@ -208,11 +211,12 @@ async function main() {
           }
 
           // Which game team each competition team played as, by roster majority.
-          const halves = [
+          // Overtime halves are numbered 3, 4, ... below, by start time.
+          const halves: (readonly [number, string])[] = [
             [1, m.half1],
             [2, m.half2],
-            ...(m.overtime ? [[3, m.overtime] as const] : []),
-          ] as const;
+            ...(m.overtime ?? []).map((slug) => [3, slug] as const),
+          ];
           const sides: {
             half: number;
             slug: string;
@@ -295,14 +299,13 @@ async function main() {
               .values({ linkedBy: "create-lb-tournament", competitionMatchId: matchRow!.id })
               .returning({ id: lbMatch.id });
           }
-          // Halves 1 and 2 follow start time (a slug sorts chronologically within one center),
-          // whatever order the manifest lists them in.
-          const regulation = sides
-            .filter((h) => h.half !== 3)
-            .sort((x, y) => x.slug.localeCompare(y.slug));
+          // Halves follow start time within regulation and within overtime (a slug sorts
+          // chronologically within one center), whatever order the manifest lists them in.
+          const byTime = (list: typeof sides) =>
+            [...list].sort((x, y) => x.slug.localeCompare(y.slug));
           const ordered = [
-            ...regulation.map((h, i) => ({ ...h, half: i + 1 })),
-            ...sides.filter((h) => h.half === 3),
+            ...byTime(sides.filter((h) => h.half < 3)).map((h, i) => ({ ...h, half: i + 1 })),
+            ...byTime(sides.filter((h) => h.half >= 3)).map((h, i) => ({ ...h, half: i + 3 })),
           ];
           await tx.insert(lbMatchGame).values(
             ordered.map((h) => ({

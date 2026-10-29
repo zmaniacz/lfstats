@@ -150,7 +150,7 @@ export function LbMatchAssignForm({
                 {selectedMatch.halves.map((h) => (
                   <div key={h.half}>
                     <span className="font-medium">
-                      {h.half === 3 ? "Overtime" : `Half ${h.half}`}
+                      {h.half > 2 ? `OT ${h.half - 2}` : `Half ${h.half}`}
                     </span>{" "}
                     <span className="text-muted-foreground">{formatDateTime(h.startTime)}</span>
                     <div className="pl-4">Side 1 — {sideLabel(h.side1)}</div>

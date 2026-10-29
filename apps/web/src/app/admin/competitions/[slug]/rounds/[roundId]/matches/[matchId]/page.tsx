@@ -139,8 +139,8 @@ export default async function MatchDetailPage({
                 <div className="divide-y border rounded-md">
                   {result.halves.map((h) => (
                     <div key={h.half} className="flex items-center gap-3 px-3 py-2 text-sm">
-                      <Badge variant="secondary">
-                        {h.half === 3 ? "Overtime" : `Half ${h.half}`}
+                      <Badge variant={h.half > 2 ? "outline" : "secondary"}>
+                        {h.half > 2 ? `OT ${h.half - 2}` : `Half ${h.half}`}
                       </Badge>
                       <Link href={`/laserball/games/${h.gameSlug}`} className="hover:underline">
                         {formatDateTime(h.startTime)}
@@ -158,7 +158,7 @@ export default async function MatchDetailPage({
                 </div>
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Overtime is linked from either half&apos;s game page.
+                    Overtime halves are added from either half&apos;s game page.
                   </p>
                   <DeleteEntityButton
                     id={matchId}

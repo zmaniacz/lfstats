@@ -17,6 +17,9 @@ import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+// True when the game is an overtime half (3, 4, ...) of a linked match.
+const overtimeHalfSql = sql<boolean>`exists (select 1 from lb_match_game where lb_match_game.game_id = ${game.id} and lb_match_game.half > 2)`;
+
 // ---------------------------------------------------------------------------
 // Laserball Game List (read)
 // ---------------------------------------------------------------------------
@@ -32,6 +35,8 @@ export type LbGameTeamSummary = {
 };
 
 export type LbGameListItem = {
+  // An overtime half of a linked match.
+  overtime: boolean;
   id: string;
   slug: string;
   centerSlug: string;
@@ -62,6 +67,7 @@ export async function getLbGamesList(filters: LbGameListFilters = {}): Promise<L
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       startTime: game.startTime,
       outcome: game.outcome,
+      overtime: overtimeHalfSql,
       centerName: center.name,
       description: game.description,
       actualDuration: game.actualDuration,
@@ -98,6 +104,7 @@ export async function getLbGamesList(filters: LbGameListFilters = {}): Promise<L
     centerSlug: row.centerSlug,
     startTime: row.startTime,
     outcome: row.outcome,
+    overtime: row.overtime,
     centerName: row.centerName,
     description: row.description,
     actualDuration: row.actualDuration,
@@ -143,6 +150,8 @@ export async function getLbPlayerWinLoss(
 }
 
 export type LbPlayerGameListItem = {
+  // An overtime half of a linked match.
+  overtime: boolean;
   id: string;
   gameSlug: string;
   startTime: Date;
@@ -167,6 +176,7 @@ export async function getLbPlayerGames(
       gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       startTime: game.startTime,
       outcome: game.outcome,
+      overtime: overtimeHalfSql,
       centerId: center.id,
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       centerName: center.name,
@@ -214,6 +224,7 @@ export async function getLbPlayerGames(
     gameSlug: row.gameSlug,
     startTime: row.startTime,
     outcome: row.outcome,
+    overtime: row.overtime,
     centerId: row.centerId,
     centerSlug: row.centerSlug,
     centerName: row.centerName,
@@ -242,6 +253,8 @@ export type LbGameDetailTeam = {
 };
 
 export type LbGameDetail = {
+  // An overtime half of a linked match.
+  overtime: boolean;
   id: string;
   slug: string;
   centerId: string;
@@ -265,6 +278,7 @@ export async function getLbGameDetail(gameId: string): Promise<LbGameDetail | nu
       centerName: center.name,
       startTime: game.startTime,
       outcome: game.outcome,
+      overtime: overtimeHalfSql,
       description: game.description,
       scheduledDuration: game.scheduledDuration,
       actualDuration: game.actualDuration,
@@ -421,6 +435,7 @@ export async function getLbNightlyDetails(centerId: string, date: string): Promi
       centerName: center.name,
       startTime: game.startTime,
       outcome: game.outcome,
+      overtime: overtimeHalfSql,
       description: game.description,
       scheduledDuration: game.scheduledDuration,
       actualDuration: game.actualDuration,

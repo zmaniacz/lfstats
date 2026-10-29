@@ -704,7 +704,7 @@ Videos are added two ways: by an admin or center admin through the Videos tab on
 - `game_start_offset` is the anchor a replay engine syncs against: `videoPosition = game_start_offset + gameClockSeconds`. Nothing consumes it that way yet; today it only drives a "Game @ h:mm:ss" link on the game page's Videos tab.
 - A conflicting write updates `youtube_url`, `start_seconds`, `game_start_offset` and `label` only when the caller opts in (`overwrite` on the API, always on for the admin UI, where re-adding a listed video means correcting it). `created_at` and the original creator are preserved.
 - A POV video may only be attached to a player with a scorecard in that game — enforced in the API path by `getScorecardPlayerIdByIplId`, not by the schema. Guest players have no `Player` row and therefore cannot be the subject of a POV video.
-- The Laserball game page renders a whole match (both halves plus overtime) on one page, so it reads videos across every game in the match, while a newly added video attaches to the half currently being viewed.
+- The Laserball game page renders a whole match (both halves plus any overtime halves) on one page, so it reads videos across every game in the match, while a newly added video attaches to the half currently being viewed.
 
 ---
 

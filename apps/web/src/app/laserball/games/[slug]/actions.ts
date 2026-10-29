@@ -14,6 +14,7 @@ import {
   getOpenLbCompetitionMatches,
   removeGameFromCompetition,
   setGameCompetition,
+  syncLbMatchCompetition,
   unassignLbMatchFromCompetitionMatch,
   getGameCenterId,
   getGameSlugById,
@@ -104,14 +105,21 @@ export async function addLbMatchOvertimeAction(
 ): Promise<void> {
   await requireCenterAdmin(gameId);
   await addLbMatchOvertimeGame(matchId, otGameId, pairing);
+  // A match already in a competition takes the new half with it, mercenary flags included.
+  await syncLbMatchCompetition(matchId);
   await revalidateLbMatchGames(matchId);
   refresh();
 }
 
-export async function removeLbMatchOvertimeAction(gameId: string, matchId: string): Promise<void> {
+export async function removeLbMatchOvertimeAction(
+  gameId: string,
+  matchId: string,
+  otGameId: string,
+): Promise<void> {
   await requireCenterAdmin(gameId);
-  await removeLbMatchOvertimeGame(matchId);
+  await removeLbMatchOvertimeGame(matchId, otGameId);
   await revalidateLbMatchGames(matchId);
+  await revalidateLbGame(otGameId);
   refresh();
 }
 

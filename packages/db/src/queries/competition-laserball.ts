@@ -843,6 +843,34 @@ export async function stampLbMercenaries(executor: Executor, lbMatchId: string):
     WHERE sc.game_id IN (SELECT game_id FROM lb_match_game WHERE match_id = ${lbMatchId})`);
 }
 
+/**
+ * After a half is added to an lb_match (an overtime half, from the game page): if the match
+ * fills a competition match, file every half into that competition and re-stamp mercenaries.
+ */
+export async function syncLbMatchCompetition(lbMatchId: string): Promise<void> {
+  const [row] = await db
+    .select({ competitionId: competitionMatch.competitionId })
+    .from(lbMatch)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, lbMatch.competitionMatchId))
+    .where(eq(lbMatch.id, lbMatchId));
+  if (!row) return;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(game)
+      .set({ competitionId: row.competitionId })
+      .where(
+        inArray(
+          game.id,
+          tx
+            .select({ gameId: lbMatchGame.gameId })
+            .from(lbMatchGame)
+            .where(eq(lbMatchGame.matchId, lbMatchId)),
+        ),
+      );
+    await stampLbMercenaries(tx, lbMatchId);
+  });
+}
+
 /** Re-stamps the lb_match a game belongs to, if it fills a competition match (reingest). */
 export async function restampLbMercenariesForGame(
   executor: Executor,

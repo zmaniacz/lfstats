@@ -47,6 +47,20 @@ test("overtime decides a level aggregate, and its goals count towards the totals
   assert.deepEqual([o.team1Goals, o.team2Goals], [3, 4]);
 });
 
+test("overtime played as two more halves is decided by their sum", () => {
+  // Level 3-3 in regulation; OT 1 goes 2-0 to team 1, OT 2 goes 1-2 to team 2.
+  const o = lbMatchOutcome([half(1, 2, 1), half(2, 1, 2), half(3, 2, 0), half(4, 1, 2)]);
+  assert.equal(o.winner, 1);
+  assert.equal(o.overtime, true);
+  assert.deepEqual([o.team1Goals, o.team2Goals], [6, 5]);
+});
+
+test("level overtime halves leave the match a tie", () => {
+  const o = lbMatchOutcome([half(1, 1, 1), half(2, 1, 1), half(3, 1, 0), half(4, 0, 1)]);
+  assert.equal(o.winner, "tie");
+  assert.equal(o.complete, true);
+});
+
 test("a lone half is incomplete, and final only once the competition is completed", () => {
   assert.equal(lbMatchOutcome([half(1, 3, 0)]).winner, null);
   const done = lbMatchOutcome([half(1, 3, 0)], true);

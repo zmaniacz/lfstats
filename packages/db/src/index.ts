@@ -4,6 +4,7 @@
 export { db, getDb, initDb } from "./client";
 export { getTeamLogoUrl } from "./lib/team-logos";
 export { getPlayerPictureUrl } from "./lib/player-pictures";
+export { isOvertimeHalf } from "./lib/lb-match-points";
 export * from "./lib/oauth";
 export * from "./lib/rating";
 export * from "./lib/synthetic-ipl-id";
