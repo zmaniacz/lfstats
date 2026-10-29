@@ -19,8 +19,9 @@ import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
 import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesBlock";
 import { UnenrolledPlayersBlock } from "@/components/competitions/UnenrolledPlayersBlock";
 import { StandingsTabs } from "./StandingsTabs";
+import { ChallongeBracketCard } from "@/components/competitions/ChallongeBracketCard";
 import { LbStandingsContent } from "@/components/competitions/LbStandingsContent";
-import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
+import { resolveFilterContext } from "@/lib/filter-context";
 import {
   enrollAllSoloPlayersAction,
   enrollSoloPlayerAction,
@@ -37,23 +38,23 @@ export default async function StandingsPage({
     competition?: string;
     round?: string;
     tab?: string;
-    game?: string;
   }>;
 }) {
   const sp = await searchParams;
   const roundIdParam = sp.round;
-  const gameType = await resolveGameType(sp.game);
 
+  // A competition is SM5 or Laserball, never both, so the picker offers every competition and
+  // the selected one decides which standings render. There is no game-type toggle here.
   const ctx = await resolveFilterContext(sp, {
     allowedScopes: ["competition"],
     defaultScope: "competition",
-    gameType,
+    competitionGameType: "all",
   });
 
   if (ctx.competitions.length === 0 || !ctx.competition) {
     return (
       <div className="p-6 space-y-4">
-        <StandingsHeader ctx={ctx} competitionSlug={null} isAdmin={false} gameType={gameType} />
+        <StandingsHeader ctx={ctx} competitionSlug={null} isAdmin={false} />
         <p className="text-muted-foreground text-sm">No competitive competitions found.</p>
       </div>
     );
@@ -135,16 +136,11 @@ export default async function StandingsPage({
 
   // Laserball: a tournament only, so always rounds and matches, but scored on match results and
   // goals — see LbStandingsContent.
-  if (gameType === "lb") {
+  if (activeComp.gameType === "lb") {
     return (
       <div className="p-6 space-y-6">
         {isAdmin && <UnassignedGamesBlock games={unassignedGames} />}
-        <StandingsHeader
-          ctx={ctx}
-          competitionSlug={activeComp.slug}
-          isAdmin={isAdmin}
-          gameType={gameType}
-        />
+        <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
         <StandingsTabs
           defaultTab={activeTab}
           hasFinals={finalsRounds.length > 0}
@@ -155,7 +151,6 @@ export default async function StandingsPage({
                   competitionSlug={activeComp.slug}
                   rounds={standingsRounds.map((r) => ({ id: r.id, name: r.name }))}
                   activeRoundId={activeRoundId}
-                  gameType="lb"
                 />
               )}
               <Suspense key={contentKey} fallback={<StandingsSkeleton />}>
@@ -170,6 +165,10 @@ export default async function StandingsPage({
           }
           finalsContent={
             <Suspense fallback={<StandingsSkeleton />}>
+              <ChallongeBracketCard
+                challongeLink={activeComp.challongeLink}
+                challongeBracketHeight={activeComp.challongeBracketHeight}
+              />
               <LbStandingsContent
                 activeId={activeId}
                 activeRoundId={null}

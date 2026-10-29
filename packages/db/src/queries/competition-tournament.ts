@@ -32,6 +32,7 @@ import {
   eq,
   and,
   ne,
+  lte,
   asc,
   desc,
   ilike,
@@ -1019,7 +1020,7 @@ export async function getCompetitionMatchesByRound(
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
     .where(inArray(competitionMatchGame.matchId, matchIds));
-  // A Laserball match is one lb_match; its halves 1 and 2 fill the same two slots.
+  // A Laserball match is one lb_match; its regulation halves 1 and 2 fill the same two slots.
   const lbHalves = await db
     .select({
       matchId: sql<string>`${lbMatch.competitionMatchId}`,
@@ -1029,7 +1030,7 @@ export async function getCompetitionMatchesByRound(
     .from(lbMatchGame)
     .innerJoin(lbMatch, eq(lbMatch.id, lbMatchGame.matchId))
     .innerJoin(game, eq(game.id, lbMatchGame.gameId))
-    .where(and(inArray(lbMatch.competitionMatchId, matchIds), ne(lbMatchGame.half, 3)));
+    .where(and(inArray(lbMatch.competitionMatchId, matchIds), lte(lbMatchGame.half, 2)));
   gameAssignments.push(...lbHalves);
 
   const assignedMap = new Map<string, { numbers: Set<number>; startTimes: Map<number, Date> }>();
@@ -1130,8 +1131,36 @@ export async function createCompetitionMatch(data: {
   return row.id;
 }
 
+/**
+ * Deletes a match and closes the gap it leaves, so the round's matches stay numbered 1-N
+ * (match numbers are the per-round sequence admins see and reorder).
+ */
 export async function deleteCompetitionMatch(id: string): Promise<void> {
-  await db.delete(competitionMatch).where(eq(competitionMatch.id, id));
+  await db.transaction(async (tx) => {
+    const [deleted] = await tx
+      .delete(competitionMatch)
+      .where(eq(competitionMatch.id, id))
+      .returning({ roundId: competitionMatch.roundId, matchNumber: competitionMatch.matchNumber });
+    if (!deleted) return;
+    const later = await tx
+      .select({ id: competitionMatch.id, matchNumber: competitionMatch.matchNumber })
+      .from(competitionMatch)
+      .where(
+        and(
+          eq(competitionMatch.roundId, deleted.roundId),
+          sql`${competitionMatch.matchNumber} > ${deleted.matchNumber}`,
+        ),
+      )
+      .orderBy(asc(competitionMatch.matchNumber));
+    // Ascending, one at a time, so each step lands on the number just vacated and
+    // (round_id, match_number) stays unique throughout.
+    for (const m of later) {
+      await tx
+        .update(competitionMatch)
+        .set({ matchNumber: m.matchNumber - 1 })
+        .where(eq(competitionMatch.id, m.id));
+    }
+  });
 }
 
 export async function updateCompetitionMatchTeams(
@@ -1765,9 +1794,12 @@ export type CompetitiveCompetitionSummary = {
   challongeBracketHeight: number | null;
 };
 
-/** The competition picker: competitive, public (not preshow) events of one game type. */
+/**
+ * The competition picker: competitive, public (not preshow) events of one game type, or of both
+ * for the standings page, where the competition itself decides which standings to show.
+ */
 export async function getCompetitiveCompetitions(
-  gameType: CompetitionGameType = "sm5",
+  gameType: CompetitionGameType | "all" = "sm5",
 ): Promise<CompetitiveCompetitionSummary[]> {
   return db
     .select({
@@ -1787,7 +1819,7 @@ export async function getCompetitiveCompetitions(
       and(
         eq(competition.type, "competitive"),
         ne(competition.state, "preshow"),
-        eq(competition.gameType, gameType),
+        gameType === "all" ? undefined : eq(competition.gameType, gameType),
       ),
     )
     .orderBy(desc(competition.startDate));

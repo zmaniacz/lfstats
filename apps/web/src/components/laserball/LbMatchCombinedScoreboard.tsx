@@ -10,20 +10,22 @@ import type { LbGameDetailTeam, LbMatchDetail } from "@lfstats/db";
 type Props = {
   matchDetail: LbMatchDetail;
   gamesById: Map<string, LbGameDetailTeam[]>;
+  // The competition teams playing Side 1 and Side 2, when the match fills a competition match.
+  sideNames?: [string, string];
 };
 
-export function LbMatchCombinedScoreboard({ matchDetail, gamesById }: Props) {
+export function LbMatchCombinedScoreboard({ matchDetail, gamesById, sideNames }: Props) {
   // "Whatever color each side played as first" — halves are ordered by
   // `half` ascending, so halves[0] is always the earliest game played.
   const firstHalf = matchDetail.halves[0]!;
   const sides = [
     {
-      label: "Side 1",
+      label: sideNames?.[0] ?? "Side 1",
       colourEnum: firstHalf.side1.colourEnum,
       players: combineSidePlayers(matchDetail, gamesById, "side1"),
     },
     {
-      label: "Side 2",
+      label: sideNames?.[1] ?? "Side 2",
       colourEnum: firstHalf.side2.colourEnum,
       players: combineSidePlayers(matchDetail, gamesById, "side2"),
     },

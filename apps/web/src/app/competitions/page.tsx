@@ -85,7 +85,7 @@ function CompetitionTable({
               <TableCell>
                 <div className="flex items-center gap-1.5">
                   <Link
-                    href={`/standings?${competition.gameType === "lb" ? "game=lb&" : ""}scope=competition&competition=${competition.slug}`}
+                    href={`/standings?scope=competition&competition=${competition.slug}`}
                     className="font-medium hover:underline"
                   >
                     {competition.name}

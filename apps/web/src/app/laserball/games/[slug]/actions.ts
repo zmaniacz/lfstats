@@ -8,6 +8,14 @@ import { parseYoutubeLink, resolveVideoOffsets } from "@/lib/youtube";
 import {
   addGameVideo,
   addLbMatchOvertimeGame,
+  assignLbMatchToCompetitionMatch,
+  getLbGameCompetition,
+  getLbGameCompetitionMatch,
+  getOpenLbCompetitionMatches,
+  removeGameFromCompetition,
+  setGameCompetition,
+  syncLbMatchCompetition,
+  unassignLbMatchFromCompetitionMatch,
   getGameCenterId,
   getGameSlugById,
   getGameVideoById,
@@ -97,14 +105,21 @@ export async function addLbMatchOvertimeAction(
 ): Promise<void> {
   await requireCenterAdmin(gameId);
   await addLbMatchOvertimeGame(matchId, otGameId, pairing);
+  // A match already in a competition takes the new half with it, mercenary flags included.
+  await syncLbMatchCompetition(matchId);
   await revalidateLbMatchGames(matchId);
   refresh();
 }
 
-export async function removeLbMatchOvertimeAction(gameId: string, matchId: string): Promise<void> {
+export async function removeLbMatchOvertimeAction(
+  gameId: string,
+  matchId: string,
+  otGameId: string,
+): Promise<void> {
   await requireCenterAdmin(gameId);
-  await removeLbMatchOvertimeGame(matchId);
+  await removeLbMatchOvertimeGame(matchId, otGameId);
   await revalidateLbMatchGames(matchId);
+  await revalidateLbGame(otGameId);
   refresh();
 }
 
@@ -220,4 +235,65 @@ export async function updateLbGameVideoAction(
   await revalidateLbGameAndMatch(gameId);
   refresh();
   return { ok: true };
+}
+
+/**
+ * Competition assignment from the game page. Unlike the admin match page these are not gated on
+ * the competition being active, matching the SM5 game page: they are how an editor corrects a
+ * finished event.
+ */
+export type LbGameCompetitionResult = { ok: true } | { ok: false; error: string };
+
+export async function addLbGameToCompetitionAction(
+  gameId: string,
+  competitionId: string,
+): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await setGameCompetition(gameId, competitionId);
+  await revalidateLbGame(gameId);
+  refresh();
+}
+
+export async function removeLbGameFromCompetitionAction(gameId: string): Promise<void> {
+  await requireCenterAdmin(gameId);
+  await removeGameFromCompetition(gameId);
+  await revalidateLbGame(gameId);
+  refresh();
+}
+
+/** Fills a match slot with the lb_match this game is a half of. */
+export async function assignLbGameMatchAction(
+  gameId: string,
+  competitionMatchId: string,
+  swapSides: boolean,
+): Promise<LbGameCompetitionResult> {
+  await requireCenterAdmin(gameId);
+  const lbMatchId = await getLbMatchIdForGame(gameId);
+  if (!lbMatchId) {
+    return { ok: false, error: "Link this game to its other half before assigning it to a match." };
+  }
+  // Only an open slot in the game's own competition.
+  const comp = await getLbGameCompetition(gameId);
+  const open = comp ? await getOpenLbCompetitionMatches(comp.competitionId) : [];
+  if (!open.some((m) => m.id === competitionMatchId)) {
+    return { ok: false, error: "That match is no longer open in this game's competition." };
+  }
+  const result = await assignLbMatchToCompetitionMatch(competitionMatchId, lbMatchId, swapSides);
+  if (!result.ok) return result;
+  await revalidateLbMatchGames(lbMatchId);
+  refresh();
+  return { ok: true };
+}
+
+export async function unassignLbGameMatchAction(
+  gameId: string,
+  competitionMatchId: string,
+): Promise<void> {
+  await requireCenterAdmin(gameId);
+  const current = await getLbGameCompetitionMatch(gameId);
+  if (current?.competitionMatchId !== competitionMatchId) throw new Error("Not this game's match");
+  await unassignLbMatchFromCompetitionMatch(competitionMatchId);
+  const lbMatchId = await getLbMatchIdForGame(gameId);
+  if (lbMatchId) await revalidateLbMatchGames(lbMatchId);
+  refresh();
 }

@@ -1032,8 +1032,10 @@ Implemented details:
   - Each player's `goals`, `assists`, `passes`, `steals`, `steals_received`, `blocks`,
     `blocks_received`, `clears`, `failed_clears`, `clutch_saves`, `possession_ms` and
     `time_played_ms`.
-  - `match: { half, other_half: { half, game_slug } }` when the game is one half of a linked
-    Laserball match, otherwise `null`.
+  - `match: { half, overtime, other_half: { half, game_slug }, other_halves: [{ half, overtime, game_slug }] }`
+    when the game is one half of a linked Laserball match, otherwise `null`. Halves 1 and 2 are
+    regulation; 3 and up are overtime halves, `overtime: true`. `other_half` is the game's other
+    regulation half; `other_halves` lists every other game in the match.
 
   There are no penalties or MVP components.
 

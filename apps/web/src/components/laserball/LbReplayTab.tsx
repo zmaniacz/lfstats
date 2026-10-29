@@ -105,11 +105,18 @@ type LbComputedTeam = {
 
 type Props =
   | { mode: "game"; gameId: string; duration: number }
-  | { mode: "match"; matchId: string; duration: number };
+  | {
+      mode: "match";
+      matchId: string;
+      duration: number;
+      // The competition teams playing Side 1 and Side 2, when the match fills a competition match.
+      sideNames?: [string, string];
+    };
 
 export function LbReplayTab(props: Props) {
   const { duration } = props;
   const isMatch = props.mode === "match";
+  const sideNames = props.mode === "match" ? props.sideNames : undefined;
   const fetchUrl = isMatch
     ? `/api/laserball/matches/${props.matchId}/replay`
     : `/api/laserball/games/${props.gameId}/replay`;
@@ -225,7 +232,9 @@ export function LbReplayTab(props: Props) {
           : 0;
         teamMap.set(key, {
           teamId: key,
-          teamName: isMatch ? `Side ${sideOf(player)}` : player.teamName,
+          teamName: isMatch
+            ? (sideNames?.[sideOf(player) - 1] ?? `Side ${sideOf(player)}`)
+            : player.teamName,
           teamColour: colourEnum,
           totalGoals: priorTotal,
           players: [],
@@ -275,7 +284,7 @@ export function LbReplayTab(props: Props) {
     }
     teams.sort((a, b) => b.totalGoals - a.totalGoals);
     return teams;
-  }, [data, statesByPlayer, currentTime, activePlayers, isMatch, activeHalf]);
+  }, [data, statesByPlayer, currentTime, activePlayers, isMatch, activeHalf, sideNames]);
 
   // Detect rank changes and team-order swaps for animations
   const prevRanksRef = useRef<Map<string, number>>(new Map());

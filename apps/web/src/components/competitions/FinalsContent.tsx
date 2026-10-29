@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { MatchCardSections } from "@/components/competitions/MatchCardSections";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChallongeBracketCard } from "@/components/competitions/ChallongeBracketCard";
 import { getCompetitionMatchResults, type CompetitionMatchResult } from "@lfstats/db";
 
 export async function FinalsContent({
@@ -35,40 +35,12 @@ export async function FinalsContent({
   }
   const sortedRounds = [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber);
 
-  const bracketUrl = challongeLink?.replace(/\/+$/, "").replace(/\/module$/, "") ?? null;
-
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Bracket</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {bracketUrl ? (
-            <>
-              <iframe
-                title="Tournament bracket"
-                src={`${bracketUrl}/module?show_final_results=1&show_standings=1`}
-                width="100%"
-                height={challongeBracketHeight ?? 500}
-                className="rounded-md border"
-              />
-              <p className="mt-2 text-sm text-muted-foreground">
-                <a
-                  href={bracketUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  View bracket on Challonge
-                </a>
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Bracket not configured.</p>
-          )}
-        </CardContent>
-      </Card>
+      <ChallongeBracketCard
+        challongeLink={challongeLink}
+        challongeBracketHeight={challongeBracketHeight}
+      />
 
       <MatchCardSections
         sections={sortedRounds.map((round) => ({

@@ -150,6 +150,7 @@ export type LbCompetitionMatchTeam = {
   id: string;
   name: string;
   slug: string;
+  shortName: string | null;
   hasLogo: boolean;
   logoVersion: number;
 };
@@ -172,6 +173,7 @@ export type LbCompetitionMatchResult = {
   roundName: string;
   roundNumber: number;
   roundType: CompetitionRoundType;
+  roundMultiplier: number;
   matchNumber: number;
   team1: LbCompetitionMatchTeam | null;
   team2: LbCompetitionMatchTeam | null;
@@ -202,6 +204,7 @@ export async function getLbCompetitionMatchResults(
       roundName: competitionRound.name,
       roundNumber: competitionRound.roundNumber,
       roundType: competitionRound.type,
+      roundMultiplier: competitionRound.multiplier,
       matchNumber: competitionMatch.matchNumber,
       team1Id: competitionMatch.team1Id,
       team2Id: competitionMatch.team2Id,
@@ -234,6 +237,7 @@ export async function getLbCompetitionMatchResults(
             id: competitionTeam.id,
             name: competitionTeam.name,
             slug: competitionTeam.slug,
+            shortName: competitionTeam.shortName,
             hasLogo: competitionTeam.hasLogo,
             logoVersion: competitionTeam.logoVersion,
           })
@@ -256,6 +260,7 @@ export async function getLbCompetitionMatchResults(
       roundName: m.roundName,
       roundNumber: m.roundNumber,
       roundType: m.roundType,
+      roundMultiplier: m.roundMultiplier,
       matchNumber: m.matchNumber,
       team1: m.team1Id ? (teamById.get(m.team1Id) ?? null) : null,
       team2: m.team2Id ? (teamById.get(m.team2Id) ?? null) : null,
@@ -296,6 +301,7 @@ async function getLbHalves(
 
 /** The competition match a Laserball game's lb_match fills, for the game page's label. */
 export type LbGameCompetitionMatch = {
+  competitionMatchId: string;
   competitionSlug: string;
   competitionName: string;
   roundName: string;
@@ -312,6 +318,7 @@ export async function getLbGameCompetitionMatch(
   const team2 = alias(competitionTeam, "team2");
   const [row] = await db
     .select({
+      competitionMatchId: competitionMatch.id,
       competitionSlug: competition.slug,
       competitionName: competition.name,
       roundName: competitionRound.name,
@@ -329,6 +336,49 @@ export async function getLbGameCompetitionMatch(
     .leftJoin(team2, eq(team2.id, competitionMatch.team2Id))
     .where(eq(lbMatchGame.gameId, gameId));
   return row ?? null;
+}
+
+/** The competition a Laserball game is filed in, for the game page's admin controls. */
+export async function getLbGameCompetition(
+  gameId: string,
+): Promise<{ competitionId: string; competitionName: string } | null> {
+  const [row] = await db
+    .select({ competitionId: competition.id, competitionName: competition.name })
+    .from(game)
+    .innerJoin(competition, eq(competition.id, game.competitionId))
+    .where(eq(game.id, gameId));
+  return row ?? null;
+}
+
+export type LbOpenCompetitionMatch = {
+  id: string;
+  roundName: string;
+  matchNumber: number;
+  team1Name: string;
+  team2Name: string;
+};
+
+/** Match slots with both teams set and no halves yet — where a linked lb_match can go. */
+export async function getOpenLbCompetitionMatches(
+  competitionId: string,
+): Promise<LbOpenCompetitionMatch[]> {
+  const team1 = alias(competitionTeam, "team1");
+  const team2 = alias(competitionTeam, "team2");
+  return db
+    .select({
+      id: competitionMatch.id,
+      roundName: competitionRound.name,
+      matchNumber: competitionMatch.matchNumber,
+      team1Name: team1.name,
+      team2Name: team2.name,
+    })
+    .from(competitionMatch)
+    .innerJoin(competitionRound, eq(competitionRound.id, competitionMatch.roundId))
+    .innerJoin(team1, eq(team1.id, competitionMatch.team1Id))
+    .innerJoin(team2, eq(team2.id, competitionMatch.team2Id))
+    .leftJoin(lbMatch, eq(lbMatch.competitionMatchId, competitionMatch.id))
+    .where(and(eq(competitionMatch.competitionId, competitionId), isNull(lbMatch.id)))
+    .orderBy(asc(competitionRound.roundNumber), asc(competitionMatch.matchNumber));
 }
 
 // ---------------------------------------------------------------------------
@@ -796,6 +846,34 @@ export async function stampLbMercenaries(executor: Executor, lbMatchId: string):
       WHERE lmg.game_id = sc.game_id
     ), false)
     WHERE sc.game_id IN (SELECT game_id FROM lb_match_game WHERE match_id = ${lbMatchId})`);
+}
+
+/**
+ * After a half is added to an lb_match (an overtime half, from the game page): if the match
+ * fills a competition match, file every half into that competition and re-stamp mercenaries.
+ */
+export async function syncLbMatchCompetition(lbMatchId: string): Promise<void> {
+  const [row] = await db
+    .select({ competitionId: competitionMatch.competitionId })
+    .from(lbMatch)
+    .innerJoin(competitionMatch, eq(competitionMatch.id, lbMatch.competitionMatchId))
+    .where(eq(lbMatch.id, lbMatchId));
+  if (!row) return;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(game)
+      .set({ competitionId: row.competitionId })
+      .where(
+        inArray(
+          game.id,
+          tx
+            .select({ gameId: lbMatchGame.gameId })
+            .from(lbMatchGame)
+            .where(eq(lbMatchGame.matchId, lbMatchId)),
+        ),
+      );
+    await stampLbMercenaries(tx, lbMatchId);
+  });
 }
 
 /** Re-stamps the lb_match a game belongs to, if it fills a competition match (reingest). */

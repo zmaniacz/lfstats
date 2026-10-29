@@ -47,6 +47,12 @@ export type ResolveFilterContextOptions = {
   allowedScopes?: Scope[];
   /** Game type whose competitions populate the competition filter. Defaults to "sm5". */
   gameType?: "sm5" | "lb";
+  /**
+   * Overrides which competitions the filter lists. The standings page passes "all": a
+   * competition is one game type or the other, so it picks from both and lets the selected
+   * competition decide what to render. Cookies still follow `gameType`.
+   */
+  competitionGameType?: "sm5" | "lb" | "all";
 };
 
 const ALL = "all";
@@ -72,7 +78,7 @@ export async function resolveFilterContext(
 
   const [centers, competitions, cookieStore] = await Promise.all([
     getCenterList(),
-    getCompetitiveCompetitions(gameType),
+    getCompetitiveCompetitions(options.competitionGameType ?? gameType),
     cookies(),
   ]);
 

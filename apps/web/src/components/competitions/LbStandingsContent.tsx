@@ -10,7 +10,6 @@ import {
   type LbCompetitionMatchResult,
   type LbCompetitionStandingsRow,
 } from "@lfstats/db";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -22,8 +21,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TeamLogo } from "@/components/teams/TeamLogo";
+import {
+  LbMatchCardSections,
+  type LbMatchSection,
+} from "@/components/competitions/LbMatchCardSections";
 import { formatPoints, formatSignedPoints } from "@/lib/format";
-import { TEAM_COLORS } from "@/lib/team-colors";
 
 /**
  * Laserball competition standings: the table over the non-finals rounds (or one round), then
@@ -68,7 +70,7 @@ export async function LbStandingsContent({
           </CardContent>
         </Card>
       )}
-      <LbMatchList matches={shown} competitionSlug={competitionSlug} />
+      <LbMatchCardSections sections={lbMatchSections(shown)} competitionSlug={competitionSlug} />
     </>
   );
 }
@@ -176,139 +178,18 @@ function LbStandingsTable({
   );
 }
 
-/** Every match, grouped by round, with each half's score linking to its game. */
-export function LbMatchList({
-  matches,
-  competitionSlug,
-  highlightTeamId,
-}: {
-  matches: LbCompetitionMatchResult[];
-  competitionSlug: string;
-  highlightTeamId?: string;
-}) {
-  if (matches.length === 0) return null;
-  const rounds = new Map<string, { name: string; matches: LbCompetitionMatchResult[] }>();
+/** Groups matches into one card section per round, in round order. */
+export function lbMatchSections(matches: LbCompetitionMatchResult[]): LbMatchSection[] {
+  const rounds = new Map<string, LbMatchSection>();
   for (const m of matches) {
-    const round = rounds.get(m.roundId) ?? { name: m.roundName, matches: [] };
-    round.matches.push(m);
-    rounds.set(m.roundId, round);
+    const section = rounds.get(m.roundId) ?? {
+      key: m.roundId,
+      title: m.roundName,
+      multiplier: m.roundMultiplier,
+      matches: [],
+    };
+    section.matches.push(m);
+    rounds.set(m.roundId, section);
   }
-
-  return (
-    <>
-      {[...rounds].map(([roundId, round]) => (
-        <Card key={roundId}>
-          <CardHeader>
-            <CardTitle>{round.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-right">#</TableHead>
-                  <TableHead className="text-right">Team 1</TableHead>
-                  <TableHead className="text-center">Goals</TableHead>
-                  <TableHead>Team 2</TableHead>
-                  <TableHead>Halves</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {round.matches.map((m) => (
-                  <TableRow key={m.matchId}>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {m.matchNumber}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <MatchTeamName
-                        match={m}
-                        side={1}
-                        competitionSlug={competitionSlug}
-                        highlightTeamId={highlightTeamId}
-                      />
-                    </TableCell>
-                    <TableCell className="text-center tabular-nums whitespace-nowrap">
-                      {m.halves.length === 0 ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <>
-                          {m.outcome.team1Goals}–{m.outcome.team2Goals}
-                          {m.outcome.overtime && (
-                            <span className="text-muted-foreground text-xs ml-1">OT</span>
-                          )}
-                          {m.outcome.winner === null && (
-                            <Badge variant="outline" className="ml-2">
-                              In progress
-                            </Badge>
-                          )}
-                          {m.outcome.winner === "tie" && (
-                            <Badge variant="secondary" className="ml-2">
-                              Tie
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <MatchTeamName
-                        match={m}
-                        side={2}
-                        competitionSlug={competitionSlug}
-                        highlightTeamId={highlightTeamId}
-                      />
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm">
-                      {m.halves.map((h) => (
-                        <Link
-                          key={h.half}
-                          href={`/laserball/games/${h.gameSlug}`}
-                          className="mr-3 hover:underline tabular-nums"
-                          title={h.half === 3 ? "Overtime" : `Half ${h.half}`}
-                        >
-                          <span className={TEAM_COLORS[h.team1ColourEnum]?.text}>
-                            {h.team1Goals}
-                          </span>
-                          –
-                          <span className={TEAM_COLORS[h.team2ColourEnum]?.text}>
-                            {h.team2Goals}
-                          </span>
-                          {h.half === 3 && " OT"}
-                          {h.excluded && " (excl.)"}
-                        </Link>
-                      ))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ))}
-    </>
-  );
-}
-
-function MatchTeamName({
-  match,
-  side,
-  competitionSlug,
-  highlightTeamId,
-}: {
-  match: LbCompetitionMatchResult;
-  side: 1 | 2;
-  competitionSlug: string;
-  highlightTeamId?: string;
-}) {
-  const team = side === 1 ? match.team1 : match.team2;
-  if (!team) return <span className="text-muted-foreground">TBD</span>;
-  const won = match.outcome.winner === side;
-  return (
-    <Link
-      href={`/competitions/${competitionSlug}/teams/${team.slug}`}
-      className={`hover:underline ${won ? "font-semibold" : ""} ${
-        team.id === highlightTeamId ? "underline" : ""
-      }`}
-    >
-      {team.name}
-    </Link>
-  );
+  return [...rounds.values()];
 }

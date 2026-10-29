@@ -67,6 +67,11 @@ export function LbPlayerGamesTable({ games }: { games: LbPlayerGameListItem[] })
                   >
                     {formatGameName(game.description, game.startTime)}
                   </Link>
+                  {game.overtime && (
+                    <Badge variant="secondary" className="ml-2">
+                      OT
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>{game.centerName}</TableCell>
                 <TableCell className="tabular-nums">{formatDateTime(game.startTime)}</TableCell>

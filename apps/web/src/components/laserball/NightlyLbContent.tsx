@@ -44,6 +44,7 @@ export async function NightlyLbContent({
     centerSlug: g.slug.split("-").slice(0, 2).join("-"),
     startTime: g.startTime,
     outcome: g.outcome,
+    overtime: g.overtime,
     centerName: g.centerName,
     description: g.description,
     actualDuration: g.actualDuration,

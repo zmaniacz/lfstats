@@ -912,7 +912,7 @@ async function lbGameDetail(g: GameHeader) {
   const db = getAnalyticsDb();
   const sc = lbScorecard;
   const other = alias(lbMatchGame, "other");
-  const [teams, scorecards, [half]] = await Promise.all([
+  const [teams, scorecards, halves] = await Promise.all([
     teamsFor("lb", [g.id]),
     db
       .select({
@@ -948,8 +948,10 @@ async function lbGameDetail(g: GameHeader) {
       )
       .leftJoin(game, eq(game.id, other.gameId))
       .leftJoin(center, eq(center.id, game.centerId))
-      .where(eq(lbMatchGame.gameId, g.id)),
+      .where(eq(lbMatchGame.gameId, g.id))
+      .orderBy(asc(other.half)),
   ]);
+  const half = halves[0];
 
   return {
     data: {
@@ -963,11 +965,24 @@ async function lbGameDetail(g: GameHeader) {
       description: g.description,
       scheduled_length: clock(g.scheduled),
       actual_length: clock(g.actual),
-      // A Laserball match is two halves with sides swapped; null when not linked.
+      // A Laserball match is two halves with sides swapped, plus any overtime halves (3, 4, ...);
+      // null when not linked. other_halves lists every other game in the match.
       match: half
         ? {
             half: half.half,
-            other_half: half.otherSlug ? { half: half.otherHalf, game_slug: half.otherSlug } : null,
+            overtime: half.half > 2,
+            // Kept for existing clients: the other regulation half (or half 1, from overtime).
+            other_half: (() => {
+              const o = halves.find((h) => h.otherHalf !== null && h.otherHalf <= 2);
+              return o ? { half: o.otherHalf, game_slug: o.otherSlug } : null;
+            })(),
+            other_halves: halves
+              .filter((h) => h.otherSlug !== null)
+              .map((h) => ({
+                half: h.otherHalf,
+                overtime: (h.otherHalf ?? 0) > 2,
+                game_slug: h.otherSlug,
+              })),
           }
         : null,
       teams: (teams.get(g.id) ?? []).map((t) => ({

@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
 import { formatDateTime, formatGameName } from "@/lib/format";
@@ -255,6 +256,11 @@ export default async function CompetitionDetailPage({
                       <TableCell className="tabular-nums">{m.halves.length}</TableCell>
                       <TableCell className="tabular-nums">
                         {m.outcome.team1Goals}–{m.outcome.team2Goals}
+                        {m.outcome.overtime && (
+                          <Badge variant="outline" className="ml-2">
+                            OT
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

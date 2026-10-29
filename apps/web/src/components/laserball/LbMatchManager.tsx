@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { halfLabel } from "@/components/laserball/lb-match-shared";
 import { formatDateTime } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import type {
@@ -27,7 +29,13 @@ type GameTeam = {
   id: string;
   name: string;
   colourEnum: number;
+  callsigns: string[];
 };
+
+/** "Fire: TheBabe, Asra, …" — colour plus who played, so teams are told apart by players. */
+function teamOptionLabel(t: GameTeam): string {
+  return `${getTeamColor(t.colourEnum)?.label ?? t.name}: ${t.callsigns.join(", ") || "no players"}`;
+}
 
 type Pairing = {
   gameSide1TeamId: string;
@@ -51,7 +59,11 @@ type Props = {
     otGameId: string,
     pairing: LbMatchOvertimePairing,
   ) => Promise<void>;
-  removeOvertimeAction: (gameId: string, matchId: string) => Promise<void>;
+  removeOvertimeAction: (gameId: string, matchId: string, otGameId: string) => Promise<void>;
+  // The competition teams on Side 1 and Side 2, when the match fills a competition match.
+  sideNames?: [string, string];
+  // "Finals · Match 2" when the match fills a competition slot, for the unlink warning.
+  competitionMatchLabel?: string;
 };
 
 const WARNING_LABEL: Record<LbMatchRosterWarning["kind"], string> = {
@@ -71,6 +83,8 @@ export function LbMatchManager({
   unlinkAction,
   addOvertimeAction,
   removeOvertimeAction,
+  sideNames,
+  competitionMatchLabel,
 }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
@@ -149,11 +163,11 @@ export function LbMatchManager({
     }
   }
 
-  async function handleRemoveOvertime() {
+  async function handleRemoveOvertime(otGameId: string) {
     if (!matchDetail) return;
     setIsPending(true);
     try {
-      await removeOvertimeAction(gameId, matchDetail.id);
+      await removeOvertimeAction(gameId, matchDetail.id, otGameId);
       setSelectedOtCandidateId("");
       setOtSide1TeamId("");
     } finally {
@@ -202,13 +216,13 @@ export function LbMatchManager({
             <div className="space-y-1">
               <Label className="text-xs">This game&apos;s Side 1 team</Label>
               <Select value={gameSide1TeamId} onValueChange={setGameSide1TeamId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-96">
                   <SelectValue placeholder="Select team…" />
                 </SelectTrigger>
                 <SelectContent>
                   {gameTeams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
+                      {teamOptionLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -218,13 +232,13 @@ export function LbMatchManager({
             <div className="space-y-1">
               <Label className="text-xs">Other game&apos;s Side 1 team</Label>
               <Select value={otherSide1TeamId} onValueChange={setOtherSide1TeamId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-96">
                   <SelectValue placeholder="Select team…" />
                 </SelectTrigger>
                 <SelectContent>
                   {selectedCandidate.teams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
+                      {teamOptionLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -247,8 +261,10 @@ export function LbMatchManager({
   // ── Defensive fallback ───────────────────────────────────────────────────
   const half1 = matchDetail.halves.find((h) => h.half === 1);
   const half2 = matchDetail.halves.find((h) => h.half === 2);
-  const overtime = matchDetail.halves.find((h) => h.half === 3);
-  if (!half1 || !half2 || matchDetail.halves.length > 3) {
+  // Overtime can run to any number of halves (OT 1 is half 3), each added after the last.
+  const overtimes = matchDetail.halves.filter((h) => h.half > 2);
+  const nextOvertimeLabel = halfLabel(Math.max(...matchDetail.halves.map((h) => h.half)) + 1);
+  if (!half1 || !half2) {
     return (
       <div className="flex items-center gap-3">
         <Badge variant="destructive">Match data incomplete</Badge>
@@ -268,6 +284,30 @@ export function LbMatchManager({
   // ── Linked ───────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-3 flex-wrap text-sm">
+        <span className="text-muted-foreground">Linked halves</span>
+        {matchDetail.halves.map((h) => (
+          <Badge key={h.gameId} variant={h.half > 2 ? "outline" : "secondary"}>
+            {halfLabel(h.half)} · {formatDateTime(h.gameStartTime)}
+          </Badge>
+        ))}
+        <DeleteEntityButton
+          id={matchDetail.id}
+          label="the link between these halves"
+          description={
+            "The games themselves are untouched; they stop being one match and can be linked " +
+            "again, or added to another match as overtime. Overtime halves are unlinked too." +
+            (competitionMatchLabel
+              ? ` This match fills ${competitionMatchLabel}, which will be left empty.`
+              : "")
+          }
+          action={async () => {
+            await handleUnlink();
+          }}
+          confirmLabel="Unlink Halves"
+        />
+      </div>
+
       {rosterWarnings.length > 0 && (
         <details className="text-sm border border-amber-400/50 bg-amber-500/10 rounded-md p-2">
           <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">
@@ -283,85 +323,83 @@ export function LbMatchManager({
         </details>
       )}
 
-      {!overtime && (
-        <div className="space-y-3 border-t pt-3">
-          <p className="text-sm text-muted-foreground">Add an overtime tiebreaker game</p>
-          <div className="flex items-end gap-3 flex-wrap">
-            <div className="space-y-1">
-              <Label className="text-xs">Overtime game</Label>
-              <Select
-                value={selectedOtCandidateId}
-                onValueChange={handleOtCandidateChange}
-                disabled={otCandidateGames.length === 0}
+      {overtimes.length > 0 && (
+        <div className="space-y-1 border-t pt-3">
+          <p className="text-sm text-muted-foreground">Overtime halves</p>
+          {overtimes.map((h) => (
+            <div key={h.gameId} className="flex items-center gap-3 text-sm">
+              <Badge variant="secondary">{halfLabel(h.half)}</Badge>
+              <span>{formatDateTime(h.gameStartTime)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                disabled={isPending}
+                onClick={() => handleRemoveOvertime(h.gameId)}
               >
-                <SelectTrigger className="w-72">
-                  <SelectValue
-                    placeholder={
-                      otCandidateGames.length === 0
-                        ? "No eligible Laserball games at this center"
-                        : "Select the overtime game…"
-                    }
-                  />
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-sm text-muted-foreground">Add an overtime half ({nextOvertimeLabel})</p>
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="space-y-1">
+            <Label className="text-xs">Overtime game</Label>
+            <Select
+              value={selectedOtCandidateId}
+              onValueChange={handleOtCandidateChange}
+              disabled={otCandidateGames.length === 0}
+            >
+              <SelectTrigger className="w-72">
+                <SelectValue
+                  placeholder={
+                    otCandidateGames.length === 0
+                      ? "No eligible Laserball games at this center"
+                      : "Select the overtime game…"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {otCandidateGames.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {formatDateTime(c.startTime)}
+                    {c.description ? ` — ${c.description}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedOtCandidate && (
+            <div className="space-y-1">
+              <Label className="text-xs">
+                {sideNames ? `${sideNames[0]} played as` : "Overtime game's Side 1 team"}
+              </Label>
+              <Select value={otSide1TeamId} onValueChange={setOtSide1TeamId}>
+                <SelectTrigger className="w-96">
+                  <SelectValue placeholder="Select team…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {otCandidateGames.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {formatDateTime(c.startTime)}
-                      {c.description ? ` — ${c.description}` : ""}
+                  {selectedOtCandidate.teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {teamOptionLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          )}
 
-            {selectedOtCandidate && (
-              <div className="space-y-1">
-                <Label className="text-xs">Overtime game&apos;s Side 1 team</Label>
-                <Select value={otSide1TeamId} onValueChange={setOtSide1TeamId}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select team…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedOtCandidate.teams.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {getTeamColor(t.colourEnum)?.label ?? t.name} ({t.name})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {selectedOtCandidate && (
-              <Button size="sm" disabled={isPending || !otSide1TeamId} onClick={handleAddOvertime}>
-                {isPending ? "Adding…" : "Add Overtime"}
-              </Button>
-            )}
-          </div>
+          {selectedOtCandidate && (
+            <Button size="sm" disabled={isPending || !otSide1TeamId} onClick={handleAddOvertime}>
+              {isPending ? "Adding…" : `Add ${nextOvertimeLabel}`}
+            </Button>
+          )}
         </div>
-      )}
-
-      <div className="flex items-center gap-2">
-        {overtime && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            disabled={isPending}
-            onClick={handleRemoveOvertime}
-          >
-            Remove Overtime
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          disabled={isPending}
-          onClick={handleUnlink}
-        >
-          Unlink Match
-        </Button>
       </div>
     </div>
   );

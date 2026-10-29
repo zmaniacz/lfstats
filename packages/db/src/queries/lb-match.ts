@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, asc, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, not, sql } from "drizzle-orm";
 import { db } from "../client";
 import { center, game, lbGameTeam, lbMatch, lbMatchGame, lbScorecard } from "../schema";
 import { getLbGameReplayData } from "./laserball";
@@ -60,7 +60,8 @@ export type LbMatchCandidateGame = {
   startTime: Date;
   description: string | null;
   outcome: string;
-  teams: { id: string; name: string; colourEnum: number }[];
+  // callsigns: who played on the team, so an admin can tell the teams apart by players.
+  teams: { id: string; name: string; colourEnum: number; callsigns: string[] }[];
 };
 
 const gameSlugSql = sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`;
@@ -145,18 +146,13 @@ export async function getLbMatchDetail(matchId: string): Promise<LbMatchDetail |
 
   const side1TotalScore = halves.reduce((sum, h) => sum + (h.side1.score ?? 0), 0);
   const side2TotalScore = halves.reduce((sum, h) => sum + (h.side2.score ?? 0), 0);
-  const overtime = halves.find((h) => h.half === 3);
 
+  // Decided on the total over every half once both regulation halves are in. Overtime halves
+  // (3, 4, ...) are only played from a level score, so their sum is what breaks the tie.
   let winnerSide: LbMatchDetail["winnerSide"] = null;
-  if (halves.length === 2) {
+  if (halves.some((h) => h.half === 1) && halves.some((h) => h.half === 2)) {
     winnerSide =
       side1TotalScore === side2TotalScore ? "draw" : side1TotalScore > side2TotalScore ? 1 : 2;
-  } else if (halves.length === 3 && overtime) {
-    // Overtime is only played to break a half 1+2 tie — its own result alone
-    // decides the match, not the (still tied) cumulative total.
-    const otSide1 = overtime.side1.score ?? 0;
-    const otSide2 = overtime.side2.score ?? 0;
-    winnerSide = otSide1 === otSide2 ? "draw" : otSide1 > otSide2 ? 1 : 2;
   }
 
   return {
@@ -264,7 +260,12 @@ export async function getLbMatchCandidateGames(
   limit = 25,
 ): Promise<LbMatchCandidateGame[]> {
   const [current] = await db
-    .select({ centerId: game.centerId, startTime: game.startTime, type: game.type })
+    .select({
+      centerId: game.centerId,
+      startTime: game.startTime,
+      type: game.type,
+      competitionId: game.competitionId,
+    })
     .from(game)
     .where(eq(game.id, gameId));
   if (!current || current.type !== "lb") return [];
@@ -288,6 +289,11 @@ export async function getLbMatchCandidateGames(
         eq(game.centerId, current.centerId),
         ne(game.id, gameId),
         not(inArray(game.id, linkedGameIds)),
+        // A half or overtime half comes from the same event: the game's own competition, or
+        // social play when it has none — never a social game into a tournament match.
+        current.competitionId
+          ? eq(game.competitionId, current.competitionId)
+          : isNull(game.competitionId),
       ),
     )
     .orderBy(sql`abs(extract(epoch from (${game.startTime} - ${currentStartTime}::timestamp)))`)
@@ -307,10 +313,25 @@ export async function getLbMatchCandidateGames(
     .where(and(inArray(lbGameTeam.gameId, gameIds), eq(lbGameTeam.isNeutral, false)))
     .orderBy(lbGameTeam.tdfTeamIndex);
 
-  const teamsByGame = new Map<string, { id: string; name: string; colourEnum: number }[]>();
+  const cards = await db
+    .select({ teamId: lbScorecard.teamId, callsign: lbScorecard.callsign })
+    .from(lbScorecard)
+    .where(inArray(lbScorecard.gameId, gameIds))
+    .orderBy(asc(lbScorecard.callsign));
+  const callsignsByTeam = new Map<string, string[]>();
+  for (const c of cards) {
+    callsignsByTeam.set(c.teamId, [...(callsignsByTeam.get(c.teamId) ?? []), c.callsign]);
+  }
+
+  const teamsByGame = new Map<string, LbMatchCandidateGame["teams"]>();
   for (const t of teamRows) {
     const list = teamsByGame.get(t.gameId) ?? [];
-    list.push({ id: t.id, name: t.name, colourEnum: t.colourEnum });
+    list.push({
+      id: t.id,
+      name: t.name,
+      colourEnum: t.colourEnum,
+      callsigns: callsignsByTeam.get(t.id) ?? [],
+    });
     teamsByGame.set(t.gameId, list);
   }
 
@@ -407,8 +428,8 @@ export async function addLbMatchOvertimeGame(
   const half2 = existing.find((h) => h.half === 2);
   if (!half1 || !half2)
     throw new Error("Match must have both halves linked before adding overtime");
-  if (existing.some((h) => h.half === 3))
-    throw new Error("Overtime is already linked to this match");
+  // Overtime can run to several halves: each new one follows the last (OT 1 is half 3).
+  const nextHalf = Math.max(...existing.map((h) => h.half)) + 1;
 
   const [halfGame] = await db
     .select({ centerId: game.centerId })
@@ -431,16 +452,44 @@ export async function addLbMatchOvertimeGame(
   await db.insert(lbMatchGame).values({
     matchId,
     gameId,
-    half: 3,
+    half: nextHalf,
     side1GameTeamId: pairing.side1TeamId,
     side2GameTeamId: pairing.side2TeamId,
   });
 }
 
-export async function removeLbMatchOvertimeGame(matchId: string): Promise<void> {
-  await db
-    .delete(lbMatchGame)
-    .where(and(eq(lbMatchGame.matchId, matchId), eq(lbMatchGame.half, 3)));
+/**
+ * Removes one overtime half and closes the gap, so the remaining overtime halves stay numbered
+ * 3, 4, ... in play order. The game's mercenary flags are cleared: they mean nothing outside a
+ * match.
+ */
+export async function removeLbMatchOvertimeGame(matchId: string, gameId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [removed] = await tx
+      .delete(lbMatchGame)
+      .where(
+        and(
+          eq(lbMatchGame.matchId, matchId),
+          eq(lbMatchGame.gameId, gameId),
+          sql`${lbMatchGame.half} > 2`,
+        ),
+      )
+      .returning({ half: lbMatchGame.half });
+    if (!removed) return;
+    const later = await tx
+      .select({ id: lbMatchGame.id, half: lbMatchGame.half })
+      .from(lbMatchGame)
+      .where(and(eq(lbMatchGame.matchId, matchId), sql`${lbMatchGame.half} > ${removed.half}`))
+      .orderBy(asc(lbMatchGame.half));
+    // Ascending, one at a time, so (match_id, half) stays unique throughout.
+    for (const h of later) {
+      await tx
+        .update(lbMatchGame)
+        .set({ half: h.half - 1 })
+        .where(eq(lbMatchGame.id, h.id));
+    }
+    await tx.update(lbScorecard).set({ isMercenary: false }).where(eq(lbScorecard.gameId, gameId));
+  });
 }
 
 // ---------------------------------------------------------------------------

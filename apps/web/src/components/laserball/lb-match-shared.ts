@@ -2,7 +2,8 @@
 // Copyright (C) 2015 Russell Lewis
 
 export function halfLabel(half: number): string {
-  return half === 3 ? "Overtime" : `Half ${half}`;
+  // Halves 1 and 2 are regulation; overtime halves follow, OT 1 being half 3.
+  return half > 2 ? `OT ${half - 2}` : `Half ${half}`;
 }
 
 export function haltCaveat(outcome: string, excluded: boolean): string | null {
