@@ -77,6 +77,22 @@ export default async function Home() {
         <Card>
           <CardContent>
             <p className="mb-4">
+              <b>October 2026 Updates</b>
+              <ul>
+                <li>
+                  Big Laserball Update: Player aggregate stats, center stats, player detail pages,
+                  game details including momentum graphs. provide feedback or ask for new stuff on
+                  Discord
+                </li>
+                <li>Syracuse Laserball 2026 Tournament added</li>
+                <li>
+                  Legacy Site Migration: All data from the pre-TDF era (2020 and earlier) has been
+                  migrated to this site and the legacy site is officially offline. Let me know if
+                  see any weirdness or errors in the legacy data.
+                </li>
+              </ul>
+            </p>
+            <p className="mb-4">
               <b>Need access to upload stats?</b> Login with a Google account and let me know on{" "}
               <a
                 href="https://discord.com/channels/1345551651238576189/1378169370144149504"
@@ -89,13 +105,6 @@ export default async function Home() {
             <p className="mb-4">
               <b>Interested in automated uploads?</b> Now available via Google Drive - requires
               installing on the local LaserForce computer at your site.
-            </p>
-            <p className="mb-4">
-              You can find the old stats at{" "}
-              <a href="https://legacy.lfstats.com" className="underline">
-                legacy.lfstats.com
-              </a>
-              . That site is now read-only.
             </p>
           </CardContent>
         </Card>
