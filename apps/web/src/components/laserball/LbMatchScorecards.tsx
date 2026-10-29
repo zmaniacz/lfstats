@@ -12,17 +12,27 @@ import type { LbGameDetailTeam, LbMatchDetail } from "@lfstats/db";
 type Props = {
   matchDetail: LbMatchDetail;
   gamesById: Map<string, LbGameDetailTeam[]>;
+  // The competition teams playing Side 1 and Side 2, when the match fills a competition match.
+  sideNames?: [string, string];
 };
 
-export function LbMatchScorecards({ matchDetail, gamesById }: Props) {
+export function LbMatchScorecards({ matchDetail, gamesById, sideNames }: Props) {
   return (
     <div className="space-y-8">
       {matchDetail.halves.map((h) => {
         const teams = gamesById.get(h.gameId) ?? [];
         const caveat = haltCaveat(h.gameOutcome, h.gameExcluded);
         const sides = [
-          { label: "Side 1", side: h.side1, team: teams.find((t) => t.id === h.side1.gameTeamId) },
-          { label: "Side 2", side: h.side2, team: teams.find((t) => t.id === h.side2.gameTeamId) },
+          {
+            label: sideNames?.[0] ?? "Side 1",
+            side: h.side1,
+            team: teams.find((t) => t.id === h.side1.gameTeamId),
+          },
+          {
+            label: sideNames?.[1] ?? "Side 2",
+            side: h.side2,
+            team: teams.find((t) => t.id === h.side2.gameTeamId),
+          },
         ];
 
         return (

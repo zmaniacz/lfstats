@@ -5,10 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { formatScore } from "@/lib/format";
 import type { LbMatchDetail } from "@lfstats/db";
 
-export function LbMatchSideSummary({ matchDetail }: { matchDetail: LbMatchDetail }) {
+export function LbMatchSideSummary({
+  matchDetail,
+  sideNames,
+}: {
+  matchDetail: LbMatchDetail;
+  // The competition teams playing Side 1 and Side 2, when the match fills a competition match.
+  sideNames?: [string, string];
+}) {
   const sides = [
-    { side: 1 as const, total: matchDetail.side1TotalScore, label: "Side 1" },
-    { side: 2 as const, total: matchDetail.side2TotalScore, label: "Side 2" },
+    { side: 1 as const, total: matchDetail.side1TotalScore, label: sideNames?.[0] ?? "Side 1" },
+    { side: 2 as const, total: matchDetail.side2TotalScore, label: sideNames?.[1] ?? "Side 2" },
   ];
 
   return (

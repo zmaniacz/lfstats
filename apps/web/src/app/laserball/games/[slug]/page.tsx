@@ -65,6 +65,7 @@ import {
 const getGame = cache(getLbGameDetailBySlug);
 const getMatchId = cache(getLbMatchIdForGame);
 const getMatchDetail = cache(getLbMatchDetail);
+const getCompetitionMatch = cache(getLbGameCompetitionMatch);
 
 export async function generateMetadata({
   params,
@@ -76,10 +77,15 @@ export async function generateMetadata({
   if (!game) return { title: "Game Not Found" };
 
   const matchId = await getMatchId(game.id);
-  const matchDetail = matchId ? await getMatchDetail(matchId) : null;
-  const title = matchDetail
-    ? `${matchDetail.halves[0]!.side1.name} vs ${matchDetail.halves[0]!.side2.name} – Match`
-    : `${formatGameName(game.description, game.startTime)} – ${game.centerName}`;
+  const [matchDetail, competitionMatch] = matchId
+    ? await Promise.all([getMatchDetail(matchId), getCompetitionMatch(game.id)])
+    : [null, null];
+  const title =
+    competitionMatch?.team1Name && competitionMatch.team2Name
+      ? `${competitionMatch.team1Name} vs ${competitionMatch.team2Name} – ${competitionMatch.competitionName}`
+      : matchDetail
+        ? `${matchDetail.halves[0]!.side1.name} vs ${matchDetail.halves[0]!.side2.name} – Match`
+        : `${formatGameName(game.description, game.startTime)} – ${game.centerName}`;
 
   return { title };
 }
@@ -108,10 +114,15 @@ export default async function LaserballGameDetailPage({
     matchId ? getMatchDetail(matchId) : Promise.resolve(null),
     matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
     !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
-    matchId ? getLbGameCompetitionMatch(game.id) : Promise.resolve(null),
+    matchId ? getCompetitionMatch(game.id) : Promise.resolve(null),
   ]);
 
   const half2GameId = matchDetail?.halves.find((h) => h.half === 2)?.gameId;
+  // In a competition, Side 1 is always the match's team 1: label the sides with the teams.
+  const sideNames: [string, string] | undefined =
+    competitionMatch?.team1Name && competitionMatch.team2Name
+      ? [competitionMatch.team1Name, competitionMatch.team2Name]
+      : undefined;
 
   const gameCompetition = canEdit ? await getLbGameCompetition(game.id) : null;
   const [availableCompetitions, openMatches] = await Promise.all([
@@ -290,10 +301,18 @@ export default async function LaserballGameDetailPage({
         <TabsContent value="scoreboard" className="mt-6 space-y-8">
           {matchDetail ? (
             <>
-              <LbMatchSideSummary matchDetail={matchDetail} />
-              <LbMatchCombinedScoreboard matchDetail={matchDetail} gamesById={matchGamesDetail} />
+              <LbMatchSideSummary matchDetail={matchDetail} sideNames={sideNames} />
+              <LbMatchCombinedScoreboard
+                matchDetail={matchDetail}
+                gamesById={matchGamesDetail}
+                sideNames={sideNames}
+              />
               <LbMatchDetailsDisclosure>
-                <LbMatchScorecards matchDetail={matchDetail} gamesById={matchGamesDetail} />
+                <LbMatchScorecards
+                  matchDetail={matchDetail}
+                  gamesById={matchGamesDetail}
+                  sideNames={sideNames}
+                />
               </LbMatchDetailsDisclosure>
             </>
           ) : (
@@ -332,7 +351,12 @@ export default async function LaserballGameDetailPage({
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
           {matchDetail ? (
-            <LbReplayTab mode="match" matchId={matchDetail.id} duration={replayDuration} />
+            <LbReplayTab
+              mode="match"
+              matchId={matchDetail.id}
+              duration={replayDuration}
+              sideNames={sideNames}
+            />
           ) : (
             <LbReplayTab mode="game" gameId={game.id} duration={replayDuration} />
           )}
