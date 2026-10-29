@@ -9,6 +9,11 @@ export function formatScore(n: number | null): string {
 }
 
 // A signed points delta, e.g. a standings adjustment: "+4", "−2" (true minus sign).
+/** Standings points that may come in halves (a Laserball tie is worth 0.5): 2, 2.5. */
+export function formatPoints(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 export function formatSignedPoints(n: number): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0";
 }

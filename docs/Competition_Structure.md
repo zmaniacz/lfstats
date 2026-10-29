@@ -6,7 +6,7 @@
 
 ## Overview
 
-A **competition** is a structured event that groups a set of SM5 games together and gives them organisational meaning. The most common type is a **tournament**, where a fixed set of teams play each other in **matches** across multiple **rounds**, with standings derived from match results.
+A **competition** is a structured event that groups a set of games — SM5 or Laserball, never both — together and gives them organisational meaning. The most common type is a **tournament**, where a fixed set of teams play each other in **matches** across multiple **rounds**, with standings derived from match results.
 
 The base `competition` table and `game.competition_id` FK were the starting point. The tournament structure built on top of that is described here.
 
@@ -92,7 +92,10 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 - **Points are derived, never stored.** Standings are calculated at query time from `sm5_game_team.result` and scores.
 - **Mercenaries are a roster property, propagated to scorecards.** The source of truth is `competition_team_player.is_mercenary` — an admin marks a player as a merc _on the roster_. Assigning a game to a match then stamps `sm5_scorecard.is_mercenary = true` on that player's scorecards for that match. Mercenary scorecards are excluded from aggregate competition stats.
 - **Multi-center support.** Games in a competition can be played at different centers with no constraint.
-- **Laserball uses a separate, lighter model.** `lb_match` / `lb_match_game` link two halves of a Laserball match with no competition, team, or round structure at all. See the `lb_match` schema section below.
+- **Game type is fixed per competition.** `game_type` is `sm5` or `lb`, chosen at creation. A
+  Laserball competition reuses teams, rosters, rounds, pools, matches and adjustments, but a match
+  is played as one `lb_match` (two halves and an optional overtime) and scored on match results and
+  goals. See [Laserball Competitions](#laserball-competitions).
 
 ---
 
@@ -106,6 +109,7 @@ None of these concepts exist in the TDF, so chomper computes none of them. `comp
 | `name`                     | text             |                                                                                                                                                                          |
 | `slug`                     | text             | **Unique.** The public URL key, and the S3 key prefix that files a game into this competition at ingest.                                                                 |
 | `type`                     | enum             | `"competitive"` or `"social"`. Routes stats — see [Design Decisions](#design-decisions).                                                                                 |
+| `game_type`                | enum             | `"sm5"` (default) or `"lb"`. Fixed at creation. A CHECK requires `format = 'team'` for `lb` — see [Laserball Competitions](#laserball-competitions).                     |
 | `format`                   | enum             | `"team"` (default), `"solo"`, `"none"`, `"trios"` or `"duos"`. **Orthogonal to `type`** — decides how the competition is _scored_, not whether it counts as competitive. |
 | `category`                 | enum             | `"internationals"` \| `"tournament"` (default) \| `"league"`. **Display only** — see [Browsing Competitions](#browsing-competitions).                                    |
 | `state`                    | enum             | `"preshow"` \| `"upcoming"` \| `"active"` \| `"completed"`. Defaults to `"active"`. Drives UI visibility and whether uploads are accepted.                               |
@@ -175,7 +179,7 @@ duty, a sanction, a correction. Also where legacy `match_penalties` land.
 | `id`             | uuid PK                    |                             |
 | `competition_id` | uuid FK → competition      | cascade delete              |
 | `team_id`        | uuid FK → competition_team | cascade delete              |
-| `points`         | integer                    | signed; a CHECK forbids `0` |
+| `points`         | numeric(5,1)               | signed; a CHECK forbids `0` |
 | `reason`         | text                       | shown on the standings page |
 | `created_at`     | timestamp                  | defaults to now             |
 
@@ -184,7 +188,9 @@ duty, a sanction, a correction. Also where legacy `match_penalties` land.
 Adjustments belong to no round, so they count only on the **whole-competition** standings (no
 round or pool selected) — see [Points Calculation](#points-calculation). Admins add and remove
 them on `/admin/competitions/[slug]/teams`; `addCompetitionTeamAdjustment()` refuses a team from
-another competition, a zero or fractional value, and an empty reason.
+another competition, a zero value and an empty reason, and refuses a fractional value in an SM5
+competition. Laserball adjustments may be any multiple of 0.5, since a tied match is worth half a
+point — hence the numeric column.
 
 ### `competition_round`
 
@@ -306,15 +312,16 @@ Same meaning as on `sm5_scorecard`, stamped by `assignGameToMatch()`.
 
 ### `lb_match` / `lb_match_game`
 
-Laserball's match model, deliberately much lighter than the SM5 structure above. There is **no** Laserball competition, team, roster, round, or pool — just a link between the two halves of one match.
+Laserball's match model: a link between the two halves of one match (and an optional overtime). It stands alone for social games; in a [Laserball competition](#laserball-competitions) it is what fills a `competition_match`.
 
 `lb_match`:
 
-| Column       | Type      | Notes                                                      |
-| ------------ | --------- | ---------------------------------------------------------- |
-| `id`         | uuid PK   |                                                            |
-| `linked_by`  | text      | nullable. Free-text audit breadcrumb (an email), not a FK. |
-| `created_at` | timestamp | defaults to now                                            |
+| Column                 | Type      | Notes                                                                                  |
+| ---------------------- | --------- | -------------------------------------------------------------------------------------- |
+| `id`                   | uuid PK   |                                                                                        |
+| `linked_by`            | text      | nullable. Free-text audit breadcrumb (an email), not a FK.                             |
+| `competition_match_id` | uuid FK   | nullable, **unique**, `ON DELETE SET NULL`. The competition match this lb_match fills. |
+| `created_at`           | timestamp | defaults to now                                                                        |
 
 `lb_match_game`:
 
@@ -329,7 +336,7 @@ Laserball's match model, deliberately much lighter than the SM5 structure above.
 
 **Unique:** `(match_id, half)` and `(game_id)` · **Index:** `match_id`
 
-Side identity is **match-scoped only**. There is no persistent Laserball team table — colour and name are just center display strings. That Side 1 in half 1 and Side 1 in half 2 are "the same real-world team" is asserted by the admin at link time, and the two will normally carry a _different_ `tdf_team_index` / `colour_enum` in each half, which is the whole point of the swap.
+Side identity is **match-scoped** — colour and name are just center display strings. In a competition, Side 1 is the competition match's team 1. `half = 3` is an overtime, played only to break a tie over halves 1 and 2. That Side 1 in half 1 and Side 1 in half 2 are "the same real-world team" is asserted by the admin at link time, and the two will normally carry a _different_ `tdf_team_index` / `colour_enum` in each half, which is the whole point of the swap.
 
 Served by `GET /api/laserball/matches/[matchId]/replay` — see [API.md](API.md).
 
@@ -353,9 +360,10 @@ competition
                                                                  ▼
 game.competition_id ──── competition        sm5_scorecard.is_mercenary
 
-Laserball (separate, no competition structure):
-lb_match ──── lb_match_game ──── game.id
-                            └──── lb_game_team (side1/side2_game_team_id)
+Laserball (a competition match is filled by one lb_match; side 1 = team 1):
+competition_match ──── lb_match ──── lb_match_game ──── game.id
+                                                  └──── lb_game_team (side1/side2_game_team_id)
+                       lb_scorecard.is_mercenary (stamped from the rosters)
 ```
 
 ---
@@ -486,6 +494,98 @@ as "all three":
 The code shares one path for both formats: `teamsPerSide(format)` (2 for trios, 3 for duos, 1
 otherwise) and `isPartnerFormat(format)` in `packages/db/src/queries/admin.ts` drive the admin
 pickers and the standings tiebreak, and the queries simply read every partner slot.
+
+---
+
+## Laserball Competitions
+
+A **Laserball competition** (`game_type = 'lb'`) is a tournament: teams with set rosters playing
+two-half matches, each team playing one half on each side. `format` is always `team` (a CHECK
+enforces it); the solo, no-scoring, trios and duos formats do not exist for Laserball.
+
+### What is shared, and what is not
+
+Teams, rosters (including mercenary flags), rounds, pools, matches and adjustments are the same
+tables and the same admin pages as SM5. What differs is how a match is played and scored:
+
+- **A match is one `lb_match`.** `lb_match.competition_match_id` points at the slot it fills. No
+  `competition_match_game` rows are written for a Laserball game.
+- **Side 1 is team 1.** When an admin assigns halves that were linked the other way round, the
+  assignment swaps every half's `side1` / `side2` first (`assignLbMatchToCompetitionMatch`).
+- **Assigning files the games.** Assigning sets `game.competition_id` on every half and stamps
+  mercenaries. Unassigning empties the slot but leaves the halves linked to each other and in the
+  competition.
+
+Queries live in `packages/db/src/queries/competition-laserball.ts`; the arithmetic is pure, in
+`packages/db/src/lib/lb-match-points.ts`, with unit tests.
+
+### Points
+
+- The match goes to the team with more **goals over halves 1 and 2** (`lb_game_team.score`) —
+  the aggregate, not the number of halves won.
+- Level after two halves: the **overtime** (half 3) decides it. With no overtime, or a level one,
+  the match is a **tie**.
+- **Win = 1 point, tie = 0.5 each, loss = 0**, multiplied by the round multiplier. Nothing is
+  awarded per half.
+- A match missing a regulation half earns nothing. Once the competition is `completed`, such a
+  match shows that half's result as final, but still earns no points.
+- An excluded half counts as not reported.
+- Standings cover the non-finals rounds (or one selected round), like SM5. Adjustments apply to
+  the whole-competition table only.
+
+### Standings
+
+Columns: MP (complete matches), W, T, L, Pts, **GF**, **GA**, **GD**. Goals for and against
+count every linked half played, overtime and incomplete matches included.
+
+Order: points, then goal difference, then goals for, then points in complete matches among the
+teams still tied (head to head), then team name.
+
+### Mercenaries
+
+The roster flag works as in SM5 and is copied onto `lb_scorecard.is_mercenary`. Unlike SM5's, the
+Laserball stamp (`stampLbMercenaries`) sets the flag both ways from the rosters, so it is exact
+whenever it runs: on assignment, when a roster's merc flag changes (`setMercenaryAction`), and
+after a Laserball reingest rebuilds the scorecards (`bulk-reingest-lb.ts`). Mercenary scorecards
+are left out of a team's player totals.
+
+### Display
+
+- `/standings?game=lb&scope=competition&competition=<slug>` — the table, then every match by
+  round, each half's score linking to its game. Finals rounds sit on the Finals tab.
+- `/competitions/<slug>/teams/<team>` — the roster with goals, assists, steals, blocks, passes,
+  clears and possession over the competition, then the team's matches.
+- The Laserball game page shows _Competition · Round · Match · A vs B_ above the title.
+- `/games?game=lb` offers Laserball competitions in the competition scope. It selects on
+  `game.competition_id`, so it lists unassigned games too. (Laserball players and leaderboards are
+  still stubs.)
+- The query API's `resolve` returns each competition's `game_type`; scoping a query to a
+  competition of the other game type is an `invalid_scope` error.
+
+### Admin
+
+Choose **Laserball** as the game when creating the competition; it cannot be changed later.
+Bulk-assign games by center and date range — it only takes games of the competition's own type.
+On each match page, either pick halves already linked as a match (from the game page) and say
+which side team 1 was, or pick two of the competition's unlinked games and the team team 1
+played as in each; the earlier game becomes half 1. Overtime is linked from the game page as
+before. There is no forfeit flow.
+
+Ingest files a game into a competition from its S3 key prefix only when the game types match; a
+mismatched game is ingested as social, with a warning.
+
+### Converting an earlier event
+
+`packages/db/src/scripts/create-lb-tournament.ts` builds a Laserball competition from a JSON
+manifest of teams, rosters (IPL ids) and each match's game slugs. It maps each half's sides by
+roster majority, adds anyone playing on a side outside that team's roster as a mercenary, links
+the halves and stamps them, all in one transaction (`--dry-run` rolls back). Games listed under
+`unassignedGames` are filed into the competition with no match.
+
+The first Syracuse tournament (13, 14 and 16 July 2026) is converted this way, from
+`src/scripts/data/lb-tournament-syracuse-2026.json`. Team names are placeholders. Two four-game
+sequences — Team 1 v Team 2 on 13 July (10:41–11:04) and Team 3 v Team 4 on 16 July
+(09:34–09:50) — are filed but unassigned until the coordinator confirms what was played.
 
 ---
 

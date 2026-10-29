@@ -12,6 +12,9 @@ import { slugify, resolveUniqueSlug } from "../lib/slug";
 
 export type CompetitionState = "preshow" | "upcoming" | "active" | "completed";
 
+/** Which game a competition is for — see schema.ts `competitionGameTypeEnum`. Fixed at creation. */
+export type CompetitionGameType = "sm5" | "lb";
+
 /** How a competition is scored. Orthogonal to `type` — see schema.ts `competitionFormatEnum`. */
 export type CompetitionFormat = "team" | "solo" | "none" | "trios" | "duos";
 
@@ -51,6 +54,7 @@ export type CompetitionListItem = {
   name: string;
   slug: string;
   type: "competitive" | "social";
+  gameType: CompetitionGameType;
   format: CompetitionFormat;
   category: CompetitionCategory;
   state: CompetitionState;
@@ -66,6 +70,7 @@ export type CompetitionDetail = {
   name: string;
   slug: string;
   type: "competitive" | "social";
+  gameType: CompetitionGameType;
   format: CompetitionFormat;
   category: CompetitionCategory;
   state: CompetitionState;
@@ -114,6 +119,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      gameType: competition.gameType,
       format: competition.format,
       category: competition.category,
       state: competition.state,
@@ -134,6 +140,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
     name: r.name,
     slug: r.slug,
     type: r.type,
+    gameType: r.gameType,
     format: r.format,
     category: r.category,
     state: r.state,
@@ -147,7 +154,7 @@ export async function getCompetitions(): Promise<CompetitionListItem[]> {
 
 export async function getCompetitionsByState(
   states: CompetitionState[],
-  options?: { limit?: number; order?: "asc" | "desc" },
+  options?: { limit?: number; order?: "asc" | "desc"; gameType?: CompetitionGameType },
 ): Promise<CompetitionListItem[]> {
   const order = options?.order ?? "asc";
 
@@ -157,6 +164,7 @@ export async function getCompetitionsByState(
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      gameType: competition.gameType,
       format: competition.format,
       category: competition.category,
       state: competition.state,
@@ -169,7 +177,12 @@ export async function getCompetitionsByState(
     .from(competition)
     .leftJoin(center, eq(competition.hostCenterId, center.id))
     .leftJoin(game, eq(game.competitionId, competition.id))
-    .where(inArray(competition.state, states))
+    .where(
+      and(
+        inArray(competition.state, states),
+        options?.gameType ? eq(competition.gameType, options.gameType) : undefined,
+      ),
+    )
     .groupBy(competition.id, center.name)
     .orderBy(order === "asc" ? asc(competition.startDate) : desc(competition.startDate))
     .$dynamic();
@@ -181,6 +194,7 @@ export async function getCompetitionsByState(
     name: r.name,
     slug: r.slug,
     type: r.type,
+    gameType: r.gameType,
     format: r.format,
     category: r.category,
     state: r.state,
@@ -199,6 +213,7 @@ export async function getCompetitionById(id: string): Promise<CompetitionDetail 
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      gameType: competition.gameType,
       format: competition.format,
       category: competition.category,
       state: competition.state,
@@ -223,6 +238,7 @@ export async function getCompetitionBySlug(slug: string): Promise<CompetitionDet
       name: competition.name,
       slug: competition.slug,
       type: competition.type,
+      gameType: competition.gameType,
       format: competition.format,
       category: competition.category,
       state: competition.state,
@@ -288,6 +304,9 @@ export async function bulkAssignGamesToCompetition(
     .set({ competitionId })
     .where(
       and(
+        // Only games of the competition's own type: a Laserball night in the same date range
+        // must not land in an SM5 event, or vice versa.
+        sameGameTypeAsCompetition(competitionId),
         eq(game.centerId, centerId),
         gte(game.startTime, new Date(dateFrom)),
         lte(game.startTime, new Date(`${dateTo}T23:59:59`)),
@@ -453,6 +472,19 @@ export async function removeGameFromCompetition(gameId: string): Promise<void> {
   await db.update(game).set({ competitionId: null }).where(eq(game.id, gameId));
 }
 
+/**
+ * Files a game into a competition. Does nothing when the game's type (`sm5` / `lb`) differs from
+ * the competition's — callers only ever offer matching competitions, so a mismatch is a stale
+ * form, not something to report.
+ */
 export async function setGameCompetition(gameId: string, competitionId: string): Promise<void> {
-  await db.update(game).set({ competitionId }).where(eq(game.id, gameId));
+  await db
+    .update(game)
+    .set({ competitionId })
+    .where(and(eq(game.id, gameId), sameGameTypeAsCompetition(competitionId)));
+}
+
+/** `game.type` (text: `sm5` / `lb`) matches the given competition's `game_type`. */
+function sameGameTypeAsCompetition(competitionId: string) {
+  return sql`${game.type} = (select ${competition.gameType}::text from ${competition} where ${competition.id} = ${competitionId})`;
 }

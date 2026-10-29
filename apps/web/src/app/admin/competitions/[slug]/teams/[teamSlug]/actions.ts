@@ -10,6 +10,7 @@ import {
   searchPlayersForRoster,
   updateCompetitionTeam,
   setPlayerMercenary,
+  restampLbMercenariesForTeam,
   setCompetitionTeamLogo,
   setCompetitionTeamPlayerPicture,
   getCompetitionById,
@@ -121,6 +122,8 @@ export async function setMercenaryAction(
   await requireAdmin();
   const result = await setPlayerMercenary(teamId, playerId, isMercenary);
   if (!result.ok) return result;
+  // setPlayerMercenary updates SM5 scorecards; a Laserball team's halves are re-stamped here.
+  await restampLbMercenariesForTeam(teamId);
   await revalidateTeamPaths(competitionId, teamId);
   refresh();
   return result;

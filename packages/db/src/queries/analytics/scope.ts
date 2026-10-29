@@ -224,12 +224,28 @@ async function resolveCenters(slugs: string[]): Promise<CenterRef[]> {
   return slugs.map((s) => found.get(s)!);
 }
 
-async function resolveCompetitions(slugs: string[]): Promise<CompetitionRef[]> {
+async function resolveCompetitions(slugs: string[], gameType: GameType): Promise<CompetitionRef[]> {
   const db = getAnalyticsDb();
   const rows = await db
-    .select({ id: competition.id, slug: competition.slug, name: competition.name })
+    .select({
+      id: competition.id,
+      slug: competition.slug,
+      name: competition.name,
+      gameType: competition.gameType,
+    })
     .from(competition)
     .where(inArray(competition.slug, slugs));
+
+  // A Laserball competition holds no SM5 games and vice versa, so a mismatch would silently
+  // return nothing.
+  const wrongType = rows.find((r) => r.gameType !== gameType);
+  if (wrongType) {
+    throw new QueryApiError(
+      "invalid_scope",
+      `Competition '${wrongType.slug}' is a ${wrongType.gameType} competition.`,
+      { field: "scope.game_type", hint: `Set scope.game_type to '${wrongType.gameType}'.` },
+    );
+  }
 
   const found = new Map(rows.map((r) => [r.slug, r]));
   const missing = slugs.find((s) => !found.has(s));
@@ -243,13 +259,16 @@ async function resolveCompetitions(slugs: string[]): Promise<CompetitionRef[]> {
       )}Use resolve to turn a competition name into its slug.`,
     });
   }
-  return slugs.map((s) => found.get(s)!);
+  return slugs.map((s) => {
+    const { gameType: _, ...ref } = found.get(s)!;
+    return ref;
+  });
 }
 
 export async function resolveScope(scope: NormalizedScope): Promise<ResolvedScope> {
   const [centerRefs, competitionRefs] = await Promise.all([
     scope.centers ? resolveCenters(scope.centers) : null,
-    scope.competitions ? resolveCompetitions(scope.competitions) : null,
+    scope.competitions ? resolveCompetitions(scope.competitions, scope.game_type) : null,
   ]);
   return { ...scope, centerRefs, competitionRefs };
 }

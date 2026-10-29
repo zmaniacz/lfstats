@@ -15,8 +15,12 @@ import {
   competitionHasLegacyGames,
   getCompetitionTeamResultsByColor,
   getCompetitionMatchResults,
+  getLbCompetitionMatchResults,
+  getLbCompetitionPlayerStats,
   type CompetitionMatchResult,
 } from "@lfstats/db";
+import { LbMatchList } from "@/components/competitions/LbStandingsContent";
+import { LbTeamRosterTable } from "@/components/competitions/LbTeamRosterTable";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { MatchCardSections } from "@/components/competitions/MatchCardSections";
@@ -62,6 +66,62 @@ export default async function CompetitionTeamPage({
   const isAdmin = roles.some(
     (r) => r.role === "superAdmin" || r.role === "admin" || r.role === "centerAdmin",
   );
+
+  const header = (
+    <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-4">
+        <TeamLogo
+          teamId={team.id}
+          hasLogo={team.hasLogo}
+          logoVersion={team.logoVersion}
+          name={team.name}
+          size={64}
+          expandable
+        />
+        <h2 className="text-xl font-semibold">
+          {team.name}
+          {team.shortName && (
+            <span className="text-muted-foreground font-normal ml-2">({team.shortName})</span>
+          )}
+        </h2>
+      </div>
+      {isAdmin && (
+        <Link
+          href={`/admin/competitions/${competition.slug}/teams/${team.slug}`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
+        >
+          <Settings className="h-4 w-4" />
+          Manage team
+        </Link>
+      )}
+    </div>
+  );
+
+  if (competition.gameType === "lb") {
+    const [roster, stats, matches] = await Promise.all([
+      getCompetitionTeamRoster(team.id),
+      getLbCompetitionPlayerStats(competition.id, team.id),
+      getLbCompetitionMatchResults(competition.id, { teamId: team.id }),
+    ]);
+    return (
+      <div className="space-y-6">
+        {header}
+        <Card>
+          <CardHeader>
+            <CardTitle>Roster</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LbTeamRosterTable roster={roster} stats={stats} />
+          </CardContent>
+        </Card>
+        <LbMatchList
+          matches={matches}
+          competitionSlug={competition.slug}
+          highlightTeamId={team.id}
+        />
+      </div>
+    );
+  }
 
   // A competition with PDF-era games reads both scorecard kinds; every other competition keeps
   // the TDF-only query.
@@ -130,33 +190,7 @@ export default async function CompetitionTeamPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
-          <TeamLogo
-            teamId={team.id}
-            hasLogo={team.hasLogo}
-            logoVersion={team.logoVersion}
-            name={team.name}
-            size={64}
-            expandable
-          />
-          <h2 className="text-xl font-semibold">
-            {team.name}
-            {team.shortName && (
-              <span className="text-muted-foreground font-normal ml-2">({team.shortName})</span>
-            )}
-          </h2>
-        </div>
-        {isAdmin && (
-          <Link
-            href={`/admin/competitions/${competition.slug}/teams/${team.slug}`}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
-          >
-            <Settings className="h-4 w-4" />
-            Manage team
-          </Link>
-        )}
-      </div>
+      {header}
 
       <Card>
         <CardHeader>

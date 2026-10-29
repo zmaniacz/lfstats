@@ -294,7 +294,7 @@ centers, penalties, standings, all-star, player profile):
 - `scope`: `"social" | "competition" | "all"`.
 - `center`: a center slug, or `null` for "all centers" (applies in social scope).
 - `competition`: a competition slug, or `null` for "all competitions" (applies in competition
-  scope; Laserball has no competitions yet).
+  scope; each game type lists only its own competitions).
 
 ### Storage: cookies, split by game type
 

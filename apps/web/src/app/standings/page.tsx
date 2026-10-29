@@ -19,7 +19,8 @@ import { StandingsSkeleton } from "@/components/competitions/StandingsSkeleton";
 import { UnassignedGamesBlock } from "@/components/competitions/UnassignedGamesBlock";
 import { UnenrolledPlayersBlock } from "@/components/competitions/UnenrolledPlayersBlock";
 import { StandingsTabs } from "./StandingsTabs";
-import { resolveFilterContext } from "@/lib/filter-context";
+import { LbStandingsContent } from "@/components/competitions/LbStandingsContent";
+import { resolveFilterContext, resolveGameType } from "@/lib/filter-context";
 import {
   enrollAllSoloPlayersAction,
   enrollSoloPlayerAction,
@@ -31,20 +32,28 @@ export const metadata: Metadata = { title: "Standings" };
 export default async function StandingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string; competition?: string; round?: string; tab?: string }>;
+  searchParams: Promise<{
+    scope?: string;
+    competition?: string;
+    round?: string;
+    tab?: string;
+    game?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const roundIdParam = sp.round;
+  const gameType = await resolveGameType(sp.game);
 
   const ctx = await resolveFilterContext(sp, {
     allowedScopes: ["competition"],
     defaultScope: "competition",
+    gameType,
   });
 
   if (ctx.competitions.length === 0 || !ctx.competition) {
     return (
       <div className="p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Standings</h2>
+        <StandingsHeader ctx={ctx} competitionSlug={null} isAdmin={false} gameType={gameType} />
         <p className="text-muted-foreground text-sm">No competitive competitions found.</p>
       </div>
     );
@@ -123,6 +132,57 @@ export default async function StandingsPage({
 
   const contentKey = [activeComp.slug, activeRoundId].join("|");
   const activeTab = sp.tab === "finals" && finalsRounds.length > 0 ? "finals" : "standings";
+
+  // Laserball: a tournament only, so always rounds and matches, but scored on match results and
+  // goals — see LbStandingsContent.
+  if (gameType === "lb") {
+    return (
+      <div className="p-6 space-y-6">
+        {isAdmin && <UnassignedGamesBlock games={unassignedGames} />}
+        <StandingsHeader
+          ctx={ctx}
+          competitionSlug={activeComp.slug}
+          isAdmin={isAdmin}
+          gameType={gameType}
+        />
+        <StandingsTabs
+          defaultTab={activeTab}
+          hasFinals={finalsRounds.length > 0}
+          standingsContent={
+            <>
+              {standingsRounds.length > 1 && (
+                <RoundFilter
+                  competitionSlug={activeComp.slug}
+                  rounds={standingsRounds.map((r) => ({ id: r.id, name: r.name }))}
+                  activeRoundId={activeRoundId}
+                  gameType="lb"
+                />
+              )}
+              <Suspense key={contentKey} fallback={<StandingsSkeleton />}>
+                <LbStandingsContent
+                  activeId={activeId}
+                  activeRoundId={activeRoundId}
+                  competitionSlug={activeComp.slug}
+                  competitionName={activeComp.name}
+                />
+              </Suspense>
+            </>
+          }
+          finalsContent={
+            <Suspense fallback={<StandingsSkeleton />}>
+              <LbStandingsContent
+                activeId={activeId}
+                activeRoundId={null}
+                competitionSlug={activeComp.slug}
+                competitionName={activeComp.name}
+                finals
+              />
+            </Suspense>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

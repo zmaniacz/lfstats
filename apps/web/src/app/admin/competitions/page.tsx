@@ -64,6 +64,7 @@ export default async function CompetitionsPage() {
                     <Badge variant={c.type === "competitive" ? "default" : "secondary"}>
                       {c.type}
                     </Badge>
+                    {c.gameType === "lb" && <Badge variant="outline">Laserball</Badge>}
                     {COMPETITION_FORMAT_BADGES[c.format] && (
                       <Badge variant="outline">{COMPETITION_FORMAT_BADGES[c.format]}</Badge>
                     )}

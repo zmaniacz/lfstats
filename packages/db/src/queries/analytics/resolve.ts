@@ -351,6 +351,8 @@ export type CompetitionMatch = {
   slug: string;
   name: string;
   type: string;
+  // "sm5" or "lb": pass it as scope.game_type when querying the competition.
+  game_type: string;
   format: string;
   category: string;
   state: string;
@@ -369,6 +371,7 @@ export async function resolveCompetition(query: string): Promise<ResolveResult<C
         slug: competition.slug,
         name: competition.name,
         type: competition.type,
+        game_type: competition.gameType,
         format: competition.format,
         category: competition.category,
         state: competition.state,

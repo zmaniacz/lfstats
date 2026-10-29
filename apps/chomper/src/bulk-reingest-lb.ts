@@ -15,6 +15,7 @@ import {
   insertLbGameTeams,
   insertLbMatchGame,
   insertLbScorecards,
+  restampLbMercenariesForGame,
   restoreGameMetadata,
   updateGameRow,
   upsertCenter,
@@ -494,6 +495,9 @@ async function reingestLb(
           side1GameTeamId,
           side2GameTeamId,
         });
+        // The scorecards were rebuilt with is_mercenary = false. If the match fills a
+        // competition match, re-derive the flags from its rosters.
+        await restampLbMercenariesForGame(tx, existingGameId);
       } else {
         log(
           `WARN ${existingGameId}: match link dropped — team index ` +

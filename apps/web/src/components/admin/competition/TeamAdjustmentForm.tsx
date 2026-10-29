@@ -19,9 +19,11 @@ import {
 type Props = {
   teams: { id: string; name: string }[];
   action: (formData: FormData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Smallest adjustment: 1 for SM5, 0.5 for Laserball (a tied match is worth half a point). */
+  step?: number;
 };
 
-export function TeamAdjustmentForm({ teams, action }: Props) {
+export function TeamAdjustmentForm({ teams, action, step = 1 }: Props) {
   const [teamId, setTeamId] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function TeamAdjustmentForm({ teams, action }: Props) {
             id="adjustment-points"
             name="points"
             type="number"
-            step={1}
+            step={step}
             required
             placeholder="-2"
             className="w-24"

@@ -158,7 +158,13 @@ export const handler: S3Handler = async (event, context) => {
     let competitionId: string | null = null;
     if (competitionSlug) {
       const competition = await getCompetitionBySlug(competitionSlug);
-      if (competition) {
+      if (competition && competition.gameType !== gameType) {
+        // A Laserball file in an SM5 event's folder (or vice versa) is ingested as social.
+        console.warn(
+          `Competition "${competitionSlug}" is for ${competition.gameType} games; ` +
+            `leaving this ${gameType} game unfiled (key: ${key})`,
+        );
+      } else if (competition) {
         competitionId = competition.id;
       } else {
         console.warn(`No competition found for slug "${competitionSlug}" (key: ${key})`);

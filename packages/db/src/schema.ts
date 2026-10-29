@@ -10,6 +10,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   pgView,
@@ -40,6 +41,14 @@ export const teamResultEnum = pgEnum("team_result", ["win", "loss", "draw"]);
 export const destructionMethodEnum = pgEnum("destruction_method", ["shot", "missile", "awarded"]);
 
 export const competitionTypeEnum = pgEnum("competition_type", ["competitive", "social"]);
+
+/**
+ * Which game a competition is for. Every game in it, and every stat page it feeds, is that
+ * type: an `sm5` competition's matches are pairs of `competition_match_game` rows, an `lb`
+ * (Laserball) competition's matches each point at one `lb_match` (its halves). Fixed at
+ * creation. Laserball competitions are tournaments only, so `format` must be `team`.
+ */
+export const competitionGameTypeEnum = pgEnum("competition_game_type", ["sm5", "lb"]);
 
 /**
  * How a competition is scored, orthogonal to `type`. A `team` competition runs matches
@@ -264,6 +273,7 @@ export const competition = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     type: competitionTypeEnum("type").notNull(),
+    gameType: competitionGameTypeEnum("game_type").notNull().default("sm5"),
     format: competitionFormatEnum("format").notNull().default("team"),
     category: competitionCategoryEnum("category").notNull().default("tournament"),
     state: competitionStateEnum("state").notNull().default("active"),
@@ -275,7 +285,11 @@ export const competition = pgTable(
     challongeBracketHeight: integer("challonge_bracket_height"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("competition_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops"))],
+  (t) => [
+    index("competition_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops")),
+    // Laserball has only the tournament (team) format for now.
+    check("competition_lb_format_check", sql`${t.gameType} <> 'lb' or ${t.format} = 'team'`),
+  ],
 );
 
 export const competitionTeam = pgTable(
@@ -320,6 +334,8 @@ export const competitionTeamPlayer = pgTable(
  * A standings-point adjustment to one team, outside any match: a deduction for a referee
  * no-show, a sanction, a correction. Summed into the team's points on the whole-competition
  * standings (not the per-round views, since it belongs to no round). `points` is signed.
+ * Numeric because a Laserball match is worth 1 point (a tie 0.5), so its adjustments come in
+ * halves; SM5 adjustments are still refused unless whole.
  */
 export const competitionTeamAdjustment = pgTable(
   "competition_team_adjustment",
@@ -331,7 +347,7 @@ export const competitionTeamAdjustment = pgTable(
     teamId: uuid("team_id")
       .notNull()
       .references(() => competitionTeam.id, { onDelete: "cascade" }),
-    points: integer("points").notNull(),
+    points: numeric("points", { precision: 5, scale: 1, mode: "number" }).notNull(),
     reason: text("reason").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -1170,6 +1186,11 @@ export const lbScorecard = pgTable(
     state0: integer("state0").notNull(),
     state2: integer("state2").notNull(),
     state3: integer("state3").notNull(),
+
+    // Derived from competition_team_player.is_mercenary when the game's lb_match is assigned
+    // to a competition match, exactly as sm5_scorecard.is_mercenary. Admin-owned: a reingest
+    // must restore it.
+    isMercenary: boolean("is_mercenary").notNull().default(false),
   },
   (t) => [
     index("lb_scorecard_game_id_idx").on(t.gameId),
@@ -1188,8 +1209,13 @@ export const lbScorecard = pgTable(
 // team `index` is documented as game-scoped only, and name/colour are
 // center-configured display strings, not stable identity — so this link is a
 // pure out-of-band admin action performed from an already-ingested game's
-// detail page. Deliberately independent of the competition/tournament system:
-// no FK to `competition`, `competitionMatch`, or `competitionMatchGame`.
+// detail page.
+//
+// In a Laserball competition, a `competition_match` is played as one lb_match:
+// `competition_match_id` points at the slot it fills. Side 1 is always the
+// slot's team 1 — assigning swaps the halves' sides first if they were linked
+// the other way round. The lb_match row itself survives a reingest (only its
+// lb_match_game rows are rebuilt), so this link needs no preservation.
 // ---------------------------------------------------------------------------
 
 export const lbMatch = pgTable("lb_match", {
@@ -1197,6 +1223,9 @@ export const lbMatch = pgTable("lb_match", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   // Free-text audit breadcrumb (session.user.email), not a FK.
   linkedBy: text("linked_by"),
+  competitionMatchId: uuid("competition_match_id")
+    .unique()
+    .references(() => competitionMatch.id, { onDelete: "set null" }),
 });
 
 export const lbMatchGame = pgTable(

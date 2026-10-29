@@ -18,6 +18,7 @@ import type {
   CompetitionCategory,
   CompetitionDetail,
   CompetitionFormat,
+  CompetitionGameType,
   CompetitionState,
 } from "@lfstats/db";
 import { COMPETITION_STATE_LABELS } from "@/lib/competition-state";
@@ -70,6 +71,8 @@ const FORMAT_CHANGE_WARNINGS: Record<CompetitionFormat, string> = {
 export function CompetitionForm({ competition, centers, action, onCancel, onSaved }: Props) {
   const [isPending, setIsPending] = useState(false);
   const [type, setType] = useState<string>(competition?.type ?? "competitive");
+  // Fixed once created: only the create form offers it.
+  const [gameType, setGameType] = useState<CompetitionGameType>(competition?.gameType ?? "sm5");
   const [format, setFormat] = useState<CompetitionFormat>(competition?.format ?? "team");
   const [category, setCategory] = useState<CompetitionCategory>(
     competition?.category ?? "tournament",
@@ -81,7 +84,8 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("type", type);
-    formData.set("format", format);
+    formData.set("gameType", gameType);
+    formData.set("format", gameType === "lb" ? "team" : format);
     formData.set("category", category);
     formData.set("state", state);
     formData.set("hostCenterId", hostCenterId === "none" ? "" : hostCenterId);
@@ -121,6 +125,28 @@ export function CompetitionForm({ competition, centers, action, onCancel, onSave
       </div>
 
       <div className="space-y-1.5">
+        <Label>Game</Label>
+        {competition ? (
+          <p className="text-sm">{gameType === "lb" ? "Laserball" : "Space Marines 5"}</p>
+        ) : (
+          <Select value={gameType} onValueChange={(v) => setGameType(v as CompetitionGameType)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sm5">Space Marines 5</SelectItem>
+              <SelectItem value="lb">Laserball</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {competition
+            ? "Fixed when the competition was created."
+            : "Can't be changed later. Laserball competitions are tournaments: teams with set rosters playing two-half matches."}
+        </p>
+      </div>
+
+      <div className={gameType === "lb" ? "hidden" : "space-y-1.5"}>
         <Label>Format</Label>
         <Select
           value={format}

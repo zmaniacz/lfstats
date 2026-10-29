@@ -36,11 +36,13 @@ import {
   getLbMatchDetail,
   getLbMatchGamesDetail,
   getLbMatchIdForGame,
+  getLbGameCompetitionMatch,
   getLbMatchRosterWarnings,
   type LbGameDetailTeam,
 } from "@lfstats/db";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   addLbGameVideoAction,
   addLbMatchOvertimeAction,
@@ -94,10 +96,11 @@ export default async function LaserballGameDetailPage({
   const canEdit = canManage && editMode;
 
   const matchId = await getMatchId(game.id);
-  const [matchDetail, rosterWarnings, candidateGames] = await Promise.all([
+  const [matchDetail, rosterWarnings, candidateGames, competitionMatch] = await Promise.all([
     matchId ? getMatchDetail(matchId) : Promise.resolve(null),
     matchId ? getLbMatchRosterWarnings(matchId) : Promise.resolve([]),
     !matchId && canEdit ? getLbMatchCandidateGames(game.id) : Promise.resolve([]),
+    matchId ? getLbGameCompetitionMatch(game.id) : Promise.resolve(null),
   ]);
 
   const half2GameId = matchDetail?.halves.find((h) => h.half === 2)?.gameId;
@@ -148,6 +151,16 @@ export default async function LaserballGameDetailPage({
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
+        {competitionMatch && (
+          <Link
+            href={`/standings?game=lb&scope=competition&competition=${competitionMatch.competitionSlug}`}
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            {competitionMatch.competitionName} · {competitionMatch.roundName} · Match{" "}
+            {competitionMatch.matchNumber} · {competitionMatch.team1Name ?? "TBD"} vs{" "}
+            {competitionMatch.team2Name ?? "TBD"}
+          </Link>
+        )}
         <h1 className="text-2xl font-bold">
           {matchDetail
             ? formatMatchName(matchDetail.halves[0]!.gameStartTime)

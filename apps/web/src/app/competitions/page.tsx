@@ -85,7 +85,7 @@ function CompetitionTable({
               <TableCell>
                 <div className="flex items-center gap-1.5">
                   <Link
-                    href={`/standings?scope=competition&competition=${competition.slug}`}
+                    href={`/standings?${competition.gameType === "lb" ? "game=lb&" : ""}scope=competition&competition=${competition.slug}`}
                     className="font-medium hover:underline"
                   >
                     {competition.name}
@@ -99,6 +99,7 @@ function CompetitionTable({
                       <Settings className="h-4 w-4" />
                     </Link>
                   )}
+                  {competition.gameType === "lb" && <Badge variant="outline">Laserball</Badge>}
                   {COMPETITION_FORMAT_BADGES[competition.format] && (
                     <Badge variant="outline">{COMPETITION_FORMAT_BADGES[competition.format]}</Badge>
                   )}

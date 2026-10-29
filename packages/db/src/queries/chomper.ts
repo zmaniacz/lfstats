@@ -573,6 +573,7 @@ export async function insertGameTeamPenalties(
 const REINGEST_HANDLED_GAME_TEAM_REFERENCES: Record<string, string> = {
   sm5_scorecard: "rebuilt from the TDF",
   sm5_game_target: "rebuilt from the TDF",
+  // is_mercenary is admin-owned: re-stamped from the rosters by restampLbMercenariesForGame.
   lb_scorecard: "rebuilt from the TDF",
   competition_match_game: "preserved via getCompetitionMatchGameForReingest",
   lb_match_game: "preserved via getLbMatchGameForReingest",

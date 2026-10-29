@@ -12,6 +12,9 @@ import {
   getCompetitionById,
   updateCompetitionMatchTeams,
   updateCompetitionMatchSchedule,
+  assignLbMatchToCompetitionMatch,
+  linkAndAssignLbHalves,
+  unassignLbMatchFromCompetitionMatch,
 } from "@lfstats/db";
 import { auth } from "@/auth";
 import { fromDateTimeInputValue } from "@/lib/format";
@@ -178,4 +181,68 @@ export async function createForfeitAction(
   }
   refresh();
   return { ok: true };
+}
+
+async function revalidateMatchPaths(competitionId: string, matchId: string) {
+  const match = await getCompetitionMatchById(matchId);
+  const slug = await competitionSlug(competitionId);
+  if (slug && match) {
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}/matches/${matchId}`);
+    revalidatePath(`/admin/competitions/${slug}/rounds/${match.roundId}`);
+    revalidatePath(`/admin/competitions/${slug}`);
+  }
+  refresh();
+}
+
+/** Laserball: fill the match with halves already linked as an lb_match. */
+export async function assignLbMatchAction(
+  competitionId: string,
+  matchId: string,
+  formData: FormData,
+): Promise<MatchActionResult> {
+  await requireAdmin();
+  const competition = await getCompetitionById(competitionId);
+  if (!competition) throw new Error("Competition not found");
+  if (competition.state !== "active") {
+    return { ok: false, error: "Games can only be assigned while the competition is active." };
+  }
+  const result = await assignLbMatchToCompetitionMatch(
+    matchId,
+    formData.get("lbMatchId") as string,
+    formData.get("swapSides") === "true",
+  );
+  if (result.ok) await revalidateMatchPaths(competitionId, matchId);
+  return result;
+}
+
+/** Laserball: link two of the competition's games as this match's halves. */
+export async function linkLbHalvesAction(
+  competitionId: string,
+  matchId: string,
+  formData: FormData,
+): Promise<MatchActionResult> {
+  await requireAdmin();
+  const session = await auth();
+  const competition = await getCompetitionById(competitionId);
+  if (!competition) throw new Error("Competition not found");
+  if (competition.state !== "active") {
+    return { ok: false, error: "Games can only be assigned while the competition is active." };
+  }
+  const result = await linkAndAssignLbHalves({
+    competitionMatchId: matchId,
+    half1GameId: formData.get("half1GameId") as string,
+    half1Team1GameTeamId: formData.get("half1Team1GameTeamId") as string,
+    half2GameId: formData.get("half2GameId") as string,
+    half2Team1GameTeamId: formData.get("half2Team1GameTeamId") as string,
+    linkedBy: session?.user?.email ?? undefined,
+  });
+  if (result.ok) await revalidateMatchPaths(competitionId, matchId);
+  return result;
+}
+
+/** Laserball: empty the match. The halves stay linked to each other and in the competition. */
+export async function unassignLbMatchAction(competitionId: string, matchId: string): Promise<void> {
+  await requireAdmin();
+  await unassignLbMatchFromCompetitionMatch(matchId);
+  await revalidateMatchPaths(competitionId, matchId);
 }

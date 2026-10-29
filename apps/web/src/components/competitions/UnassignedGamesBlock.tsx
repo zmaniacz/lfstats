@@ -53,7 +53,12 @@ export function UnassignedGamesBlock({ games }: { games: CompetitionUnassignedGa
                 {games.map((g) => (
                   <TableRow key={g.id}>
                     <TableCell>
-                      <Link href={`/games/${g.slug}`} className="hover:underline font-medium">
+                      <Link
+                        href={
+                          g.gameType === "lb" ? `/laserball/games/${g.slug}` : `/games/${g.slug}`
+                        }
+                        className="hover:underline font-medium"
+                      >
                         {formatGameName(g.description, g.startTime)}
                       </Link>
                     </TableCell>
