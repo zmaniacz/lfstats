@@ -5,11 +5,30 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   S3Client,
 } from "@aws-sdk/client-s3";
 
 const s3 = new S3Client({ followRegionRedirects: true });
+
+/**
+ * True for S3's "no such object". Needs s3:ListBucket on the bucket: without it
+ * S3 answers 403 for a missing key rather than 404.
+ */
+export function isMissingObjectError(err: unknown): boolean {
+  return (err as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404;
+}
+
+export async function objectExists(bucket: string, key: string): Promise<boolean> {
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch (err) {
+    if (isMissingObjectError(err)) return false;
+    throw err;
+  }
+}
 
 export async function listTdfs(bucket: string, prefix: string): Promise<string[]> {
   const keys: string[] = [];

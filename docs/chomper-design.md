@@ -12,7 +12,8 @@ Chomper ingests **two game modes** from the same package: SM5 (mission type 5) a
 
 The primary execution modes:
 
-- **Lambda handler** (`src/index.ts`) — triggered by S3 upload events; processes one file per invocation
+- **SQS worker** (`src/worker.ts`) — long-running container beside Postgres; pulls S3 upload events from a queue, one file at a time
+- **Lambda handler** (`src/index.ts`) — triggered directly by S3 upload events; processes one file per invocation. Runs the same pipeline as the worker and is retired once uploads are cut over (see [`apps/chomper/README.md`](../apps/chomper/README.md))
 - **Bulk ingest CLI** (`src/bulk-ingest.ts`) — manually invoked tool for re-processing files from the archive bucket
 
 Both share the same core pipeline: parse → simulate → validate → ingest. Validation differs by mode — SM5 runs a stat-by-stat consistency check against line type 7, Laserball asserts a goals↔score invariant because it has no line type 7.
@@ -26,7 +27,9 @@ The local dev CLI (`src/cli.ts`) runs parse + simulate without touching the data
 ```
 apps/chomper/
   src/
-    index.ts              ← Lambda entry point; routes on mission type
+    process-file.ts       ← The ingest pipeline for one file; routes on mission type
+    worker.ts             ← SQS worker entry point
+    index.ts              ← Lambda entry point
     parser.ts             ← Phase 1: TDF file parsing (shared by both modes)
     simulator.ts          ← Phase 2 (SM5): state machine simulation and stat computation
     ingester.ts           ← Phase 3 (SM5): database writes
@@ -62,15 +65,16 @@ All database query functions used by Chomper live in `packages/db/src/queries/` 
 
 ---
 
-## Lambda Flow (`index.ts`)
+## Ingest Flow (`process-file.ts`)
 
-The Lambda handler receives an S3 event, extracts bucket name and key, and runs this pipeline:
+The worker and the Lambda both take an S3 event, extract the bucket name and key, and run this pipeline:
 
 Steps 1–6b are **shared by both game modes**; the pipeline then branches on mission type.
 
 ```
 1.  Write ChomperJob (status: processing) — idempotent on lambdaRequestId
 2.  Fetch TDF file from S3
+        → already gone: mark "skipped", exit
 3.  Parse TDF (Phase 1)
         → RejectionError: mark "rejected", move to error bucket, exit
         → ParseError:     mark "failed",   move to error bucket, exit
@@ -79,7 +83,8 @@ Steps 1–6b are **shared by both game modes**; the pipeline then branches on mi
 4b. Validate player entities present
         → if none: mark "skipped", delete from incoming bucket, exit
 5.  Check for duplicate game (natural key: center + start time)
-        → if found: mark "skipped", delete from incoming bucket, exit
+        → if found: mark "skipped", then delete from incoming bucket, or
+          archive the file instead if the archive has no copy; exit
 6b. Resolve competition slug prefix on the S3 key → competitionId
         → unrecognised slug: log a warning, continue with competitionId = null
 
@@ -108,9 +113,13 @@ Any unhandled error caught by the outer try/catch — including the two `throw`s
 
 Step 12 is the exception: `notifyNewGame` (`webhook.ts`) never throws. By the time it runs the game is committed and the file archived, so a webhook failure must not roll the job back into `failed` or send a good TDF to the error bucket — non-2xx responses and network errors are logged with `console.warn` and swallowed.
 
-> The step numbers match the `// N.` comments in `index.ts`, which are non-contiguous for historical reasons (`4b`, `6a`, `6b`).
+> The step numbers match the `// N.` comments in `process-file.ts`, which are non-contiguous for historical reasons (`4b`, `6a`, `6b`).
 
-Re-invocation with the same Lambda request ID is idempotent: the handler checks `findChomperJobByLambdaRequestId` on startup and skips if already completed.
+Redelivery of the same event is idempotent: `processFile` checks `findChomperJobByLambdaRequestId` on startup and skips if already completed. Despite the column name, the ID is whatever the entry point supplies: the Lambda request ID, or `{SQS message ID}/{record index}` from the worker.
+
+A failure that has been recorded and moved to the error bucket resolves rather than rejects, because retrying it would achieve nothing. `processFile` rejects only when it could not record an outcome, which is the worker's signal to leave the message on the queue.
+
+The archive check in step 5 is what makes redelivery safe. If the process dies after the ingest commits but before step 10, the redelivered event finds a duplicate game while the only copy of the TDF is still in the incoming bucket.
 
 ---
 
@@ -128,7 +137,9 @@ Re-invocation with the same Lambda request ID is idempotent: the handler checks 
 
 ## Environment Variables
 
-### Lambda (`index.ts`)
+### Worker and Lambda (`process-file.ts`)
+
+The worker's full list, including `CHOMPER_QUEUE_URL`, is in [`apps/chomper/README.md`](../apps/chomper/README.md#environment).
 
 | Variable          | Description                                |
 | ----------------- | ------------------------------------------ |
@@ -136,7 +147,7 @@ Re-invocation with the same Lambda request ID is idempotent: the handler checks 
 | `ARCHIVE_BUCKET`  | S3 bucket for successfully processed files |
 | `ERROR_BUCKET`    | S3 bucket for failed or rejected files     |
 
-All three are required — Lambda throws immediately on startup if any is absent.
+All three are required — both entry points throw immediately on startup if any is absent.
 
 | Optional variable      | Description                                                                                                                     |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |

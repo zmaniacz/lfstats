@@ -16,6 +16,39 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: lfstats-chomper-dlq
+      MessageRetentionPeriod: 1209600
+
+  # S3 upload events for the home worker to pull. Files wait here through a
+  # home server outage, for as long as SQS allows (14 days).
+  ChomperQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: lfstats-chomper-incoming
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ChomperDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ChomperQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ChomperQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt ChomperQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:s3:::${IncomingBucket}
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
 
   ChomperErrorTopic:
     Type: AWS::SNS::Topic
@@ -47,6 +80,25 @@ Resources:
         - !Ref ChomperErrorTopic
       TreatMissingData: missing
 
+  # Also the "home worker is down" alarm: nothing else is watching it from AWS.
+  ChomperQueueAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Send an email when uploaded TDF files have waited over an hour for the Chomper worker."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ChomperQueue.QueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3600
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref ChomperErrorTopic
+      TreatMissingData: notBreaching
+
   ChomperFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -68,8 +120,15 @@ Resources:
               Resource: !Sub arn:aws:s3:::${IncomingBucket}/*
             - Effect: Allow
               Action:
+                - s3:GetObject
                 - s3:PutObject
               Resource: !Sub arn:aws:s3:::${ArchiveBucket}/*
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource:
+                - !Sub arn:aws:s3:::${IncomingBucket}
+                - !Sub arn:aws:s3:::${ArchiveBucket}
             - Effect: Allow
               Action:
                 - s3:PutObject
@@ -120,3 +179,12 @@ Parameters:
   ErrorEmailAddress:
     Type: String
     Description: Email address that receives Chomper failure notifications.
+
+Outputs:
+  ChomperQueueUrl:
+    Description: Value for the worker's CHOMPER_QUEUE_URL.
+    Value: !Ref ChomperQueue
+
+  ChomperQueueArn:
+    Description: Destination for the incoming bucket's S3 notification.
+    Value: !GetAtt ChomperQueue.Arn
