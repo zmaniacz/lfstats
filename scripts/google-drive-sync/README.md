@@ -1,6 +1,6 @@
 # Google Drive → S3 Sync for Chomper
 
-Automatically syncs new TDF files from one or more Google Drive folders to your S3 incoming bucket, where the existing chomper Lambda picks them up.
+Automatically syncs new TDF files from one or more Google Drive folders to your S3 incoming bucket, where chomper picks them up.
 
 A single Apps Script project handles every site. Each site has its own watched folder, listed in the `SITE_FOLDERS` property.
 

@@ -32,6 +32,10 @@ services:
       INCOMING_BUCKET: ${INCOMING_BUCKET}
       ARCHIVE_BUCKET: ${ARCHIVE_BUCKET}
       ERROR_BUCKET: ${ERROR_BUCKET}
+    logging:
+      driver: journald
+      options:
+        tag: lfstats-chomper
     networks:
       - lfstats
 

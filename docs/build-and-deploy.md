@@ -29,7 +29,7 @@ Three runtimes are involved:
 
 - **GitHub-hosted runner** — Ubuntu container for CI. Builds the Docker image. No exposure to the production network. Triggered by push to `main` that affects the web app or its dependencies.
 - **Self-hosted runner** — runs on the production host as a dedicated non-root user under systemd. Picks up the deploy job after the build job succeeds. Authenticates to GHCR with the workflow's short-lived `GITHUB_TOKEN`, pulls the new image, restarts the container, logs out.
-- **Production host** — runs the web container, the Postgres container, and the runner. The web container publishes port 3000 to the host. Traefik on a separate host routes `modern.lfstats.com` → `<production-host>:3000` over the LAN.
+- **Production host** — runs the web container, the Postgres container, the Chomper worker container, and the runner. The web container publishes port 3000 to the host. Traefik on a separate host routes `modern.lfstats.com` → `<production-host>:3000` over the LAN.
 
 ---
 
@@ -174,6 +174,27 @@ services:
     networks:
       - lfstats
 
+  chomper:
+    image: ghcr.io/zmaniacz/lfstats-chomper:latest
+    restart: unless-stopped
+    # Longer than the slowest ingest, so a deploy never kills a file mid-write.
+    stop_grace_period: 150s
+    environment:
+      DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@db:5432/lfstats_modern"
+      AWS_REGION: ${CHOMPER_AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${CHOMPER_AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${CHOMPER_AWS_SECRET_ACCESS_KEY}
+      CHOMPER_QUEUE_URL: ${CHOMPER_QUEUE_URL}
+      INCOMING_BUCKET: ${INCOMING_BUCKET}
+      ARCHIVE_BUCKET: ${ARCHIVE_BUCKET}
+      ERROR_BUCKET: ${ERROR_BUCKET}
+    logging:
+      driver: journald
+      options:
+        tag: lfstats-chomper
+    networks:
+      - lfstats
+
 networks:
   lfstats:
     external: true
@@ -181,7 +202,9 @@ networks:
 
 The `journald` driver keeps logs when a deploy recreates the container, which Docker's default `json-file` driver does not, and journald caps their total size. Changing a service's logging driver recreates its container.
 
-Single `web` service. Pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. The web and Postgres containers share an external Docker network (`lfstats`) so `DATABASE_URL` points directly to the `db` service name — no host NAT involved. Publishes 3000 to the host so Traefik on a separate host can reach it.
+The `web` service pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. The web and Postgres containers share an external Docker network (`lfstats`) so `DATABASE_URL` points directly to the `db` service name — no host NAT involved. Publishes 3000 to the host so Traefik on a separate host can reach it.
+
+The `chomper` service is the ingest worker. It publishes no ports and has no `env_file`, so it receives only its own AWS keys and never the web app's auth secrets. See [`apps/chomper/README.md`](../apps/chomper/README.md#the-worker).
 
 Optional: `QUERY_DATABASE_URL` points the query API's analytics pool at a `SELECT`-only role
 (created once with `packages/db/sql/query-readonly-role.sql`), e.g.
@@ -193,7 +216,7 @@ Auth-related env vars: `AUTH_TRUST_HOST=true` and explicit `AUTH_URL=https://mod
 
 ### `.env` (on the deploy host, never committed)
 
-Contains: `DB_PASSWORD`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`. Mode 660, owned by the runner user with the admin user added to the runner's group.
+Contains: `DB_PASSWORD`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and the worker's `CHOMPER_AWS_REGION`, `CHOMPER_AWS_ACCESS_KEY_ID`, `CHOMPER_AWS_SECRET_ACCESS_KEY`, `CHOMPER_QUEUE_URL`, `INCOMING_BUCKET`, `ARCHIVE_BUCKET` and `ERROR_BUCKET`. Mode 660, owned by the runner user with the admin user added to the runner's group.
 
 ---
 
@@ -403,6 +426,8 @@ That shows the current container. For history from before the last deploy, read 
 ```
 journalctl -t lfstats-web --since "3 days ago"
 ```
+
+The worker's tag is `lfstats-chomper`.
 
 Retention follows the host's journald limits (`SystemMaxUse=` in `/etc/systemd/journald.conf`), and `journalctl --disk-usage` shows current use.
 

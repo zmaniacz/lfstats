@@ -3,9 +3,9 @@
 Chomper has two production entry points that run the same pipeline (`src/process-file.ts`):
 
 - **The worker** (`src/worker.ts`) runs in a container beside Postgres and pulls S3 upload events from SQS. Every connection it makes is outbound, so the database needs no internet exposure.
-- **The Lambda** (`src/index.ts`) is the original path. It needs a publicly reachable Postgres and is retired by the [cutover](#cutover).
+- **The Lambda** (`src/index.ts`) is the original path. It needs a publicly reachable Postgres and no longer receives uploads. It stays deployed as the rollback until the last steps of the [cutover](#cutover).
 
-The repository variable `CHOMPER_INGEST_TARGET` picks which one receives uploads. An S3 event has one destination, so it is one or the other: `sqs` for the worker, anything else for the Lambda.
+The repository variable `CHOMPER_INGEST_TARGET` picks which one receives uploads. An S3 event has one destination, so it is one or the other: `sqs` for the worker, anything else for the Lambda. Production is set to `sqs`.
 
 The SAM stack holds the AWS side of both: the queue, dead-letter queue and alarms as well as the Lambda.
 
