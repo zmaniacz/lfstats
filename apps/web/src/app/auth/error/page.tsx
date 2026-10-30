@@ -15,9 +15,9 @@ import { RetrySignInButton } from "./RetrySignInButton";
 export const metadata: Metadata = { title: "Sign-in problem" };
 
 // Replaces the default Auth.js error page. Auth.js reports anything it doesn't consider
-// client-safe as "Configuration", including a stale or unreadable sign-in cookie in the
-// user's browser, so the message can't tell them what went wrong. The cause is in the
-// server logs (lib/auth-logger.ts); this page gets them signed in.
+// client-safe as "Configuration", including a sign-in cookie missing from the callback,
+// so the message can't tell them what went wrong. The cause is in the server logs
+// (lib/auth-logger.ts); this page gets them signed in.
 export default function AuthErrorPage() {
   return (
     <div className="flex justify-center p-6">
@@ -29,8 +29,7 @@ export default function AuthErrorPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          If it keeps happening, clear this site&apos;s cookies, check that your device&apos;s date
-          and time are correct, or try a private window.
+          If it keeps happening, clear this site&apos;s cookies or try a private window.
         </CardContent>
         <CardFooter>
           <RetrySignInButton />
