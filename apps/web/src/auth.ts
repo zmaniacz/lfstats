@@ -12,6 +12,7 @@ import {
 } from "@lfstats/db";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { logAuthError } from "@/lib/auth-logger";
 
 const UPLOAD_PATHS = ["/upload", "/api/upload"];
 const UPLOAD_ROLES = ["superAdmin", "admin", "centerAdmin", "uploader"];
@@ -28,6 +29,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   }),
   providers: [Google],
   session: { strategy: "jwt" },
+  logger: { error: logAuthError },
+  pages: { error: "/auth/error" },
   callbacks: {
     async jwt({ token, user }) {
       if (user?.id) {
