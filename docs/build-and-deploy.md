@@ -503,7 +503,9 @@ Either `AUTH_URL` doesn't match the actual public URL, or `AUTH_TRUST_HOST=true`
 
 ### Sign-in fails and the user lands on `/auth/error`
 
-Auth.js sends every error it doesn't consider client-safe to this page as `error=Configuration`, so the query string doesn't identify the problem. Search the logs with `journalctl -t lfstats-web --since "3 days ago" | grep -A 3 '\[auth\]'`: `[auth][error]` gives the type and `[auth][cause]` the underlying reason (`lib/auth-logger.ts`). An `InvalidCheck` on `pkceCodeVerifier` or `state` is usually a stale or unreadable cookie in that user's browser, not a server fault.
+Auth.js sends every error it doesn't consider client-safe to this page as `error=Configuration`, so the query string doesn't identify the problem. Search the logs with `journalctl -t lfstats-web --since "3 days ago" | grep -A 3 '\[auth\]'`: `[auth][error]` gives the type and `[auth][cause]` the underlying reason (`lib/auth-logger.ts`).
+
+`InvalidCheck: pkceCodeVerifier value could not be parsed` covers more than a corrupt cookie: Auth.js rewraps every failure in that message, so read `[auth][cause]`. `cookie was missing` usually means the sign-in started on a hostname other than `AUTH_URL`. Cookies are per-hostname and Google always returns to `AUTH_URL`, so the browser has no cookie to send. Keep `www.lfstats.com` redirecting to `lfstats.com` in Traefik, which is on the separate proxy host. A sign-in left open for over 15 minutes, or a home-screen app or in-app browser that opens Google separately, can cause the same error.
 
 ---
 
