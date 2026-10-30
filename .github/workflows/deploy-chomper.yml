@@ -63,19 +63,19 @@ jobs:
               DbSecretArn=${{ secrets.DB_SECRET_ARN }} \
               ErrorEmailAddress=${{ secrets.ERROR_EMAIL_ADDRESS }}
 
+      # Uploads go to the Lambda until the repository variable CHOMPER_INGEST_TARGET
+      # is set to "sqs"; an event can only have one destination. See
+      # apps/chomper/README.md § Cutover.
       - name: Configure S3 bucket notification
         run: |
-          FUNCTION_ARN=$(aws lambda get-function --function-name lfstats-chomper --query 'Configuration.FunctionArn' --output text)
+          FILTER='"Events": ["s3:ObjectCreated:*"], "Filter": {"Key": {"FilterRules": [{"Name": "suffix", "Value": ".tdf"}]}}'
+          if [ "${{ vars.CHOMPER_INGEST_TARGET }}" = "sqs" ]; then
+            QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name lfstats-chomper --query "Stacks[0].Outputs[?OutputKey=='ChomperQueueArn'].OutputValue" --output text)
+            CONFIG="{\"QueueConfigurations\": [{\"QueueArn\": \"$QUEUE_ARN\", $FILTER}]}"
+          else
+            FUNCTION_ARN=$(aws lambda get-function --function-name lfstats-chomper --query 'Configuration.FunctionArn' --output text)
+            CONFIG="{\"LambdaFunctionConfigurations\": [{\"LambdaFunctionArn\": \"$FUNCTION_ARN\", $FILTER}]}"
+          fi
           aws s3api put-bucket-notification-configuration \
             --bucket ${{ secrets.INCOMING_BUCKET }} \
-            --notification-configuration "{
-              \"LambdaFunctionConfigurations\": [{
-                \"LambdaFunctionArn\": \"$FUNCTION_ARN\",
-                \"Events\": [\"s3:ObjectCreated:*\"],
-                \"Filter\": {
-                  \"Key\": {
-                    \"FilterRules\": [{\"Name\": \"suffix\", \"Value\": \".tdf\"}]
-                  }
-                }
-              }]
-            }"
+            --notification-configuration "$CONFIG"

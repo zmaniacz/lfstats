@@ -62,3 +62,5 @@ coverage/
 
 # pnpm
 # Lock file IS committed for reproducible installs — do not ignore pnpm-lock.yaml
+# Chomper worker bundle
+dist-worker/

@@ -56,6 +56,11 @@ export async function findChomperJobByLambdaRequestId(lambdaRequestId: string) {
   return row ?? null;
 }
 
+/** Rejects if the database can't be reached. */
+export async function pingDb() {
+  await db.execute(sql`select 1`);
+}
+
 export async function getFailedChomperJobs() {
   return db
     .select()

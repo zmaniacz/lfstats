@@ -18,6 +18,23 @@ services:
     networks:
       - lfstats
 
+  chomper:
+    image: ghcr.io/zmaniacz/lfstats-chomper:latest
+    restart: unless-stopped
+    # Longer than the slowest ingest, so a deploy never kills a file mid-write.
+    stop_grace_period: 150s
+    environment:
+      DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@db:5432/lfstats_modern"
+      AWS_REGION: ${CHOMPER_AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${CHOMPER_AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${CHOMPER_AWS_SECRET_ACCESS_KEY}
+      CHOMPER_QUEUE_URL: ${CHOMPER_QUEUE_URL}
+      INCOMING_BUCKET: ${INCOMING_BUCKET}
+      ARCHIVE_BUCKET: ${ARCHIVE_BUCKET}
+      ERROR_BUCKET: ${ERROR_BUCKET}
+    networks:
+      - lfstats
+
 networks:
   lfstats:
     external: true

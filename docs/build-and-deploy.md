@@ -2,15 +2,16 @@
 
 This document describes the architecture, configuration, and deployment process for the web app in this monorepo. It exists so that the mental model can be recovered without re-deriving it. Project-specific facts (package names, image names, domain) are concrete; host-specific facts (user names, paths) are abstract.
 
-**The repo has three workflows.** This document covers the first in depth; the other two are summarised under [Other Workflows](#other-workflows).
+**The repo's main workflows are below.** This document covers the first in depth; the others are summarised under [Other Workflows](#other-workflows).
 
 | Workflow             | Triggers on                                                                                            | What it does                                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | `build-web.yml`      | push to `main` touching `apps/web/**`, `packages/db/**`, the lockfile, or itself                       | Builds the Docker image, pushes to GHCR, deploys via self-hosted runner. **The subject of this document.** |
-| `deploy-chomper.yml` | push to `main` touching `apps/chomper/**`, `packages/db/**`, or the lockfile; also `workflow_dispatch` | Builds and deploys the ingestion Lambda to AWS with SAM.                                                   |
+| `deploy-chomper.yml` | push to `main` touching `apps/chomper/**`, `packages/db/**`, or the lockfile; also `workflow_dispatch` | Deploys the Chomper AWS stack (queue, alarms, Lambda) with SAM and points the S3 notification.             |
+| `build-chomper.yml`  | push to `main` touching `apps/chomper/**`, `packages/db/**`, the lockfile, or itself                   | Builds the Chomper worker image and, once enabled, deploys it via the self-hosted runner.                  |
 | `typecheck.yml`      | push to `main` **and every pull request**                                                              | Runs `pnpm typecheck` across the monorepo. The only workflow that gates PRs.                               |
 
-Note that `packages/db/**` triggers **both** deploy workflows — a schema change ships to the web app and the Lambda independently, and they are not sequenced relative to each other.
+Note that `packages/db/**` triggers **all** of these deploys — a schema change ships to the web app, the Lambda and the worker independently, and they are not sequenced relative to each other.
 
 ---
 
@@ -37,9 +38,10 @@ Three runtimes are involved:
 ```
 .
 ├── apps/
-│   ├── chomper/                  # TDF ingestion Lambda (separate AWS deploy)
-│   │   ├── template.yaml         # SAM template — the Lambda's infrastructure
-│   │   └── README.md             # secret shape, pipeline secrets, manual deploy
+│   ├── chomper/                  # TDF ingestion worker and Lambda
+│   │   ├── Dockerfile            # the worker image
+│   │   ├── template.yaml         # SAM template — queue, alarms, Lambda
+│   │   └── README.md             # worker setup, cutover, secrets, manual deploy
 │   └── web/                      # the Next.js app
 │       ├── Dockerfile
 │       ├── next.config.ts
@@ -57,7 +59,8 @@ Three runtimes are involved:
 ├── .gitattributes                # pins the working tree to LF on all platforms
 ├── .github/workflows/
 │   ├── build-web.yml             # build + deploy the web app (this document)
-│   ├── deploy-chomper.yml        # build + deploy the ingestion Lambda via SAM
+│   ├── deploy-chomper.yml        # deploy the Chomper AWS stack via SAM
+│   ├── build-chomper.yml         # build + deploy the Chomper worker image
 │   └── typecheck.yml             # pnpm typecheck on push to main and every PR
 ├── pnpm-workspace.yaml
 └── turbo.json
@@ -299,7 +302,11 @@ the window is empty or nobody meets the games minimum.
 
 ## Other Workflows
 
-### `.github/workflows/deploy-chomper.yml` — the ingestion Lambda
+### `.github/workflows/build-chomper.yml` — the ingestion worker
+
+Same shape as `build-web.yml`: builds `apps/chomper/Dockerfile` to `ghcr.io/zmaniacz/lfstats-chomper`, then the self-hosted runner pulls it and restarts the `chomper` service. The deploy job only runs once the repository variable `CHOMPER_WORKER_DEPLOY` is `true`, because it would otherwise fail on every push until the service exists in the host's compose file. Setup and cutover are in [`apps/chomper/README.md`](../apps/chomper/README.md#the-worker).
+
+### `.github/workflows/deploy-chomper.yml` — the Chomper AWS stack
 
 A completely separate deployment path from the web app: **AWS, not the production host**, and no self-hosted runner. Everything runs on GitHub-hosted Ubuntu.
 
@@ -308,7 +315,7 @@ Triggered by a push to `main` touching `apps/chomper/**`, `packages/db/**`, or `
 1. Installs deps and runs `pnpm --filter chomper build` (esbuild bundles `src/index.ts` to a single ESM file).
 2. Configures AWS credentials from repository secrets.
 3. `sam validate` → `sam package` → `sam deploy` against `apps/chomper/template.yaml`, stack name `lfstats-chomper`, with `CAPABILITY_IAM`.
-4. **Re-applies the S3 bucket notification** — looks up the deployed function ARN and puts a `s3:ObjectCreated:*` notification on the incoming bucket, filtered to a `.tdf` suffix. This is what actually wires uploads to the Lambda.
+4. **Re-applies the S3 bucket notification** — puts a `s3:ObjectCreated:*` notification on the incoming bucket, filtered to a `.tdf` suffix. The destination is the SQS queue when the repository variable `CHOMPER_INGEST_TARGET` is `sqs`, and the Lambda otherwise. This is what actually wires uploads to chomper.
 
 > Step 4 runs on **every** deploy, not just the first. The notification lives on the bucket rather than in the SAM stack, so it would otherwise be lost or drift out of sync with a redeployed function.
 
