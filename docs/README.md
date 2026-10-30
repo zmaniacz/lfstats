@@ -84,8 +84,8 @@ Specifications and design docs for the LFstats monorepo. Start here.
 
 - **[build-and-deploy.md](build-and-deploy.md)** — the web app's Docker build, GHCR push, and
   self-hosted runner deploy, plus common build errors.
-- **[../apps/chomper/README.md](../apps/chomper/README.md)** — chomper's AWS SAM deployment and
-  its Secrets Manager secret shape.
+- **[../apps/chomper/README.md](../apps/chomper/README.md)** — chomper's worker setup, the cutover
+  from the Lambda, its AWS SAM deployment, and its Secrets Manager secret shape.
 - **[../scripts/google-drive-sync/README.md](../scripts/google-drive-sync/README.md)** — the Apps
   Script that syncs each site's Google Drive folder into the S3 incoming bucket. Explains the
   competition-slug-as-subfolder convention that populates `game.competition_id` at ingest.

@@ -804,7 +804,7 @@ Shared identity upserts come from `packages/db/src/queries/chomper.ts`; lb-speci
 
 Laserball TDFs have **no line type 7**, so there is no SM5-style stat-by-stat consistency check. Validation instead uses:
 
-- **Goal invariant** — per-team goal totals must equal per-team line-5 score-event totals. Asserted in the Lambda and bulk paths, reported by the CLI and test suite. Across the 207-game sample corpus this holds for every game.
+- **Goal invariant** — per-team goal totals must equal per-team line-5 score-event totals. Asserted in the worker, Lambda and bulk paths, reported by the CLI and test suite. Across the 207-game sample corpus this holds for every game.
 - **Graceful non-TDF handling** — downloaded HTML 404 pages are detected and skipped, not crashed.
 - **Parity spot-checks** — hand-comparison of core stats (goals, assists, steals, blocks, clears, possession time) against the raw events. The PHP remains the reference for the heuristic stats, which have no file-based ground truth.
 
@@ -886,7 +886,7 @@ Runs Phase 1 + Phase 2 for one file and writes its `.debug.json`, dispatching on
 
 > The `pnpm ingest` root script forwards its argument to the chomper package, but path handling can be unreliable on Windows. Running `pnpm --filter chomper run ingest` from the repo root with a relative path (e.g. `../../demo_files/foo.tdf`), or from `apps/chomper` directly, is more reliable.
 
-**Testing Phase 3.** There is no single-file SM5 tool that exercises database ingest — an SM5 file must go through the Lambda handler or a bulk-ingest run against S3. Laserball has a local escape hatch in `ingest-local-lb.ts` (see [Re-ingest and Maintenance CLIs](#re-ingest-and-maintenance-clis)).
+**Testing Phase 3.** There is no single-file SM5 tool that exercises database ingest — an SM5 file must go through `processFile` (the worker or the Lambda) or a bulk-ingest run against S3. Laserball has a local escape hatch in `ingest-local-lb.ts` (see [Re-ingest and Maintenance CLIs](#re-ingest-and-maintenance-clis)).
 
 ### Adding test files
 
