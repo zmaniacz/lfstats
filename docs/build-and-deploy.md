@@ -164,6 +164,10 @@ services:
       AUTH_URL: "https://lfstats.com"
     ports:
       - "3000:3000"
+    logging:
+      driver: journald
+      options:
+        tag: lfstats-web
     networks:
       - lfstats
 
@@ -171,6 +175,8 @@ networks:
   lfstats:
     external: true
 ```
+
+The `journald` driver keeps logs when a deploy recreates the container, which Docker's default `json-file` driver does not, and journald caps their total size. Changing a service's logging driver recreates its container.
 
 Single `web` service. Pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. The web and Postgres containers share an external Docker network (`lfstats`) so `DATABASE_URL` points directly to the `db` service name — no host NAT involved. Publishes 3000 to the host so Traefik on a separate host can reach it.
 
@@ -385,6 +391,14 @@ docker compose up -d web
 docker compose logs -f web
 ```
 
+That shows the current container. For history from before the last deploy, read the journal:
+
+```
+journalctl -t lfstats-web --since "3 days ago"
+```
+
+Retention follows the host's journald limits (`SystemMaxUse=` in `/etc/systemd/journald.conf`), and `journalctl --disk-usage` shows current use.
+
 ### View runner logs
 
 ```
@@ -486,6 +500,10 @@ A route module's top-level imports are triggering DB resolution. The lazy proxy 
 ### Build succeeds but the container fails at startup with auth callback errors
 
 Either `AUTH_URL` doesn't match the actual public URL, or `AUTH_TRUST_HOST=true` is missing. The container sees `http://` requests on `:3000` with forwarded headers; without `trustHost`, Auth.js doesn't honor those headers and generates callback URLs against the internal address.
+
+### Sign-in fails and the user lands on `/auth/error`
+
+Auth.js sends every error it doesn't consider client-safe to this page as `error=Configuration`, so the query string doesn't identify the problem. Search the logs with `journalctl -t lfstats-web --since "3 days ago" | grep -A 3 '\[auth\]'`: `[auth][error]` gives the type and `[auth][cause]` the underlying reason (`lib/auth-logger.ts`). An `InvalidCheck` on `pkceCodeVerifier` or `state` is usually a stale or unreadable cookie in that user's browser, not a server fault.
 
 ---
 

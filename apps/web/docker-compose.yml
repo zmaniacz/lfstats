@@ -11,6 +11,10 @@ services:
       AUTH_URL: "https://lfstats.com"
     ports:
       - "3000:3000"
+    logging:
+      driver: journald
+      options:
+        tag: lfstats-web
     networks:
       - lfstats
 
