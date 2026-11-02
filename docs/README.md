@@ -78,7 +78,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
   server built on it: shared scope object, metric registry, endpoints, limits.
 - **[Query_API_Eval.md](Query_API_Eval.md)** — 30 real questions run through the MCP server, with
   checks, results and findings.
-- **[Highlights_Spec.md](Highlights_Spec.md)** — draft spec for automated game highlights: category
+- **[Highlights_Spec.md](Highlights_Spec.md)** — automated game highlights: category
   rules, detectors, the `sm5_game_highlight` table, and replay deep links.
 - **[Role_Spec.md](Role_Spec.md)** — the `superAdmin` / `admin` / `centerAdmin` / `uploader`
   hierarchy, center scoping, and the permission matrix.

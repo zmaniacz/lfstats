@@ -11,6 +11,7 @@ import {
   getTeamPenaltiesForReingest,
   assertReingestHandlesGameTeamReferences,
   initDb,
+  refreshGameHighlights,
 } from "@lfstats/db";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -275,6 +276,8 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
     failed++;
     return;
   }
+
+  await refreshGameHighlights(gameId);
 
   log(`OK ${gameId}`);
   results.push({ id: gameId, status: "reingested" });

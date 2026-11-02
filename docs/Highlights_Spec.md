@@ -1,7 +1,7 @@
 # Highlights Spec
 
-**Status:** Ready to build. Definitions and display rules agreed 2026-11-02. These six categories
-ship first; a community poll then gathers more.
+**Status:** Built. These six categories ship first; a community poll then gathers more. Only games
+from 2026-11-01 onward are planned for backfill, so older games have no highlights.
 
 Highlights automatically call out exceptional moments in an SM5 game and link to that spot in the
 replay. They are derived data: detectors read the stored replay rows and write a small table that
@@ -73,10 +73,8 @@ game, using their fastest run.
 
 ## Observed frequency
 
-Random samples of the 9,266 non-excluded SM5 games, from
-[highlights-spike.ts](../packages/db/src/scripts/highlights-spike.ts), which still uses the earlier
-keys `nuke_cancel` and `last_life`. These are estimates from 300 games, not archive totals; rare
-categories have wide error.
+Random samples of the 9,266 non-excluded SM5 games, from a read-only spike (see commit `ec0cc98`).
+These are estimates from 300 games, not archive totals; rare categories have wide error.
 
 | Category        | Per game | Games with one | Notes                                                 |
 | --------------- | -------- | -------------- | ----------------------------------------------------- |
@@ -90,7 +88,7 @@ categories have wide error.
 Of 32 commanders with five uncancelled nukes in a row, the fastest five took 26.8s, the next 156.4s
 and the median 531s. The 35-second limit sits in a clear gap and should not need tuning.
 
-Expect roughly 7,000 rows across the current archive.
+A full archive backfill would write roughly 7,000 rows.
 
 ---
 
@@ -140,15 +138,16 @@ Things detectors must allow for:
 
 ### When it runs
 
-| Trigger                       | Where                                                                          | Failure behaviour                |
-| ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------- |
-| Ingest                        | `process-file.ts`, after commit, before notify                                 | Log only; the game is committed  |
-| Single and bulk reingest      | After `reingest()` commits                                                     | Log only; backfill can repair it |
-| Team result or outcome change | Wherever `recalculateGameResult()` is called, plus any write to `game.outcome` | Log only; backfill can repair it |
-| Detector change               | Backfill CLI                                                                   | Reports failed game ids          |
+| Trigger                  | Where                                                  | Failure behaviour                |
+| ------------------------ | ------------------------------------------------------ | -------------------------------- |
+| Ingest                   | `process-file.ts`, after commit, before notify         | Log only; the game is committed  |
+| Single and bulk reingest | After `reingest()` commits                             | Log only; backfill can repair it |
+| Team result change       | Penalty writes in `queries/penalties.ts`, after commit | Log only; backfill can repair it |
+| Detector change          | Backfill CLI                                           | Reports failed game ids          |
 
-These changes matter because a penalty or forfeit can change the winner, which adds or removes a
-Comeback.
+A penalty can change the winner, which adds or removes a Comeback. Forfeits need no trigger: they are
+created as new games with no events. Marking a game replayed or aborted needs none either, because
+reads hide those games.
 
 Each run replaces a game's rows in one transaction, so all triggers are idempotent. The backfill
 takes `--category` and a pause between games. Run it off-peak and sequentially: the replay tables are
@@ -193,8 +192,8 @@ reingest. That is why Comeback stores `tdf_team_index`. It also keeps the table 
 ## Display
 
 **Game page.** A Highlights card on the Scoreboard tab of `apps/web/src/app/games/[slug]/page.tsx`,
-with each row linking to the replay. A game with replay data and no highlights shows an empty state
-inside the card. PDF games do not show the card.
+with each row linking to the replay. The card is hidden when a game has no highlights: without a full
+backfill, "none" would be wrong for older games.
 
 Reads hide excluded and aborted games, plus games with the `replay` outcome.
 
@@ -206,11 +205,11 @@ Within a category, the best magnitude comes first, then the earliest `time`. For
 magnitude is the shortest span; for every other category it is the largest. Rarity percentiles can
 replace the fixed order later without changing the schema, since `magnitude` holds the raw measure.
 
-**Replay deep link.** `/games/<slug>?tab=replay&t=<ms>`. This needs two changes, because the tabs and
-replay position have no URL state today:
+**Replay deep link.** `/games/<slug>?tab=replay&t=<ms>`:
 
-- `page.tsx` reads `tab` from `searchParams` and sets the `Tabs` `defaultValue`.
-- `ReplayTab` takes an `initialTime` prop and starts paused 5 seconds before the moment, clamped to
+- `page.tsx` reads `tab` and `t` from `searchParams`, sets the `Tabs` `defaultValue`, and keys `Tabs`
+  on both so a link followed from the same page takes effect.
+- `ReplayTab` takes a `highlightTime` prop and starts paused 5 seconds before the moment, clamped to
   0, so viewers see it build.
 
 **Replay markers.** Add highlight markers along the replay slider for every highlight in the game,
@@ -222,19 +221,18 @@ sync anchor.
 
 ---
 
-## Build order
+## Release
 
-1. Move the spike's detectors into `lib/highlights/`, rename the keys, add the Comeback outcome
-   filter, and add unit tests.
-2. Add the table and migration, `generateHighlights()`, and the reingest delete.
-3. Add the ingest, reingest and result-change triggers.
-4. Run the backfill after the current event, once the Postgres memory comparison is done.
-5. Build the card and deep link, then the slider markers.
-6. Release the six categories.
-7. Run the community poll using real examples from the site, and ask for precise triggers rather than
+1. Apply migration `0064_sm5_game_highlight` **before** deploying the web app. The game page reads
+   the new table, so deploying first breaks every SM5 game page.
+2. Deploy the web app and chomper worker.
+3. Backfill the agreed dates:
+   ```
+   pnpm --filter @lfstats/db backfill-highlights --from 2026-11-01 --to 2026-11-02
+   ```
+   A range or `--all` is required. `--dry-run` reports what would be stored and writes nothing.
+4. Run the community poll using real examples from the site, and ask for precise triggers rather than
    category names. Each new category is a detector plus a backfill with `--category`.
-
-Update [Core_Schema.md](Core_Schema.md) and remove the spike script once step 2 lands.
 
 ## After release
 

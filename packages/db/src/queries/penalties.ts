@@ -16,6 +16,7 @@ import {
   sm5Scorecard,
   sm5ScorecardMvp,
 } from "../schema";
+import { refreshGameHighlights } from "./highlights";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type PenaltyRecord = {
@@ -144,7 +145,8 @@ export async function addPenalty(data: {
   mvpValue?: number;
   inGame?: boolean;
 }): Promise<string> {
-  return db.transaction(async (tx) => {
+  const scoreValue = data.scoreValue ?? 0;
+  const id = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(sm5GamePenalty)
       .values({
@@ -164,12 +166,14 @@ export async function addPenalty(data: {
       await recalculateScorecardMvp(data.scorecardId, tx);
     }
 
-    if ((data.scoreValue ?? 0) !== 0) {
+    if (scoreValue !== 0) {
       await recalculateGameResult(data.gameId, tx);
     }
 
     return row.id;
   });
+  if (scoreValue !== 0) await refreshGameHighlights(data.gameId);
+  return id;
 }
 
 export async function updatePenalty(
@@ -182,6 +186,7 @@ export async function updatePenalty(
     rescinded?: boolean;
   },
 ): Promise<void> {
+  let resultGameId: string | null = null;
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({
@@ -220,11 +225,14 @@ export async function updatePenalty(
     const scoreChanged = data.scoreValue !== undefined && data.scoreValue !== existing.scoreValue;
     if (scoreChanged || rescindChanged) {
       await recalculateGameResult(existing.gameId, tx);
+      resultGameId = existing.gameId;
     }
   });
+  if (resultGameId) await refreshGameHighlights(resultGameId);
 }
 
 export async function deletePenalty(id: string): Promise<void> {
+  let resultGameId: string | null = null;
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({
@@ -240,7 +248,9 @@ export async function deletePenalty(id: string): Promise<void> {
     await upsertPenaltyMvpComponent(existing.scorecardId, tx);
     await recalculateScorecardMvp(existing.scorecardId, tx);
     await recalculateGameResult(existing.gameId, tx);
+    resultGameId = existing.gameId;
   });
+  if (resultGameId) await refreshGameHighlights(resultGameId);
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +366,8 @@ export async function addTeamPenalty(data: {
   scoreValue?: number;
   inGame?: boolean;
 }): Promise<string> {
-  return db.transaction(async (tx) => {
+  const scoreValue = data.scoreValue ?? 0;
+  const id = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(sm5GameTeamPenalty)
       .values({
@@ -370,12 +381,14 @@ export async function addTeamPenalty(data: {
       })
       .returning({ id: sm5GameTeamPenalty.id });
 
-    if ((data.scoreValue ?? 0) !== 0) {
+    if (scoreValue !== 0) {
       await recalculateGameResult(data.gameId, tx);
     }
 
     return row.id;
   });
+  if (scoreValue !== 0) await refreshGameHighlights(data.gameId);
+  return id;
 }
 
 export async function updateTeamPenalty(
@@ -387,6 +400,7 @@ export async function updateTeamPenalty(
     rescinded?: boolean;
   },
 ): Promise<void> {
+  let resultGameId: string | null = null;
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({
@@ -416,11 +430,14 @@ export async function updateTeamPenalty(
 
     if (scoreChanged || rescindChanged) {
       await recalculateGameResult(existing.gameId, tx);
+      resultGameId = existing.gameId;
     }
   });
+  if (resultGameId) await refreshGameHighlights(resultGameId);
 }
 
 export async function deleteTeamPenalty(id: string): Promise<void> {
+  let resultGameId: string | null = null;
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({
@@ -433,7 +450,9 @@ export async function deleteTeamPenalty(id: string): Promise<void> {
 
     await tx.delete(sm5GameTeamPenalty).where(eq(sm5GameTeamPenalty.id, id));
     await recalculateGameResult(existing.gameId, tx);
+    resultGameId = existing.gameId;
   });
+  if (resultGameId) await refreshGameHighlights(resultGameId);
 }
 
 // ---------------------------------------------------------------------------

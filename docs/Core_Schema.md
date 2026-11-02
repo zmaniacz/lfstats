@@ -640,6 +640,10 @@ Step-tracker activity from TDF line type 10: one row per hardware step report. E
 - Steps accrue in every player state. Around 45% of steps in the 2026 sample games happen while down (state 3/2), for example walking back to base.
 - Composite index on `(game_id, scorecard_id, time)`. Rows are deleted with the scorecard, so a reingest rewrites them.
 
+### `GameHighlight` (`sm5_game_highlight`)
+
+Exceptional moments found by the highlight detectors. Purely derived from `GameEvent` and `GamePlayerState`, and rebuilt per game. The columns, rules and triggers are specified in [Highlights_Spec.md](Highlights_Spec.md).
+
 ---
 
 ## PDF-era Tables

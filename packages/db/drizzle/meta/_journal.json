@@ -449,6 +449,13 @@
       "when": 1793288226158,
       "tag": "0063_laserball_competitions",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793659085000,
+      "tag": "0064_sm5_game_highlight",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,7 @@ import {
   sm5Scorecard,
   sm5GamePlayerInteraction,
   sm5GameEvent,
+  sm5GameHighlight,
   sm5GamePlayerState,
   sm5GamePlayerStep,
   sm5ScorecardMvp,
@@ -639,6 +640,8 @@ export async function getScorecardsIsMercenaryForReingest(gameId: string) {
 export async function deleteGameChildren(tx: Tx, gameId: string) {
   // Must go first: the team1/team2_sm5_game_team_id FKs have no cascade (would restrict)
   await tx.delete(competitionMatchGame).where(eq(competitionMatchGame.gameId, gameId));
+  // Explicit: the game row survives, and a comeback row has no scorecard to cascade from.
+  await tx.delete(sm5GameHighlight).where(eq(sm5GameHighlight.gameId, gameId));
   // Cascades to: sm5Scorecard (→ sm5GamePenalty, sm5GamePlayerInteraction, sm5ScorecardMvp,
   //   sm5GameTargetDestruction, sm5GamePlayerState, sm5GameEvent actor/target);
   //   sm5GameTarget (→ sm5GameTargetDestruction, sm5GameEvent actor/target)

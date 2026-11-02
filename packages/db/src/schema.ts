@@ -22,6 +22,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql, type SQL } from "drizzle-orm";
+import type { HighlightCategory, HighlightDetails } from "./lib/highlights/detectors";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -1077,6 +1078,44 @@ export const sm5GamePlayerStep = pgTable(
     total: integer("total").notNull(),
   },
   (t) => [index("sm5_game_player_step_sc_time_idx").on(t.gameId, t.scorecardId, t.time)],
+);
+
+// Exceptional moments found by the detectors in lib/highlights, rebuilt from the replay rows
+// above. Purely derived: see docs/Highlights_Spec.md. No FK to sm5_game_team or sm5_game_event,
+// whose uuids do not survive a reingest, which is why comeback stores tdf_team_index.
+export const sm5GameHighlight = pgTable(
+  "sm5_game_highlight",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => game.id, { onDelete: "cascade" }),
+    category: text("category").$type<HighlightCategory>().notNull(),
+    detectorVersion: integer("detector_version").notNull(),
+    time: integer("time").notNull(), // ms since mission start; the moment to seek to
+    windowStart: integer("window_start").notNull(),
+    windowEnd: integer("window_end").notNull(),
+    primaryScorecardId: uuid("primary_scorecard_id").references(() => sm5Scorecard.id, {
+      onDelete: "cascade",
+    }),
+    secondaryScorecardId: uuid("secondary_scorecard_id").references(() => sm5Scorecard.id, {
+      onDelete: "cascade",
+    }),
+    tdfTeamIndex: integer("tdf_team_index"),
+    magnitude: doublePrecision("magnitude").notNull(),
+    details: jsonb("details").$type<HighlightDetails>().notNull(),
+  },
+  (t) => [
+    index("sm5_game_highlight_game_id_idx").on(t.gameId),
+    index("sm5_game_highlight_category_magnitude_idx").on(t.category, t.magnitude),
+    // Partial: these exist only to serve the ON DELETE CASCADE from sm5_scorecard.
+    index("sm5_game_highlight_primary_sc_idx")
+      .on(t.primaryScorecardId)
+      .where(sql`${t.primaryScorecardId} is not null`),
+    index("sm5_game_highlight_secondary_sc_idx")
+      .on(t.secondaryScorecardId)
+      .where(sql`${t.secondaryScorecardId} is not null`),
+  ],
 );
 
 // ---------------------------------------------------------------------------
