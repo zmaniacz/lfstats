@@ -6,6 +6,7 @@ import {
   findCenterByNaturalKey,
   findGameByNaturalKey,
   initDb,
+  refreshGameHighlights,
 } from "@lfstats/db";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -305,6 +306,8 @@ async function processKey(key: string): Promise<void> {
     await archiveTdf(ARCHIVE_BUCKET!, key, ERROR_BUCKET!, key, false);
     return;
   }
+
+  await refreshGameHighlights(gameId);
 
   log(`OK ${key} → gameId=${gameId}`);
   results.push({ key, status: "ingested", gameId });

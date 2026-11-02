@@ -8,6 +8,7 @@ import {
   findChomperJobByLambdaRequestId,
   findGameByNaturalKey,
   getCompetitionBySlug,
+  refreshGameHighlights,
   updateChomperJob,
 } from "@lfstats/db";
 import { buildArchiveKey, ingest, parseGameStartTime } from "./ingester.js";
@@ -268,6 +269,9 @@ export async function processFile(
         gameType,
         competitionId,
       );
+
+      // Best-effort, like the notify below: the game is already committed.
+      await refreshGameHighlights(gameId);
     }
 
     // 10. Update ChomperJob (status: completed) — outside transaction

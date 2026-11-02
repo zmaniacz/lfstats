@@ -9,6 +9,7 @@ import { EditModeToggle } from "@/components/games/EditModeToggle";
 import { ExcludeToggleButton } from "@/components/games/ExcludeToggleButton";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameCompetitionManager } from "@/components/games/GameCompetitionManager";
+import { GameHighlightsCard } from "@/components/games/GameHighlightsCard";
 import { GameMomentumTab } from "@/components/games/GameMomentumTab";
 import { GameTagManager } from "@/components/games/GameTagManager";
 import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
@@ -30,6 +31,7 @@ import {
   getCompetitionGameNavigation,
   getCompetitionsByState,
   getGameDetailBySlug,
+  getGameHighlights,
   getGameMatchAssignment,
   getGamePenalties,
   getGameTeamPenalties,
@@ -37,6 +39,7 @@ import {
   getPdfGameDetailBySlug,
   getTagsByCenter,
   isFavorite,
+  selectShownHighlights,
 } from "@lfstats/db";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -96,9 +99,20 @@ export async function generateMetadata({
   return { title };
 }
 
-export default async function GameDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function GameDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string | string[]; t?: string | string[] }>;
+}) {
   const { slug } = await params;
-  const [game, session, cookieStore] = await Promise.all([getGame(slug), auth(), cookies()]);
+  const [game, session, cookieStore, { tab, t }] = await Promise.all([
+    getGame(slug),
+    auth(),
+    cookies(),
+    searchParams,
+  ]);
 
   if (!game) {
     const pdfGame = await getPdfGame(slug);
@@ -126,6 +140,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     allPenalties,
     allTeamPenalties,
     videos,
+    allHighlights,
   ] = await Promise.all([
     canEdit ? getTagsByCenter(game.centerId) : Promise.resolve([]),
     session?.user?.id ? isFavorite(session.user.id, game.id) : Promise.resolve(false),
@@ -142,6 +157,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
     getGamePenalties(game.id),
     getGameTeamPenalties(game.id),
     getGameVideos(game.id),
+    getGameHighlights(game.id),
   ]);
 
   const penaltiesByScorecard = new Map(
@@ -197,6 +213,18 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
               : t.name,
       }))
     : game.teams;
+
+  // Match assignments rename teams, so comeback text must use the same names as the scoreboard.
+  const highlights = allHighlights.map((h) => ({
+    ...h,
+    teamName: displayTeams.find((team) => team.id === h.teamId)?.name ?? h.teamName,
+  }));
+  const shownHighlights = selectShownHighlights(highlights);
+
+  const tabs = ["scoreboard", "momentum", "replay", ...(showVideosTab ? ["videos"] : [])];
+  const activeTab = typeof tab === "string" && tabs.includes(tab) ? tab : "scoreboard";
+  const parsedTime = typeof t === "string" ? Number(t) : Number.NaN;
+  const highlightTime = Number.isFinite(parsedTime) && parsedTime >= 0 ? parsedTime : null;
 
   return (
     <div className="p-6 space-y-8">
@@ -326,7 +354,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
           />
         )}
       </div>
-      <Tabs defaultValue="scoreboard">
+      {/* Keyed so following a highlight link from this page reopens the tabs at that moment. */}
+      <Tabs key={`${activeTab}:${highlightTime}`} defaultValue={activeTab}>
         <TabsList>
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
           <TabsTrigger value="momentum">Momentum</TabsTrigger>
@@ -335,6 +364,11 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
         </TabsList>
         <TabsContent value="scoreboard" className="mt-6">
           <>
+            {shownHighlights.length > 0 && (
+              <div className="mb-6">
+                <GameHighlightsCard slug={slug} highlights={shownHighlights} />
+              </div>
+            )}
             {displayTeams.map((team) => {
               const color = getTeamColor(team.colourEnum);
               const baseScore = team.score ?? 0;
@@ -407,7 +441,12 @@ export default async function GameDetailPage({ params }: { params: Promise<{ slu
           />
         </TabsContent>
         <TabsContent value="replay" className="mt-6">
-          <ReplayTab gameId={game.id} duration={game.actualDuration} />
+          <ReplayTab
+            gameId={game.id}
+            duration={game.actualDuration}
+            highlightTime={highlightTime}
+            highlights={highlights}
+          />
         </TabsContent>
         {showVideosTab && (
           <TabsContent value="videos" className="mt-6">

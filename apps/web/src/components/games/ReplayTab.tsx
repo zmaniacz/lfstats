@@ -23,9 +23,12 @@ import { formatMs, formatMsPrecise, formatScore, formatPct } from "@/lib/format"
 import { getPosition } from "@/lib/positions";
 import { getTeamColor } from "@/lib/team-colors";
 import { cn } from "@/lib/utils";
-import type { ReplayData, ReplayPlayer, ReplayPlayerState } from "@lfstats/db";
+import { describeHighlight, HIGHLIGHT_LABELS } from "@/lib/highlights";
+import type { GameHighlight, ReplayData, ReplayPlayer, ReplayPlayerState } from "@lfstats/db";
 
 const TICK_MS = 100;
+// Highlights open a little early so viewers see the moment build.
+const HIGHLIGHT_LEAD_IN_MS = 5000;
 const SPEEDS = [1, 2, 4, 8] as const;
 type Speed = (typeof SPEEDS)[number];
 
@@ -101,10 +104,27 @@ type ComputedTeam = {
   players: ComputedPlayer[];
 };
 
-export function ReplayTab({ gameId, duration }: { gameId: string; duration: number }) {
+export function ReplayTab({
+  gameId,
+  duration,
+  highlightTime = null,
+  highlights = [],
+}: {
+  gameId: string;
+  duration: number;
+  /** The moment a deep link points at, in ms since mission start. */
+  highlightTime?: number | null;
+  highlights?: GameHighlight[];
+}) {
+  const leadInTo = useCallback(
+    (time: number) => Math.min(Math.max(time - HIGHLIGHT_LEAD_IN_MS, 0), duration),
+    [duration],
+  );
   const [data, setData] = useState<ReplayData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(() =>
+    highlightTime === null ? 0 : leadInTo(highlightTime),
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
   const [showMisses, setShowMisses] = useState(false);
@@ -420,6 +440,24 @@ export function ReplayTab({ gameId, duration }: { gameId: string; duration: numb
             {formatMs(currentTime)} / {formatMs(duration)}
           </span>
         </div>
+        {highlights.length > 0 && duration > 0 && (
+          <div className="relative h-3">
+            {highlights.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                className="absolute top-0 size-2.5 -translate-x-1/2 rounded-full border border-background bg-primary hover:bg-primary/70"
+                style={{ left: `${Math.min((h.time / duration) * 100, 100)}%` }}
+                title={`${HIGHLIGHT_LABELS[h.category]}: ${describeHighlight(h)}`}
+                aria-label={`Jump to ${HIGHLIGHT_LABELS[h.category]} at ${formatMs(h.time)}`}
+                onClick={() => {
+                  setIsPlaying(false);
+                  setCurrentTime(leadInTo(h.time));
+                }}
+              />
+            ))}
+          </div>
+        )}
         <Slider
           min={0}
           max={duration}
