@@ -1,6 +1,7 @@
 # Notifications Spec
 
-**Status:** Draft. Nothing is built. Phase 0 must pass before the rest starts.
+**Status:** `unassigned_game` is built but not yet proven on real phones, so Phase 0's device checks
+are still open. `match_game` and fan following are not built.
 
 Notifications tell a phone that something happened at an event. Fans follow a competition and hear
 about each game added to a match, with the updated match score. Admins hear when an uploaded
@@ -58,12 +59,14 @@ Team names and numbers above are illustrations. The rules are:
 | `centerAdmin`        | Competitions whose `host_center_id` is one of their centers |
 | `uploader`           | Nothing                                                     |
 
-**Fires when:** `processFile` ingests a game with a non-null `competitionId`, and the competition's
-`state` is `active`.
+**Fires when:** `processFile` ingests a game with a non-null `competitionId`, the competition's
+`state` is `active`, and `hasMatchStructure(format)` is true. Solo and no-scoring competitions have
+nothing to assign games to.
 
 Games uploaded close together collapse into one notification per competition:
 `{Event}: 3 games ready to assign`, opening `/admin/competitions/{slug}`. The count comes from
-`getUnassignedCompetitionGames` at send time, and nothing is sent if it is zero.
+`getCompetitionUnassignedGamesForAdmin` at send time, because it also understands Laserball
+assignment and excluded games. Nothing is sent if the count is zero.
 
 A game moved into a competition by an admin does not fire this, because the admin already knows
 about it. That covers `setGameCompetition` and `bulkAssignGamesToCompetition`.
@@ -100,7 +103,7 @@ All timestamps here are written and compared using the database clock (`now()`),
 | `endpoint`        | text, unique  | Treat as a secret. Never log it.                              |
 | `p256dh`          | text          | From the browser's subscription                               |
 | `auth`            | text          | From the browser's subscription                               |
-| `user_id`         | uuid FK, null | Auth user, set only by an admin opt-in. `on delete set null`. |
+| `user_id`         | text FK, null | Auth user, set only by an admin opt-in. `on delete set null`. |
 | `created_at`      | timestamp     |                                                               |
 | `last_success_at` | timestamp     | Null until the first delivery                                 |
 
@@ -109,7 +112,7 @@ All timestamps here are written and compared using the database clock (`now()`),
 | Column            | Type          | Notes                                                                                                                |
 | ----------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `subscription_id` | uuid FK       | `on delete cascade`                                                                                                  |
-| `kind`            | enum          | `match_game`, `unassigned_game`                                                                                      |
+| `kind`            | enum          | `unassigned_game` and `test` so far. `match_game` is added with Phase 3.                                             |
 | `competition_id`  | uuid FK, null | Required for `match_game`. Null for `unassigned_game`, whose scope comes from the user's roles. `on delete cascade`. |
 
 Unique on all three columns, using `NULLS NOT DISTINCT`.
@@ -120,10 +123,10 @@ Unique on all three columns, using `NULLS NOT DISTINCT`.
 | ----------------- | ------------ | ------------------------------------------------- |
 | `id`              | uuid PK      |                                                   |
 | `kind`            | enum         |                                                   |
-| `competition_id`  | uuid FK      | `on delete cascade`                               |
+| `competition_id`  | uuid FK      | Null only for `test`. `on delete cascade`.        |
 | `dedupe_key`      | text, unique | Insert uses `on conflict do nothing`              |
 | `payload`         | jsonb        | Ids only. Text is built at send time.             |
-| `send_after`      | timestamp    | `now() + 60 seconds`                              |
+| `send_after`      | timestamp    | `now() + 60 seconds`; immediate for `test`        |
 | `sent_at`         | timestamp    | Set when claimed. Partial index on the null rows. |
 | `skip_reason`     | text, null   | Why a claimed row sent nothing                    |
 | `recipient_count` | integer      |                                                   |
@@ -151,8 +154,8 @@ Hook the `packages/db` query functions, because each has more than one caller:
 The enqueue helper checks `state = 'active'` itself. The SM5 game page action does not check state,
 and the legacy migration scripts call `assignGameToMatch`, so this check is what keeps them quiet.
 
-For ingest, add the enqueue to `processFile` next to step 12. Only the worker and Lambda call
-`processFile`, so bulk ingests and re-ingests never fire.
+For ingest, the enqueue is step 13 of `processFile`. Only the worker and Lambda call `processFile`,
+so bulk ingests and re-ingests never fire.
 
 ### Dispatcher
 
@@ -172,8 +175,8 @@ For each due row (`sent_at is null and send_after <= now()`):
      sends nothing.
 3. Group due `unassigned_game` rows by competition into a single message.
 4. Build the text from current data, so the score reflects the latest state.
-5. Resolve recipients. For `unassigned_game`, check roles with `getUserRoles` now, because the
-   roles in a JWT are only set at sign-in.
+5. Resolve recipients. For `unassigned_game`, join `user_roles` now, because the roles in a JWT are
+   only set at sign-in.
 6. Send with `web-push`, 10 at a time, with a 10-second timeout per request.
 7. Delete expired subscriptions and record the counts.
 
@@ -203,18 +206,13 @@ one on the device, so a two-game match leaves one entry on the lock screen.
 
 ### PWA
 
-The app has no manifest, service worker or icons today, and these are prerequisites.
-
 - `apps/web/src/app/manifest.ts`: name, `display: "standalone"`, `start_url`, `scope`, icons.
-- App icons, including an Apple touch icon. These need artwork.
+- `apps/web/public/icons/`: placeholder icons, including an Apple touch icon. These need artwork.
 - `apps/web/public/sw.js`: `push` calls `showNotification`, and `notificationclick` focuses or
   opens `url`. There is no caching and no offline behaviour.
 
 Every push must show a notification. Browsers penalise silent pushes, and Safari can revoke the
 subscription.
-
-Read the PWA guide in `node_modules/next/dist/docs/` before building this. `next.config.ts` already
-sets security headers, so check `sw.js` is served correctly with them.
 
 ### Following an event
 
@@ -235,44 +233,50 @@ Use Pattern A from `apps/web/CLAUDE.md`, and return `{ok, error}` from actions.
 
 ### Managing notifications
 
-A public `/notifications` page lists what this device follows and lets the user remove any of it.
-A device proves ownership by sending its own endpoint, read from `pushManager.getSubscription()`.
+`/notifications` holds the **Unassigned games** toggle, which sets `push_subscription.user_id`, and
+a **Send a test** button that queues a `test` row for this device. The toggle requires a session
+and a role check on the server. For now the page redirects anyone without an eligible role, and it
+is linked from the user menu.
 
-Signed-in users with an eligible role also see an **Unassigned games** toggle there, which sets
-`push_subscription.user_id`. The toggle requires a session and a role check on the server.
+Phase 3 opens the page to everyone: it lists what this device follows and lets the user remove any
+of it. A device proves ownership by sending its own endpoint, read from
+`pushManager.getSubscription()`.
 
-On each app open, the client re-sends its current subscription, since browsers can rotate it
-without telling us. That sync updates the stored row for the old endpoint if one is known.
+Phase 3 also adds a sync on each app open, re-sending the current subscription, since browsers can
+rotate it without telling us. Until then an admin whose subscription rotates turns the toggle off
+and on again; the old row is deleted when its endpoint returns `410`.
 
 ### Abuse and privacy
 
-The subscribe action is anonymous and tells the worker where to send HTTP requests, so it is the
-main security surface.
+The subscribe action tells the worker where to send HTTP requests, so it is the main security
+surface. It is limited to admins today and becomes anonymous in Phase 3.
 
 - **Allowlist endpoint hosts.** Require `https` and a known push service: `fcm.googleapis.com`,
   `*.push.apple.com`, `*.push.services.mozilla.com` and `*.notify.windows.com`. Without this the
-  worker can be pointed at internal addresses on the LAN.
-- **Cap preferences** at 50 per subscription, and rate-limit subscribing.
+  worker can be pointed at internal addresses on the LAN. `isAllowedPushEndpoint` does this.
+- **In Phase 3, cap preferences** at 50 per subscription, and rate-limit subscribing.
 - **Store no personal data for fans.** A subscription is an opaque endpoint and keys.
 
 ---
 
 ## Configuration
 
-| Variable            | Where       | Notes                                                                  |
-| ------------------- | ----------- | ---------------------------------------------------------------------- |
-| `VAPID_PUBLIC_KEY`  | Web, worker | Passed to the client from a server component                           |
-| `VAPID_PRIVATE_KEY` | Worker only | Add to the [worker environment](../apps/chomper/README.md#environment) |
-| `VAPID_SUBJECT`     | Worker      | A `mailto:` or site URL contact                                        |
+| Variable            | Where       | Notes                                                             |
+| ------------------- | ----------- | ----------------------------------------------------------------- |
+| `VAPID_PUBLIC_KEY`  | Web, worker | Passed to the client from a server component                      |
+| `VAPID_PRIVATE_KEY` | Worker      | Only the [worker](../apps/chomper/README.md#environment) reads it |
+| `VAPID_SUBJECT`     | Worker      | A `mailto:` or site URL contact                                   |
 
-Generate the pair once with `npx web-push generate-vapid-keys` and keep it. Rotating it invalidates
-every subscription.
+Generate the pair once with `pnpm --filter chomper exec web-push generate-vapid-keys` and keep it.
+Rotating it invalidates every subscription. Without keys the dispatcher stops at startup, the web
+page says notifications aren't set up, and outbox rows wait.
 
 Subscriptions belong to an origin, so they must be created on the canonical `https://lfstats.com`.
 Subscriptions made on `modern.lfstats.com` would not carry over.
 
-`packages/db` changes trigger all deploy workflows with no ordering between them, so ship the
-migration first. Enqueue and dispatch must then be enabled in a later change.
+`packages/db` changes trigger all deploy workflows with no ordering between them. Apply the
+migration, then set the VAPID keys: until both are in place the enqueue fails harmlessly and logs a
+warning, and nothing is sent.
 
 ---
 
@@ -293,7 +297,7 @@ can be added later.
 
 ## Build order
 
-1. **Phase 0, spike.** A manifest, a service worker and one hardcoded push. Pass criteria:
+1. **Phase 0, device checks.** Use **Send a test** on `/notifications`. Pass criteria:
    - A real iPhone installs the app and receives a push with the app closed.
    - A real Android phone receives one from the browser.
    - Google sign-in completes inside the installed iOS app, or the fallback is chosen.
@@ -307,9 +311,6 @@ can be added later.
 The message builder is a pure function, unit-tested like `match-points.ts`: elimination wins,
 draws, forfeits, trios and duos names, round multipliers, and first versus final game. The dedupe,
 undo window and stale-row rules also get tests.
-
-On completion, add the new tables to [Core_Schema.md](Core_Schema.md) and the dispatcher to
-[chomper-design.md](chomper-design.md).
 
 ---
 

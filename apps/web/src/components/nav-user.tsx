@@ -15,7 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { PlugsConnectedIcon, SignInIcon, SignOutIcon } from "@phosphor-icons/react";
+import { BellIcon, PlugsConnectedIcon, SignInIcon, SignOutIcon } from "@phosphor-icons/react";
+import { canReceiveUnassignedGames } from "@lfstats/db/lib/notifications";
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -76,6 +77,14 @@ export function NavUser() {
                     Connected apps
                   </Link>
                 </DropdownMenuItem>
+                {canReceiveUnassignedGames(user.roles ?? []) && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/notifications">
+                      <BellIcon className="size-4" />
+                      Notifications
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => signOut()}>
                   <SignOutIcon className="size-4" />
                   Sign out

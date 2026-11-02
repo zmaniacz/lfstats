@@ -36,6 +36,7 @@ On `SIGTERM` it finishes the file in progress and exits. `stop_grace_period` in 
 | `INCOMING_BUCKET`, `ARCHIVE_BUCKET`, `ERROR_BUCKET`        | The three TDF buckets                       |
 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Region and the `chomper-worker` IAM user    |
 | `NEW_GAME_WEBHOOK_URL`                                     | Optional, see [webhook.ts](src/webhook.ts)  |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`   | Optional. Without them, nothing is pushed   |
 
 ### IAM user
 

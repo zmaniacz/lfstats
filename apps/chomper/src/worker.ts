@@ -20,6 +20,7 @@ import {
 } from "@aws-sdk/client-sqs";
 import { initDb, pingDb } from "@lfstats/db";
 import type { S3Event } from "aws-lambda";
+import { runNotificationDispatcher } from "./notification-dispatcher.js";
 import { decodeS3Key, processFile } from "./process-file.js";
 
 const QUEUE_URL = process.env.CHOMPER_QUEUE_URL;
@@ -58,6 +59,8 @@ async function run(): Promise<void> {
   await initDb();
   console.log("Chomper worker started");
 
+  const dispatcher = runNotificationDispatcher(shutdown.signal);
+
   while (!shutdown.signal.aborted) {
     try {
       // Every receive counts towards the queue's maxReceiveCount, so a worker
@@ -82,6 +85,7 @@ async function run(): Promise<void> {
     }
   }
 
+  await dispatcher;
   console.log("Chomper worker stopped");
 }
 

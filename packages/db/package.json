@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./lib/images": "./src/lib/images.ts",
+    "./lib/notifications": "./src/lib/notifications.ts",
     "./lib/team-logos": "./src/lib/team-logos.ts",
     "./lib/player-pictures": "./src/lib/player-pictures.ts",
     "./analytics": "./src/analytics.ts",

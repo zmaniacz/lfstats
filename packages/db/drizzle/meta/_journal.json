@@ -456,6 +456,13 @@
       "when": 1793659085000,
       "tag": "0064_sm5_game_highlight",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793662349100,
+      "tag": "0065_majestic_junta",
+      "breakpoints": true
     }
   ]
 }

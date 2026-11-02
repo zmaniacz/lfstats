@@ -32,6 +32,9 @@ services:
       INCOMING_BUCKET: ${INCOMING_BUCKET}
       ARCHIVE_BUCKET: ${ARCHIVE_BUCKET}
       ERROR_BUCKET: ${ERROR_BUCKET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
     logging:
       driver: journald
       options:

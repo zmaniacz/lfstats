@@ -23,6 +23,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: { template: "%s | LFstats", default: "LFstats" },
   description: "Space Marines 5 laser tag statistics",
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "LFstats" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
