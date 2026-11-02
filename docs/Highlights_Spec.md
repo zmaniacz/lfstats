@@ -1,13 +1,13 @@
 # Highlights Spec
 
-**Status:** Built. These six categories ship first; a community poll then gathers more. Only games
+**Status:** Built. A community poll will gather more categories. Only games
 from 2026-11-01 onward are planned for backfill, so older games have no highlights.
 
 Highlights automatically call out exceptional moments in an SM5 game and link to that spot in the
 replay. They are derived data: detectors read the stored replay rows and write a small table that
 the game page reads.
 
-**In scope:** SM5 games with replay data, and the six categories below.
+**In scope:** SM5 games with replay data, and the categories below.
 
 **Out of scope for now:** Laserball, `sm5_pdf` games (they have no events), admin curation, player
 career highlights, cross-game feeds, and API or MCP exposure. The schema should not prevent any of
@@ -23,6 +23,7 @@ All times are milliseconds since mission start.
 | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------ |
 | `nuke_saved`    | Nuke Saved    | A nuking commander downs an opponent who had hit them earlier in that nuke, and the nuke detonates.                     | First qualifying down | Attackers downed   |
 | `nuke_denied`   | Nuke Denied   | An opponent ends a commander's nuke before it detonates.                                                                | The cancelling event  | Always 1           |
+| `medic_save`    | Medic Save    | During an enemy nuke, a medic resupplies a teammate on 3 or fewer lives, and the teammate survives the detonation.      | The resupply          | Teammates saved    |
 | `comeback`      | Comeback      | A team trails by more than 10,000 at some point and wins.                                                               | Largest deficit       | Largest deficit    |
 | `last_stand`    | Last Stand    | A player stays on exactly one life for more than 60 seconds.                                                            | Start of the run      | Run length (ms)    |
 | `missile_chain` | Missile Chain | A commander or heavy lands 3 or more missile hits on opposing players, with each 3 in a row inside 15 seconds.          | First missile         | Missiles in chain  |
@@ -30,7 +31,7 @@ All times are milliseconds since mission start.
 
 ### Rule details
 
-**Nuke attempts.** Used by `nuke_saved`, `nuke_denied` and `nuke_chain`. An attempt runs from the
+**Nuke attempts.** Used by `nuke_saved`, `nuke_denied`, `medic_save` and `nuke_chain`. An attempt runs from the
 commander's first `is_nuking = true` state row to their next `is_nuking = false` row. It detonated
 if that later row belongs to the commander's own `0405`.
 
@@ -48,6 +49,17 @@ teammate resupplies, warbots and penalties also end a nuke, but they are not hig
 window. An attacker is the target of that down, provided they landed a `0205` on the commander
 after the attempt started and before the down. Only `0205` qualifies, because a deactivating hit
 would have cancelled the nuke. One attempt produces at most one highlight.
+
+**Medic Save.** A resupply is a `0502` or `0512` by a medic, between the enemy commander's activation
+and detonation. A detonation costs 3 lives, so a teammate must be on 3 or fewer lives just before the
+resupply and on more than 3 just before the detonation. A cancelled nuke saves nobody, and a teammate
+pushed back to 3 by a later hit was not saved. Beacon resupplies do not count. One resupply produces
+one highlight, however many teammates it saves.
+
+A `0512` names no target, so its recipients are the teammates with a state row on that event showing
+more lives than before. Files with TDF line types 11–13 confirm exactly who received the boost, and
+the simulator writes rows for those players. In older files, rows exist only for teammates who were
+active, so anyone whose boost is uncertain is left out, and the rest are simulator inference.
 
 **Comeback.** The deficit is the best other team's running total minus the winner's, summed from
 each player's latest state-row `score`. These scores exclude penalties and elimination bonuses.
@@ -80,6 +92,7 @@ These are estimates from 300 games, not archive totals; rare categories have wid
 | --------------- | -------- | -------------- | ----------------------------------------------------- |
 | `nuke_saved`    | ~0.08    | Not measured   | 24 of the 100 hits before the attacker rule was added |
 | `nuke_denied`   | 0.23     | 21.7%          | Matched scorecards exactly, 70 to 70                  |
+| `medic_save`    | ~0.03    | Not measured   | 8 hits in a separate 300-game sample, 2 from boosts   |
 | `comeback`      | 0.01     | 0.7%           | 2 hits                                                |
 | `last_stand`    | 0.40     | 32.3%          | Median 84s, longest 330s                              |
 | `missile_chain` | 0.06     | 6.0%           | Best was 5 missiles in 12.4s                          |
@@ -198,8 +211,8 @@ backfill, "none" would be wrong for older games.
 Reads hide excluded and aborted games, plus games with the `replay` outcome.
 
 **Ranking.** Show at most 5 highlights per game and at most 2 per category. Sort by category in this
-fixed order, which follows the frequencies above: 5 Chain, Comeback, Missile Chain, Nuke Saved, Nuke
-Denied, Last Stand.
+fixed order, which follows the frequencies above: 5 Chain, Comeback, Medic Save, Missile Chain, Nuke
+Saved, Nuke Denied, Last Stand.
 
 Within a category, the best magnitude comes first, then the earliest `time`. For 5 Chain, the best
 magnitude is the shortest span; for every other category it is the largest. Rarity percentiles can

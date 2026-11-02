@@ -7,6 +7,7 @@ import {
   detectComeback,
   detectHighlights,
   detectLastStand,
+  detectMedicSaves,
   detectMissileChains,
   detectNukeChains,
   detectNukeDenied,
@@ -258,6 +259,106 @@ test("a cancelled nuke breaks a 5 chain", () => {
     detonation(COMMANDER, 127_000, 131_000),
   );
   assert.deepEqual(detectNukeChains(timeline(data)), []);
+});
+
+function medicSaveData(
+  fields: { before?: number; after?: number; actor?: string; time?: number } = {},
+  nuke = detonation(ENEMY_COMMANDER, 100_000, 106_000),
+) {
+  const time = fields.time ?? 102_000;
+  return merge(nuke, {
+    events: [event(time, "0502", fields.actor ?? MEDIC, HEAVY)],
+    states: [
+      state(HEAVY, 90_000, { lives: fields.before ?? 3 }),
+      state(HEAVY, time, { lives: fields.after ?? 8 }),
+    ],
+  });
+}
+
+test("medic save needs a lethal life count before the resupply", () => {
+  const [save] = detectMedicSaves(timeline(medicSaveData({ before: 3 })));
+  assert.equal(save?.time, 102_000);
+  assert.equal(save?.primaryScorecardId, MEDIC);
+  assert.equal(save?.secondaryScorecardId, HEAVY);
+  assert.equal(save?.magnitude, 1);
+  assert.deepEqual(save?.details, { livesBefore: 3 });
+
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({ before: 4 }))), []);
+});
+
+function teamBoost(lives: Record<string, [number, number]>, medic = MEDIC) {
+  const boost = event(102_000, "0512", medic);
+  return merge(detonation(ENEMY_COMMANDER, 100_000, 106_000), {
+    events: [boost],
+    states: [
+      state(medic, 102_000, { eventId: boost.id }),
+      ...Object.entries(lives).flatMap(([id, [before, after]]) => [
+        state(id, 90_000, { lives: before }),
+        state(id, 102_000, { eventId: boost.id, lives: after }),
+      ]),
+    ],
+  });
+}
+
+test("a team boost saves every confirmed recipient in one highlight", () => {
+  const saves = detectMedicSaves(timeline(teamBoost({ [HEAVY]: [2, 7], [COMMANDER]: [1, 6] })));
+  assert.equal(saves.length, 1);
+  assert.equal(saves[0]?.primaryScorecardId, MEDIC);
+  assert.equal(saves[0]?.secondaryScorecardId, COMMANDER);
+  assert.equal(saves[0]?.magnitude, 2);
+  assert.deepEqual(saves[0]?.details, { livesBefore: 1 });
+});
+
+test("a team boost needs a confirmed gain for a teammate on lethal lives", () => {
+  // No lives gained, so this row does not confirm a recipient.
+  assert.deepEqual(detectMedicSaves(timeline(teamBoost({ [HEAVY]: [3, 3] }))), []);
+
+  // The boost reached them, but they were never in danger.
+  assert.deepEqual(detectMedicSaves(timeline(teamBoost({ [HEAVY]: [4, 9] }))), []);
+
+  // Recipients are only those with a row on the boost: the bare teammate gets no credit.
+  const data = teamBoost({});
+  data.states.push(state(HEAVY, 90_000, { lives: 2 }));
+  data.states.sort((a, b) => a.time - b.time);
+  assert.deepEqual(detectMedicSaves(timeline(data)), []);
+});
+
+test("a team boost needs the teammate to survive the detonation", () => {
+  assert.deepEqual(detectMedicSaves(timeline(teamBoost({ [HEAVY]: [1, 3] }))), []);
+});
+
+test("medic save needs the nuke to detonate", () => {
+  const cancelled = nuke(
+    ENEMY_COMMANDER,
+    100_000,
+    105_000,
+    event(104_000, "0206", HEAVY, ENEMY_COMMANDER),
+  );
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({}, cancelled))), []);
+});
+
+test("medic save needs the resupply to fall inside the nuke", () => {
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({ time: 99_000 }))), []);
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({ time: 106_000 }))), []);
+});
+
+test("medic save needs the teammate to survive the detonation", () => {
+  // Still on 3 lives after the resupply, so the nuke eliminates them anyway.
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({ after: 3 }))), []);
+
+  // Pushed back to 3 by a hit after the resupply.
+  const data = medicSaveData({ after: 8 });
+  data.states.push(state(HEAVY, 104_000, { lives: 3 }));
+  data.states.sort((a, b) => a.time - b.time);
+  assert.deepEqual(detectMedicSaves(timeline(data)), []);
+});
+
+test("medic save ignores non-medics and a friendly nuke", () => {
+  // The beacon and other positions can also log 0502.
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({ actor: COMMANDER }))), []);
+
+  const friendlyNuke = detonation(COMMANDER, 100_000, 106_000);
+  assert.deepEqual(detectMedicSaves(timeline(medicSaveData({}, friendlyNuke))), []);
 });
 
 test("a timeline with no events finds nothing", () => {

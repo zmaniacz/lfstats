@@ -12,6 +12,7 @@
 
 const POSITION_COMMANDER = 1;
 const POSITION_HEAVY = 2;
+const POSITION_MEDIC = 5;
 
 const COMEBACK_DEFICIT = 10_000;
 const LAST_STAND_MS = 60_000;
@@ -19,6 +20,8 @@ const MISSILE_CHAIN_COUNT = 3;
 const MISSILE_CHAIN_MS = 15_000;
 const NUKE_CHAIN_COUNT = 5;
 const NUKE_CHAIN_MS = 35_000;
+// A detonation costs 3 lives, so a player on this many or fewer is eliminated by it.
+const NUKE_LETHAL_LIVES = 3;
 
 // Everything that ends a nuke by deactivating its commander and names a target.
 const NUKE_ENDING_EVENT_TYPES = new Set(["0206", "0306", "0308", "0500", "0502", "0209"]);
@@ -27,6 +30,7 @@ const NUKE_ENDING_EVENT_TYPES = new Set(["0206", "0306", "0308", "0500", "0502",
 export const HIGHLIGHT_CATEGORIES = [
   "nuke_chain",
   "comeback",
+  "medic_save",
   "missile_chain",
   "nuke_saved",
   "nuke_denied",
@@ -40,6 +44,8 @@ export type HighlightDetails = {
   eventType?: string;
   /** First to last missile, for missile_chain. */
   spanMs?: number;
+  /** Lives before the resupply of the teammate closest to elimination, for medic_save. */
+  livesBefore?: number;
 };
 
 export type TimelineEvent = {
@@ -381,12 +387,85 @@ export function detectNukeChains(timeline: GameTimeline): HighlightCandidate[] {
   return out;
 }
 
+export function detectMedicSaves(timeline: GameTimeline): HighlightCandidate[] {
+  const isOpponent = opponentCheck(timeline);
+  const positionOf = new Map(timeline.players.map((p) => [p.id, p.position]));
+  const byPlayer = statesByPlayer(timeline.states);
+  const detonated = findNukeAttempts(timeline).filter((a) => a.detonated);
+  const out: HighlightCandidate[] = [];
+
+  // State rows hold their value until the next row, so "lives at t" is the last row before t.
+  const livesBefore = (scorecardId: string, time: number): number | null => {
+    let lives: number | null = null;
+    for (const row of byPlayer.get(scorecardId) ?? []) {
+      if (row.time >= time) break;
+      lives = row.lives;
+    }
+    return lives;
+  };
+
+  // A 0512 names no target. The simulator writes a row on it for each teammate who received
+  // lives: exactly the hardware's recipients when the file logs resources, and teammates known
+  // to be active otherwise. Teammates whose boost is uncertain get no row, so never count.
+  const boostRecipients = (boost: TimelineEvent, medic: string): string[] =>
+    timeline.states
+      .filter((row) => row.eventId === boost.id && row.scorecardId !== medic)
+      .filter((row) => row.lives > (livesBefore(row.scorecardId, boost.time) ?? row.lives))
+      .map((row) => row.scorecardId);
+
+  for (const resupply of timeline.events) {
+    const { actor: medic } = resupply;
+    if (resupply.type !== "0502" && resupply.type !== "0512") continue;
+    if (medic === null || positionOf.get(medic) !== POSITION_MEDIC) continue;
+
+    const nuke = detonated.find(
+      (a) => isOpponent(a.commander.id, medic) && resupply.time >= a.start && resupply.time < a.end,
+    );
+    if (!nuke) continue;
+
+    const recipients =
+      resupply.type === "0512"
+        ? boostRecipients(resupply, medic)
+        : resupply.target === null || isOpponent(medic, resupply.target)
+          ? []
+          : [resupply.target];
+
+    const saved = recipients
+      .map((id) => ({ id, before: livesBefore(id, resupply.time) }))
+      .filter(
+        (r): r is { id: string; before: number } =>
+          r.before !== null &&
+          r.before <= NUKE_LETHAL_LIVES &&
+          // Otherwise the nuke still eliminated them, or a later hit undid the save first.
+          (livesBefore(r.id, nuke.end) ?? 0) > NUKE_LETHAL_LIVES,
+      )
+      .sort((a, b) => a.before - b.before);
+
+    const closest = saved[0];
+    if (!closest) continue;
+    out.push({
+      category: "medic_save",
+      detectorVersion: 1,
+      time: resupply.time,
+      windowStart: nuke.start,
+      windowEnd: nuke.end,
+      primaryScorecardId: medic,
+      secondaryScorecardId: closest.id,
+      tdfTeamIndex: null,
+      magnitude: saved.length,
+      details: { livesBefore: closest.before },
+    });
+  }
+  return out;
+}
+
 export function detectHighlights(timeline: GameTimeline): HighlightCandidate[] {
   return [
     ...detectNukeChains(timeline),
     ...detectComeback(timeline),
     ...detectMissileChains(timeline),
     ...detectNukeSaved(timeline),
+    ...detectMedicSaves(timeline),
     ...detectNukeDenied(timeline),
     ...detectLastStand(timeline),
   ];
