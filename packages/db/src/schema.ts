@@ -1961,3 +1961,62 @@ export const gameVideo = pgTable(
     index("game_video_player_id_idx").on(t.playerId),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Push Notifications (docs/Notifications_Spec.md)
+// ---------------------------------------------------------------------------
+
+export const notificationKindEnum = pgEnum("notification_kind", ["unassigned_game", "test"]);
+
+/** One browser on one device. The endpoint is a bearer secret: never log it. */
+export const pushSubscription = pgTable("push_subscription", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userId: text("user_id").references(() => authUser.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastSuccessAt: timestamp("last_success_at"),
+});
+
+export const notificationPreference = pgTable(
+  "notification_preference",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => pushSubscription.id, { onDelete: "cascade" }),
+    kind: notificationKindEnum("kind").notNull(),
+    // Null for unassigned_game, whose scope comes from the user's roles.
+    competitionId: uuid("competition_id").references(() => competition.id, { onDelete: "cascade" }),
+  },
+  (t) => [unique().on(t.subscriptionId, t.kind, t.competitionId).nullsNotDistinct()],
+);
+
+/**
+ * One row per event, not per recipient. The chomper worker drains it. Compare send_after and
+ * sent_at in SQL against now(), so the JavaScript clock never meets these local timestamps.
+ */
+export const notificationOutbox = pgTable(
+  "notification_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: notificationKindEnum("kind").notNull(),
+    // Null only for a test send.
+    competitionId: uuid("competition_id").references(() => competition.id, { onDelete: "cascade" }),
+    dedupeKey: text("dedupe_key").notNull().unique(),
+    // Ids only: the message text is built at send time.
+    payload: jsonb("payload").$type<{ gameId?: string; subscriptionId?: string }>().notNull(),
+    sendAfter: timestamp("send_after").notNull().defaultNow(),
+    sentAt: timestamp("sent_at"),
+    skipReason: text("skip_reason"),
+    recipientCount: integer("recipient_count"),
+    failureCount: integer("failure_count"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("notification_outbox_due_idx")
+      .on(t.sendAfter)
+      .where(sql`${t.sentAt} is null`),
+  ],
+);

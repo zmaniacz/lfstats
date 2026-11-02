@@ -646,6 +646,11 @@ Exceptional moments found by the highlight detectors. Purely derived from `GameE
 
 ---
 
+## Notification Tables
+
+`push_subscription`, `notification_preference` and `notification_outbox` hold push notification
+state. See [Notifications_Spec.md](Notifications_Spec.md#schema).
+
 ## PDF-era Tables
 
 Legacy SM5 games ingested from printed PDF scorecards (2012–2020), migrated by

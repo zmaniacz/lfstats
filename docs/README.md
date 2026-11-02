@@ -23,6 +23,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | Work on the query API or MCP server         | [Query_API_Spec.md](Query_API_Spec.md)                                         |
 | See how the MCP tools answer real questions | [Query_API_Eval.md](Query_API_Eval.md)                                         |
 | Work on game highlights                     | [Highlights_Spec.md](Highlights_Spec.md)                                       |
+| Work on push notifications                  | [Notifications_Spec.md](Notifications_Spec.md)                                 |
 | Understand who can do what in the app       | [Role_Spec.md](Role_Spec.md)                                                   |
 | Deploy the web app, or debug a build        | [build-and-deploy.md](build-and-deploy.md)                                     |
 
@@ -80,6 +81,8 @@ Specifications and design docs for the LFstats monorepo. Start here.
   checks, results and findings.
 - **[Highlights_Spec.md](Highlights_Spec.md)** — automated game highlights: category
   rules, detectors, the `sm5_game_highlight` table, and replay deep links.
+- **[Notifications_Spec.md](Notifications_Spec.md)** — mobile push notifications: admin alerts for
+  unassigned games (built), following an event (planned), the outbox and the dispatcher.
 - **[Role_Spec.md](Role_Spec.md)** — the `superAdmin` / `admin` / `centerAdmin` / `uploader`
   hierarchy, center scoping, and the permission matrix.
 

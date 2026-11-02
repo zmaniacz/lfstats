@@ -3,6 +3,7 @@
 
 import {
   createChomperJob,
+  enqueueUnassignedGame,
   findActiveMvpModel,
   findCenterByNaturalKey,
   findChomperJobByLambdaRequestId,
@@ -289,6 +290,14 @@ export async function processFile(
     await notifyNewGame(
       buildGameSlug(parsed.meta.countryCode, parsed.meta.siteCode, parsed.meta.startTime),
     );
+
+    // 13. Alert admins that a competition game is waiting to be assigned.
+    //     Best-effort, like step 12: this catch must not move a committed game to the error bucket.
+    if (competitionId) {
+      await enqueueUnassignedGame(gameId, competitionId).catch((err: unknown) => {
+        console.warn(`Unassigned-game alert failed for ${key}: ${(err as Error).message}`);
+      });
+    }
     return null;
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));

@@ -105,13 +105,14 @@ Steps 1–6b are **shared by both game modes**; the pipeline then branches on mi
 10. Update ChomperJob (status: completed, gameId)
 11. Move TDF to archive bucket with normalized key
 12. POST the new-game webhook (best-effort)
+13. Competition games: queue the unassigned-game alert (best-effort)
 ```
 
 The Phase 3 transaction retries on Postgres deadlock (code `40P01`), up to 3 attempts.
 
 Any unhandled error caught by the outer try/catch — including the two `throw`s above — marks the job `failed` with the error message and moves the file to the error bucket.
 
-Step 12 is the exception: `notifyNewGame` (`webhook.ts`) never throws. By the time it runs the game is committed and the file archived, so a webhook failure must not roll the job back into `failed` or send a good TDF to the error bucket — non-2xx responses and network errors are logged with `console.warn` and swallowed.
+Step 12 is the exception: `notifyNewGame` (`webhook.ts`) never throws. By the time it runs the game is committed and the file archived, so a webhook failure must not roll the job back into `failed` or send a good TDF to the error bucket — non-2xx responses and network errors are logged with `console.warn` and swallowed. Step 13 follows the same rule. It only adds a `notification_outbox` row; the worker's dispatcher sends it (see [Notifications_Spec.md](Notifications_Spec.md)).
 
 > The step numbers match the `// N.` comments in `process-file.ts`, which are non-contiguous for historical reasons (`4b`, `6a`, `6b`).
 
