@@ -1,7 +1,7 @@
 # Highlights Spec
 
-**Status:** Draft, not yet built. Definitions agreed 2026-11-02; more categories may follow a
-community poll.
+**Status:** Ready to build. Definitions and display rules agreed 2026-11-02. These six categories
+ship first; a community poll then gathers more.
 
 Highlights automatically call out exceptional moments in an SM5 game and link to that spot in the
 replay. They are derived data: detectors read the stored replay rows and write a small table that
@@ -17,20 +17,20 @@ these later.
 
 ## Categories
 
-All times are milliseconds since mission start. A `*` marks a display name that is a placeholder.
+All times are milliseconds since mission start.
 
 | Category        | Name          | Rule                                                                                                                    | Timestamp             | `magnitude`        |
 | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------ |
 | `nuke_saved`    | Nuke Saved    | A nuking commander downs an opponent who had hit them earlier in that nuke, and the nuke detonates.                     | First qualifying down | Attackers downed   |
-| `nuke_cancel`   | Nuke Cancel\* | An opponent ends a commander's nuke before it detonates.                                                                | The cancelling event  | Always 1           |
-| `comeback`      | Comeback\*    | A team trails by more than 10,000 at some point and wins.                                                               | Largest deficit       | Largest deficit    |
-| `last_life`     | One Life\*    | A player stays on exactly one life for more than 60 seconds.                                                            | Start of the run      | Run length (ms)    |
+| `nuke_denied`   | Nuke Denied   | An opponent ends a commander's nuke before it detonates.                                                                | The cancelling event  | Always 1           |
+| `comeback`      | Comeback      | A team trails by more than 10,000 at some point and wins.                                                               | Largest deficit       | Largest deficit    |
+| `last_stand`    | Last Stand    | A player stays on exactly one life for more than 60 seconds.                                                            | Start of the run      | Run length (ms)    |
 | `missile_chain` | Missile Chain | A commander or heavy lands 3 or more missile hits on opposing players, with each 3 in a row inside 15 seconds.          | First missile         | Missiles in chain  |
 | `nuke_chain`    | 5 Chain       | A commander detonates 5 nukes in a row, with no cancelled nuke between them, within 35 seconds of the first activation. | Fifth detonation      | Span (ms), fastest |
 
 ### Rule details
 
-**Nuke attempts.** Used by `nuke_saved`, `nuke_cancel` and `nuke_chain`. An attempt runs from the
+**Nuke attempts.** Used by `nuke_saved`, `nuke_denied` and `nuke_chain`. An attempt runs from the
 commander's first `is_nuking = true` state row to their next `is_nuking = false` row. It detonated
 if that later row belongs to the commander's own `0405`.
 
@@ -41,7 +41,7 @@ event in the attempt window that is either of these:
 - `0206`, `0306`, `0308`, `0500`, `0502` or `0209` targeting the commander
 - `0405` by an opposing commander
 
-It is a `nuke_cancel` only if that event has an opposing player as its actor. Friendly fire,
+It is a `nuke_denied` only if that event has an opposing player as its actor. Friendly fire,
 teammate resupplies, warbots and penalties also end a nuke, but they are not highlights.
 
 **Nuke Saved.** A down is `0206` or `0306` by the commander on an opponent, inside the attempt
@@ -55,10 +55,10 @@ each player's latest state-row `score`. These scores exclude penalties and elimi
 - The winner is `sm5_game_team.result = 'win'`. Elimination wins count.
 - Draws produce nothing.
 - Only `score` and `elimination` outcomes qualify, so forfeits cannot create a comeback.
-- The spike does not yet apply this outcome filter.
 
-**One Life.** The run ends when `lives` changes or the game ends. Time spent down counts. A player
-can have several runs in one game, and each is a separate highlight.
+**Last Stand.** The run ends when `lives` changes or the game ends. It counts however it ends,
+including elimination, and time spent down counts. All positions are treated the same. A player can
+have several runs in one game, and each is a separate highlight.
 
 **Missile Chain.** Only `0306` hits on opponents count. Generators, friendly fire and misses do not.
 The window rolls, so the chain as a whole can exceed 15 seconds: the goal is a high volume of
@@ -74,15 +74,16 @@ game, using their fastest run.
 ## Observed frequency
 
 Random samples of the 9,266 non-excluded SM5 games, from
-[highlights-spike.ts](../packages/db/src/scripts/highlights-spike.ts). These are estimates from 300
-games, not archive totals; rare categories have wide error.
+[highlights-spike.ts](../packages/db/src/scripts/highlights-spike.ts), which still uses the earlier
+keys `nuke_cancel` and `last_life`. These are estimates from 300 games, not archive totals; rare
+categories have wide error.
 
 | Category        | Per game | Games with one | Notes                                                 |
 | --------------- | -------- | -------------- | ----------------------------------------------------- |
 | `nuke_saved`    | ~0.08    | Not measured   | 24 of the 100 hits before the attacker rule was added |
-| `nuke_cancel`   | 0.23     | 21.7%          | Matched scorecards exactly, 70 to 70                  |
+| `nuke_denied`   | 0.23     | 21.7%          | Matched scorecards exactly, 70 to 70                  |
 | `comeback`      | 0.01     | 0.7%           | 2 hits                                                |
-| `last_life`     | 0.40     | 32.3%          | Median 84s, longest 330s                              |
+| `last_stand`    | 0.40     | 32.3%          | Median 84s, longest 330s                              |
 | `missile_chain` | 0.06     | 6.0%           | Best was 5 missiles in 12.4s                          |
 | `nuke_chain`    | 0.003    | 0.3%           | 1 hit, checked by hand against the event log          |
 
@@ -139,14 +140,15 @@ Things detectors must allow for:
 
 ### When it runs
 
-| Trigger                  | Where                                          | Failure behaviour                |
-| ------------------------ | ---------------------------------------------- | -------------------------------- |
-| Ingest                   | `process-file.ts`, after commit, before notify | Log only; the game is committed  |
-| Single and bulk reingest | After `reingest()` commits                     | Log only; backfill can repair it |
-| Team result change       | Wherever `recalculateGameResult()` is called   | Log only; backfill can repair it |
-| Detector change          | Backfill CLI                                   | Reports failed game ids          |
+| Trigger                       | Where                                                                          | Failure behaviour                |
+| ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------- |
+| Ingest                        | `process-file.ts`, after commit, before notify                                 | Log only; the game is committed  |
+| Single and bulk reingest      | After `reingest()` commits                                                     | Log only; backfill can repair it |
+| Team result or outcome change | Wherever `recalculateGameResult()` is called, plus any write to `game.outcome` | Log only; backfill can repair it |
+| Detector change               | Backfill CLI                                                                   | Reports failed game ids          |
 
-Result changes matter because a penalty can change the winner, which adds or removes a Comeback.
+These changes matter because a penalty or forfeit can change the winner, which adds or removes a
+Comeback.
 
 Each run replaces a game's rows in one transaction, so all triggers are idempotent. The backfill
 takes `--category` and a pause between games. Run it off-peak and sequentially: the replay tables are
@@ -196,10 +198,13 @@ inside the card. PDF games do not show the card.
 
 Reads hide excluded and aborted games, plus games with the `replay` outcome.
 
-**Ranking.** Show at most 5 highlights per game and at most 2 per category, rarest category first and
-then by magnitude. Category rarity starts as a fixed order in code, using the frequencies above.
-Rarity percentiles can replace it later without changing the schema, since `magnitude` holds the raw
-measure.
+**Ranking.** Show at most 5 highlights per game and at most 2 per category. Sort by category in this
+fixed order, which follows the frequencies above: 5 Chain, Comeback, Missile Chain, Nuke Saved, Nuke
+Denied, Last Stand.
+
+Within a category, the best magnitude comes first, then the earliest `time`. For 5 Chain, the best
+magnitude is the shortest span; for every other category it is the largest. Rarity percentiles can
+replace the fixed order later without changing the schema, since `magnitude` holds the raw measure.
 
 **Replay deep link.** `/games/<slug>?tab=replay&t=<ms>`. This needs two changes, because the tabs and
 replay position have no URL state today:
@@ -208,8 +213,8 @@ replay position have no URL state today:
 - `ReplayTab` takes an `initialTime` prop and starts paused 5 seconds before the moment, clamped to
   0, so viewers see it build.
 
-**Replay markers.** Add highlight markers along the replay slider. Clicking one seeks to its lead-in
-point.
+**Replay markers.** Add highlight markers along the replay slider for every highlight in the game,
+including those past the card's cap. Clicking one seeks to its lead-in point.
 
 **Video link (later).** For games with video, a highlight can link to YouTube at
 `game_start_offset + time / 1000` seconds. This would be the first use of `game_start_offset` as a
@@ -219,19 +224,19 @@ sync anchor.
 
 ## Build order
 
-1. Move the spike's detectors into `lib/highlights/`, fix the outcome filter, and add unit tests.
+1. Move the spike's detectors into `lib/highlights/`, rename the keys, add the Comeback outcome
+   filter, and add unit tests.
 2. Add the table and migration, `generateHighlights()`, and the reingest delete.
 3. Add the ingest, reingest and result-change triggers.
 4. Run the backfill after the current event, once the Postgres memory comparison is done.
 5. Build the card and deep link, then the slider markers.
-6. Run the community poll using real examples from the archive, and ask for precise triggers rather
-   than category names. Each new category is a detector plus a backfill with `--category`.
+6. Release the six categories.
+7. Run the community poll using real examples from the site, and ask for precise triggers rather than
+   category names. Each new category is a detector plus a backfill with `--category`.
 
 Update [Core_Schema.md](Core_Schema.md) and remove the spike script once step 2 lands.
 
-## Open questions
+## After release
 
-- Final display names for `nuke_cancel`, `comeback` and `last_life`.
-- Whether every medic One Life run deserves equal weight. The longest samples were often medics, so
-  position-aware ranking may be worth testing after the backfill.
-- Whether the first release should wait for the community poll, or ship these six and add more later.
+The longest sampled Last Stand runs were often medics. Check this against the backfilled data, and
+consider position-aware ranking if medics crowd out other positions.
