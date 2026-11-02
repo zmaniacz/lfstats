@@ -696,9 +696,9 @@ empty array, since neither standings shape applies.
 
 ### Admin
 
-`/admin/competitions/[slug]` keeps only what such an event has: the details card, bulk assign, and
-the game list (titled "Games", not "Unassigned Games"). The Teams, Rounds and Enrolled Players cards
-are all hidden. Games arrive the usual two ways — bulk-assigned by center and date range, or filed
+`/admin/competitions/[slug]` keeps only what such an event has: the details card, bulk assign, the
+game list (titled "Games", not "Unassigned Games") and the Excluded Games block every format gets.
+The Teams, Rounds and Enrolled Players cards are all hidden. Games arrive the usual two ways — bulk-assigned by center and date range, or filed
 at ingest by the competition-slug prefix on the S3 key.
 
 ### Query routing

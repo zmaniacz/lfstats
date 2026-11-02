@@ -11,6 +11,7 @@ import {
   getCompetitionTeams,
   getCompetitionRounds,
   getCompetitionUnassignedGamesForAdmin,
+  getCompetitionExcludedGamesForAdmin,
   getSoloCompetitionEnrollments,
   hasMatchStructure,
   getCompetitionAssignedGamesForAdmin,
@@ -72,16 +73,25 @@ export default async function CompetitionDetailPage({
   // A Laserball match is filled by an lb_match, not game slots: list matches instead.
   const isLb = comp.gameType === "lb";
 
-  const [unassignedGames, assignedGames, centers, teams, rounds, soloPlayers, lbMatches] =
-    await Promise.all([
-      getCompetitionUnassignedGamesForAdmin(comp.id),
-      hasMatches && !isLb ? getCompetitionAssignedGamesForAdmin(comp.id) : Promise.resolve([]),
-      getCenterList(),
-      hasMatches ? getCompetitionTeams(comp.id) : Promise.resolve([]),
-      hasMatches ? getCompetitionRounds(comp.id) : Promise.resolve([]),
-      isSolo ? getSoloCompetitionEnrollments(comp.id) : Promise.resolve([]),
-      isLb ? getLbCompetitionMatchResults(comp.id) : Promise.resolve([]),
-    ]);
+  const [
+    unassignedGames,
+    excludedGames,
+    assignedGames,
+    centers,
+    teams,
+    rounds,
+    soloPlayers,
+    lbMatches,
+  ] = await Promise.all([
+    getCompetitionUnassignedGamesForAdmin(comp.id),
+    getCompetitionExcludedGamesForAdmin(comp.id),
+    hasMatches && !isLb ? getCompetitionAssignedGamesForAdmin(comp.id) : Promise.resolve([]),
+    getCenterList(),
+    hasMatches ? getCompetitionTeams(comp.id) : Promise.resolve([]),
+    hasMatches ? getCompetitionRounds(comp.id) : Promise.resolve([]),
+    isSolo ? getSoloCompetitionEnrollments(comp.id) : Promise.resolve([]),
+    isLb ? getLbCompetitionMatchResults(comp.id) : Promise.resolve([]),
+  ]);
   const assignedLbMatches = lbMatches.filter((m) => m.lbMatchId);
 
   const boundUpdate = updateCompetitionAction.bind(null, comp.id);
@@ -325,6 +335,63 @@ export default async function CompetitionDetailPage({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Excluded Games ({excludedGames.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {excludedGames.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No excluded games.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Game</TableHead>
+                  <TableHead>Center</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Outcome</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {excludedGames.map((g) => (
+                  <TableRow key={g.id}>
+                    <TableCell>
+                      <Link
+                        href={
+                          g.gameType === "lb" ? `/laserball/games/${g.slug}` : `/games/${g.slug}`
+                        }
+                        className="hover:underline font-medium"
+                      >
+                        {formatGameName(g.description, g.startTime)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{g.centerName}</TableCell>
+                    <TableCell className="tabular-nums">{formatDateTime(g.startTime)}</TableCell>
+                    <TableCell className="capitalize">{g.outcome}</TableCell>
+                    <TableCell className="text-right">
+                      {/* Removing clears only game.competition_id, which would strand the
+                          match slot, so a slotted game has to be unassigned first. */}
+                      {g.inMatch ? (
+                        <Badge variant="outline">In match</Badge>
+                      ) : (
+                        <DeleteEntityButton
+                          id={g.id}
+                          label={formatGameName(g.description, g.startTime)}
+                          description="This removes the game from the competition. The game itself is not deleted."
+                          action={boundRemoveGame}
+                          confirmLabel="Remove"
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

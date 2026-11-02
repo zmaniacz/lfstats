@@ -1641,21 +1641,57 @@ export type CompetitionAssignedGame = {
   centerName: string;
 };
 
-export async function getCompetitionUnassignedGamesForAdmin(
-  competitionId: string,
-): Promise<CompetitionUnassignedGame[]> {
-  const assignedIds = db
+export type CompetitionExcludedGame = CompetitionUnassignedGame & {
+  // Still held by a match slot, which reads as unreported while the game is excluded.
+  inMatch: boolean;
+};
+
+function matchAssignedGameIds(competitionId: string) {
+  return db
     .select({ gameId: competitionMatchGame.gameId })
     .from(competitionMatchGame)
     .innerJoin(competitionMatch, eq(competitionMatch.id, competitionMatchGame.matchId))
     .where(eq(competitionMatch.competitionId, competitionId));
-  // A Laserball game is assigned once its lb_match fills a competition match.
-  const lbAssignedIds = db
+}
+
+// A Laserball game is assigned once its lb_match fills a competition match.
+function lbMatchAssignedGameIds(competitionId: string) {
+  return db
     .select({ gameId: lbMatchGame.gameId })
     .from(lbMatchGame)
     .innerJoin(lbMatch, eq(lbMatch.id, lbMatchGame.matchId))
     .innerJoin(competitionMatch, eq(competitionMatch.id, lbMatch.competitionMatchId))
     .where(eq(competitionMatch.competitionId, competitionId));
+}
+
+export async function getCompetitionExcludedGamesForAdmin(
+  competitionId: string,
+): Promise<CompetitionExcludedGame[]> {
+  const inSlot = inArray(game.id, matchAssignedGameIds(competitionId));
+  const inLbMatch = inArray(game.id, lbMatchAssignedGameIds(competitionId));
+
+  return db
+    .select({
+      id: game.id,
+      slug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
+      gameType: game.type,
+      startTime: game.startTime,
+      description: game.description,
+      centerName: center.name,
+      outcome: game.outcome,
+      inMatch: sql<boolean>`(${inSlot} or ${inLbMatch})`,
+    })
+    .from(game)
+    .innerJoin(center, eq(center.id, game.centerId))
+    .where(and(eq(game.competitionId, competitionId), eq(game.exclude, true)))
+    .orderBy(asc(game.startTime));
+}
+
+export async function getCompetitionUnassignedGamesForAdmin(
+  competitionId: string,
+): Promise<CompetitionUnassignedGame[]> {
+  const assignedIds = matchAssignedGameIds(competitionId);
+  const lbAssignedIds = lbMatchAssignedGameIds(competitionId);
 
   return db
     .select({
