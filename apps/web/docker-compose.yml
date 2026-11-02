@@ -42,6 +42,17 @@ services:
     networks:
       - lfstats
 
+  # One-shot maintenance container, started by cron. See docs/build-and-deploy.md.
+  jobs:
+    image: ghcr.io/zmaniacz/lfstats-jobs:latest
+    restart: "no"
+    profiles: ["jobs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://lfstats:${DB_PASSWORD}@db:5432/lfstats_modern"
+    networks:
+      - lfstats
+
 networks:
   lfstats:
     external: true
