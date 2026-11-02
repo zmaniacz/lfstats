@@ -9,6 +9,7 @@ export const HIGHLIGHT_LABELS: Record<HighlightCategory, string> = {
   comeback: "Comeback",
   missile_chain: "Missile Chain",
   nuke_saved: "Nuke Saved",
+  medic_save: "Medic Save",
   nuke_denied: "Nuke Denied",
   last_stand: "Last Stand",
 };
@@ -28,6 +29,10 @@ export function describeHighlight(h: GameHighlight): string {
       return h.magnitude > 1
         ? `${player} downed ${h.magnitude} attackers mid-nuke`
         : `${player} downed ${other} mid-nuke`;
+    case "medic_save":
+      return h.magnitude > 1
+        ? `${player} saved ${h.magnitude} teammates from a nuke with a team boost`
+        : `${player} saved ${other} from a nuke with ${h.details.livesBefore ?? "few"} lives left`;
     case "nuke_denied":
       return `${player} denied ${other}'s nuke`;
     case "last_stand":
