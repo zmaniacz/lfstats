@@ -72,6 +72,23 @@ assignment and excluded games. Nothing is sent if the count is zero.
 A game moved into a competition by an admin does not fire this, because the admin already knows
 about it. That covers `setGameCompetition` and `bulkAssignGamesToCompetition`.
 
+A game that ingest [auto-assigns](Competition_Structure.md#auto-assignment) does not fire this
+either; it fires `match_game` like any assignment, and `auto_assign_review` below if needed.
+
+### `auto_assign_review`: an auto-assigned game has unrostered players
+
+**Audience:** the `unassigned_game` audience, through the same opt-in. No separate preference:
+these are the admins who would otherwise have placed the game by hand.
+
+**Fires when:** ingest auto-assigns an SM5 game with at least one identified player on neither
+side's roster. A fully rostered auto-assignment sends nothing beyond `match_game`.
+
+Title `{Event}: auto-assigned`; body `{Round} · Match {n} · Game {n}`, then
+`2 players not on a roster: X, Y` (at most five names, then `+N more`), then
+`Roster them (as mercs if subs), then reassign the game.`; opens the game page. The list is read
+at send time (`getAutoAssignReview`), so nothing is sent if the game was unassigned or everyone
+was rostered inside the delay.
+
 ---
 
 ## Architecture
@@ -113,7 +130,7 @@ All timestamps here are written and compared using the database clock (`now()`),
 | Column            | Type          | Notes                                                                                                                |
 | ----------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `subscription_id` | uuid FK       | `on delete cascade`                                                                                                  |
-| `kind`            | enum          | `unassigned_game`, `match_game`, and `test` for the outbox                                                           |
+| `kind`            | enum          | `unassigned_game`, `match_game`, and `test` and `auto_assign_review` for the outbox only                             |
 | `competition_id`  | uuid FK, null | Required for `match_game`. Null for `unassigned_game`, whose scope comes from the user's roles. `on delete cascade`. |
 
 Unique on all three columns, using `NULLS NOT DISTINCT`.
@@ -141,6 +158,7 @@ Dedupe keys:
 | SM5 game        | `match_game:{matchId}:{gameId}`               |
 | Laserball match | `match_game:{competitionMatchId}:{lbMatchId}` |
 | Unassigned game | `unassigned_game:{gameId}`                    |
+| Auto-assigned   | `auto_assign_review:{gameId}`                 |
 
 ### Enqueue points
 
@@ -155,7 +173,9 @@ Hook the `packages/db` query functions, because each has more than one caller:
 The enqueue helper checks `state = 'active'` itself. The SM5 game page action does not check state,
 and the legacy migration scripts call `assignGameToMatch`, so this check is what keeps them quiet.
 
-For ingest, the enqueue is step 13 of `processFile`. Only the worker calls `processFile`,
+For ingest, the enqueue is step 13 of `processFile`: `unassigned_game` when auto-assignment
+doesn't place the game, `auto_assign_review` from `autoAssignGame` when it places one with
+unrostered players. Only the worker calls `processFile`,
 so bulk ingests and re-ingests never fire.
 
 ### Dispatcher
@@ -188,7 +208,8 @@ For each due row (`sent_at is null and send_after <= now()`):
 | `401`, `403` | Log an error: the VAPID configuration is wrong. Keep the subscription. |
 | `413`        | Log an error: the payload is too large. Keep the subscription.         |
 
-Push options: `TTL` of 1 hour for `match_game` and 6 hours for `unassigned_game`, with `urgency`
+Push options: `TTL` of 1 hour for `match_game` and 6 hours for `unassigned_game` and
+`auto_assign_review`, with `urgency`
 set to `high`.
 
 The same loop deletes outbox rows older than 30 days.
@@ -198,7 +219,8 @@ The same loop deletes outbox rows older than 30 days.
 The push payload is JSON: `{ title, body, url, tag }`, under 3 KB.
 
 `tag` is `unassigned:{competitionId}`, so a newer alert replaces the older one on the device. For
-`match_game` it is `match:{matchId}:{gameId}`, or `match:{matchId}:{lbMatchId}` for Laserball. That
+`match_game` it is `match:{matchId}:{gameId}`, or `match:{matchId}:{lbMatchId}` for Laserball, and
+for `auto_assign_review` it is `auto-assign:{gameId}`. That
 is one tag per game because a replacement can arrive silently, and each game should alert.
 
 ---

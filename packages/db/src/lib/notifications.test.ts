@@ -8,6 +8,7 @@ import {
   isAllowedPushEndpoint,
   isValidPushKeys,
   lbMatchGameMessage,
+  autoAssignReviewMessage,
   matchGameMessage,
   pushFailureAction,
   unassignedGamesMessage,
@@ -183,6 +184,31 @@ test("unassignedGamesMessage counts games and links to the admin page", () => {
     unassignedGamesMessage({ ...competition, count: 3 }).body,
     "3 games ready to assign",
   );
+});
+
+test("autoAssignReviewMessage names the unrostered players and links to the game", () => {
+  const review = {
+    competitionName: "Summer League",
+    gameId: "g1",
+    gameSlug: "4-19-20261102190000",
+    roundName: "Round 2",
+    matchNumber: 3,
+    gameNumber: 1,
+  };
+  assert.deepEqual(autoAssignReviewMessage({ ...review, callsigns: ["Sub"] }), {
+    title: "Summer League: auto-assigned",
+    body:
+      "Round 2 · Match 3 · Game 1\n" +
+      "1 player not on a roster: Sub\n" +
+      "Roster them (as mercs if subs), then reassign the game.",
+    url: "/games/4-19-20261102190000",
+    tag: "auto-assign:g1",
+  });
+  const many = autoAssignReviewMessage({
+    ...review,
+    callsigns: ["A", "B", "C", "D", "E", "F", "G"],
+  });
+  assert.match(many.body, /7 players not on a roster: A, B, C, D, E \+2 more/);
 });
 
 test("pushFailureAction keeps a subscription unless the service says it is gone", () => {

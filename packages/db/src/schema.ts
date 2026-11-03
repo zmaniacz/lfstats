@@ -566,6 +566,9 @@ export const competitionMatchGame = pgTable(
         (): SQL =>
           sql`coalesce(${competitionMatchGame.team2Sm5GameTeamId}, ${competitionMatchGame.team2PdfGameTeamId})`,
       ),
+    // Who filled the slot: "auto" for ingest auto-assignment, else the admin's email. Null for
+    // assignments made before the column existed. Free text, like lb_match.linked_by.
+    assignedBy: text("assigned_by"),
   },
   (t) => [
     unique().on(t.matchId, t.gameNumber),
@@ -1970,6 +1973,7 @@ export const notificationKindEnum = pgEnum("notification_kind", [
   "unassigned_game",
   "test",
   "match_game",
+  "auto_assign_review",
 ]);
 
 /** One browser on one device. The endpoint is a bearer secret: never log it. */

@@ -10,8 +10,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import {
   TEST_NOTIFICATION_MESSAGE,
+  autoAssignReviewMessage,
   claimDueNotifications,
   deletePushSubscriptions,
+  getAutoAssignReview,
   getCompetitionById,
   getCompetitionMatchResults,
   getCompetitionUnassignedGamesForAdmin,
@@ -130,6 +132,40 @@ async function dispatchUnassignedGames(competitionId: string, outboxIds: string[
 
 type OutboxRow = Awaited<ReturnType<typeof claimDueNotifications>>[number];
 
+async function dispatchAutoAssignReview(row: OutboxRow): Promise<void> {
+  const competition = row.competitionId ? await getCompetitionById(row.competitionId) : null;
+  if (competition?.state !== "active") {
+    await skipNotifications([row.id], "competition not active");
+    return;
+  }
+
+  // Read at send time: inside the delay an admin may have unassigned the game or rostered them.
+  const review = await getAutoAssignReview(row.payload.gameId ?? "");
+  if (!review) {
+    await skipNotifications([row.id], "no longer assigned");
+    return;
+  }
+  if (review.unrostered.length === 0) {
+    await skipNotifications([row.id], "players rostered");
+    return;
+  }
+
+  await deliver(
+    [row.id],
+    await getUnassignedGameRecipients(competition.hostCenterId),
+    autoAssignReviewMessage({
+      competitionName: competition.name,
+      gameId: row.payload.gameId!,
+      gameSlug: review.gameSlug,
+      roundName: review.roundName,
+      matchNumber: review.matchNumber,
+      gameNumber: review.gameNumber,
+      callsigns: review.unrostered.map((p) => p.callsign),
+    }),
+    UNASSIGNED_TTL_SECONDS,
+  );
+}
+
 async function sm5MatchMessage(
   competition: { id: string; name: string; slug: string },
   row: OutboxRow,
@@ -224,6 +260,8 @@ async function dispatchDue(): Promise<void> {
       else await skipNotifications([row.id], "subscription gone");
     } else if (row.kind === "match_game") {
       await dispatchMatchGame(row);
+    } else if (row.kind === "auto_assign_review") {
+      await dispatchAutoAssignReview(row);
     } else if (row.competitionId) {
       const ids = unassignedByCompetition.get(row.competitionId) ?? [];
       unassignedByCompetition.set(row.competitionId, [...ids, row.id]);

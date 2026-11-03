@@ -52,6 +52,7 @@ export interface PreservedGameMeta {
     gameNumber: number;
     team1TdfTeamIndex: number;
     team2TdfTeamIndex: number;
+    assignedBy: string | null;
   } | null;
   // In-game penalties (time IS NOT NULL): key = "<iplId>:<time>"
   inGamePenalties: Map<
@@ -681,7 +682,8 @@ export async function reingest(
     // 22. Restore competition_match_game
     // -----------------------------------------------------------------------
     if (preservedMeta.matchGame) {
-      const { matchId, gameNumber, team1TdfTeamIndex, team2TdfTeamIndex } = preservedMeta.matchGame;
+      const { matchId, gameNumber, team1TdfTeamIndex, team2TdfTeamIndex, assignedBy } =
+        preservedMeta.matchGame;
       const team1Id = teamIdByIndex.get(team1TdfTeamIndex);
       const team2Id = teamIdByIndex.get(team2TdfTeamIndex);
       if (team1Id && team2Id) {
@@ -691,6 +693,7 @@ export async function reingest(
           gameNumber,
           team1Sm5GameTeamId: team1Id,
           team2Sm5GameTeamId: team2Id,
+          assignedBy,
         });
       }
     }

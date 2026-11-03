@@ -3,7 +3,7 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { requireCompetitionAccess } from "@/lib/competition-access";
 import {
   createCompetition,
@@ -13,6 +13,7 @@ import {
   removeGameFromCompetition,
   removeGameFromMatch,
   getCompetitionById,
+  autoAssignPendingGames,
 } from "@lfstats/db";
 import type { CompetitionCategory, CompetitionFormat, CompetitionGameType } from "@lfstats/db";
 import { redirect } from "next/navigation";
@@ -177,4 +178,28 @@ export async function bulkAssignGamesAction(
 
   const count = await bulkAssignGamesToCompetition(competitionId, centerId, dateFrom, dateTo);
   return { ok: true, count };
+}
+
+export type AutoAssignPendingResult =
+  { ok: true; assigned: number; skipped: number } | { ok: false; error: string };
+
+/**
+ * Re-runs ingest auto-assignment over the unassigned queue: for games ingested before their
+ * matches or rosters were set up.
+ */
+export async function autoAssignPendingGamesAction(
+  competitionId: string,
+): Promise<AutoAssignPendingResult> {
+  const competition = await getCompetitionById(competitionId);
+  if (!competition) throw new Error("Not found");
+  await requireCompetitionAccess(competition.hostCenterId ?? null);
+
+  if (competition.state !== "active") {
+    return { ok: false, error: "Games can only be assigned while the competition is active." };
+  }
+
+  const { assigned, skipped } = await autoAssignPendingGames(competitionId);
+  revalidatePath(`/admin/competitions/${competition.slug}`);
+  refresh();
+  return { ok: true, assigned, skipped };
 }

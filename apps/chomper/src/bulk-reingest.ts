@@ -245,6 +245,7 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
           gameNumber: matchGameRow.gameNumber,
           team1TdfTeamIndex: matchGameRow.team1TdfTeamIndex,
           team2TdfTeamIndex: matchGameRow.team2TdfTeamIndex,
+          assignedBy: matchGameRow.assignedBy,
         }
       : null,
     inGamePenalties,

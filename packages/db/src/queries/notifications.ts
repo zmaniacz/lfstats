@@ -210,6 +210,31 @@ export async function enqueueUnassignedGame(gameId: string, competitionId: strin
 }
 
 /**
+ * Queues the review alert for a game auto-assigned with players on neither roster. It goes to
+ * the unassigned-games audience, who would otherwise have placed the game by hand. Never throws:
+ * the assignment is already committed.
+ */
+export async function enqueueAutoAssignReview(
+  gameId: string,
+  competitionId: string,
+): Promise<void> {
+  try {
+    await db
+      .insert(notificationOutbox)
+      .values({
+        kind: "auto_assign_review",
+        competitionId,
+        dedupeKey: `auto_assign_review:${gameId}`,
+        payload: { gameId },
+        sendAfter: SEND_DELAY,
+      })
+      .onConflictDoNothing();
+  } catch (err) {
+    console.warn(`Auto-assign review alert failed for ${gameId}: ${(err as Error).message}`);
+  }
+}
+
+/**
  * Queues the alert for a game or Laserball match assigned to a competition match. Only an active
  * competition sends one, which also keeps the legacy migration scripts quiet. Never throws: the
  * assignment is already committed, so a notification problem must not look like it failed.

@@ -14,6 +14,7 @@ export * from "./queries/admin";
 export * from "./queries/apiKeys";
 export * from "./queries/penalties";
 export * from "./queries/competition-tournament";
+export * from "./queries/competition-auto-assign";
 export * from "./queries/competition-legacy";
 export * from "./queries/competition-solo";
 export * from "./queries/competition-laserball";
