@@ -179,6 +179,39 @@ export function lbMatchGameMessage(r: LbMatchGameResult): NotificationMessage {
   };
 }
 
+export type AutoAssignReviewMessageInput = {
+  competitionName: string;
+  gameId: string;
+  gameSlug: string;
+  roundName: string;
+  matchNumber: number;
+  gameNumber: number;
+  callsigns: string[];
+};
+
+/** Names this many players at most, so a messy game can't push the message past the size limit. */
+const MAX_REVIEW_CALLSIGNS = 5;
+
+/**
+ * A game auto-assigned with players on neither roster. Their games only carry the merc flag if
+ * they are rostered before the game is assigned, so the body says to reassign.
+ */
+export function autoAssignReviewMessage(r: AutoAssignReviewMessageInput): NotificationMessage {
+  const players = r.callsigns.length === 1 ? "1 player" : `${r.callsigns.length} players`;
+  const shown = r.callsigns.slice(0, MAX_REVIEW_CALLSIGNS);
+  const more = r.callsigns.length - shown.length;
+  return {
+    title: `${r.competitionName}: auto-assigned`,
+    body: [
+      `${r.roundName} · Match ${r.matchNumber} · Game ${r.gameNumber}`,
+      `${players} not on a roster: ${shown.join(", ")}${more > 0 ? ` +${more} more` : ""}`,
+      "Roster them (as mercs if subs), then reassign the game.",
+    ].join("\n"),
+    url: `/games/${r.gameSlug}`,
+    tag: `auto-assign:${r.gameId}`,
+  };
+}
+
 export const TEST_NOTIFICATION_MESSAGE: NotificationMessage = {
   title: "LFstats",
   body: "Notifications are working on this device.",

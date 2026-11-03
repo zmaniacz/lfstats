@@ -269,6 +269,8 @@ export type MatchGameAssignment = {
   team1ColourEnum: number;
   team2GameTeamId: string;
   team2ColourEnum: number;
+  // "auto" for ingest auto-assignment, else the admin's email; null before the column existed.
+  assignedBy: string | null;
 };
 
 export type UnassignedCompetitionGame = {
@@ -1367,6 +1369,7 @@ export async function getMatchGameAssignments(matchId: string): Promise<MatchGam
       gameDescription: game.description,
       team1GameTeamId: competitionMatchGame.team1GameTeamId,
       team2GameTeamId: competitionMatchGame.team2GameTeamId,
+      assignedBy: competitionMatchGame.assignedBy,
     })
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
@@ -1396,6 +1399,7 @@ export async function getMatchGameAssignments(matchId: string): Promise<MatchGam
     team1ColourEnum: colorMap.get(r.team1GameTeamId) ?? 0,
     team2GameTeamId: r.team2GameTeamId,
     team2ColourEnum: colorMap.get(r.team2GameTeamId) ?? 0,
+    assignedBy: r.assignedBy,
   }));
 }
 
@@ -1434,9 +1438,13 @@ export async function assignGameToMatch(
   gameNumber: number,
   team1GameTeamId: string,
   team2GameTeamId: string,
+  // "auto" for ingest auto-assignment, else the admin's email; see competition_match_game.
+  assignedBy?: string,
 ): Promise<void> {
   const sides = await matchGameSideColumns(team1GameTeamId, team2GameTeamId);
-  await db.insert(competitionMatchGame).values({ matchId, gameId, gameNumber, ...sides });
+  await db
+    .insert(competitionMatchGame)
+    .values({ matchId, gameId, gameNumber, ...sides, assignedBy: assignedBy ?? null });
 
   // Apply mercenary flags from competition_team_player to the newly assigned game's scorecards.
   // Only one of the two updates can match, since a game team is TDF or PDF-era, never both.

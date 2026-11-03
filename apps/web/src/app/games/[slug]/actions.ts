@@ -137,8 +137,15 @@ export async function assignGameToMatchAction(
   team1GameTeamId: string,
   team2GameTeamId: string,
 ): Promise<void> {
-  await requireCenterAdmin(gameId);
-  await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId);
+  const { session } = await requireCenterAdmin(gameId);
+  await assignGameToMatch(
+    matchId,
+    gameId,
+    gameNumber,
+    team1GameTeamId,
+    team2GameTeamId,
+    session.user?.email ?? undefined,
+  );
   await revalidateGame(gameId);
   refresh();
 }

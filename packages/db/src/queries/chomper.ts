@@ -474,6 +474,7 @@ export async function getCompetitionMatchGameForReingest(gameId: string) {
       gameNumber: competitionMatchGame.gameNumber,
       team1GameTeamId: competitionMatchGame.team1GameTeamId,
       team2GameTeamId: competitionMatchGame.team2GameTeamId,
+      assignedBy: competitionMatchGame.assignedBy,
     })
     .from(competitionMatchGame)
     .where(eq(competitionMatchGame.gameId, gameId))
@@ -497,6 +498,7 @@ export async function getCompetitionMatchGameForReingest(gameId: string) {
     gameNumber: cmg.gameNumber,
     team1TdfTeamIndex,
     team2TdfTeamIndex,
+    assignedBy: cmg.assignedBy,
   };
 }
 

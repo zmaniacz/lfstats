@@ -15,6 +15,8 @@ import {
   getAssignableLbMatches,
   getLbCompetitionGames,
   getLbCompetitionMatchResults,
+  getMatchGameUnrosteredPlayers,
+  AUTO_ASSIGNED_BY,
 } from "@lfstats/db";
 import { LbMatchAssignForm } from "@/components/admin/competition/LbMatchAssignForm";
 import { MatchGameAssignForm } from "@/components/admin/competition/MatchGameAssignForm";
@@ -72,6 +74,8 @@ export default async function MatchDetailPage({
   ]);
 
   if (!match) notFound();
+
+  const unrostered = await getMatchGameUnrosteredPlayers(assignments.map((a) => a.gameId));
 
   const assignedNumbers = new Set(assignments.map((a) => a.gameNumber));
   const availableGameNumbers = [1, 2].filter((n) => !assignedNumbers.has(n));
@@ -230,6 +234,7 @@ export default async function MatchDetailPage({
               {assignments.map((a) => {
                 const t1Color = TEAM_COLORS[a.team1ColourEnum];
                 const t2Color = TEAM_COLORS[a.team2ColourEnum];
+                const gameUnrostered = unrostered.filter((p) => p.gameId === a.gameId);
                 return (
                   <div key={a.id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <div className="flex items-center gap-3">
@@ -244,6 +249,16 @@ export default async function MatchDetailPage({
                         {match.team1Name}={t1Color?.label ?? "?"} / {match.team2Name}=
                         {t2Color?.label ?? "?"}
                       </span>
+                      {a.assignedBy === AUTO_ASSIGNED_BY && <Badge variant="outline">Auto</Badge>}
+                      {gameUnrostered.length > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/50 text-amber-600 dark:text-amber-400"
+                          title={`Not on their side's roster: ${gameUnrostered.map((p) => p.callsign).join(", ")}. Roster them, then reassign the game so merc flags apply.`}
+                        >
+                          {gameUnrostered.length} unrostered
+                        </Badge>
+                      )}
                     </div>
                     <DeleteEntityButton
                       id={a.id}

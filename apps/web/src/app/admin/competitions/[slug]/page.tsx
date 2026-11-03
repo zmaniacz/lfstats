@@ -32,6 +32,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteEntityButton } from "@/components/admin/competition/DeleteEntityButton";
+import { AutoAssignButton } from "@/components/admin/competition/AutoAssignButton";
 import { formatDateTime, formatGameName } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import {
@@ -40,6 +41,7 @@ import {
   bulkAssignGamesAction,
   removeGameFromCompetitionAction,
   unassignGameFromMatchAction,
+  autoAssignPendingGamesAction,
 } from "../actions";
 
 const getCompetition = cache(getCompetitionBySlug);
@@ -178,12 +180,16 @@ export default async function CompetitionDetailPage({
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>
             {hasMatches
               ? `Unassigned Games (${unassignedGames.length})`
               : `Games (${unassignedGames.length})`}
           </CardTitle>
+          {/* Auto-assignment matches SM5 rosters to game teams; Laserball fills matches whole. */}
+          {hasMatches && !isLb && comp.state === "active" && unassignedGames.length > 0 && (
+            <AutoAssignButton competitionId={comp.id} action={autoAssignPendingGamesAction} />
+          )}
         </CardHeader>
         <CardContent>
           {unassignedGames.length === 0 ? (

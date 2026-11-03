@@ -53,7 +53,7 @@ Three distinct operations, all in `packages/db/src/queries/admin.ts`:
 
 ### Ingest impact
 
-None of these concepts exist in the TDF, so chomper computes none of them. `competition_id` is the sole exception: it is resolved at ingest from a competition-slug prefix on the S3 key (see [chomper-design.md](chomper-design.md), Lambda flow step 6b), which is how the [Google Drive sync](../scripts/google-drive-sync/README.md) files games into a competition by folder name.
+None of these concepts exist in the TDF, so chomper computes none of them. `competition_id` is the sole exception: it is resolved at ingest from a competition-slug prefix on the S3 key (see [chomper-design.md](chomper-design.md), Lambda flow step 6b), which is how the [Google Drive sync](../scripts/google-drive-sync/README.md) files games into a competition by folder name. An SM5 game filed that way is then [auto-assigned](#auto-assignment) to its match slot when the rosters say which one.
 
 `competition_id`, `exclude`, and `description` are admin-owned. The re-ingest paths snapshot and restore all three rather than overwriting the `game` row.
 
@@ -265,18 +265,19 @@ compares all six slots pairwise, so an empty (null) slot never fails it.
 
 Links an ingested game to a match slot and records which color each team played in that game.
 
-| Column                   | Type                        | Notes                                                                      |
-| ------------------------ | --------------------------- | -------------------------------------------------------------------------- |
-| `id`                     | uuid PK                     |                                                                            |
-| `match_id`               | uuid FK → competition_match | cascade delete                                                             |
-| `game_id`                | uuid FK → game              | cascade delete                                                             |
-| `game_number`            | integer                     | 1 or 2                                                                     |
-| `team1_sm5_game_team_id` | uuid FK → sm5_game_team     | TDF game: the game team that is `match.team1` (and its partners)           |
-| `team2_sm5_game_team_id` | uuid FK → sm5_game_team     | TDF game: the game team that is `match.team2` (and its partners)           |
-| `team1_pdf_game_team_id` | uuid FK → sm5_pdf_game_team | PDF-era legacy game: the game team that is `match.team1`                   |
-| `team2_pdf_game_team_id` | uuid FK → sm5_pdf_game_team | PDF-era legacy game: the game team that is `match.team2`                   |
-| `team1_game_team_id`     | uuid, generated, NOT NULL   | `coalesce(team1_sm5_…, team1_pdf_…)` — **read this**, write the pair above |
-| `team2_game_team_id`     | uuid, generated, NOT NULL   | `coalesce(team2_sm5_…, team2_pdf_…)`                                       |
+| Column                   | Type                        | Notes                                                                                                                                        |
+| ------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                     | uuid PK                     |                                                                                                                                              |
+| `match_id`               | uuid FK → competition_match | cascade delete                                                                                                                               |
+| `game_id`                | uuid FK → game              | cascade delete                                                                                                                               |
+| `game_number`            | integer                     | 1 or 2                                                                                                                                       |
+| `team1_sm5_game_team_id` | uuid FK → sm5_game_team     | TDF game: the game team that is `match.team1` (and its partners)                                                                             |
+| `team2_sm5_game_team_id` | uuid FK → sm5_game_team     | TDF game: the game team that is `match.team2` (and its partners)                                                                             |
+| `team1_pdf_game_team_id` | uuid FK → sm5_pdf_game_team | PDF-era legacy game: the game team that is `match.team1`                                                                                     |
+| `team2_pdf_game_team_id` | uuid FK → sm5_pdf_game_team | PDF-era legacy game: the game team that is `match.team2`                                                                                     |
+| `team1_game_team_id`     | uuid, generated, NOT NULL   | `coalesce(team1_sm5_…, team1_pdf_…)` — **read this**, write the pair above                                                                   |
+| `team2_game_team_id`     | uuid, generated, NOT NULL   | `coalesce(team2_sm5_…, team2_pdf_…)`                                                                                                         |
+| `assigned_by`            | text                        | nullable. `"auto"` for [auto-assignment](#auto-assignment), else the admin's email. Null before the column existed. Carried across reingest. |
 
 **Unique:** `(match_id, game_number)` — one game per slot  
 **Unique:** `(game_id)` — a game belongs to at most one match  
@@ -771,6 +772,66 @@ it, change a category in the admin UI, not in the script.
 
 ---
 
+## Auto-assignment
+
+An SM5 game filed into a competition at ingest is placed in its match slot automatically when the
+known rosters say which slot it is. Anything less certain stays in the unassigned queue for an
+admin, exactly as before. Laserball is not auto-assigned: a Laserball match is filled whole, by
+an `lb_match`.
+
+**Where it runs.** Step 13 of chomper's `processFile` calls `autoAssignGame`
+(`packages/db/src/queries/competition-auto-assign.ts`) and falls back to the unassigned-game alert
+when it doesn't assign. Re-ingest never runs it; the existing slot is restored instead. Admins can
+re-run it over the queue with **Try auto-assign** on `/admin/competitions/[slug]`
+(`autoAssignPendingGames`, oldest game first). A successful assignment goes through
+`assignGameToMatch` with `assigned_by = 'auto'`, so mercenary stamping and the `match_game`
+notification behave as for a manual one.
+
+**When it runs.** The competition is SM5, has a match structure and is `active` (manual
+assignment is refused otherwise too); the game is not excluded, not already assigned, and has two
+non-neutral teams.
+
+**The decision** is pure, in `packages/db/src/lib/match-auto-assign.ts`, and covered by
+`match-auto-assign.test.ts`.
+
+1. **Candidates** are the competition's matches with every slot for the format filled (both
+   trios/all three duos per side) and at least one free game slot.
+2. **Rosters.** A match side's roster is every `competition_team_player` (mercs included) of every
+   team on that side. A player rostered on both sides of a match is ignored.
+3. **Fit.** Each candidate is tried both ways round. A way round fits when, for each game side:
+   no player is rostered on the opposing match side; at least 3 players are on its own side's
+   roster; and they outnumber the identified players on neither roster. Guests are never counted.
+   If both ways round fit, the match is ambiguous.
+4. **Game number.** Game 1 if both slots are free, else the free one. Against a game already in
+   the other slot, the teams must have swapped colours and game 1 must have started first.
+5. **Schedule.** A match whose scheduled start for that game is more than 12 hours from the
+   game's start is not a candidate.
+6. **Choice.** If a match fits the rosters but its slot is refused (colours, order, both ways
+   round fit), nothing is assigned: another match of the same pairing would only be a guess.
+   Candidates of more than one pairing are refused too. Otherwise the nearest scheduled match
+   wins, then a match already half played, then round and match order — which is how a rematch
+   finds the right match.
+
+**Unrostered players** don't block an assignment that otherwise fits. They are listed on the match
+admin page (an "N unrostered" badge beside the "Auto" badge, derived on read by
+`getMatchGameUnrosteredPlayers`, so it clears as they are rostered), and admins get an
+`auto_assign_review` push naming them (see [Notifications_Spec.md](Notifications_Spec.md)).
+Because mercenary flags are stamped at assignment time, a sub rostered afterwards needs the game
+reassigned for the flag to apply.
+
+**Concurrency.** Two games of one match ingested at once can race for a slot; the loser hits the
+`(match_id, game_number)` unique constraint, decides once more against the filled slot, and
+otherwise falls back to the queue.
+
+**Evaluating it.** `pnpm --filter @lfstats/db eval-auto-assign [slug] [--verbose]` replays the
+decision over every assigned TDF game, hiding its own slot and every later game, and compares it
+with the real assignment. Read-only. On 2026-11-03 across all 1,249 assigned games: 1,075 correct,
+103 skipped, 68 in matches whose recorded game 2 was played before game 1 (ingest numbers by play
+order, so those differ by construction), and 3 "wrong" — all three matches in which only a game 2
+was ever recorded. Every event since 2023 was correct apart from a handful of skips.
+
+---
+
 ## Game Display Conventions
 
 Games assigned to a match are displayed throughout the UI using the structured label:
@@ -787,7 +848,7 @@ The team names in this label come from `competition_team.name` (resolved via `co
 2. Bulk-assign games to the competition by center + date range
 3. Add teams and their rosters (`/admin/competitions/[slug]/teams`, one team at `[slug]/teams/[teamSlug]`) — **mark any sub-in players as mercenaries here, before assigning their games**
 4. Create rounds, pools, and matches (`/admin/competitions/[slug]/rounds`, one round at `[slug]/rounds/[roundId]`)
-5. Assign games to match slots — either from the match detail page or directly on the game page. This is the step that stamps mercenary flags onto scorecards.
+5. Assign games to match slots — either from the match detail page or directly on the game page. This is the step that stamps mercenary flags onto scorecards. SM5 games filed at ingest are usually [auto-assigned](#auto-assignment) already; **Try auto-assign** on the competition page runs the same matching over the unassigned queue, for games ingested before their matches or rosters existed.
 
 Admin routes are keyed by **slug**, not id. Games can also be assigned to a competition and to a match slot directly from the game detail page (`/games/[slug]`) by admins and center admins.
 

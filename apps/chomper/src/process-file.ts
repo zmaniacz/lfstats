@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import {
+  autoAssignGame,
   createChomperJob,
   enqueueUnassignedGame,
   findActiveMvpModel,
@@ -291,12 +292,27 @@ export async function processFile(
       buildGameSlug(parsed.meta.countryCode, parsed.meta.siteCode, parsed.meta.startTime),
     );
 
-    // 13. Alert admins that a competition game is waiting to be assigned.
-    //     Best-effort, like step 12: this catch must not move a committed game to the error bucket.
+    // 13. Place a competition game in its match slot when the rosters say which one, else
+    //     alert admins that it is waiting to be assigned. Best-effort, like step 12: these
+    //     catches must not move a committed game to the error bucket.
     if (competitionId) {
-      await enqueueUnassignedGame(gameId, competitionId).catch((err: unknown) => {
-        console.warn(`Unassigned-game alert failed for ${key}: ${(err as Error).message}`);
+      const autoAssign = await autoAssignGame(gameId, competitionId).catch((err: unknown) => {
+        console.warn(`Auto-assign failed for ${key}: ${(err as Error).message}`);
+        return null;
       });
+      if (autoAssign?.status === "assigned") {
+        console.log(
+          `Auto-assigned ${key} to match ${autoAssign.matchId} game ${autoAssign.gameNumber}` +
+            (autoAssign.unrostered.length > 0
+              ? ` (${autoAssign.unrostered.length} unrostered)`
+              : ""),
+        );
+      } else {
+        if (autoAssign) console.log(`Not auto-assigned ${key}: ${autoAssign.reason}`);
+        await enqueueUnassignedGame(gameId, competitionId).catch((err: unknown) => {
+          console.warn(`Unassigned-game alert failed for ${key}: ${(err as Error).message}`);
+        });
+      }
     }
     return null;
   } catch (err) {

@@ -24,6 +24,7 @@ async function requireAdmin() {
   const roles = session?.user?.roles ?? [];
   if (!roles.some((r) => r.role === "superAdmin" || r.role === "admin"))
     throw new Error("Forbidden");
+  return session;
 }
 
 async function competitionSlug(competitionId: string): Promise<string | null> {
@@ -43,7 +44,7 @@ export async function assignGameAction(
   matchId: string,
   formData: FormData,
 ): Promise<MatchActionResult> {
-  await requireAdmin();
+  const session = await requireAdmin();
   const competition = await getCompetitionById(competitionId);
   if (!competition) throw new Error("Competition not found");
   if (competition.state !== "active") {
@@ -53,7 +54,14 @@ export async function assignGameAction(
   const gameId = formData.get("gameId") as string;
   const team1GameTeamId = formData.get("team1GameTeamId") as string;
   const team2GameTeamId = formData.get("team2GameTeamId") as string;
-  await assignGameToMatch(matchId, gameId, gameNumber, team1GameTeamId, team2GameTeamId);
+  await assignGameToMatch(
+    matchId,
+    gameId,
+    gameNumber,
+    team1GameTeamId,
+    team2GameTeamId,
+    session?.user?.email ?? undefined,
+  );
   const match = await getCompetitionMatchById(matchId);
   const slug = await competitionSlug(competitionId);
   if (slug && match) {
