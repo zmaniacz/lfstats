@@ -1,6 +1,0 @@
-src/
-tsconfig.json
-package.json
-pnpm-lock.yaml
-*.md
-.gitignore

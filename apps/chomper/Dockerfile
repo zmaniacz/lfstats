@@ -9,13 +9,13 @@ COPY apps/chomper/package.json ./apps/chomper/
 COPY packages/db/package.json ./packages/db/
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm --filter chomper build:worker
+RUN pnpm --filter chomper build
 
 FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-# Matches the Lambda runtime.
+# The worker has always run in UTC (the Lambda runtime's zone before it).
 ENV TZ=UTC
-COPY --from=builder /app/apps/chomper/dist-worker/worker.mjs ./
+COPY --from=builder /app/apps/chomper/dist/worker.mjs ./
 USER node
 CMD ["node", "worker.mjs"]

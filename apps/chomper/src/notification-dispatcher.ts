@@ -3,7 +3,7 @@
 
 /**
  * Drains notification_outbox and sends Web Push messages. It runs beside the SQS loop in the
- * worker, never in the Lambda, because that loop blocks on its long poll and on each file. See
+ * worker, not inside it, because that loop blocks on its long poll and on each file. See
  * docs/Notifications_Spec.md.
  */
 

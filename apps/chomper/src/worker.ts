@@ -3,7 +3,7 @@
 
 /**
  * Long-running ingest worker: pulls S3 upload events from SQS and runs each one
- * through the same pipeline as the Lambda. Every connection is outbound, which
+ * through the ingest pipeline. Every connection is outbound, which
  * is the point — it sits next to Postgres, so nothing has to reach the database
  * from the internet.
  *

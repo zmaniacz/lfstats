@@ -4,14 +4,14 @@ This document describes the architecture, configuration, and deployment process 
 
 **The repo's main workflows are below.** This document covers the first in depth; the others are summarised under [Other Workflows](#other-workflows).
 
-| Workflow             | Triggers on                                                                                            | What it does                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `build-web.yml`      | push to `main` touching `apps/web/**`, `packages/db/**`, the lockfile, or itself                       | Builds the Docker image, pushes to GHCR, deploys via self-hosted runner. **The subject of this document.** |
-| `deploy-chomper.yml` | push to `main` touching `apps/chomper/**`, `packages/db/**`, or the lockfile; also `workflow_dispatch` | Deploys the Chomper AWS stack (queue, alarms, Lambda) with SAM and points the S3 notification.             |
-| `build-chomper.yml`  | push to `main` touching `apps/chomper/**`, `packages/db/**`, the lockfile, or itself                   | Builds the Chomper worker image and, once enabled, deploys it via the self-hosted runner.                  |
-| `typecheck.yml`      | push to `main` **and every pull request**                                                              | Runs `pnpm typecheck` across the monorepo. The only workflow that gates PRs.                               |
+| Workflow             | Triggers on                                                                              | What it does                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `build-web.yml`      | push to `main` touching `apps/web/**`, `packages/db/**`, the lockfile, or itself         | Builds the Docker image, pushes to GHCR, deploys via self-hosted runner. **The subject of this document.** |
+| `deploy-chomper.yml` | push to `main` touching `apps/chomper/template.yaml` or itself; also `workflow_dispatch` | Deploys the Chomper AWS stack (queue, alarms) and points the S3 notification at the queue.                 |
+| `build-chomper.yml`  | push to `main` touching `apps/chomper/**`, `packages/db/**`, the lockfile, or itself     | Builds the Chomper worker image and, once enabled, deploys it via the self-hosted runner.                  |
+| `typecheck.yml`      | push to `main` **and every pull request**                                                | Runs `pnpm typecheck` across the monorepo. The only workflow that gates PRs.                               |
 
-Note that `packages/db/**` triggers **all** of these deploys — a schema change ships to the web app, the Lambda and the worker independently, and they are not sequenced relative to each other.
+Note that `packages/db/**` triggers **all** of these deploys — a schema change ships to the web app and the worker independently, and they are not sequenced relative to each other.
 
 ---
 
@@ -38,9 +38,9 @@ Three runtimes are involved:
 ```
 .
 ├── apps/
-│   ├── chomper/                  # TDF ingestion worker and Lambda
+│   ├── chomper/                  # TDF ingestion worker
 │   │   ├── Dockerfile            # the worker image
-│   │   ├── template.yaml         # SAM template — queue, alarms, Lambda
+│   │   ├── template.yaml         # CloudFormation — queue, alarms
 │   │   └── README.md             # worker setup, cutover, secrets, manual deploy
 │   └── web/                      # the Next.js app
 │       ├── Dockerfile
@@ -117,13 +117,13 @@ Lives at the repo root, not under `apps/web/`, because the build context is the 
 
 ### `packages/db/src/client.ts` — lazy DB handle
 
-The same `client.ts` serves both the web app (DATABASE_URL from env) and Chomper (DATABASE_URL resolved from AWS Secrets Manager, asynchronously). Three exports:
+The same `client.ts` serves the web app, the Chomper worker and the scripts, all from `DATABASE_URL`. Three exports:
 
 - **`db`** — a Proxy that builds the underlying drizzle instance on first property access from `process.env.DATABASE_URL`. Nothing runs at module import. The web app's query code uses this directly: `db.select(...)`, `db.transaction(...)`, etc.
 - **`getDb()`** — synchronous function that returns the _concrete_ drizzle instance (not the Proxy). Required wherever a library type-inspects the database object — specifically the Auth.js Drizzle adapter, which fails with "Unsupported database type" if handed the Proxy because it isn't a real `PgDatabase`.
-- **`initDb()`** — async; resolves the URL from env _or_ AWS Secrets Manager and populates the shared singleton. Chomper calls `await initDb()` once at the start of its Lambda handler, before any DB access. The `@aws-sdk/client-secrets-manager` import is a dynamic `import()` inside the secret-resolution path, so it never enters the web app's module graph.
+- **`initDb()`** — builds the shared singleton up front and fails fast if `DATABASE_URL` is unset. The Chomper worker and the scripts call `await initDb()` once at startup.
 
-The shared singleton is held on `globalThis` so it survives HMR in dev and is reused across warm Lambda invocations.
+The shared singleton is held on `globalThis` so it survives HMR in dev.
 
 ### `packages/db/src/index.ts` — barrel
 
@@ -333,18 +333,17 @@ Same shape as `build-web.yml`: builds `apps/chomper/Dockerfile` to `ghcr.io/zman
 
 A completely separate deployment path from the web app: **AWS, not the production host**, and no self-hosted runner. Everything runs on GitHub-hosted Ubuntu.
 
-Triggered by a push to `main` touching `apps/chomper/**`, `packages/db/**`, or `pnpm-lock.yaml` — plus `workflow_dispatch` for a manual redeploy. The job:
+Triggered by a push to `main` touching `apps/chomper/template.yaml` or the workflow itself — plus `workflow_dispatch` for a manual redeploy. No code ships from here: the worker that drains the queue ships from `build-chomper.yml`. The job:
 
-1. Installs deps and runs `pnpm --filter chomper build` (esbuild bundles `src/index.ts` to a single ESM file).
-2. Configures AWS credentials from repository secrets.
-3. `sam validate` → `sam package` → `sam deploy` against `apps/chomper/template.yaml`, stack name `lfstats-chomper`, with `CAPABILITY_IAM`.
-4. **Re-applies the S3 bucket notification** — puts a `s3:ObjectCreated:*` notification on the incoming bucket, filtered to a `.tdf` suffix. The destination is the SQS queue when the repository variable `CHOMPER_INGEST_TARGET` is `sqs`, and the Lambda otherwise. This is what actually wires uploads to chomper.
+1. Configures AWS credentials from repository secrets.
+2. Validates `apps/chomper/template.yaml` and deploys it with `aws cloudformation deploy`, stack name `lfstats-chomper`, with `CAPABILITY_IAM`.
+3. **Re-applies the S3 bucket notification** — puts a `s3:ObjectCreated:*` notification on the incoming bucket, filtered to a `.tdf` suffix, pointing at the SQS queue. This is what actually wires uploads to chomper.
 
-> Step 4 runs on **every** deploy, not just the first. The notification lives on the bucket rather than in the SAM stack, so it would otherwise be lost or drift out of sync with a redeployed function.
+> Step 3 runs on **every** deploy, not just the first. The notification lives on the bucket rather than in the stack, so it would otherwise be lost or drift.
 
-Deploy parameters and credentials come entirely from repository secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `SAM_DEPLOYMENT_BUCKET`, `INCOMING_BUCKET`, `ARCHIVE_BUCKET`, `ERROR_BUCKET`, `DB_SECRET_ARN`, `ERROR_EMAIL_ADDRESS`.
+Deploy parameters and credentials come entirely from repository secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `INCOMING_BUCKET`, `ERROR_EMAIL_ADDRESS`.
 
-See [`apps/chomper/README.md`](../apps/chomper/README.md) for the Secrets Manager secret shape the Lambda reads at runtime, how local development differs, and how to deploy manually. See [chomper-design.md](chomper-design.md) for what the Lambda actually does with a file.
+See [`apps/chomper/README.md`](../apps/chomper/README.md) for the worker's setup and IAM policy, and [chomper-design.md](chomper-design.md) for what it does with a file.
 
 ### `.github/workflows/typecheck.yml` — the PR gate
 

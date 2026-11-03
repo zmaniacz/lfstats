@@ -12,8 +12,8 @@
 
 const DEFAULT_WEBHOOK_URL = "https://www.ebomike.com/lfserver/new_game";
 // Deliberately short. This is a fire-and-forget notification to a third-party
-// host, fired last in a Lambda with a 120s budget — a receiver that hasn't
-// answered in 5s isn't going to answer usefully, and we've already decided to
+// host, fired last while the worker holds up the next file — a receiver that
+// hasn't answered in 5s isn't going to answer usefully, and we've already decided to
 // swallow the failure.
 const TIMEOUT_MS = 5_000;
 
