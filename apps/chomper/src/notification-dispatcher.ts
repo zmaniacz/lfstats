@@ -13,10 +13,15 @@ import {
   claimDueNotifications,
   deletePushSubscriptions,
   getCompetitionById,
+  getCompetitionMatchResults,
   getCompetitionUnassignedGamesForAdmin,
+  getLbCompetitionMatchResults,
+  getMatchGameRecipients,
   getPushRecipient,
   getUnassignedGameRecipients,
+  lbMatchGameMessage,
   markPushDelivered,
+  matchGameMessage,
   pruneNotificationOutbox,
   pushFailureAction,
   recordNotificationDelivery,
@@ -34,6 +39,7 @@ const SEND_TIMEOUT_MS = 10_000;
 const RETRY_DELAY_MS = 2_000;
 // The alert is about work waiting now, so it isn't worth delivering much later than this.
 const UNASSIGNED_TTL_SECONDS = 6 * 3_600;
+const MATCH_TTL_SECONDS = 3_600;
 
 type SendResult = "sent" | "gone" | "failed";
 
@@ -122,6 +128,83 @@ async function dispatchUnassignedGames(competitionId: string, outboxIds: string[
   );
 }
 
+type OutboxRow = Awaited<ReturnType<typeof claimDueNotifications>>[number];
+
+async function sm5MatchMessage(
+  competition: { id: string; name: string; slug: string },
+  row: OutboxRow,
+): Promise<NotificationMessage | null> {
+  const results = await getCompetitionMatchResults(competition.id, undefined, "all");
+  const match = results.find((m) => m.matchId === row.payload.matchId);
+  const game = match?.games.find((g) => g.gameId === row.payload.gameId);
+  // Gone means an admin undid the assignment, or excluded the game, inside the delay.
+  if (!match || !game) return null;
+
+  const sideName = (name: string, partners: { name: string }[]) =>
+    [name, ...partners.map((p) => p.name)].join(" & ");
+  return matchGameMessage({
+    competitionName: competition.name,
+    competitionSlug: competition.slug,
+    roundName: match.roundName,
+    matchId: match.matchId,
+    gameId: game.gameId,
+    gameNumber: game.gameNumber,
+    gameSlug: game.gameSlug,
+    forfeit: row.payload.forfeit === true,
+    team1Name: sideName(match.team1Name, match.team1Partners),
+    team2Name: sideName(match.team2Name, match.team2Partners),
+    team1Score: game.team1Score,
+    team2Score: game.team2Score,
+    team1Result: game.team1Result,
+    team2Result: game.team2Result,
+    team1Points: match.team1TotalPoints,
+    team2Points: match.team2TotalPoints,
+    matchWinner: match.matchWinner,
+  });
+}
+
+async function lbMatchMessage(
+  competition: { id: string; name: string },
+  row: OutboxRow,
+): Promise<NotificationMessage | null> {
+  const [match] = await getLbCompetitionMatchResults(competition.id, {
+    matchId: row.payload.matchId,
+  });
+  const halves = match?.halves.filter((h) => !h.excluded) ?? [];
+  if (!match || match.lbMatchId !== row.payload.lbMatchId || halves.length === 0) return null;
+
+  return lbMatchGameMessage({
+    competitionName: competition.name,
+    roundName: match.roundName,
+    matchId: match.matchId,
+    lbMatchId: match.lbMatchId,
+    team1Name: match.team1?.name ?? "TBD",
+    team2Name: match.team2?.name ?? "TBD",
+    halves,
+    team1Goals: match.outcome.team1Goals,
+    team2Goals: match.outcome.team2Goals,
+    winner: match.outcome.winner,
+  });
+}
+
+async function dispatchMatchGame(row: OutboxRow): Promise<void> {
+  const competition = row.competitionId ? await getCompetitionById(row.competitionId) : null;
+  if (competition?.state !== "active") {
+    await skipNotifications([row.id], "competition not active");
+    return;
+  }
+
+  const message = row.payload.lbMatchId
+    ? await lbMatchMessage(competition, row)
+    : await sm5MatchMessage(competition, row);
+  if (!message) {
+    await skipNotifications([row.id], "no longer assigned");
+    return;
+  }
+
+  await deliver([row.id], await getMatchGameRecipients(competition.id), message, MATCH_TTL_SECONDS);
+}
+
 async function dispatchDue(): Promise<void> {
   const due = await claimDueNotifications();
 
@@ -139,6 +222,8 @@ async function dispatchDue(): Promise<void> {
       const recipient = await getPushRecipient(row.payload.subscriptionId ?? "");
       if (recipient) await deliver([row.id], [recipient], TEST_NOTIFICATION_MESSAGE, 60);
       else await skipNotifications([row.id], "subscription gone");
+    } else if (row.kind === "match_game") {
+      await dispatchMatchGame(row);
     } else if (row.competitionId) {
       const ids = unassignedByCompetition.get(row.competitionId) ?? [];
       unassignedByCompetition.set(row.competitionId, [...ids, row.id]);

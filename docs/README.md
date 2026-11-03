@@ -82,7 +82,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 - **[Highlights_Spec.md](Highlights_Spec.md)** — automated game highlights: category
   rules, detectors, the `sm5_game_highlight` table, and replay deep links.
 - **[Notifications_Spec.md](Notifications_Spec.md)** — mobile push notifications: admin alerts for
-  unassigned games (built), following an event (planned), the outbox and the dispatcher.
+  unassigned games, following an event from the standings, the outbox and the dispatcher.
 - **[Role_Spec.md](Role_Spec.md)** — the `superAdmin` / `admin` / `centerAdmin` / `uploader`
   hierarchy, center scoping, and the permission matrix.
 

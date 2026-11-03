@@ -9,34 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import {
+  getDevicePushState,
+  getDeviceSubscription,
+  subscribeDevice,
+  type DevicePushState,
+  type PushSubscriptionInput,
+} from "@/lib/push-client";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
-type SubscriptionInput = { endpoint: string; p256dh: string; auth: string };
 
-type DeviceState = "checking" | "unsupported" | "install" | "denied" | "ready";
-
-function urlBase64ToUint8Array(base64: string) {
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-  const raw = window.atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(raw, (char) => char.charCodeAt(0));
-}
-
-function isIos(): boolean {
-  // iPadOS reports itself as a Mac, so touch support tells the two apart.
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1)
-  );
-}
-
-function isInstalled(): boolean {
-  return window.matchMedia("(display-mode: standalone)").matches;
-}
-
-async function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
-  await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
-  return navigator.serviceWorker.ready;
-}
+type DeviceState = DevicePushState | "checking";
 
 export function UnassignedGamesToggle({
   vapidPublicKey,
@@ -47,8 +30,9 @@ export function UnassignedGamesToggle({
 }: {
   vapidPublicKey: string;
   getEnabled: (endpoint: string) => Promise<boolean>;
-  enable: (subscription: SubscriptionInput) => Promise<ActionResult>;
-  disable: (endpoint: string) => Promise<void>;
+  enable: (subscription: PushSubscriptionInput) => Promise<ActionResult>;
+  // Resolves true when the server deleted the subscription, so the browser should drop it too.
+  disable: (endpoint: string) => Promise<boolean>;
   sendTest: (endpoint: string) => Promise<ActionResult>;
 }) {
   const [device, setDevice] = useState<DeviceState>("checking");
@@ -58,49 +42,28 @@ export function UnassignedGamesToggle({
 
   useEffect(() => {
     async function check() {
-      if (isIos() && !isInstalled()) return setDevice("install");
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        return setDevice("unsupported");
+      const state = getDevicePushState();
+      if (state === "ready") {
+        const subscription = await getDeviceSubscription();
+        if (subscription) setEnabled(await getEnabled(subscription.endpoint));
       }
-      if (Notification.permission === "denied") return setDevice("denied");
-      const registration = await registerServiceWorker();
-      const subscription = await registration.pushManager.getSubscription();
-      if (subscription) setEnabled(await getEnabled(subscription.endpoint));
-      setDevice("ready");
+      setDevice(state);
     }
     check().catch(() => setError("Couldn't check this device. Reload to try again."));
   }, [getEnabled]);
 
   async function turnOn() {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      if (permission === "denied") setDevice("denied");
-      return;
-    }
-    const registration = await registerServiceWorker();
-    const subscription =
-      (await registration.pushManager.getSubscription()) ??
-      (await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      }));
-    const keys = subscription.toJSON().keys;
-    const result = await enable({
-      endpoint: subscription.endpoint,
-      p256dh: keys?.p256dh ?? "",
-      auth: keys?.auth ?? "",
-    });
+    const subscription = await subscribeDevice(vapidPublicKey);
+    if (subscription === "denied") return setDevice("denied");
+    if (subscription === "dismissed") return;
+    const result = await enable(subscription);
     if (result.ok) setEnabled(true);
     else setError(result.error);
   }
 
   async function turnOff() {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    if (subscription) {
-      await disable(subscription.endpoint);
-      await subscription.unsubscribe();
-    }
+    const subscription = await getDeviceSubscription();
+    if (subscription && (await disable(subscription.endpoint))) await subscription.unsubscribe();
     setEnabled(false);
   }
 
@@ -120,8 +83,7 @@ export function UnassignedGamesToggle({
     setIsPending(true);
     setError(null);
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const subscription = await getDeviceSubscription();
       const result = subscription
         ? await sendTest(subscription.endpoint)
         : ({ ok: false, error: "This device isn't subscribed any more." } as const);

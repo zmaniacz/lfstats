@@ -53,7 +53,7 @@ The specs live in /docs — see [docs/README.md](docs/README.md) for the full in
 - Query_API_Spec.md — the analytics query API (`/api/query/v1`) and MCP server (`/mcp`)
 - Query_API_Eval.md — the MCP eval: 30 real questions, checks and findings
 - Highlights_Spec.md — automated game highlights: rules, detectors and replay deep links
-- Notifications_Spec.md — mobile push notifications: admin alerts (built) and event following
+- Notifications_Spec.md — mobile push notifications: admin alerts and event following
 - Role_Spec.md — the four-level role hierarchy and permission matrix
 - build-and-deploy.md — web app Docker/GHCR build and self-hosted deploy
 

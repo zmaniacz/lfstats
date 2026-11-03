@@ -133,6 +133,9 @@ export default async function StandingsPage({
 
   const contentKey = [activeComp.slug, activeRoundId].join("|");
   const activeTab = sp.tab === "finals" && finalsRounds.length > 0 ? "finals" : "standings";
+  // Everything from here on has matches, and a finished competition has no more games to announce.
+  const followCompetitionId =
+    activeComp.state === "active" || activeComp.state === "upcoming" ? activeId : undefined;
 
   // Laserball: a tournament only, so always rounds and matches, but scored on match results and
   // goals — see LbStandingsContent.
@@ -140,7 +143,12 @@ export default async function StandingsPage({
     return (
       <div className="p-6 space-y-6">
         {isAdmin && <UnassignedGamesBlock games={unassignedGames} />}
-        <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
+        <StandingsHeader
+          ctx={ctx}
+          competitionSlug={activeComp.slug}
+          isAdmin={isAdmin}
+          followCompetitionId={followCompetitionId}
+        />
         <StandingsTabs
           defaultTab={activeTab}
           hasFinals={finalsRounds.length > 0}
@@ -186,7 +194,12 @@ export default async function StandingsPage({
   return (
     <div className="p-6 space-y-6">
       {isAdmin && <UnassignedGamesBlock games={unassignedGames} />}
-      <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
+      <StandingsHeader
+        ctx={ctx}
+        competitionSlug={activeComp.slug}
+        isAdmin={isAdmin}
+        followCompetitionId={followCompetitionId}
+      />
 
       <StandingsTabs
         defaultTab={activeTab}

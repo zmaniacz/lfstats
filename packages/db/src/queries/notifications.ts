@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, lte, notExists, or, sql } from "drizzle-orm";
 import { db } from "../client";
 import {
   competition,
+  competitionMatch,
   notificationOutbox,
   notificationPreference,
   pushSubscription,
@@ -18,6 +19,9 @@ const STALE_AFTER = sql`interval '1 hour'`;
 const OUTBOX_RETENTION = sql`interval '30 days'`;
 
 export type PushSubscriptionKeys = { endpoint: string; p256dh: string; auth: string };
+
+/** A device can follow this many competitions. Keeps an anonymous caller from growing a row set. */
+const MAX_FOLLOWS_PER_DEVICE = 50;
 
 /** Opting in claims the device for this user, so a shared device follows whoever opted in last. */
 export async function enableUnassignedGames(
@@ -40,11 +44,131 @@ export async function enableUnassignedGames(
   });
 }
 
-/** Unassigned games is the only preference so far, so the subscription goes with it. */
-export async function disableUnassignedGames(endpoint: string, userId: string): Promise<void> {
-  await db
+/** Deletes the subscription if nothing uses it any more, and says whether it did. */
+async function deleteIfUnused(subscriptionId: string): Promise<boolean> {
+  const deleted = await db
     .delete(pushSubscription)
+    .where(
+      and(
+        eq(pushSubscription.id, subscriptionId),
+        notExists(
+          db
+            .select({ id: notificationPreference.id })
+            .from(notificationPreference)
+            .where(eq(notificationPreference.subscriptionId, subscriptionId)),
+        ),
+      ),
+    )
+    .returning({ id: pushSubscription.id });
+  return deleted.length > 0;
+}
+
+/**
+ * Returns whether the subscription was deleted, in which case the browser should unsubscribe.
+ * A device that still follows competitions keeps its subscription but stops belonging to the user.
+ */
+export async function disableUnassignedGames(endpoint: string, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: pushSubscription.id })
+    .from(pushSubscription)
     .where(and(eq(pushSubscription.endpoint, endpoint), eq(pushSubscription.userId, userId)));
+  if (!row) return false;
+
+  await db
+    .delete(notificationPreference)
+    .where(
+      and(
+        eq(notificationPreference.subscriptionId, row.id),
+        eq(notificationPreference.kind, "unassigned_game"),
+      ),
+    );
+  if (await deleteIfUnused(row.id)) return true;
+  await db.update(pushSubscription).set({ userId: null }).where(eq(pushSubscription.id, row.id));
+  return false;
+}
+
+export type FollowCompetitionResult = "ok" | "unavailable" | "limit";
+
+/** Following never touches user_id, so it can't take a device away from an admin. */
+export async function followCompetition(
+  subscription: PushSubscriptionKeys,
+  competitionId: string,
+): Promise<FollowCompetitionResult> {
+  const [comp] = await db
+    .select({ state: competition.state, format: competition.format })
+    .from(competition)
+    .where(eq(competition.id, competitionId));
+  if (!comp || !hasMatchStructure(comp.format)) return "unavailable";
+  if (comp.state !== "active" && comp.state !== "upcoming") return "unavailable";
+
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(pushSubscription)
+      .values(subscription)
+      .onConflictDoUpdate({
+        target: pushSubscription.endpoint,
+        set: { p256dh: subscription.p256dh, auth: subscription.auth },
+      })
+      .returning({ id: pushSubscription.id });
+
+    const [{ follows }] = await tx
+      .select({ follows: count() })
+      .from(notificationPreference)
+      .where(
+        and(
+          eq(notificationPreference.subscriptionId, row.id),
+          eq(notificationPreference.kind, "match_game"),
+        ),
+      );
+    if (follows >= MAX_FOLLOWS_PER_DEVICE) return "limit";
+
+    await tx
+      .insert(notificationPreference)
+      .values({ subscriptionId: row.id, kind: "match_game", competitionId })
+      .onConflictDoNothing();
+    return "ok";
+  });
+}
+
+/** Returns whether the subscription was deleted, in which case the browser should unsubscribe. */
+export async function unfollowCompetition(
+  endpoint: string,
+  competitionId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: pushSubscription.id })
+    .from(pushSubscription)
+    .where(eq(pushSubscription.endpoint, endpoint));
+  if (!row) return false;
+
+  await db
+    .delete(notificationPreference)
+    .where(
+      and(
+        eq(notificationPreference.subscriptionId, row.id),
+        eq(notificationPreference.kind, "match_game"),
+        eq(notificationPreference.competitionId, competitionId),
+      ),
+    );
+  return deleteIfUnused(row.id);
+}
+
+export async function isFollowingCompetition(
+  endpoint: string,
+  competitionId: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: notificationPreference.id })
+    .from(notificationPreference)
+    .innerJoin(pushSubscription, eq(pushSubscription.id, notificationPreference.subscriptionId))
+    .where(
+      and(
+        eq(notificationPreference.kind, "match_game"),
+        eq(notificationPreference.competitionId, competitionId),
+        eq(pushSubscription.endpoint, endpoint),
+      ),
+    );
+  return rows.length > 0;
 }
 
 export async function isUnassignedGamesEnabled(endpoint: string, userId: string): Promise<boolean> {
@@ -83,6 +207,39 @@ export async function enqueueUnassignedGame(gameId: string, competitionId: strin
       sendAfter: SEND_DELAY,
     })
     .onConflictDoNothing();
+}
+
+/**
+ * Queues the alert for a game or Laserball match assigned to a competition match. Only an active
+ * competition sends one, which also keeps the legacy migration scripts quiet. Never throws: the
+ * assignment is already committed, so a notification problem must not look like it failed.
+ */
+export async function enqueueMatchGame(
+  matchId: string,
+  assigned: { gameId: string; forfeit?: boolean } | { lbMatchId: string },
+): Promise<void> {
+  try {
+    const [row] = await db
+      .select({ competitionId: competition.id, state: competition.state })
+      .from(competitionMatch)
+      .innerJoin(competition, eq(competition.id, competitionMatch.competitionId))
+      .where(eq(competitionMatch.id, matchId));
+    if (row?.state !== "active") return;
+
+    const assignedId = "gameId" in assigned ? assigned.gameId : assigned.lbMatchId;
+    await db
+      .insert(notificationOutbox)
+      .values({
+        kind: "match_game",
+        competitionId: row.competitionId,
+        dedupeKey: `match_game:${matchId}:${assignedId}`,
+        payload: { matchId, ...assigned },
+        sendAfter: SEND_DELAY,
+      })
+      .onConflictDoNothing();
+  } catch (err) {
+    console.warn(`Match notification failed for ${matchId}: ${(err as Error).message}`);
+  }
 }
 
 /** Returns false when the device is not subscribed for this user. */
@@ -168,6 +325,19 @@ export async function getUnassignedGameRecipients(
             ? and(eq(userRole.role, "centerAdmin"), eq(userRole.centerId, hostCenterId))
             : undefined,
         ),
+      ),
+    );
+}
+
+export async function getMatchGameRecipients(competitionId: string): Promise<PushRecipient[]> {
+  return db
+    .select(subscriptionColumns)
+    .from(notificationPreference)
+    .innerJoin(pushSubscription, eq(pushSubscription.id, notificationPreference.subscriptionId))
+    .where(
+      and(
+        eq(notificationPreference.kind, "match_game"),
+        eq(notificationPreference.competitionId, competitionId),
       ),
     );
 }
