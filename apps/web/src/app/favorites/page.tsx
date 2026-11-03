@@ -120,7 +120,10 @@ export default async function FavoritesPage() {
               {favoritePlayers.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
-                    <Link href={`/players/${p.iplId}`} className="hover:underline font-medium">
+                    <Link
+                      href={`/players/${p.iplId.replace(/^#/, "")}`}
+                      className="hover:underline font-medium"
+                    >
                       {p.currentCallsign}
                     </Link>
                   </TableCell>
