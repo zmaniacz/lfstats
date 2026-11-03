@@ -300,7 +300,10 @@ export function HeadToHeadTable({ rows }: { rows: HeadToHeadRow[] }) {
           {pageRows.map((row) => (
             <TableRow key={row.targetPlayerId}>
               <TableCell>
-                <Link href={`/players/${row.targetIplId}`} className="hover:underline font-medium">
+                <Link
+                  href={`/players/${row.targetIplId.replace(/^#/, "")}`}
+                  className="hover:underline font-medium"
+                >
                   {row.targetCallsign}
                 </Link>
               </TableCell>
