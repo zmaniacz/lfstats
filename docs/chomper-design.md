@@ -13,7 +13,6 @@ Chomper ingests **two game modes** from the same package: SM5 (mission type 5) a
 The primary execution modes:
 
 - **SQS worker** (`src/worker.ts`) — long-running container beside Postgres; pulls S3 upload events from a queue, one file at a time
-- **Lambda handler** (`src/index.ts`) — triggered directly by S3 upload events; processes one file per invocation. Runs the same pipeline as the worker and is retired once uploads are cut over (see [`apps/chomper/README.md`](../apps/chomper/README.md))
 - **Bulk ingest CLI** (`src/bulk-ingest.ts`) — manually invoked tool for re-processing files from the archive bucket
 
 Both share the same core pipeline: parse → simulate → validate → ingest. Validation differs by mode — SM5 runs a stat-by-stat consistency check against line type 7, Laserball asserts a goals↔score invariant because it has no line type 7.
@@ -29,7 +28,6 @@ apps/chomper/
   src/
     process-file.ts       ← The ingest pipeline for one file; routes on mission type
     worker.ts             ← SQS worker entry point
-    index.ts              ← Lambda entry point
     parser.ts             ← Phase 1: TDF file parsing (shared by both modes)
     simulator.ts          ← Phase 2 (SM5): state machine simulation and stat computation
     ingester.ts           ← Phase 3 (SM5): database writes
@@ -67,7 +65,7 @@ All database query functions used by Chomper live in `packages/db/src/queries/` 
 
 ## Ingest Flow (`process-file.ts`)
 
-The worker and the Lambda both take an S3 event, extract the bucket name and key, and run this pipeline:
+The worker takes each S3 event from the queue, extracts the bucket name and key, and runs this pipeline:
 
 Steps 1–6b are **shared by both game modes**; the pipeline then branches on mission type.
 
@@ -116,7 +114,7 @@ Step 12 is the exception: `notifyNewGame` (`webhook.ts`) never throws. By the ti
 
 > The step numbers match the `// N.` comments in `process-file.ts`, which are non-contiguous for historical reasons (`4b`, `6a`, `6b`).
 
-Redelivery of the same event is idempotent: `processFile` checks `findChomperJobByLambdaRequestId` on startup and skips if already completed. Despite the column name, the ID is whatever the entry point supplies: the Lambda request ID, or `{SQS message ID}/{record index}` from the worker.
+Redelivery of the same event is idempotent: `processFile` checks `findChomperJobByLambdaRequestId` on startup and skips if already completed. Despite the column name, the worker supplies `{SQS message ID}/{record index}`. Rows from before November 2026 hold the request ID of the Lambda that Chomper used to run as.
 
 A failure that has been recorded and moved to the error bucket resolves rather than rejects, because retrying it would achieve nothing. `processFile` rejects only when it could not record an outcome, which is the worker's signal to leave the message on the queue.
 
@@ -138,7 +136,7 @@ The archive check in step 5 is what makes redelivery safe. If the process dies a
 
 ## Environment Variables
 
-### Worker and Lambda (`process-file.ts`)
+### Worker (`process-file.ts`)
 
 The worker's full list, including `CHOMPER_QUEUE_URL`, is in [`apps/chomper/README.md`](../apps/chomper/README.md#environment).
 
@@ -148,7 +146,7 @@ The worker's full list, including `CHOMPER_QUEUE_URL`, is in [`apps/chomper/READ
 | `ARCHIVE_BUCKET`  | S3 bucket for successfully processed files |
 | `ERROR_BUCKET`    | S3 bucket for failed or rejected files     |
 
-All three are required — both entry points throw immediately on startup if any is absent.
+All three are required — the worker throws immediately on startup if any is absent.
 
 | Optional variable      | Description                                                                                                                     |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -805,7 +803,7 @@ Shared identity upserts come from `packages/db/src/queries/chomper.ts`; lb-speci
 
 Laserball TDFs have **no line type 7**, so there is no SM5-style stat-by-stat consistency check. Validation instead uses:
 
-- **Goal invariant** — per-team goal totals must equal per-team line-5 score-event totals. Asserted in the worker, Lambda and bulk paths, reported by the CLI and test suite. Across the 207-game sample corpus this holds for every game.
+- **Goal invariant** — per-team goal totals must equal per-team line-5 score-event totals. Asserted in the worker and bulk paths, reported by the CLI and test suite. Across the 207-game sample corpus this holds for every game.
 - **Graceful non-TDF handling** — downloaded HTML 404 pages are detected and skipped, not crashed.
 - **Parity spot-checks** — hand-comparison of core stats (goals, assists, steals, blocks, clears, possession time) against the raw events. The PHP remains the reference for the heuristic stats, which have no file-based ground truth.
 
@@ -887,7 +885,7 @@ Runs Phase 1 + Phase 2 for one file and writes its `.debug.json`, dispatching on
 
 > The `pnpm ingest` root script forwards its argument to the chomper package, but path handling can be unreliable on Windows. Running `pnpm --filter chomper run ingest` from the repo root with a relative path (e.g. `../../demo_files/foo.tdf`), or from `apps/chomper` directly, is more reliable.
 
-**Testing Phase 3.** There is no single-file SM5 tool that exercises database ingest — an SM5 file must go through `processFile` (the worker or the Lambda) or a bulk-ingest run against S3. Laserball has a local escape hatch in `ingest-local-lb.ts` (see [Re-ingest and Maintenance CLIs](#re-ingest-and-maintenance-clis)).
+**Testing Phase 3.** There is no single-file SM5 tool that exercises database ingest — an SM5 file must go through `processFile` (the worker) or a bulk-ingest run against S3. Laserball has a local escape hatch in `ingest-local-lb.ts` (see [Re-ingest and Maintenance CLIs](#re-ingest-and-maintenance-clis)).
 
 ### Adding test files
 

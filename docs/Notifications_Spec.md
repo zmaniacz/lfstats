@@ -155,15 +155,14 @@ Hook the `packages/db` query functions, because each has more than one caller:
 The enqueue helper checks `state = 'active'` itself. The SM5 game page action does not check state,
 and the legacy migration scripts call `assignGameToMatch`, so this check is what keeps them quiet.
 
-For ingest, the enqueue is step 13 of `processFile`. Only the worker and Lambda call `processFile`,
+For ingest, the enqueue is step 13 of `processFile`. Only the worker calls `processFile`,
 so bulk ingests and re-ingests never fire.
 
 ### Dispatcher
 
 The dispatcher is a second async loop inside `apps/chomper/src/worker.ts`, polling every 5 seconds.
 It must run beside the SQS loop, not inside it, because that loop blocks on a 20-second long poll
-and on each file. It stops on the same shutdown signal. It runs in the worker only, never in the
-Lambda.
+and on each file. It stops on the same shutdown signal.
 
 For each due row (`sent_at is null and send_after <= now()`):
 

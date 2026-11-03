@@ -1,12 +1,14 @@
 name: Deploy Chomper
 
+# The AWS side of ingestion: the SQS queue, dead-letter queue and alarms. The
+# worker that drains the queue runs on the production host and ships from
+# build-chomper.yml.
 on:
   push:
     branches: [main]
     paths:
-      - "apps/chomper/**"
-      - "packages/db/**"
-      - "pnpm-lock.yaml"
+      - "apps/chomper/template.yaml"
+      - ".github/workflows/deploy-chomper.yml"
   workflow_dispatch:
 
 jobs:
@@ -18,21 +20,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build Chomper
-        run: pnpm --filter chomper build
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -40,42 +27,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup AWS SAM
-        uses: aws-actions/setup-sam@v3
-
-      - name: Validate SAM template
-        run: sam validate --template apps/chomper/template.yaml
-
-      - name: Package SAM template
-        run: sam package --template-file apps/chomper/template.yaml --output-template-file apps/chomper/packaged.yaml --s3-bucket ${{ secrets.SAM_DEPLOYMENT_BUCKET }}
+      - name: Validate template
+        run: aws cloudformation validate-template --template-body file://apps/chomper/template.yaml > /dev/null
 
       - name: Deploy Chomper stack
         run: |
-          sam deploy --template-file apps/chomper/packaged.yaml \
+          aws cloudformation deploy --template-file apps/chomper/template.yaml \
             --stack-name lfstats-chomper \
             --capabilities CAPABILITY_IAM \
-            --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
               IncomingBucket=${{ secrets.INCOMING_BUCKET }} \
-              ArchiveBucket=${{ secrets.ARCHIVE_BUCKET }} \
-              ErrorBucket=${{ secrets.ERROR_BUCKET }} \
-              DbSecretArn=${{ secrets.DB_SECRET_ARN }} \
               ErrorEmailAddress=${{ secrets.ERROR_EMAIL_ADDRESS }}
 
-      # Uploads go to the Lambda until the repository variable CHOMPER_INGEST_TARGET
-      # is set to "sqs"; an event can only have one destination. See
-      # apps/chomper/README.md § Cutover.
+      # The notification lives on the bucket, not in the stack, so it is
+      # re-applied on every deploy to keep it pointed at the queue.
       - name: Configure S3 bucket notification
         run: |
-          FILTER='"Events": ["s3:ObjectCreated:*"], "Filter": {"Key": {"FilterRules": [{"Name": "suffix", "Value": ".tdf"}]}}'
-          if [ "${{ vars.CHOMPER_INGEST_TARGET }}" = "sqs" ]; then
-            QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name lfstats-chomper --query "Stacks[0].Outputs[?OutputKey=='ChomperQueueArn'].OutputValue" --output text)
-            CONFIG="{\"QueueConfigurations\": [{\"QueueArn\": \"$QUEUE_ARN\", $FILTER}]}"
-          else
-            FUNCTION_ARN=$(aws lambda get-function --function-name lfstats-chomper --query 'Configuration.FunctionArn' --output text)
-            CONFIG="{\"LambdaFunctionConfigurations\": [{\"LambdaFunctionArn\": \"$FUNCTION_ARN\", $FILTER}]}"
-          fi
+          QUEUE_ARN=$(aws cloudformation describe-stacks --stack-name lfstats-chomper --query "Stacks[0].Outputs[?OutputKey=='ChomperQueueArn'].OutputValue" --output text)
           aws s3api put-bucket-notification-configuration \
             --bucket ${{ secrets.INCOMING_BUCKET }} \
-            --notification-configuration "$CONFIG"
+            --notification-configuration "{\"QueueConfigurations\": [{\"QueueArn\": \"$QUEUE_ARN\", \"Events\": [\"s3:ObjectCreated:*\"], \"Filter\": {\"Key\": {\"FilterRules\": [{\"Name\": \"suffix\", \"Value\": \".tdf\"}]}}}]}"
