@@ -463,6 +463,13 @@
       "when": 1793662349100,
       "tag": "0065_majestic_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1793664334940,
+      "tag": "0066_tranquil_reaper",
+      "breakpoints": true
     }
   ]
 }

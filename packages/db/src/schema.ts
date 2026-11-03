@@ -1966,7 +1966,11 @@ export const gameVideo = pgTable(
 // Push Notifications (docs/Notifications_Spec.md)
 // ---------------------------------------------------------------------------
 
-export const notificationKindEnum = pgEnum("notification_kind", ["unassigned_game", "test"]);
+export const notificationKindEnum = pgEnum("notification_kind", [
+  "unassigned_game",
+  "test",
+  "match_game",
+]);
 
 /** One browser on one device. The endpoint is a bearer secret: never log it. */
 export const pushSubscription = pgTable("push_subscription", {
@@ -1987,7 +1991,7 @@ export const notificationPreference = pgTable(
       .notNull()
       .references(() => pushSubscription.id, { onDelete: "cascade" }),
     kind: notificationKindEnum("kind").notNull(),
-    // Null for unassigned_game, whose scope comes from the user's roles.
+    // Required for match_game. Null for unassigned_game, whose scope comes from the user's roles.
     competitionId: uuid("competition_id").references(() => competition.id, { onDelete: "cascade" }),
   },
   (t) => [unique().on(t.subscriptionId, t.kind, t.competitionId).nullsNotDistinct()],
@@ -2006,7 +2010,15 @@ export const notificationOutbox = pgTable(
     competitionId: uuid("competition_id").references(() => competition.id, { onDelete: "cascade" }),
     dedupeKey: text("dedupe_key").notNull().unique(),
     // Ids only: the message text is built at send time.
-    payload: jsonb("payload").$type<{ gameId?: string; subscriptionId?: string }>().notNull(),
+    payload: jsonb("payload")
+      .$type<{
+        gameId?: string;
+        subscriptionId?: string;
+        matchId?: string;
+        lbMatchId?: string;
+        forfeit?: boolean;
+      }>()
+      .notNull(),
     sendAfter: timestamp("send_after").notNull().defaultNow(),
     sentAt: timestamp("sent_at"),
     skipReason: text("skip_reason"),

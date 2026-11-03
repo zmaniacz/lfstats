@@ -42,6 +42,7 @@ import {
 import { getTeamLogoUrl } from "../lib/team-logos";
 import { getCompetitionTeamAdjustments, type CompetitionRoundType } from "./competition-tournament";
 import { linkLbMatch } from "./lb-match";
+import { enqueueMatchGame } from "./notifications";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = typeof db | Tx;
@@ -753,6 +754,7 @@ export async function assignLbMatchToCompetitionMatch(
       );
     await stampLbMercenaries(tx, lbMatchId);
   });
+  await enqueueMatchGame(competitionMatchId, { lbMatchId });
   return { ok: true };
 }
 

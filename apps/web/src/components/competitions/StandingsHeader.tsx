@@ -3,7 +3,13 @@
 
 import Link from "next/link";
 import { Settings } from "lucide-react";
+import {
+  followCompetitionAction,
+  getFollowingAction,
+  unfollowCompetitionAction,
+} from "@/app/notifications/actions";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { FollowCompetitionButton } from "@/components/notifications/FollowCompetitionButton";
 import type { FilterContext } from "@/lib/filter-context";
 
 /** Title, admin cog, and competition picker. Shared by the team and solo standings views. */
@@ -11,11 +17,16 @@ export function StandingsHeader({
   ctx,
   competitionSlug,
   isAdmin,
+  followCompetitionId,
 }: {
   ctx: FilterContext;
   competitionSlug: string | null;
   isAdmin: boolean;
+  // Set when this competition's match results can be followed.
+  followCompetitionId?: string;
 }) {
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap">
       <div className="flex items-center gap-2">
@@ -28,6 +39,15 @@ export function StandingsHeader({
           >
             <Settings className="h-4 w-4" />
           </Link>
+        )}
+        {followCompetitionId && vapidPublicKey && (
+          <FollowCompetitionButton
+            key={followCompetitionId}
+            vapidPublicKey={vapidPublicKey}
+            getFollowing={getFollowingAction.bind(null, followCompetitionId)}
+            follow={followCompetitionAction.bind(null, followCompetitionId)}
+            unfollow={unfollowCompetitionAction.bind(null, followCompetitionId)}
+          />
         )}
       </div>
       <FilterBar

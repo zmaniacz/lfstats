@@ -1,7 +1,7 @@
 # Notifications Spec
 
-**Status:** `unassigned_game` is built but not yet proven on real phones, so Phase 0's device checks
-are still open. `match_game` and fan following are not built.
+**Status:** `unassigned_game` is live and has been received on desktop and mobile. `match_game` and
+the Follow button are built. Listing a device's follows on `/notifications` is not built.
 
 Notifications tell a phone that something happened at an event. Fans follow a competition and hear
 about each game added to a match, with the updated match score. Admins hear when an uploaded
@@ -28,25 +28,26 @@ per-team following later.
 **Fires when:** a game, forfeit or Laserball match is assigned to a `competition_match`, and the
 competition's `state` is `active`.
 
-| Case       | Title              | Body                                                          | Opens               |
-| ---------- | ------------------ | ------------------------------------------------------------- | ------------------- |
-| First game | `{Event}: {Round}` | `Game 1: Ice 41,200 def. Fire 38,100` / `Match: Ice 2–0 Fire` | Game page           |
-| Later game | `{Event}: {Round}` | `Game 2: Fire 39,000 def. Ice 37,500` / `Final: Ice 4–2 Fire` | Game page           |
-| Forfeit    | `{Event}: {Round}` | `Game 1: Fire forfeited` / `Match: Ice 2–0 Fire`              | Competition page    |
-| Laserball  | `{Event}: {Round}` | The existing match-card result for the assigned `lb_match`    | Laserball game page |
+| Case       | Title              | Body                                                                                   | Opens               |
+| ---------- | ------------------ | -------------------------------------------------------------------------------------- | ------------------- |
+| First game | `{Event}: {Round}` | `Game 1: Ice 41,200 def. Fire 38,100` / `Match: Ice 2–0 Fire`                          | Game page           |
+| Final game | `{Event}: {Round}` | `Game 2: Fire 39,000 def. Ice 37,500` / `Match: Ice 4–2 Fire` / `Ice won the match`    | Game page           |
+| Forfeit    | `{Event}: {Round}` | `Game 1: Fire forfeited to Ice` / `Match: Ice 2–0 Fire`                                | Standings           |
+| Laserball  | `{Event}: {Round}` | `Half 1: Ice 3–2 Fire` / `Half 2: Ice 2–2 Fire` / `Match: Ice 5–4 Fire` / `Ice won...` | Laserball game page |
 
 Team names and numbers above are illustrations. The rules are:
 
 - **Match score** is match points earned in this match, including the round multiplier and, once
-  both games are in, the match bonus. It comes from the same logic as the match card (see
-  [Points Calculation](Competition_Structure.md#points-calculation)). The dispatcher must reuse
-  that code and never derive points itself.
+  both games are in, the match bonus. It comes from `getCompetitionMatchResults`, the same query as
+  the match card (see [Points Calculation](Competition_Structure.md#points-calculation)). The
+  dispatcher never derives points itself. A Laserball match score is its goals over every half.
 - **The game winner comes from `result`,** never from comparing scores, because an eliminated team
   can outscore the winner.
 - **Displayed game scores** include `elimination_bonus` and `penalty_score`, matching the match
   card.
 - **Trios and duos** name the whole side, `A & B`, as forfeit games do.
-- **`Final:`** replaces `Match:` once the match has two games.
+- **The winner line** appears once `matchWinner` is decided, which takes two games. A drawn match
+  reads `Match drawn`, and a tied Laserball match reads `Match tied`.
 - **Laserball** sends one notification per match, because both halves are assigned together.
 
 ### `unassigned_game`: a competition game is waiting
@@ -112,7 +113,7 @@ All timestamps here are written and compared using the database clock (`now()`),
 | Column            | Type          | Notes                                                                                                                |
 | ----------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `subscription_id` | uuid FK       | `on delete cascade`                                                                                                  |
-| `kind`            | enum          | `unassigned_game` and `test` so far. `match_game` is added with Phase 3.                                             |
+| `kind`            | enum          | `unassigned_game`, `match_game`, and `test` for the outbox                                                           |
 | `competition_id`  | uuid FK, null | Required for `match_game`. Null for `unassigned_game`, whose scope comes from the user's roles. `on delete cascade`. |
 
 Unique on all three columns, using `NULLS NOT DISTINCT`.
@@ -197,8 +198,9 @@ The same loop deletes outbox rows older than 30 days.
 
 The push payload is JSON: `{ title, body, url, tag }`, under 3 KB.
 
-`tag` is `match:{matchId}` or `unassigned:{competitionId}`. A newer notification replaces the older
-one on the device, so a two-game match leaves one entry on the lock screen.
+`tag` is `unassigned:{competitionId}`, so a newer alert replaces the older one on the device. For
+`match_game` it is `match:{matchId}:{gameId}`, or `match:{matchId}:{lbMatchId}` for Laserball. That
+is one tag per game because a replacement can arrive silently, and each game should alert.
 
 ---
 
@@ -216,20 +218,21 @@ subscription.
 
 ### Following an event
 
-A **Follow this event** button goes on the public competition page, for competitions with
+A **Follow** button sits in the `/standings` header, for competitions with
 `hasMatchStructure(format)` whose `state` is `active` or `upcoming`. Fans don't sign in.
 
 The button handles each state explicitly:
 
-| State                    | Behaviour                                         |
-| ------------------------ | ------------------------------------------------- |
-| Push unsupported         | Explain, with no button                           |
-| iOS, not installed       | Show the Share → Add to Home Screen steps         |
-| Permission not yet asked | Button. The prompt appears only after this click. |
-| Permission denied        | Explain how to re-enable it in device settings    |
-| Following                | Button shows Following; clicking unfollows        |
+| State                    | Behaviour                                           |
+| ------------------------ | --------------------------------------------------- |
+| Push unsupported         | No button                                           |
+| iOS, not installed       | Clicking shows the Share → Add to Home Screen steps |
+| Permission not yet asked | Button. The prompt appears only after this click.   |
+| Permission denied        | Clicking explains how to re-enable it               |
+| Following                | Button shows Following; clicking unfollows          |
 
-Use Pattern A from `apps/web/CLAUDE.md`, and return `{ok, error}` from actions.
+A subscription is deleted, and the browser unsubscribed, only when its last preference goes. An
+admin who follows competitions can turn off the admin alert and keep the follows.
 
 ### Managing notifications
 
@@ -238,23 +241,25 @@ a **Send a test** button that queues a `test` row for this device. The toggle re
 and a role check on the server. For now the page redirects anyone without an eligible role, and it
 is linked from the user menu.
 
-Phase 3 opens the page to everyone: it lists what this device follows and lets the user remove any
-of it. A device proves ownership by sending its own endpoint, read from
-`pushManager.getSubscription()`.
-
-Phase 3 also adds a sync on each app open, re-sending the current subscription, since browsers can
-rotate it without telling us. Until then an admin whose subscription rotates turns the toggle off
-and on again; the old row is deleted when its endpoint returns `410`.
+A fan unfollows from the standings page. Two things are not built yet: opening this page to
+everyone with a list of what the device follows, and a sync on each app open that re-sends the
+current subscription, since browsers can rotate it without telling us. Until then, someone whose
+subscription rotates sees Follow again and re-follows, or an admin turns the toggle off and on. The
+old row is deleted when its endpoint returns `410`.
 
 ### Abuse and privacy
 
-The subscribe action tells the worker where to send HTTP requests, so it is the main security
-surface. It is limited to admins today and becomes anonymous in Phase 3.
+The follow action is anonymous and tells the worker where to send HTTP requests, so it is the main
+security surface. A device proves ownership of a follow by sending its own endpoint, read from
+`pushManager.getSubscription()`.
 
 - **Allowlist endpoint hosts.** Require `https` and a known push service: `fcm.googleapis.com`,
   `*.push.apple.com`, `*.push.services.mozilla.com` and `*.notify.windows.com`. Without this the
   worker can be pointed at internal addresses on the LAN. `isAllowedPushEndpoint` does this.
-- **In Phase 3, cap preferences** at 50 per subscription, and rate-limit subscribing.
+- **Validate the keys.** `isValidPushKeys` rejects anything `web-push` couldn't encrypt to. Such a
+  row would throw before any request, so it would never get the `410` that clears it.
+- **Cap and rate-limit.** A device can follow 50 competitions, and an address can make 10 follow
+  requests a minute and 100 a day. The limiter is in memory, so it resets when the app restarts.
 - **Store no personal data for fans.** A subscription is an opaque endpoint and keys.
 
 ---
@@ -305,12 +310,10 @@ can be added later.
    dispatcher with a test send.
 3. **Phase 2, `unassigned_game`.** It ships first because the audience is small, you are in it, and
    it proves the path during a real event.
-4. **Phase 3, `match_game`.** The message builder, enqueue hooks, the Follow button and
-   `/notifications`.
+4. **Phase 3, `match_game`.** The message builder, enqueue hooks and the Follow button.
 
-The message builder is a pure function, unit-tested like `match-points.ts`: elimination wins,
-draws, forfeits, trios and duos names, round multipliers, and first versus final game. The dedupe,
-undo window and stale-row rules also get tests.
+The message builders are pure functions, unit-tested like `match-points.ts`: elimination wins,
+draws, forfeits, Laserball overtime and ties, and first versus final game.
 
 ---
 

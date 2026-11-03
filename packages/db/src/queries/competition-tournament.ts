@@ -52,6 +52,7 @@ import type {
   CompetitionGameType,
   CompetitionState,
 } from "./admin";
+import { enqueueMatchGame } from "./notifications";
 import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
@@ -1460,6 +1461,8 @@ export async function assignGameToMatch(
         ),
       );
   }
+
+  await enqueueMatchGame(matchId, { gameId });
 }
 
 export async function removeGameFromMatch(matchGameId: string): Promise<void> {
@@ -3652,7 +3655,7 @@ export async function createForfeitGame(data: {
     sideIds.team2Partner2Id,
   );
 
-  await db.transaction(async (tx) => {
+  const gameId = await db.transaction(async (tx) => {
     const winnerName = data.forfeitingTeam === "team1" ? team2Name : team1Name;
     const loserName = data.forfeitingTeam === "team1" ? team1Name : team2Name;
 
@@ -3724,7 +3727,10 @@ export async function createForfeitGame(data: {
       team1Sm5GameTeamId: team1GameTeamId,
       team2Sm5GameTeamId: team2GameTeamId,
     });
+    return gameRow.id;
   });
+
+  await enqueueMatchGame(data.matchId, { gameId, forfeit: true });
 }
 
 // ---------------------------------------------------------------------------
