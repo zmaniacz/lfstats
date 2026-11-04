@@ -16,7 +16,7 @@ import type {
   CompetitionFormat,
   CompetitionStandingsRow,
   CompetitionTeamAdjustment,
-  CompetitionTeamListItem,
+  CompetitionTeamSummary,
 } from "@lfstats/db";
 import { formatScore, formatSignedPoints } from "@/lib/format";
 import { competitionTeamNoun } from "@/lib/competition-format";
@@ -29,7 +29,7 @@ export function StandingsTable({
   adjustments = [],
 }: {
   standings: CompetitionStandingsRow[];
-  teams: CompetitionTeamListItem[];
+  teams: CompetitionTeamSummary[];
   competitionSlug: string;
   // Listed under the table. Pass them only where they count: the whole-competition standings.
   adjustments?: CompetitionTeamAdjustment[];

@@ -183,7 +183,7 @@ export function teamScorecardSql(
 // Types
 // ---------------------------------------------------------------------------
 
-export type CompetitionTeamListItem = {
+export type CompetitionTeamSummary = {
   id: string;
   competitionId: string;
   name: string;
@@ -191,6 +191,9 @@ export type CompetitionTeamListItem = {
   shortName: string | null;
   hasLogo: boolean;
   logoVersion: number;
+};
+
+export type CompetitionTeamListItem = CompetitionTeamSummary & {
   playerCount: number;
   mercCount: number;
   unassignedCount: number;
@@ -330,6 +333,27 @@ export async function getCompetitionTeams(
     .orderBy(asc(competitionTeam.name));
 
   return rows;
+}
+
+// The teams without getCompetitionTeams' roster counts, for public pages that only show names
+// and logos. unassignedCount scans every scorecard once per team, which took 1-4s per call
+// when the standings page was busy.
+export async function getCompetitionTeamSummaries(
+  competitionId: string,
+): Promise<CompetitionTeamSummary[]> {
+  return db
+    .select({
+      id: competitionTeam.id,
+      competitionId: competitionTeam.competitionId,
+      name: competitionTeam.name,
+      slug: competitionTeam.slug,
+      shortName: competitionTeam.shortName,
+      hasLogo: competitionTeam.hasLogo,
+      logoVersion: competitionTeam.logoVersion,
+    })
+    .from(competitionTeam)
+    .where(eq(competitionTeam.competitionId, competitionId))
+    .orderBy(asc(competitionTeam.name));
 }
 
 export async function getCompetitionTeamById(id: string): Promise<{

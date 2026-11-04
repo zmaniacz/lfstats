@@ -4,7 +4,7 @@
 import {
   getCompetitionStandings,
   getCompetitionMatchResults,
-  getCompetitionTeams,
+  getCompetitionTeamSummaries,
   getCompetitionPoolsForStandings,
   getCompetitionTeamAdjustments,
   type CompetitionFormat,
@@ -54,7 +54,7 @@ export async function StandingsContent({
   competitionName: string;
   format?: CompetitionFormat;
 }) {
-  const teams = await getCompetitionTeams(activeId);
+  const teams = await getCompetitionTeamSummaries(activeId);
 
   if (activeRoundId && (activeRoundType === "split-pool" || activeRoundType === "wildcard")) {
     const pools = await getCompetitionPoolsForStandings(activeRoundId);
