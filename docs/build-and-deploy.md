@@ -29,7 +29,7 @@ Three runtimes are involved:
 
 - **GitHub-hosted runner** — Ubuntu container for CI. Builds the Docker image. No exposure to the production network. Triggered by push to `main` that affects the web app or its dependencies.
 - **Self-hosted runner** — runs on the production host as a dedicated non-root user under systemd. Picks up the deploy job after the build job succeeds. Authenticates to GHCR with the workflow's short-lived `GITHUB_TOKEN`, pulls the new image, restarts the container, logs out.
-- **Production host** — runs the web container, the Postgres container, the Chomper worker container, and the runner. The web container publishes port 3000 to the host. Traefik on a separate host routes `modern.lfstats.com` → `<production-host>:3000` over the LAN.
+- **Production host** — runs the web container, the Postgres container, the Chomper worker container, a cloudflared container, and the runner. cloudflared holds an outbound Cloudflare Tunnel that serves `lfstats.com` and `www.lfstats.com`, forwarding them to the web container over the `lfstats` Docker network. Cloudflare terminates TLS at its edge, so the host accepts no inbound connections from the internet. The web container also publishes port 3000 to the host.
 
 ---
 
@@ -202,7 +202,9 @@ networks:
 
 The `journald` driver keeps logs when a deploy recreates the container, which Docker's default `json-file` driver does not, and journald caps their total size. Changing a service's logging driver recreates its container.
 
-The `web` service pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. The web and Postgres containers share an external Docker network (`lfstats`) so `DATABASE_URL` points directly to the `db` service name — no host NAT involved. Publishes 3000 to the host so Traefik on a separate host can reach it.
+The `web` service pulls from `ghcr.io/zmaniacz/lfstats-web:latest`. Uses `env_file` to inject auth secrets verbatim and `environment` block to assemble `DATABASE_URL` via `${DB_PASSWORD}` interpolation from the local `.env`. The web and Postgres containers share an external Docker network (`lfstats`) so `DATABASE_URL` points directly to the `db` service name — no host NAT involved. Still publishes 3000 to the host, though the tunnel doesn't use it.
+
+The `cloudflared` service runs the Cloudflare Tunnel and sits on the same `lfstats` network, so it reaches the web container by service name. It is not shown above. The tunnel serves `lfstats.com` and `www.lfstats.com`; a Cloudflare redirect rule sends `www.lfstats.com` to `lfstats.com` at the edge, before the tunnel.
 
 The `chomper` service is the ingest worker. It publishes no ports and has no `env_file`, so it receives only its own AWS keys and never the web app's auth secrets. See [`apps/chomper/README.md`](../apps/chomper/README.md#the-worker).
 
@@ -212,7 +214,7 @@ Optional: `QUERY_DATABASE_URL` points the query API's analytics pool at a `SELEC
 `DATABASE_URL` but still forces read-only transactions and a 5 s statement timeout. See
 [Query_API_Spec.md](Query_API_Spec.md#limits-and-safety).
 
-Auth-related env vars: `AUTH_TRUST_HOST=true` and explicit `AUTH_URL=https://modern.lfstats.com` because Traefik terminates TLS and forwards plain HTTP — Auth.js needs to trust the forwarded headers and know its real public URL.
+Auth-related env vars: `AUTH_TRUST_HOST=true` and explicit `AUTH_URL=https://lfstats.com` because Cloudflare terminates TLS and cloudflared forwards plain HTTP — Auth.js needs to trust the forwarded headers and know its real public URL.
 
 ### `.env` (on the deploy host, never committed)
 
@@ -536,7 +538,7 @@ Either `AUTH_URL` doesn't match the actual public URL, or `AUTH_TRUST_HOST=true`
 
 Auth.js sends every error it doesn't consider client-safe to this page as `error=Configuration`, so the query string doesn't identify the problem. Search the logs with `journalctl -t lfstats-web --since "3 days ago" | grep -A 3 '\[auth\]'`: `[auth][error]` gives the type and `[auth][cause]` the underlying reason (`lib/auth-logger.ts`).
 
-`InvalidCheck: pkceCodeVerifier value could not be parsed` covers more than a corrupt cookie: Auth.js rewraps every failure in that message, so read `[auth][cause]`. `cookie was missing` usually means the sign-in started on a hostname other than `AUTH_URL`. Cookies are per-hostname and Google always returns to `AUTH_URL`, so the browser has no cookie to send. Keep `www.lfstats.com` redirecting to `lfstats.com` in Traefik, which is on the separate proxy host. A sign-in left open for over 15 minutes, or a home-screen app or in-app browser that opens Google separately, can cause the same error.
+`InvalidCheck: pkceCodeVerifier value could not be parsed` covers more than a corrupt cookie: Auth.js rewraps every failure in that message, so read `[auth][cause]`. `cookie was missing` usually means the sign-in started on a hostname other than `AUTH_URL`. Cookies are per-hostname and Google always returns to `AUTH_URL`, so the browser has no cookie to send. Keep the Cloudflare redirect rule that sends `www.lfstats.com` to `lfstats.com`. A sign-in left open for over 15 minutes, or a home-screen app or in-app browser that opens Google separately, can cause the same error.
 
 ---
 
