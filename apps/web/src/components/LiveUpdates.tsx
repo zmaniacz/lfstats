@@ -17,6 +17,7 @@ import type { LiveEvent } from "@lfstats/db";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { MatchToast } from "./live/MatchToast";
 
 // Several games can land together at the end of a session, so refreshes are coalesced.
 const MIN_REFRESH_INTERVAL_MS = 15_000;
@@ -77,15 +78,34 @@ export function LiveUpdates() {
     source.addEventListener("match_game", (message: MessageEvent<string>) => {
       const event = parse(message);
       if (event?.type !== "match_game") return;
-      toast(event.title, {
-        // A newer toast for the same game replaces this one rather than stacking.
-        id: event.tag,
-        description: <span className="whitespace-pre-line">{event.body}</span>,
-        duration: TOAST_DURATION_MS,
-        action: isLocalPath(event.url)
-          ? { label: "View", onClick: () => router.push(event.url) }
-          : undefined,
-      });
+      const view = isLocalPath(event.url) ? () => router.push(event.url) : undefined;
+      // A newer toast for the same game replaces this one rather than stacking.
+      const options = { id: event.tag, duration: TOAST_DURATION_MS };
+      const board = event.scoreboard;
+      if (board) {
+        toast.custom(
+          (id) => (
+            <MatchToast
+              board={board}
+              onView={
+                view &&
+                (() => {
+                  toast.dismiss(id);
+                  view();
+                })
+              }
+              onDismiss={() => toast.dismiss(id)}
+            />
+          ),
+          options,
+        );
+      } else {
+        toast(event.title, {
+          ...options,
+          description: <span className="whitespace-pre-line">{event.body}</span>,
+          action: view ? { label: "View", onClick: view } : undefined,
+        });
+      }
       scheduleRefresh();
     });
     document.addEventListener("visibilitychange", onVisibility);
