@@ -30,6 +30,7 @@ import {
   recordNotificationDelivery,
   skipNotifications,
   unassignedGamesMessage,
+  type LiveMatchScoreboard,
   type NotificationMessage,
   type PushRecipient,
 } from "@lfstats/db";
@@ -167,19 +168,57 @@ async function dispatchAutoAssignReview(row: OutboxRow): Promise<void> {
   );
 }
 
+type MatchNotification = { message: NotificationMessage; scoreboard: LiveMatchScoreboard };
+
+function gameWinner(team1Result: string | null, team2Result: string | null) {
+  // From the result, never the scores: an eliminated team can outscore the winner.
+  if (team1Result === "win") return "team1" as const;
+  if (team2Result === "win") return "team2" as const;
+  return null;
+}
+
 async function sm5MatchMessage(
   competition: { id: string; name: string; slug: string },
   row: OutboxRow,
-): Promise<NotificationMessage | null> {
+): Promise<MatchNotification | null> {
   const results = await getCompetitionMatchResults(competition.id, undefined, "all");
   const match = results.find((m) => m.matchId === row.payload.matchId);
   const game = match?.games.find((g) => g.gameId === row.payload.gameId);
   // Gone means an admin undid the assignment, or excluded the game, before the next poll.
   if (!match || !game) return null;
 
+  const sideNames = (name: string, partners: { name: string }[]) => [
+    name,
+    ...partners.map((p) => p.name),
+  ];
   const sideName = (name: string, partners: { name: string }[]) =>
-    [name, ...partners.map((p) => p.name)].join(" & ");
-  return matchGameMessage({
+    sideNames(name, partners).join(" & ");
+  const games = [...match.games].sort((a, b) => a.gameNumber - b.gameNumber);
+  const scoreboard: LiveMatchScoreboard = {
+    gameType: "sm5",
+    competitionName: competition.name,
+    roundName: match.roundName,
+    matchNumber: match.matchNumber,
+    team1: {
+      names: sideNames(match.team1Name, match.team1Partners),
+      points: match.team1TotalPoints,
+    },
+    team2: {
+      names: sideNames(match.team2Name, match.team2Partners),
+      points: match.team2TotalPoints,
+    },
+    games: games.map((g) => ({
+      label: `G${g.gameNumber}`,
+      team1Score: g.team1Score,
+      team2Score: g.team2Score,
+      team1Colour: g.team1ColourEnum,
+      team2Colour: g.team2ColourEnum,
+      winner: gameWinner(g.team1Result, g.team2Result),
+    })),
+    latestIndex: games.findIndex((g) => g.gameId === game.gameId),
+    winner: match.matchWinner,
+  };
+  const message = matchGameMessage({
     competitionName: competition.name,
     competitionSlug: competition.slug,
     roundName: match.roundName,
@@ -198,30 +237,60 @@ async function sm5MatchMessage(
     team2Points: match.team2TotalPoints,
     matchWinner: match.matchWinner,
   });
+  return { message, scoreboard };
 }
 
 async function lbMatchMessage(
   competition: { id: string; name: string },
   row: OutboxRow,
-): Promise<NotificationMessage | null> {
+): Promise<MatchNotification | null> {
   const [match] = await getLbCompetitionMatchResults(competition.id, {
     matchId: row.payload.matchId,
   });
   const halves = match?.halves.filter((h) => !h.excluded) ?? [];
   if (!match || match.lbMatchId !== row.payload.lbMatchId || halves.length === 0) return null;
 
-  return lbMatchGameMessage({
+  const team1Name = match.team1?.name ?? "TBD";
+  const team2Name = match.team2?.name ?? "TBD";
+  const scoreboard: LiveMatchScoreboard = {
+    gameType: "lb",
+    competitionName: competition.name,
+    roundName: match.roundName,
+    matchNumber: match.matchNumber,
+    team1: { names: [team1Name], points: match.outcome.team1Goals },
+    team2: { names: [team2Name], points: match.outcome.team2Goals },
+    games: halves.map((h) => ({
+      label: h.half > 2 ? `OT${h.half - 2}` : `H${h.half}`,
+      team1Score: h.team1Goals,
+      team2Score: h.team2Goals,
+      team1Colour: h.team1ColourEnum,
+      team2Colour: h.team2ColourEnum,
+      winner: h.team1Goals > h.team2Goals ? "team1" : h.team2Goals > h.team1Goals ? "team2" : null,
+    })),
+    // Both halves are assigned together, so the whole match is the news.
+    latestIndex: -1,
+    winner:
+      match.outcome.winner === 1
+        ? "team1"
+        : match.outcome.winner === 2
+          ? "team2"
+          : match.outcome.winner === "tie"
+            ? "draw"
+            : "incomplete",
+  };
+  const message = lbMatchGameMessage({
     competitionName: competition.name,
     roundName: match.roundName,
     matchId: match.matchId,
     lbMatchId: match.lbMatchId,
-    team1Name: match.team1?.name ?? "TBD",
-    team2Name: match.team2?.name ?? "TBD",
+    team1Name,
+    team2Name,
     halves,
     team1Goals: match.outcome.team1Goals,
     team2Goals: match.outcome.team2Goals,
     winner: match.outcome.winner,
   });
+  return { message, scoreboard };
 }
 
 async function dispatchMatchGame(row: OutboxRow): Promise<void> {
@@ -231,16 +300,22 @@ async function dispatchMatchGame(row: OutboxRow): Promise<void> {
     return;
   }
 
-  const message = row.payload.lbMatchId
+  const built = row.payload.lbMatchId
     ? await lbMatchMessage(competition, row)
     : await sm5MatchMessage(competition, row);
-  if (!message) {
+  if (!built) {
     await skipNotifications([row.id], "no longer assigned");
     return;
   }
+  const { message, scoreboard } = built;
 
-  // Open tabs get the same text as a toast, whether or not anyone follows the competition.
-  await publishLiveEvent({ type: "match_game", competitionId: competition.id, ...message });
+  // Open tabs get a toast whether or not anyone follows the competition.
+  await publishLiveEvent({
+    type: "match_game",
+    competitionId: competition.id,
+    ...message,
+    scoreboard,
+  });
   await deliver([row.id], await getMatchGameRecipients(competition.id), message, MATCH_TTL_SECONDS);
 }
 
