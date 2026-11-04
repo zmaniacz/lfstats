@@ -40,6 +40,12 @@ export function getDb(): PostgresJsDatabase<typeof schema> {
   return build(resolveDatabaseUrl());
 }
 
+/** The underlying postgres.js client, for what drizzle doesn't wrap, such as LISTEN. */
+export function getPgClient(): postgres.Sql {
+  getDb();
+  return globalForDb._pgClient as postgres.Sql;
+}
+
 /**
  * Lazy database handle. Nothing runs at import. The client is built on
  * first property access from DATABASE_URL.

@@ -25,6 +25,7 @@ import {
   markPushDelivered,
   matchGameMessage,
   pruneNotificationOutbox,
+  publishLiveEvent,
   pushFailureAction,
   recordNotificationDelivery,
   skipNotifications,
@@ -139,7 +140,7 @@ async function dispatchAutoAssignReview(row: OutboxRow): Promise<void> {
     return;
   }
 
-  // Read at send time: inside the delay an admin may have unassigned the game or rostered them.
+  // Read at send time: an admin may already have unassigned the game or rostered them.
   const review = await getAutoAssignReview(row.payload.gameId ?? "");
   if (!review) {
     await skipNotifications([row.id], "no longer assigned");
@@ -173,7 +174,7 @@ async function sm5MatchMessage(
   const results = await getCompetitionMatchResults(competition.id, undefined, "all");
   const match = results.find((m) => m.matchId === row.payload.matchId);
   const game = match?.games.find((g) => g.gameId === row.payload.gameId);
-  // Gone means an admin undid the assignment, or excluded the game, inside the delay.
+  // Gone means an admin undid the assignment, or excluded the game, before the next poll.
   if (!match || !game) return null;
 
   const sideName = (name: string, partners: { name: string }[]) =>
@@ -238,6 +239,8 @@ async function dispatchMatchGame(row: OutboxRow): Promise<void> {
     return;
   }
 
+  // Open tabs get the same text as a toast, whether or not anyone follows the competition.
+  await publishLiveEvent({ type: "match_game", competitionId: competition.id, ...message });
   await deliver([row.id], await getMatchGameRecipients(competition.id), message, MATCH_TTL_SECONDS);
 }
 

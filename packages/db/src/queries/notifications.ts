@@ -13,8 +13,6 @@ import {
 } from "../schema";
 import { hasMatchStructure } from "./admin";
 
-/** A game waits this long, so a quick assignment or a burst of uploads sends one alert or none. */
-const SEND_DELAY = sql`now() + interval '60 seconds'`;
 const STALE_AFTER = sql`interval '1 hour'`;
 const OUTBOX_RETENTION = sql`interval '30 days'`;
 
@@ -204,7 +202,6 @@ export async function enqueueUnassignedGame(gameId: string, competitionId: strin
       competitionId,
       dedupeKey: `unassigned_game:${gameId}`,
       payload: { gameId },
-      sendAfter: SEND_DELAY,
     })
     .onConflictDoNothing();
 }
@@ -226,7 +223,6 @@ export async function enqueueAutoAssignReview(
         competitionId,
         dedupeKey: `auto_assign_review:${gameId}`,
         payload: { gameId },
-        sendAfter: SEND_DELAY,
       })
       .onConflictDoNothing();
   } catch (err) {
@@ -259,7 +255,6 @@ export async function enqueueMatchGame(
         competitionId: row.competitionId,
         dedupeKey: `match_game:${matchId}:${assignedId}`,
         payload: { matchId, ...assigned },
-        sendAfter: SEND_DELAY,
       })
       .onConflictDoNothing();
   } catch (err) {

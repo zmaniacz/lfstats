@@ -5,6 +5,7 @@ import {
   autoAssignGame,
   createChomperJob,
   enqueueUnassignedGame,
+  publishLiveEvent,
   findActiveMvpModel,
   findCenterByNaturalKey,
   findChomperJobByLambdaRequestId,
@@ -314,6 +315,10 @@ export async function processFile(
         });
       }
     }
+
+    // 14. Tell open browser tabs to refresh, last so the auto-assignment is already in place.
+    //     Never throws.
+    await publishLiveEvent({ type: "game", gameId, competitionId });
     return null;
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
