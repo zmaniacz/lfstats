@@ -2,6 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { AppSidebar } from "@/components/app-sidebar";
+import { LiveUpdates } from "@/components/LiveUpdates";
 import { AppSessionProvider } from "@/components/session-provider";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -48,6 +49,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </AppSessionProvider>
         </ThemeProvider>
         <Toaster />
+        <LiveUpdates />
       </body>
     </html>
   );

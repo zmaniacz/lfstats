@@ -64,7 +64,7 @@ Team names and numbers above are illustrations. The rules are:
 `state` is `active`, and `hasMatchStructure(format)` is true. Solo and no-scoring competitions have
 nothing to assign games to.
 
-Games uploaded close together collapse into one notification per competition:
+Games due in the same 5-second dispatcher poll collapse into one notification per competition:
 `{Event}: 3 games ready to assign`, opening `/admin/competitions/{slug}`. The count comes from
 `getCompetitionUnassignedGamesForAdmin` at send time, because it also understands Laserball
 assignment and excluded games. Nothing is sent if the count is zero.
@@ -86,8 +86,8 @@ side's roster. A fully rostered auto-assignment sends nothing beyond `match_game
 Title `{Event}: auto-assigned`; body `{Round} · Match {n} · Game {n}`, then
 `2 players not on a roster: X, Y` (at most five names, then `+N more`), then
 `Roster them (as mercs if subs), then reassign the game.`; opens the game page. The list is read
-at send time (`getAutoAssignReview`), so nothing is sent if the game was unassigned or everyone
-was rostered inside the delay.
+at send time (`getAutoAssignReview`), so nothing is sent if the game was already unassigned or
+everyone rostered.
 
 ---
 
@@ -144,7 +144,7 @@ Unique on all three columns, using `NULLS NOT DISTINCT`.
 | `competition_id`  | uuid FK      | Null only for `test`. `on delete cascade`.        |
 | `dedupe_key`      | text, unique | Insert uses `on conflict do nothing`              |
 | `payload`         | jsonb        | Ids only. Text is built at send time.             |
-| `send_after`      | timestamp    | `now() + 60 seconds`; immediate for `test`        |
+| `send_after`      | timestamp    | `now()`: every kind is due at once                |
 | `sent_at`         | timestamp    | Set when claimed. Partial index on the null rows. |
 | `skip_reason`     | text, null   | Why a claimed row sent nothing                    |
 | `recipient_count` | integer      |                                                   |
@@ -191,7 +191,7 @@ For each due row (`sent_at is null and send_after <= now()`):
 2. Skip it, with a `skip_reason`, if any of these is true:
    - It is more than an hour old, so a worker outage does not produce stale alerts.
    - The competition is no longer `active`.
-   - For `match_game`, the assignment no longer exists, so an undo inside the 60-second window
+   - For `match_game`, the assignment no longer exists, so an undo before the next 5-second poll
      sends nothing.
 3. Group due `unassigned_game` rows by competition into a single message.
 4. Build the text from current data, so the score reflects the latest state.
@@ -282,6 +282,32 @@ security surface. A device proves ownership of a follow by sending its own endpo
 - **Cap and rate-limit.** A device can follow 50 competitions, and an address can make 10 follow
   requests a minute and 100 a day. The limiter is in memory, so it resets when the app restarts.
 - **Store no personal data for fans.** A subscription is an opaque endpoint and keys.
+
+### Live updates in open tabs
+
+Separately from Web Push, every open tab hears about new data while it is open. Fans need no
+subscription and give no permission.
+
+```
+processFile (step 14) ──┐ pg_notify('lfstats_live')
+dispatcher match_game ──┴──────────────▶ web: one LISTEN per process ──▶ /api/live (SSE) ──▶ tab
+```
+
+| Event        | Sent by                                                          | Tab does                            |
+| ------------ | ---------------------------------------------------------------- | ----------------------------------- |
+| `game`       | `processFile`, after auto-assignment, for every ingested game    | Refreshes the page                  |
+| `match_game` | The dispatcher, as it builds a `match_game` push, before sending | Toast with the push's text, refresh |
+
+- **The toast follows the push**, so it has the same skip rules and
+  reads exactly like the notification. It is sent even when nobody follows the competition. It
+  needs the dispatcher, so without VAPID keys there are refreshes but no toasts.
+- **Refreshes are `router.refresh()`,** which keeps client state and scroll position. A tab
+  refreshes at most once every 15 seconds, after a random delay of up to 3 seconds, and a hidden
+  tab waits until it is shown.
+- **Delivery is best-effort.** `publishLiveEvent` never throws, and a tab that is reconnecting
+  misses the event. The stream sends a heartbeat every 25 seconds and asks the browser to retry
+  after 10.
+- `/api/live` is public: the events carry only ids and text the site already shows.
 
 ---
 

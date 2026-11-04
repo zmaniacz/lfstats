@@ -26,6 +26,7 @@ export * from "./queries/laserball";
 export * from "./queries/legacy-player-merge";
 export * from "./queries/highlights";
 export * from "./queries/lb-match";
+export * from "./queries/live-events";
 export * from "./queries/notifications";
 export * from "./queries/oauth";
 export * from "./queries/players";
