@@ -16,6 +16,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | See how PDF-scorecard games were migrated   | [Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)                 |
 | See how PDF-era events were rebuilt         | [Legacy_Migration_PDF_Events.md](Legacy_Migration_PDF_Events.md)               |
 | Change the global player ranking            | [Player_Rating.md](Player_Rating.md)                                           |
+| Follow the MVP2027 formula review           | [MVP2027_Proposal.md](MVP2027_Proposal.md)                                     |
 | Change how TDFs are parsed or simulated     | [chomper-design.md](chomper-design.md)                                         |
 | Change Laserball ingestion specifically     | [chomper-design.md](chomper-design.md#laserball-pipeline-mission-type-28)      |
 | Run or debug the ingestion tests            | [chomper-design.md](chomper-design.md#test-suite)                              |
@@ -60,6 +61,9 @@ Specifications and design docs for the LFstats monorepo. Start here.
   co-play teams, and what was left for admins. Closed 2026-10-28.
 - **[SM5-penalty-definitions.md](SM5-penalty-definitions.md)** — standard penalty types and their
   default score and MVP impact.
+- **[MVP2027_Proposal.md](MVP2027_Proposal.md)** — draft proposal to the tournament committee for
+  the next MVP formula: design goals, the current distribution by position, and what makes up
+  each position's MVP today.
 
 ### Ingestion (chomper)
 
