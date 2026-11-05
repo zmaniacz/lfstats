@@ -11,3 +11,7 @@ overrides:
   # esbuild 0.18 (GHSA-67mh-4wv8-2f99, dev-server CORS). Lift it to the same 0.25
   # line drizzle-kit itself uses. Drop once drizzle-kit 1.0 removes @esbuild-kit.
   '@esbuild-kit/core-utils>esbuild': ^0.25.12
+  # shadcn (dev CLI) -> ts-morph -> @ts-morph/common pins minimatch ^10, which is
+  # vulnerable to globparts amplification DoS (GHSA-g3hv-75wg-m249, fixed 11.0.1).
+  # v11 only drops Node 18; the API is unchanged. Drop once @ts-morph/common moves to ^11.
+  '@ts-morph/common>minimatch': ^11.0.4
