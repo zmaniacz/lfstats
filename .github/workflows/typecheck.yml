@@ -26,6 +26,11 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+        # `next typegen` loads next.config.ts in the production-build phase, whose guard
+        # requires these. Typecheck emits no bundle, so placeholders are safe here.
+        env:
+          NEXT_PUBLIC_IMAGES_BUCKET: typecheck-placeholder
+          NEXT_PUBLIC_AWS_REGION: us-east-1
 
   lint:
     runs-on: ubuntu-latest

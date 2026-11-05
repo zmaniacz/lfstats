@@ -6,3 +6,8 @@ allowBuilds:
   msw: false
   sharp: false
   unrs-resolver: true
+overrides:
+  # drizzle-kit 0.31 still pulls the deprecated @esbuild-kit loader, which pins
+  # esbuild 0.18 (GHSA-67mh-4wv8-2f99, dev-server CORS). Lift it to the same 0.25
+  # line drizzle-kit itself uses. Drop once drizzle-kit 1.0 removes @esbuild-kit.
+  '@esbuild-kit/core-utils>esbuild': ^0.25.12
