@@ -1,0 +1,5 @@
+# Outputs contain per-player game data; never commit them.
+*.csv
+*.npy
+venv/
+__pycache__/
