@@ -283,6 +283,10 @@ accuracy weight and a per-position score threshold, but they mean different thin
 different roles. Each position section decides its own accuracy weight and score bonus; 4.6
 covers only what is truly shared.
 
+**The position sections use today's elimination bonus.** Each position was tuned with the
+elimination bonus as it is today. The smaller bonus proposed in 4.6 (U3) lowers every position's
+median by 0.2–0.5 points; section 5 shows the combined effect of everything, including U3.
+
 ### 4.1 Commander
 
 **Role.** The Commander is the team's leader on the floor: three hit points, missiles, and the
@@ -739,6 +743,7 @@ shots that teammate had beforehand.
 | Opponents reset                     | 67.1%              | 0.78          | 0.93        | No                     |
 | Ammo boosts                         | 60.8%              | 0.81          | 0.94        | +3 each                |
 | Opponent hits                       | 60.8%              | 0.81          | 0.95        | No                     |
+| Assists                             | 58.0%              | 0.79          | 0.84        | No                     |
 | Times missiled (fewer)              | 58.7%              | −0.64         | 0.70        | −1 each                |
 | Teammates' time low on shots (less) | 56.2%              | −0.59         | 0.78        | No                     |
 | Accuracy                            | **52.6%**          | **−0.13**     | 0.95        | +0.1 per %             |
@@ -782,43 +787,43 @@ through the team's results.
 
 **Recommendations.**
 
-| #   | Change                                                               | Detail                                                                                                                                                                       |
-| --- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | **Accuracy: +0.1 → +0.05 per percent for Ammo**                      | Halves a component that does not go with winning and slightly penalises the Ammo carriers who shoot most. Averages 4.1 points (from 8.1).                                    |
-| A2  | **Ammo boost: +3 per boost → +1 per teammate reached**               | Same average value (4.8 against 4.7 points), but a full-team boost is worth 5 and a boost into an empty team is worth 0. Needs the boost's recipient count stored at ingest. |
-| A3  | **Score bonus: +1 per 1,000 above 3,000 → +2 per 1,000 above 1,000** | Score is the Ammo carrier's best skill stat (0.83). Pays in 96% of games, 5.2 points on average (from 0.9), and is what gives a great Ammo game a top end.                   |
-| A4  | **Add opponents reset: +0.1 each**                                   | Same rule as the Scout's S1 at half the weight. Tracks Ammo skill strongly (0.78, consistency 0.93). Averages 0.7 points.                                                    |
-| A5  | Keep opponent medic hits at +1 and times missiled at −1              | Both pass the skill test. Reviewed for all positions in 4.6.                                                                                                                 |
-| A6  | Do not reward resupply tags or double resupplies                     | Real signal, but an Ammo carrier can tag any visible teammate at any time, and no filter separates useful tags from farmed ones (goal 3).                                    |
-| A7  | Do not add teammates' shot levels or hit differential                | Shared with teammates, or already counted once A1–A4 are in (hit differential's partial correlation with rating is 0.26).                                                    |
+| #   | Change                                                               | Detail                                                                                                                                                                                                                                                        |
+| --- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | **Accuracy: +0.1 → +0.05 per percent for Ammo**                      | Halves a component that does not go with winning and slightly penalises the Ammo carriers who shoot most. Averages 4.1 points (from 8.1).                                                                                                                     |
+| A2  | **Ammo boost: +3 per boost → +1 per teammate reached**               | Same average value (4.8 against 4.7 points), but a full-team boost is worth 5 and a boost into an empty team is worth 0. Needs the boost's recipient count stored at ingest.                                                                                  |
+| A3  | **Score bonus: +1 per 1,000 above 3,000 → +2 per 1,000 above 1,500** | Score is the Ammo carrier's best skill stat (0.83). Pays in 94% of games, 4.2 points on average (from 0.9), and is what gives a great Ammo game a top end.                                                                                                    |
+| A4  | **Add assists: +0.25 each**                                          | The same rule and weight as the Medic's M4, so both support positions are credited the same way for contributing to a kill. Tracks Ammo skill strongly (0.79, consistency 0.84). Averages 1.6 points.                                                         |
+| A5  | Keep opponent medic hits at +1 and times missiled at −1              | Both pass the skill test. Reviewed for all positions in 4.6.                                                                                                                                                                                                  |
+| A6  | Do not reward resupply tags or double resupplies                     | Real signal, but an Ammo carrier can tag any visible teammate at any time, and no filter separates useful tags from farmed ones (goal 3).                                                                                                                     |
+| A7  | Do not add teammates' shot levels or hit differential                | Shared with teammates, or already counted once A1–A4 are in (hit differential's partial correlation with rating is 0.26). Opponents reset (0.78 with rating) was in an earlier version and was replaced by assists, which overlap with it (correlation 0.59). |
 
 **Why the top end matters.** A first version (accuracy +0.075, teammates reached, score +1 per
 1,000 from zero) put Ammo on target and picked winners well, but left Ammo MVP with the narrowest
 top end of any position (90th percentile 23.6). Replayed with every other position's proposal, an
 Ammo carrier had the highest MVP in only 10.4% of games, against a fair share of 16.7% (one player
 in six). A1–A4 widen the top end by leaning on score, the Ammo carrier's best skill stat, instead
-of accuracy, and bring Ammo to 17.4%. A great Ammo game can now be the best in the game.
+of accuracy, and bring Ammo to 17.8%. A great Ammo game can now be the best in the game.
 
 **Effect of A1–A4, replayed over the standard 6v6 games.**
 
 | Ammo MVP   | Mean  | Std dev | P10  | Q1    | Median    | Q3    | P90   |
 | ---------- | ----- | ------- | ---- | ----- | --------- | ----- | ----- |
 | Current    | 14.67 | 5.37    | 8.10 | 10.71 | 14.42     | 18.24 | 21.64 |
-| With A1–A4 | 15.65 | 7.65    | 6.16 | 10.14 | **15.27** | 20.44 | 25.51 |
+| With A1–A4 | 15.60 | 7.73    | 5.80 | 9.90  | **15.22** | 20.53 | 25.52 |
 
 | Game situation      | Current median (IQR) | With A1–A4 median (IQR) |
 | ------------------- | -------------------- | ----------------------- |
-| Social              | 14.30 (10.80–17.86)  | 15.09 (10.20–20.26)     |
-| Competition         | 14.70 (10.60–18.82)  | 15.81 (10.00–20.87)     |
-| Won by elimination  | 19.04 (16.30–21.46)  | 20.84 (16.95–24.65)     |
-| Won on score        | 14.75 (11.70–17.50)  | 16.80 (12.05–20.97)     |
-| Lost on score       | 12.87 (10.40–15.90)  | 13.39 (9.86–17.79)      |
-| Lost by elimination | 10.46 (8.10–13.30)   | 9.43 (6.14–13.30)       |
+| Social              | 14.30 (10.80–17.86)  | 15.02 (9.90–20.34)      |
+| Competition         | 14.70 (10.60–18.82)  | 15.81 (9.89–20.90)      |
+| Won by elimination  | 19.04 (16.30–21.46)  | 20.68 (16.74–24.51)     |
+| Won on score        | 14.75 (11.70–17.50)  | 16.87 (11.82–21.33)     |
+| Lost on score       | 12.87 (10.40–15.90)  | 13.60 (9.65–18.13)      |
+| Lost by elimination | 10.46 (8.10–13.30)   | 9.18 (5.78–13.39)       |
 
-A1–A4 put Ammo on target (median 15.27, IQR 10.1–20.4) with a spread that matches the other
+A1–A4 put Ammo on target (median 15.22, IQR 9.9–20.5) with a spread that matches the other
 positions. Compared Ammo carrier against Ammo carrier across the two teams, the higher MVP belongs
-to the winning team 79.6% of the time (78.2% today), and the correlation between career Ammo MVP
-and player rating rises from 0.80 to **0.83**, the best of any Ammo option without resupply tags.
+to the winning team 78.8% of the time (78.2% today), and the correlation between career Ammo MVP
+and player rating rises from 0.80 to **0.83**.
 Accuracy falls from 55% of Ammo MVP to about a quarter.
 
 **Alternatives considered.**
@@ -828,23 +833,27 @@ Accuracy falls from 55% of Ammo MVP to about a quarter.
 | Current                                                                                | 14.42 (10.71–18.24) | 78.2%         | 0.805         | 7.3%               |
 | Boosts → teammates reached only                                                        | 14.06 (10.22–18.50) | 80.6%         | 0.801         | —                  |
 | Accuracy +0.075, teammates reached, score +1 per 1,000 from zero                       | 14.99 (10.91–19.39) | **80.7%**     | 0.817         | 10.4%              |
-| **A1–A4 (recommended)**                                                                | 15.27 (10.14–20.44) | 79.6%         | **0.829**     | 17.4%              |
+| A1–A4 with resets +0.1 instead of assists, score from 1,000 (earlier version)          | 15.27 (10.14–20.44) | 79.6%         | 0.829         | 17.8%              |
+| **A1–A4 (recommended)**                                                                | 15.22 (9.90–20.53)  | 78.8%         | **0.832**     | 17.8%              |
 | Accuracy +0.075, +1.5 per teammate reached, score +1 per 1,000 above 2,000 (no resets) | 15.27 (10.32–20.64) | 79.0%         | 0.823         | 18.4%              |
 | With resupply tags +0.1 (rejected, goal 3)                                             | 15.02 (10.49–19.37) | 83.3%         | 0.837         | —                  |
 
-The first version picks winners about one point better, but at the cost of Ammo rarely being the
-best player in a game. A1–A4 trade that point for a fair share at the top, the best skill
-correlation without tags, and a lower accuracy weight. The no-resets option reaches a similar top
+The first version picks winners about two points better, but at the cost of Ammo rarely being
+the best player in a game. A1–A4 trade that for a fair share at the top, the best skill
+correlation without tags, and a lower accuracy weight. Assists in place of resets keep Ammo's
+balance and top share exactly, track skill slightly better, and cost 0.8 points of winner picks;
+they are preferred so that both support positions are scored the same way. The no-resets option reaches a similar top
 end by weighting boosts more heavily, but tracks skill and winning slightly worse. The cost of
 A1–A4 is at the bottom: an Ammo carrier whose team is eliminated falls from a median of 10.5 to
-9.4, because a game with few teammates left to boost is a game with little score for the Ammo
+9.2, because a game with few teammates left to boost is a game with little score for the Ammo
 carrier either. The tag option is shown for reference: it is what the committee gives up by
 keeping MVP safe from tag farming.
 
-**Is A4 safe to reward?** The same reasoning as the Scout's resets applies: a reset is pressure
-on an opponent who is trying to get back into the game. At +0.1 each it is worth 0.7 points to
-an average Ammo carrier, small next to boosts and score, so it rewards contributing while in the
-fight rather than giving the Ammo carrier a reason to leave the team.
+**Is A4 safe to reward?** An assist can only be earned by a damaging hit on the opposing
+Commander or Heavy that a teammate follows with a deactivating hit within 8 seconds, so it cannot
+be farmed outside a real fight. At +0.25 each it is worth 1.6 points to an average Ammo carrier,
+small next to boosts and score, so it rewards contributing while in the fight rather than giving
+the Ammo carrier a reason to leave the team.
 
 **Questions for the committee.**
 
@@ -881,10 +890,11 @@ time is when the Medic was eliminated as a share of the game (1.0 if they surviv
 | Opponents reset             | 66.7%              | 0.77          | 0.90        | No                     |
 | Life boosts                 | 63.3%              | 0.81          | 0.93        | +3 each                |
 | Opponent hits               | 60.3%              | 0.78          | 0.95        | No                     |
+| Assists                     | 55.4%              | 0.75          | 0.84        | No                     |
 | Times missiled (fewer)      | 55.3%              | −0.56         | 0.50        | −1 each                |
 | Accuracy                    | **50.8%**          | 0.19          | 0.87        | +0.1 per %             |
 
-Five things stand out.
+Six things stand out.
 
 - **Accuracy is a flat 9 points.** Medic accuracy averages 90% with almost no spread (standard
   deviation 0.6 points of MVP). It picks the winner 50.8% of the time and barely tracks skill
@@ -900,70 +910,133 @@ Five things stand out.
   team was on top. For Medics it tracks skill strongly (−0.67 with rating), and still does once the
   rest of MVP is counted (partial correlation −0.28). A Medic who keeps getting reset is a Medic
   who is not staying protected, and every reset is 8 seconds the team cannot get lives.
+- **Assists reflect skill and hold up in competition.** An assist is a damaging hit on the
+  opposing Commander or Heavy followed by a teammate's deactivating hit within 8 seconds. Medic
+  assists barely track winning (55.4%) but track skill well (0.75), add to it once the rest of MVP
+  is counted (partial correlation 0.23), and are the one Medic stat that does not fall in
+  competition (0.96 of the social count, 1.03 per minute, against about 0.87 for the Medic's other
+  counting stats).
 - **Medic resupply tags have the same problem as Ammo tags.** A Medic can tag any visible
   teammate, so tags and double resupplies are left out for the same goal 3 reason as in 4.4.
 
 **Recommendations.**
 
-| #   | Change                                                 | Detail                                                                                                                                        |
-| --- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1  | **Life boost: +3 per boost → +1 per teammate reached** | Same as Ammo A2. Averages 3.9 points (from 4.0); a boost into an empty team is worth nothing.                                                 |
-| M2  | **Add times reset: −0.5 each, Medic only**             | The one position where being reset reflects the player. Averages −1.8 points.                                                                 |
-| M3  | **Survival bonus: +2 → +3**                            | Raises the reward for the Medic's core job. Averages 1.0 point (from 0.6).                                                                    |
-| M4  | **Score bonus threshold: 2,000 → 1,500**               | Still +2 per 1,000. Score is the Medic's best skill stat (0.80). Pays in 82% of games, 2.2 points on average (from 1.4).                      |
-| M5  | Keep accuracy at +0.1 per percent                      | Weak, but cutting it means leaning on stats that pick winners worse: the best package at each lower accuracy weight ranked worse (see below). |
-| M6  | Do not reward resupply tags or double resupplies       | Farmable, as for Ammo.                                                                                                                        |
+| #   | Change                                                    | Detail                                                                                                                                                              |
+| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1  | **Life boost: +3 per boost → +0.75 per teammate reached** | Counts what the boost reaches, as for Ammo A2, at a weight that keeps Medic on target. Averages 2.9 points (from 4.0); a boost into an empty team is worth nothing. |
+| M2  | **Add times reset: −0.4 each, Medic only**                | The one position where being reset reflects the player. Averages −1.4 points.                                                                                       |
+| M3  | **Score bonus threshold: 2,000 → 1,000**                  | Still +2 per 1,000. Score is the Medic's best skill stat (0.80). Pays in 88% of games, 3.0 points on average (from 1.4).                                            |
+| M4  | **Add assists: +0.25 each**                               | Skill stat that holds up in competition. Averages 0.8 points.                                                                                                       |
+| M5  | Keep the survival bonus at +2                             | The yes/no bonus outperformed proportional survival (below).                                                                                                        |
+| M6  | Keep accuracy at +0.1 per percent                         | Weak, but cutting it means leaning on stats that pick winners worse: the best package at each lower accuracy weight ranked worse.                                   |
+| M7  | Do not reward resupply tags or double resupplies          | Farmable, as for Ammo.                                                                                                                                              |
 
 **Is M2 safe to penalise?** A Medic can lower their times reset by staying out of the fight, but
-for a Medic, staying protected is the job, and a Medic who hides completely gives up boosts, score
-and resupplies. The penalty is also small (−0.5 each, 3.5 resets a game on average, 7 at the 90th
-percentile). The committee should confirm it is comfortable with the one position-specific
-penalty for being reset.
+for a Medic, staying protected is the job, and a Medic who hides completely gives up boosts, score,
+assists and resupplies. The penalty is also small (−0.4 each, 3.5 resets a game on average, 7 at
+the 90th percentile). The committee should confirm it is comfortable with the one
+position-specific penalty for being reset.
 
-**Effect of M1–M4, replayed over the standard 6v6 games.**
+**Effect of M1–M4, replayed over the standard 6v6 games** (with today's elimination bonus, as in
+the other position sections).
 
 | Medic MVP  | Mean  | Std dev | P10  | Q1    | Median    | Q3    | P90   |
 | ---------- | ----- | ------- | ---- | ----- | --------- | ----- | ----- |
 | Current    | 16.31 | 5.91    | 9.30 | 12.08 | 15.52     | 19.79 | 24.18 |
-| With M1–M4 | 15.57 | 7.28    | 6.84 | 10.00 | **14.58** | 20.38 | 25.68 |
+| With M1–M4 | 16.24 | 6.64    | 8.00 | 11.27 | **15.43** | 20.58 | 25.38 |
 
 | Game situation      | Current median (IQR) | With M1–M4 median (IQR) |
 | ------------------- | -------------------- | ----------------------- |
-| Social              | 15.43 (12.10–19.48)  | 14.59 (10.18–20.02)     |
-| Competition         | 15.81 (12.00–20.65)  | 14.54 (9.49–21.48)      |
-| Won by elimination  | 21.24 (18.30–24.52)  | 22.31 (18.41–26.24)     |
-| Won on score        | 15.84 (12.74–19.48)  | 16.08 (12.06–20.28)     |
-| Lost on score       | 13.58 (11.90–17.34)  | 12.85 (9.88–16.74)      |
-| Lost by elimination | 11.82 (9.20–13.36)   | 9.02 (6.60–11.82)       |
+| Social              | 15.43 (12.10–19.48)  | 15.41 (11.39–20.23)     |
+| Competition         | 15.81 (12.00–20.65)  | 15.48 (10.92–21.73)     |
+| Won by elimination  | 21.24 (18.30–24.52)  | 22.42 (18.99–25.92)     |
+| Won on score        | 15.84 (12.74–19.48)  | 16.50 (13.06–20.24)     |
+| Lost on score       | 13.58 (11.90–17.34)  | 13.98 (11.14–17.41)     |
+| Lost by elimination | 11.82 (9.20–13.36)   | 10.57 (7.85–13.17)      |
 
-M1–M4 widen Medic MVP to the 10–20 band (IQR 10.0–20.4) and remove most of the free floor. Compared
-Medic against Medic across the two teams, the higher MVP belongs to the winning team 81.9% of the
-time (80.1% today), and the correlation between career Medic MVP and player rating rises slightly,
-from 0.796 to 0.802. A Medic whose team is eliminated falls from a median of 11.8 to 9.0. For a
-Medic, that is usually a game where they were eliminated early and the team's lives ran out.
+M1–M4 keep the Medic median where it is but widen the spread to the 10–20 band (IQR 11.3–20.6),
+replacing much of the free accuracy floor with stats the Medic controls. Compared Medic against
+Medic across the two teams, the higher MVP belongs to the winning team 81.0% of the time (80.1%
+today), and the correlation between career Medic MVP and player rating rises from 0.796 to 0.804.
+A Medic whose team is eliminated falls from a median of 11.8 to 10.6. For a Medic, that is usually
+a game where they were eliminated early and the team's lives ran out.
 
-**Alternatives considered.**
+**Medic in competition.** Medic was the hardest position to balance in competition, and M1–M4
+are the result of several rounds of tuning aimed at it. In an earlier version (boosts +1 per
+teammate, score bonus from 1,500, survival +3, no assists), Medic was the only position whose
+median did not rise in competition: 14.90 there against 14.94 in social games, while every other
+position rose to 15.8–16.2. M1–M4 move Medic to 15.48 in competition against 15.41 in social, so
+it now rises slightly, and Medics have the game's top MVP in exactly their fair share of
+competition games (16.7%). Medic still sits 0.3–0.8 below the other positions in competition, for
+the reason below.
 
-| Option                                                                                                   | Median (IQR)        | Winner picked | r with rating |
-| -------------------------------------------------------------------------------------------------------- | ------------------- | ------------- | ------------- |
-| Current                                                                                                  | 15.52 (12.08–19.79) | 80.1%         | 0.796         |
-| Boosts → teammates reached only                                                                          | 15.10 (11.54–20.00) | 80.3%         | 0.791         |
-| **M1–M4 (recommended)**                                                                                  | 14.58 (10.00–20.38) | **81.9%**     | 0.802         |
-| M1, M3, M4 without the times reset penalty                                                               | 16.34 (12.30–21.60) | 80.6%         | 0.794         |
-| Accuracy +0.075, boosts unchanged, score +2 per 1,000 from zero, times reset −0.5                        | 15.41 (10.91–20.43) | 80.5%         | 0.810         |
-| Accuracy removed, survival × share of game survived (+5), score +3 per 1,000 from zero, times reset −0.5 | 14.61 (9.51–19.99)  | 79.4%         | **0.814**     |
+Every position's competition lift comes from the elimination bonus, which is paid far more often
+in competition; each player's own stats are flat or slightly lower there because the opponents are
+stronger. Split by game outcome, competition Medics do as well as anyone in elimination wins and
+fall behind only in games decided on score:
 
-The times reset penalty is what makes the package work: without it, Medic runs a point high and
-the ranking gain mostly disappears. Lower accuracy weights track skill slightly better but pick
-winners worse, the opposite of Ammo, because accuracy is nearly constant for Medics and removing
-it shifts weight onto score and survival, which depend more on the team. Rewarding the share of
-the game survived instead of the yes/no bonus did not improve on +3 for surviving.
+| Competition median (social) | Won by elimination | Won on score  | Lost on score | Lost by elimination |
+| --------------------------- | ------------------ | ------------- | ------------- | ------------------- |
+| Commander                   | 23.38 (23.01)      | 17.54 (15.37) | 13.89 (12.74) | 10.30 (11.10)       |
+| Heavy                       | 23.04 (21.18)      | 17.02 (15.86) | 13.66 (12.62) | 9.70 (10.62)        |
+| Scout                       | 21.00 (20.35)      | 17.60 (16.40) | 14.25 (13.20) | 8.90 (10.10)        |
+| Ammo                        | 21.14 (20.54)      | 16.94 (16.77) | 14.49 (13.08) | 9.10 (9.65)         |
+| Medic                       | 23.33 (21.74)      | 15.35 (16.69) | 13.75 (14.04) | 10.42 (10.62)       |
+
+In close competition games, opponents eliminate the Medic far more often: 70% of Medics on a team
+that wins on score are eliminated in competition, against 55% in social games, and 90% against
+83% on a team that loses on score. Those Medics lose the survival bonus and are reset more. That
+is the stronger opposition targeting the Medic, which is real information about the game rather
+than a fault in the formula. No change to a Medic stat can lift competition without also lifting
+social play, because every Medic stat tested moves the two together, so the remaining gap is
+noted rather than corrected with a competition-specific rule.
+
+What was tried along the way:
+
+- **A smaller times reset penalty.** −0.5 left Medic at 14.54 in competition; −0.4 is kept.
+- **Proportional survival.** Replacing the yes/no survival bonus with a bonus for the share of
+  the game survived looked like the natural fix, since it gives a Medic eliminated in the last
+  minute most of the credit. It does not close the gap: competition Medics survive a slightly
+  smaller share of the game (0.80 against 0.83), including in score games (0.77 against 0.80 when
+  eliminated), so every variant moved social and competition together. Tested on the earlier
+  version, it also picked winners worse (80.2–80.8% against 81.7%).
+- **Lives left and per-minute scaling.** Rewarding lives left at the end (competition Medics
+  finish with a third more) and scaling boosts and score per minute of game time produced no
+  competition lift, and lives left fails the skill test (0.20 with rating).
+- **A lower score threshold on its own.** Starting the score bonus at 1,000 with nothing else
+  changed lifts Medic in competition but overshoots everywhere: the median rises to 15.9 and
+  Medics top far more than their share of games. The extra points come from the same Medics who
+  already top games.
+- **Assists.** Adding assists, which hold up in competition, alongside a smaller boost weight and
+  survival bonus, lifts the middle of the Medic distribution without lifting the top. That
+  combination is M1–M4.
+
+**Alternatives considered** (all with today's elimination bonus).
+
+| Option                                                                             | Median (IQR)        | Winner picked | r with rating |
+| ---------------------------------------------------------------------------------- | ------------------- | ------------- | ------------- |
+| Current                                                                            | 15.52 (12.08–19.79) | 80.1%         | 0.796         |
+| Boosts → teammates reached only                                                    | 15.10 (11.54–20.00) | 80.3%         | 0.791         |
+| Earlier version: boosts +1 per teammate, score from 1,500, survival +3, no assists | 14.92 (10.44–20.62) | **81.7%**     | 0.801         |
+| Earlier version with score from 1,000                                              | 15.90 (11.28–21.62) | 81.3%         | 0.804         |
+| Assists +0.5, boosts +0.75, +1.5 per 1,000 above 1,250, survival +3                | 15.32 (11.10–20.67) | 81.4%         | 0.802         |
+| Assists +0.75, boosts +0.5, score from 1,500, survival +3                          | 15.29 (11.07–20.64) | 81.4%         | 0.803         |
+| Assists +0.5, boosts +0.75, score from 1,500, survival +2                          | 15.23 (10.97–20.44) | 80.6%         | **0.806**     |
+| **M1–M4 (recommended)**                                                            | 15.43 (11.27–20.58) | 81.0%         | 0.804         |
+
+The options with assists are close on ranking. M1–M4 is preferred because it keeps the survival
+bonus and score rate as they are today, uses a round 1,000 threshold, and keeps boosts worth more
+than assists, so a Medic's own ability stays the larger reward (goal 4). With every other proposal
+applied, including the smaller elimination bonus, it gives Medic the game's top MVP in 15.6% of
+games and 16.6% of competition games, close to a fair share in both (section 5). The times reset
+penalty is what makes any of these packages work: without it, Medic runs a point high and the
+ranking gain mostly disappears.
 
 **Questions for the committee.**
 
 1. Is the committee comfortable with a times reset penalty that applies to the Medic only?
-2. M1–M4 lower the median Medic MVP by about a point and remove the high floor. Is the committee
-   comfortable with Medic MVP moving from the most generous position to in line with the others?
+2. M1–M4 keep the Medic median where it is but remove most of the high floor that accuracy gave
+   every Medic. Is the committee comfortable with that?
 
 ### 4.6 Universal components
 
@@ -992,50 +1065,82 @@ for Commanders (C1); the Medic's survival bonus replaces the eliminated penalty.
   because the behaviour they reward or punish matters when it happens, and on average they move
   MVP by less than 0.2 points at any position.
 
-**The elimination bonus.** A team that wins by elimination gets +4 each, plus +1 per minute of
-game time left beyond 3 minutes. 51.5% of standard games end in an elimination, so a quarter of
+**The elimination bonus.** Today a team that wins by elimination gets +4 each, plus +1 per minute
+of game time left beyond 3 minutes. 51.5% of standard games end in an elimination, so a quarter of
 all players receive it, 5.1 points on average when paid (median 4.0, 90th percentile 7.9).
 
-The bonus exists because a fast elimination is the best result a team can get but produces lower
-scores. With the position changes in place, that largely no longer holds: _before_ the bonus,
-elimination winners are already ahead of score winners at Commander, Heavy and Medic, and within
-about 1.5 points at Scout and Ammo.
+The bonus has two purposes: to make up the MVP a player could not earn because the game ended
+early, and to reward a team for the stronger kind of win. The first can be measured; the second is
+a judgement, which the target band (middle half of games between about 10 and 20) can limit.
 
-| Position  | Won by elimination | Same, without the bonus | Won on score |
-| --------- | ------------------ | ----------------------- | ------------ |
-| Commander | 23.17              | 17.80                   | 15.70        |
-| Heavy     | 21.78              | 16.72                   | 16.06        |
-| Scout     | 20.65              | 15.35                   | 16.60        |
-| Ammo      | 20.84              | 15.33                   | 16.80        |
-| Medic     | 22.31              | 17.08                   | 16.08        |
+_Purpose 1: MVP lost to a shorter game (measured)._ Among winners of full-length score games, the
+parts of MVP that build up over time (hits, missiles, nukes, boosts, resets, score) accrue at
+about **0.75 points per player per minute**: Commander 0.59, Heavy 0.58, Scout 0.99, Ammo 0.99,
+Medic 0.54. Elimination wins end with a median of 2.8 minutes of scheduled time left (90th
+percentile 6.9), so the shorter game costs a typical elimination winner about 2.0–2.5 points.
+This is the generous estimate, since it assumes the winners would have kept scoring at the full
+rate; in the data, elimination winners' own play falls only 0.25 points per minute remaining,
+because the fastest eliminations come from the most dominant teams.
 
-(Proposed MVP medians for winning players.)
+Against that, today's bonus pays 5.1 on average, about double the measured loss, and its shape
+does not match it: 53% of elimination wins end with under 3 minutes left and get no time-based
+amount at all, while very fast wins get +1 a minute, more than the 0.75 a minute they lost.
 
-So the bonus is now mostly a reward for the result rather than a correction for short games, and
-it puts elimination winners about 4–7.5 points above score winners. That is consistent with an elimination
-being the better result, so the recommendation is to **keep it unchanged**. Two consequences for
-the committee to be aware of:
+_Purpose 2: the premium for an elimination (bounded by the target band)._ With the position
+changes in place, elimination winners already match or beat score winners _before_ any bonus:
 
-- **Commanders gain the most from eliminations.** Their elimination-win median (23.2) is the
-  highest, because the Medic hits and nukes that produce eliminations already pay Commanders well.
-  C1 narrows this (from 24.8 today). Reducing the bonus for one position would make the rule harder
-  to explain for a small change, so no position-specific bonus is proposed.
+| Position  | Elimination winners, before any bonus | Score winners | Score losers |
+| --------- | ------------------------------------- | ------------- | ------------ |
+| Commander | 17.80                                 | 15.70         | 12.95        |
+| Heavy     | 16.72                                 | 16.06         | 12.81        |
+| Scout     | 15.35                                 | 16.60         | 13.40        |
+| Ammo      | 15.13                                 | 16.87         | 13.60        |
+| Medic     | 17.13                                 | 16.50         | 13.98        |
+
+(Proposed MVP medians.) Today's bonus puts the typical elimination winner at 21.6, at the 79th
+percentile and above the top of the target band, with 62% of elimination winners above 20. At that
+point the bonus, not the play, is lifting average players into the top fifth. A reasonable limit is
+that the typical elimination winner should land at the top of the target band, about 20 (the 75th
+percentile).
+
+| Elimination bonus                                      | Typical elimination winner | Above 20 | Position medians | Competition vs social median |
+| ------------------------------------------------------ | -------------------------- | -------- | ---------------- | ---------------------------- |
+| Today: +4, +1 per minute beyond 3 minutes left         | 21.62 (79th percentile)    | 62%      | 15.10–15.43      | +0.83                        |
+| No premium: +0.75 per minute left                      | 18.95 (73rd)               | 42%      | 14.44–14.94      | +0.50                        |
+| **+1, +0.75 per minute left (recommended)**            | **19.95 (76th)**           | **50%**  | **14.73–15.11**  | **+0.65**                    |
+| +2, +0.75 per minute left                              | 20.95 (78th)               | 57%      | 14.94–15.26      | +0.80                        |
+| +2, +0.75 per minute left, and +1 for any win on score | 20.95 (77th)               | 57%      | 15.23–15.61      | +0.67                        |
+
+A premium of +1 is the largest that keeps the typical elimination winner inside the target band.
+The recommended bonus is therefore **+1 for winning by elimination, plus 0.75 per minute of
+scheduled game time left**. Both parts can be explained to players: the per-minute part is the
+measured rate MVP builds up at, and the +1 is the extra reward for the stronger win. It averages
+3.4 points when paid (median 3.1, 90th percentile 6.2, against 5.1, 4.0 and 7.9 today).
+
+It also improves the skill signal. With a smaller team-result bonus, career MVP tracks player
+rating better at every position (see section 5), and the competition gap, which is mostly the
+bonus being paid more often in competition, narrows from +0.83 to +0.65. The cost is that every
+position's median falls by 0.2–0.5, to 14.73–15.11, still within a quarter point of 15. The position
+sections above were tuned with today's bonus; section 5 shows the combined effect with U3.
+
+- **Commanders still gain the most from eliminations.** Their elimination-win median falls from
+  24.8 today to 21.5, still the highest, because the Medic hits and nukes that produce
+  eliminations already pay Commanders well. No position-specific bonus is proposed.
 - **A win on score still earns nothing directly.** Winning is the team's outcome, and a win bonus
-  would raise every winner by the same amount regardless of how they played. The proposal does
-  not add one; the position changes already put score winners about 2.5–3.5 points above score
-  losers at every position.
+  would raise every winner by the same amount regardless of how they played. The position changes
+  already put score winners about 2.5–3.5 points above score losers at every position.
 
-| #   | Change                                                  | Detail                                                                     |
-| --- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| U1  | Keep opponent medic hits, times missiled and eliminated | Pass every test at every position. Commander medic hits at +0.5 (C1).      |
-| U2  | Keep own medic hits and both nuke-cancel components     | Deliberate rules for rare, high-impact events.                             |
-| U3  | Keep the elimination bonus unchanged                    | Rewards the best team result; no longer needed to correct for short games. |
-| U4  | Do not add a bonus for winning on score                 | Team outcome, not individual contribution.                                 |
+| #   | Change                                                                                                  | Detail                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| U1  | Keep opponent medic hits, times missiled and eliminated                                                 | Pass every test at every position. Commander medic hits at +0.5 (C1).                |
+| U2  | Keep own medic hits and both nuke-cancel components                                                     | Deliberate rules for rare, high-impact events.                                       |
+| U3  | **Elimination bonus: +4, +1 per minute beyond 3 minutes → +1, +0.75 per minute of scheduled time left** | Measured compensation for the shorter game, plus a premium sized to the target band. |
+| U4  | Do not add a bonus for winning on score                                                                 | Team outcome, not individual contribution.                                           |
 
 **Questions for the committee.**
 
-1. Should the elimination bonus stay at its current size, given that elimination winners are
-   already level with or close to score winners without it?
+1. Does the committee accept the target band as the limit on the elimination premium, putting the
+   typical elimination winner at about 20?
 2. Is the committee comfortable that a win on score continues to earn no direct MVP?
 
 ---
@@ -1047,14 +1152,14 @@ over the 5,202 standard 6v6 games.
 
 | Position  | Current median (IQR) | Proposed median (IQR) | Proposed P10–P90 |
 | --------- | -------------------- | --------------------- | ---------------- |
-| Commander | 16.60 (12.00–22.12)  | 15.10 (10.80–20.68)   | 7.90–25.07       |
-| Heavy     | 14.20 (9.70–20.14)   | 15.08 (10.32–20.42)   | 7.12–25.02       |
-| Scout     | 13.68 (9.80–18.32)   | 15.20 (9.90–20.36)    | 6.05–24.75       |
-| Ammo      | 14.42 (10.71–18.24)  | 15.27 (10.14–20.44)   | 6.16–25.51       |
-| Medic     | 15.52 (12.08–19.79)  | 14.58 (10.00–20.38)   | 6.84–25.68       |
+| Commander | 16.60 (12.00–22.12)  | 14.90 (10.80–19.98)   | 7.80–23.94       |
+| Heavy     | 14.20 (9.70–20.14)   | 14.76 (10.20–19.68)   | 7.10–23.99       |
+| Scout     | 13.68 (9.80–18.32)   | 14.85 (9.78–19.65)    | 6.00–23.85       |
+| Ammo      | 14.42 (10.71–18.24)  | 14.73 (9.82–19.70)    | 5.77–24.74       |
+| Medic     | 15.52 (12.08–19.79)  | 15.11 (11.17–19.81)   | 8.00–24.22       |
 
-Every position now has a median within half a point of 15 and an IQR of roughly 10–20, against a
-spread of 13.7–16.6 today.
+Every position now has a median within a quarter point of 15 (14.73–15.11) and an IQR of almost
+exactly 10–20, against medians spread from 13.7 to 16.6 today.
 
 **Who tops the game.** If MVP is fair across positions, the highest MVP in a game should go to
 each position about as often as that position appears: one in six for Commander, Heavy, Ammo and
@@ -1062,42 +1167,93 @@ Medic, and one in three for Scout (two per team).
 
 | Position  | Fair share | Game's top MVP today | Proposed |
 | --------- | ---------- | -------------------- | -------- |
-| Commander | 16.7%      | **35.2%**            | 18.7%    |
-| Heavy     | 16.7%      | 23.2%                | 17.2%    |
+| Commander | 16.7%      | **35.2%**            | 18.8%    |
+| Heavy     | 16.7%      | 23.2%                | 17.7%    |
 | Scout     | 33.3%      | **18.1%**            | 30.0%    |
-| Ammo      | 16.7%      | **7.3%**             | 17.4%    |
-| Medic     | 16.7%      | 16.1%                | 16.6%    |
+| Ammo      | 16.7%      | **7.3%**             | 17.9%    |
+| Medic     | 16.7%      | 16.1%                | 15.6%    |
 
 Today a Commander tops the game more than twice as often as a fair share, a Scout about half as
 often, and an Ammo carrier less than half as often. Under the proposal every position is within
-about 3 points of a fair share. Ammo needed its own top-end tuning to get there (see "Why the top
+about 3.5 points of a fair share. Ammo needed its own top-end tuning to get there (see "Why the top
 end matters" in 4.4).
 
-**Ranking quality by position.** "Winner picked" compares players at the same position across the
-two teams; "r with rating" is the correlation between a player's career MVP at the position and
-their global rating.
+**Ranking quality by position.** "r with rating" is the correlation between a player's career MVP
+at the position and their global rating. "Winner picked" compares players at the same position
+across the two teams, and is shown two ways: with the elimination bonus included, and on own play
+alone (every component except the elimination bonus).
 
-| Position  | Winner picked: today → proposed | r with rating: today → proposed |
-| --------- | ------------------------------- | ------------------------------- |
-| Commander | 81.1% → 81.8%                   | 0.72 → 0.75                     |
-| Heavy     | 78.3% → 79.2%                   | 0.81 → 0.83                     |
-| Scout     | 78.5% → 78.9%                   | 0.846 → 0.851                   |
-| Ammo      | 78.2% → 79.6%                   | 0.80 → 0.83                     |
-| Medic     | 80.1% → 81.9%                   | 0.796 → 0.802                   |
+| Position  | r with rating: today → proposed | Winner picked, own play: today → proposed | Winner picked, with bonus: today → proposed |
+| --------- | ------------------------------- | ----------------------------------------- | ------------------------------------------- |
+| Commander | 0.716 → 0.756                   | 76.9% → 77.5%                             | 81.1% → 80.6%                               |
+| Heavy     | 0.812 → 0.836                   | 71.8% → 73.1%                             | 78.3% → 77.3%                               |
+| Scout     | 0.846 → 0.853                   | 70.4% → 72.4%                             | 78.5% → 76.9%                               |
+| Ammo      | 0.805 → 0.837                   | 68.7% → 72.9%                             | 78.2% → 76.7%                               |
+| Medic     | 0.796 → 0.816                   | 72.6% → 76.2%                             | 80.1% → 79.5%                               |
 
-Ranking improves at every position, and no position gets worse on either measure.
+On the two measures of individual play, the proposal is better at every position: career MVP
+tracks player rating more closely, and own-play MVP picks the winning side more often (by 0.6–5.0
+points). With the bonus included, winner picks fall slightly at every position. That is the
+smaller elimination bonus (U3), not the position changes: a bonus paid only to winners
+automatically raises winner picks, and with today's bonus the position changes alone gave 78.8–
+81.8%. A smaller team-result bonus trades a little of that built-in head start for a skill signal
+that is stronger at every position.
+
+**Competition games.** Competition MVP has run about a point higher than social MVP for most
+positions. Almost all of that is the elimination bonus: 70% of competition games end in an
+elimination (44% of social games), so more players receive it, while each player's own stats are
+flat or slightly lower against stronger opponents. The smaller bonus (U3) narrows the gap from
++0.83 to +0.65 overall. What matters most is that the positions stay level with each other inside
+competition. Replayed over the 1,439 competition games only:
+
+| Position  | Social median: today → proposed | Competition median: today → proposed | Competition winner picked (with bonus) |
+| --------- | ------------------------------- | ------------------------------------ | -------------------------------------- |
+| Commander | 16.20 → 14.70                   | 17.65 → 15.76                        | 87.8% → 87.1%                          |
+| Heavy     | 14.00 → 14.52                   | 15.00 → 15.44                        | 86.4% → 85.4%                          |
+| Scout     | 13.40 → 14.65                   | 14.40 → 15.30                        | 86.9% → 84.6%                          |
+| Ammo      | 14.30 → 14.56                   | 14.70 → 15.16                        | 84.1% → 80.9%                          |
+| Medic     | 15.43 → 15.11                   | 15.81 → 15.11                        | 86.4% → 84.9%                          |
+
+| Position  | Fair share | Competition top MVP today | Proposed |
+| --------- | ---------- | ------------------------- | -------- |
+| Commander | 16.7%      | **39.9%**                 | 20.3%    |
+| Heavy     | 16.7%      | 26.8%                     | 21.3%    |
+| Scout     | 33.3%      | **15.4%**                 | 26.3%    |
+| Ammo      | 16.7%      | **4.9%**                  | 15.4%    |
+| Medic     | 16.7%      | 13.0%                     | 16.7%    |
+
+- **The positions are closer together in competition than today.** Competition medians span
+  15.1–15.8, against 14.4–17.7 today.
+- **The imbalance at the top is worse in competition today, and the proposal fixes most of it.**
+  A Commander currently tops 40% of competition games and an Ammo carrier 5%. Under the proposal
+  every position except Scout is within 4 points of a fair share. Scout improves the most but
+  remains about 7 points under in competition, where Scouts face stronger opponents.
+- **Medic is the one position that does not run higher in competition.** Its competition median
+  equals its social one (15.11), within 0.1–0.7 of the other positions in competition. The gap is
+  in games decided on score, where competition opponents eliminate the Medic far more often (70%
+  of Medics on a winning team, against 55% in social games). Medics top competition games in
+  their fair share (16.7%). Several rounds of Medic tuning narrowed the gap (see 4.5); the rest is
+  noted rather than corrected with a competition-specific rule.
+- **Winner picks in competition fall with the bonus included,** for the same reason as above:
+  competition has more elimination games, so it loses more of the bonus's built-in head start.
+  The drop is largest for Ammo (3.2 points), whose score bonus now starts at 1,500 and whose
+  assists track skill rather than the result.
 
 **What changes for players**, in one line each:
 
 - **Commander:** Medic hits worth half; score bonus starts at 9,000.
 - **Heavy:** missiles worth +1 instead of +2; score bonus starts at 3,500.
 - **Scout:** new +0.2 per reset; 3-hits worth +0.3; accuracy worth half; no score bonus.
-- **Ammo:** boosts score +1 per teammate reached; accuracy worth half; +2 per 1,000 points above 1,000; new +0.1 per reset.
-- **Medic:** boosts score +1 per teammate reached; −0.5 each time reset; survival +3; score bonus
-  starts at 1,500.
+- **Ammo:** boosts score +1 per teammate reached; accuracy worth half; +2 per 1,000 points above
+  1,500; new +0.25 per assist.
+- **Medic:** boosts score +0.75 per teammate reached; −0.4 each time reset; new +0.25 per assist;
+  score bonus starts at 1,000.
+- **Everyone:** winning by elimination is worth +1 plus 0.75 per minute left on the clock, instead
+  of +4 plus 1 per minute beyond the last 3.
 
 **Implementation note.** Every new input except boost recipients is already a stored scorecard
-column (`reset_opponent`, `times_reset`, `score`). Boost recipients are recorded in the replay
+column (`reset_opponent`, `times_reset`, `assists`, `score`), and the elimination bonus uses the game's
+stored `scheduled_duration` and `actual_duration`. Boost recipients are recorded in the replay
 state rows today and would need storing per scorecard at ingest. The new model would be a new
 `sm5_mvp_model` version, so historical scorecards can be recalculated and compared side by side
 with 2021.12.
