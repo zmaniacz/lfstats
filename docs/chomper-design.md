@@ -93,7 +93,7 @@ Steps 1–6b are **shared by both game modes**; the pipeline then branches on mi
     Simulate (Phase 2)                  simulateLaserball (Phase 2)
     6a. Consistency check               → no qualifying players:
         → discrepancies: throw               mark "skipped", delete, exit
-    7.  Find active MVP model           Assert goals↔line-5-score invariant
+    7.  Find non-retired MVP models     Assert goals↔line-5-score invariant
     8.  Calculate MVP scores                 → mismatch: throw
     9–15. Phase 3 in one transaction    ingestLaserball (Phase 3)
                                         (no MVP model — Laserball has none)
@@ -186,12 +186,12 @@ pnpm bulk-ingest "1-1-2026*"   # combined
 
 Four further tools operate on games that are **already in the database**. All are manually invoked and all read `packages/db/.env`.
 
-| Script                                   | What it does                                                                                                                                                                                                     |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm --filter chomper bulk-reingest`    | **SM5 only.** Re-runs parse + simulate over stored SM5 games, deletes their child rows and rewrites them via `reingester.ts`, then recomputes MVP. Worker pool with deadlock retry. Laserball games are skipped. |
-| `pnpm --filter chomper bulk-reingest-lb` | The Laserball counterpart. Deletes the `lb_` child rows (`deleteLbGameChildren`) and rewrites them. No MVP step — Laserball has no MVP model.                                                                    |
-| `pnpm --filter chomper ingest-lb-local`  | Full three-phase Laserball ingest from a directory on disk, bypassing S3 entirely. Development convenience. Always ingests as a social game (`competitionId = null`).                                            |
-| `pnpm --filter chomper recalcMVP`        | Recomputes MVP for stored scorecards under the active model.                                                                                                                                                     |
+| Script                                   | What it does                                                                                                                                                                                                                                                                      |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter chomper bulk-reingest`    | **SM5 only.** Re-runs parse + simulate over stored SM5 games, deletes their child rows and rewrites them via `reingester.ts`, then recomputes MVP. Worker pool with deadlock retry. Laserball games are skipped.                                                                  |
+| `pnpm --filter chomper bulk-reingest-lb` | The Laserball counterpart. Deletes the `lb_` child rows (`deleteLbGameChildren`) and rewrites them. No MVP step — Laserball has no MVP model.                                                                                                                                     |
+| `pnpm --filter chomper ingest-lb-local`  | Full three-phase Laserball ingest from a directory on disk, bypassing S3 entirely. Development convenience. Always ingests as a social game (`competitionId = null`).                                                                                                             |
+| `pnpm --filter chomper recalcMVP`        | Recomputes MVP for stored scorecards under every non-retired model (`--model <version>` for one model, `--game <id>` for one game). Fills missing boost-recipient columns from the replay state first. See [Multiple MVP models and backfill](#multiple-mvp-models-and-backfill). |
 
 **Both re-ingest paths preserve admin-owned metadata.** Before rewriting a `game` row they snapshot `competition_id`, `exclude`, and `description`, and restore them afterwards via `restoreGameMetadata`. Without this, re-ingesting would silently detach games from their competitions.
 
@@ -736,7 +736,7 @@ After the transaction commits:
 
 ## MVP Calculation (`mvp.ts`)
 
-Query the active `MvpModel` (where `retiredAt` is null) before the transaction. Calculate MVP points for each player using the formula in `MvpModel.parameters`. Store results as `ScorecardMvp` rows and set `Scorecard.mvp_points` and `Scorecard.mvp_model_id`.
+Query the non-retired `MvpModel` rows (`findIngestMvpModels`, which throws unless exactly one of them has `is_default`) before the transaction. `calculateMvpForModels` computes MVP for each player under every one of them from `MvpModel.parameters`. Every model's components are stored as `ScorecardMvp` rows; only the **default** model's total is written to `Scorecard.mvp_points` and `Scorecard.mvp_model_id` (`MvpRow.isDefault`). A development model (`status = 'development'`, e.g. `2027.1-dev`) therefore never changes anything official — game-top MVP, ratings, highlights, the public API and MCP all read `mvp_points`.
 
 Key notes:
 
@@ -745,6 +745,23 @@ Key notes:
 - `score_bonus` threshold and multiplier are position-specific
 - `eliminated` component does not apply to Medic
 - All components stored for every player — zero-value rows included
+- Components a model's parameters do not define are not emitted (e.g. `2027.1-dev` has no `ammo_boost` / `life_boost` rows); see the optional keys in [Core_Schema.md](Core_Schema.md#mvpmodel)
+
+### Boost recipients
+
+MVP2027 pays Ammo and Medic per teammate reached by a boost rather than per boost. `computeBoostRecipients(simResult)` counts, for each `0510` (ammo) / `0512` (life) boost, the other players whose state snapshot at that event has more shots / lives than their previous snapshot — the rule the MVP2027 analysis applied to `sm5_game_player_state` (`scripts/mvp2027/ammo_ev.sql`, `med_ev.sql`). The sum per booster is stored at ingest in `sm5_scorecard.ammo_boost_recipients` (Ammo only) / `life_boost_recipients` (Medic only), so `recalcMVP` never needs the simulation.
+
+### Multiple MVP models and backfill
+
+Ingest, `reingest` / `bulk-reingest` and `recalcMVP` all write breakdown rows for every non-retired model, so a newly added model only needs a one-off backfill of existing games:
+
+```bash
+pnpm --filter chomper recalcMVP --model 2027.1-dev
+```
+
+With `--model`, only that model's `ScorecardMvp` rows (and its `penalty_adjustment` rows) are replaced; a non-default model leaves `mvp_points` untouched. Without `--model`, every non-retired model is recomputed and the default model's totals are rewritten to `mvp_points`. Either way, a game whose Ammo/Medic scorecards still have null boost-recipient columns first has them filled by `backfillBoostRecipientsForGame` (`@lfstats/db`), which repeats the analysis SQL over the game's stored state rows (ordered by `(time, event_id)`; ingest orders by event sequence instead, which differs only for two state rows of one player in the same millisecond — on a 30-game sample the two agreed exactly). `--game <id>` limits the run to one game.
+
+Penalty edits (`queries/penalties.ts`) write the `penalty_adjustment` component for every non-retired model and recompute `mvp_points` from the scorecard's own (default) model rows only.
 
 ---
 

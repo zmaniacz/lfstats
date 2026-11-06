@@ -374,10 +374,19 @@ All stat columns that are position-specific are stored as `null` for positions w
 
 These two live on the scorecard but belong to the MVP model rather than the stat set, and so are specified here rather than in the scorecard spec.
 
-| Column         | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                                      |
-| -------------- | ------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mvp_points`   | double  | never | derived | Total MVP points under the model version active at ingest time. Sum of all `ScorecardMvp.points` for this scorecard under `mvp_model_id`. Denormalized for query performance — MVP is heavily used for sorting and aggregation. Updated if a newer model is applied post-ingest. |
-| `mvp_model_id` | uuid FK | never | derived | References `MvpModel` — the version used to calculate `mvp_points`. Required to interpret the value correctly and to identify when a newer model is available for re-calculation.                                                                                                |
+| Column         | Type    | Null  | Source  | Description                                                                                                                                                                                                                                                                                                                        |
+| -------------- | ------- | ----- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mvp_points`   | double  | never | derived | Total MVP points under the **default** model (`MvpModel.is_default`). Sum of all `ScorecardMvp.points` for this scorecard under `mvp_model_id`. Denormalized for query performance — MVP is heavily used for sorting and aggregation. Only the default model ever writes it; development models exist only as `ScorecardMvp` rows. |
+| `mvp_model_id` | uuid FK | never | derived | References `MvpModel` — the (default) version used to calculate `mvp_points`. Required to interpret the value correctly and to identify when a newer model is available for re-calculation.                                                                                                                                        |
+
+Two MVP inputs are stored on the scorecard because no single TDF field holds them (they are counted from the replay state, see [chomper-design.md](chomper-design.md#mvp-calculation-mvpts)):
+
+| Column                  | Type    | Null              | Source  | Description                                                                                                                                                                                                                           |
+| ----------------------- | ------- | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ammo_boost_recipients` | integer | Ammo Carrier only | derived | Teammates reached by this player's ammo boosts (`0510`), summed over every boost: a teammate counts once per boost whose `GamePlayerState` row at the boost shows more shots than their previous row. Used by MVP model `2027.1-dev`. |
+| `life_boost_recipients` | integer | Medic only        | derived | The same for life boosts (`0512`), counting teammates whose lives went up.                                                                                                                                                            |
+
+Games ingested before these columns existed have them null until `recalcMVP` fills them from `GamePlayerState` (see [chomper-design.md](chomper-design.md#multiple-mvp-models-and-backfill)).
 
 See [`MvpModel`](#mvpmodel) and [`ScorecardMvp`](#scorecardmvp) below, and the MVP formula in [chomper-design.md](chomper-design.md).
 
@@ -429,19 +438,22 @@ Friendly and opponent interactions are both recorded — team relationship is de
 
 One row per versioned MVP formula. The formula parameters are stored as a JSON document, allowing the component structure and multipliers to evolve over time without schema changes. Each version is immutable once created — changes to the formula always produce a new version row.
 
-| Column        | Type      | Null     | Description                                                                                                                                                                            |
-| ------------- | --------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`          | uuid      | never    | Primary key. Referenced by `Scorecard.mvp_model_id` and `ScorecardMvp.mvp_model_id`.                                                                                                   |
-| `version`     | string    | never    | Human-readable version identifier in `year.month` format (e.g. `2021.12`). Unique. Used to identify which formula was active at ingest time and for display in historical comparisons. |
-| `released_at` | timestamp | never    | When this version became active. Used to determine which model was current at the time of any given game's ingest.                                                                     |
-| `retired_at`  | timestamp | nullable | When this version was superseded by a newer model. Null for the currently active version. Only one row should have `retired_at = null` at any time.                                    |
-| `description` | string    | nullable | Human-readable notes on what changed in this version relative to the previous one. Free text.                                                                                          |
-| `parameters`  | json      | never    | The complete formula definition for this version. Contains all component types, multipliers, thresholds, and position applicability. See JSON schema below.                            |
+| Column        | Type      | Null     | Description                                                                                                                                                                                          |
+| ------------- | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | uuid      | never    | Primary key. Referenced by `Scorecard.mvp_model_id` and `ScorecardMvp.mvp_model_id`.                                                                                                                 |
+| `version`     | string    | never    | Human-readable version identifier in `year.month` format (e.g. `2021.12`). Unique. Used to identify which formula was active at ingest time and for display in historical comparisons.               |
+| `released_at` | timestamp | never    | When this version became active. For a `development` model, the date the candidate was added.                                                                                                        |
+| `retired_at`  | timestamp | nullable | When this version was withdrawn. Every non-retired model (`retired_at` null) is computed at ingest and stored as `ScorecardMvp` rows.                                                                |
+| `description` | string    | nullable | Human-readable notes on what changed in this version relative to the previous one. Free text.                                                                                                        |
+| `parameters`  | json      | never    | The complete formula definition for this version. Contains all component types, multipliers, thresholds, and position applicability. See JSON schema below.                                          |
+| `status`      | enum      | never    | `mvp_model_status`: `released` (an official formula) or `development` (a candidate computed alongside for comparison, never official). Default `released`.                                           |
+| `is_default`  | boolean   | never    | True for exactly one model: the one that writes `Scorecard.mvp_points` / `mvp_model_id` and drives everything official (game-top MVP, ratings, highlights, the public API and MCP). Default `false`. |
 
 **Constraints:**
 
 - `version` is a unique key.
-- Only one row should have `retired_at = null` at any time — enforced at the application level.
+- At most one row has `is_default = true` (partial unique index `sm5_mvp_model_single_default_idx`). Ingest additionally refuses to run unless exactly one non-retired model is the default.
+- Several rows may have `retired_at = null` at once — e.g. `2021.12` (released, default) and `2027.1-dev` (development).
 
 **JSON schema for `parameters` (version 2021.12):**
 
@@ -494,7 +506,23 @@ One row per versioned MVP formula. The formula parameters are stored as a JSON d
 
 - The JSON structure is versioned implicitly by the `version` field — the application selects the correct parser/executor for the formula based on `version`. If the JSON structure changes significantly in a future version, a new parser is added in application code alongside the new model row.
 - Model rows are immutable once created. Never update `parameters` on an existing row — create a new version instead.
-- `released_at` and `retired_at` together define the active window for each version, enabling correct model selection for historical games.
+- `released_at` and `retired_at` together define the active window for each version.
+- The web app's MVP model switcher lists the non-retired models; a non-default model's totals are read as the sum of its `ScorecardMvp` rows per scorecard.
+
+**Additional `parameters` keys (version 2027.1-dev, MVP2027).** All optional; a component whose key is absent is not emitted, so `2021.12` is unaffected. See [MVP2027_Proposal.md](MVP2027_Proposal.md) for the rationale and the full parameter set in `packages/db/drizzle/0068_mvp2027_dev_model.sql`.
+
+| Key                                       | Block                    | Meaning                                                                                                              |
+| ----------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `accuracy_points_per_percent`             | every position block     | Per-position accuracy weight; falls back to `universal.accuracy_points_per_percent`.                                 |
+| `medic_hit_opponent_points`               | `commander`              | Commander-only override of the universal opponent medic hit weight.                                                  |
+| `reset_opponent_points`                   | `scout`                  | Points per `Scorecard.reset_opponent` (component `reset_opponent`).                                                  |
+| `ammo_boost_recipient_points`             | `ammo_carrier`           | Points per `Scorecard.ammo_boost_recipients` (component `ammo_boost_recipients`).                                    |
+| `life_boost_recipient_points`             | `medic`                  | Points per `Scorecard.life_boost_recipients` (component `life_boost_recipients`).                                    |
+| `times_reset_points`                      | `medic`                  | Points per `Scorecard.times_reset` (component `times_reset`).                                                        |
+| `assist_points`                           | `ammo_carrier`, `medic`  | Points per `Scorecard.assists` (component `assists`).                                                                |
+| `ammo_boost_points` / `life_boost_points` | `ammo_carrier` / `medic` | Now optional: omitted in `2027.1-dev`, so the per-boost components are not emitted.                                  |
+| `score_bonus_points_per_1000 = 0`         | any position block       | Disables the score bonus for that position (stored as input 0, points 0).                                            |
+| `elimination_bonus_*`                     | `universal`              | Unchanged shape. `2027.1-dev`: minimum 1, threshold 0 s, 0.0125 per second (0.75 per minute of scheduled time left). |
 
 ---
 
@@ -543,8 +571,10 @@ Keyed on `(scorecard_id, mvp_model_id, component)` — multiple model versions c
 - All components are stored for every scorecard regardless of position or whether the value is zero. The UI is responsible for filtering out zero-value rows for display.
 - `input_value` stores the raw stat before the formula multiplier is applied, enabling verification of the calculation and re-display without re-reading the Scorecard.
 - Position-inapplicable components (e.g. `nukes_detonated` for a Scout) will always have `input_value = 0` and `points = 0`.
-- To compare a player's MVP scores across model versions, query `ScorecardMvp` filtered by `mvp_model_id` rather than using `Scorecard.mvp_points`.
-- When a new model version is applied to existing scorecards, a new set of `ScorecardMvp` rows is inserted for the new `mvp_model_id` — prior version rows are retained. `Scorecard.mvp_points` and `Scorecard.mvp_model_id` are updated to reflect the newest calculation.
+- To compare a player's MVP scores across model versions, query `ScorecardMvp` filtered by `mvp_model_id` rather than using `Scorecard.mvp_points`. **Any query over `ScorecardMvp` must filter by model** — every non-retired model has its own full set of rows per scorecard.
+- Ingest, reingest and `recalcMVP` write a full set of rows for every non-retired model. Only the default model's total is written to `Scorecard.mvp_points` / `mvp_model_id`.
+- `penalty_adjustment` rows (escalated penalty MVP deductions) are written for every non-retired model, so each model's summed total includes them.
+- Additional components in `2027.1-dev`: `reset_opponent` (Scout), `ammo_boost_recipients` (Ammo), `life_boost_recipients` (Medic), `times_reset` (Medic), `assists` (Ammo, Medic). It emits no `ammo_boost` / `life_boost` rows.
 
 ---
 
