@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { cache } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -51,10 +53,13 @@ export async function generateMetadata({
 
 export default async function CompetitionTeamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ competitionSlug: string; teamSlug: string }>;
+  searchParams: Promise<{ mvp?: string | string[] }>;
 }) {
-  const { competitionSlug, teamSlug } = await params;
+  const [{ competitionSlug, teamSlug }, { mvp }] = await Promise.all([params, searchParams]);
+  const mvpModel = await resolveMvpModel(mvp);
 
   const competition = await getCompetition(competitionSlug);
   if (!competition) notFound();
@@ -130,7 +135,9 @@ export default async function CompetitionTeamPage({
   const [roster, unassigned, playerStats, resultsByColor, matchResults] = await Promise.all([
     getCompetitionTeamRoster(team.id),
     getTeamGameParticipants(team.id),
-    legacy ? getLegacyCompetitionTeamPlayerStats(team.id) : getCompetitionTeamPlayerStats(team.id),
+    legacy
+      ? getLegacyCompetitionTeamPlayerStats(team.id, mvpModel)
+      : getCompetitionTeamPlayerStats(team.id, mvpModel),
     getCompetitionTeamResultsByColor(team.id),
     // "all" so finals matches sit alongside round play in the match list below.
     getCompetitionMatchResults(team.competitionId, undefined, "all"),
@@ -191,6 +198,7 @@ export default async function CompetitionTeamPage({
   return (
     <div className="space-y-6">
       {header}
+      <MvpModelNotice model={mvpModel} />
 
       <Card>
         <CardHeader>

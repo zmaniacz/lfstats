@@ -16,12 +16,17 @@ export const MVP_COMPONENTS: Readonly<Record<string, MvpComponentMeta>> = {
   nukes_canceled: { label: "Nukes Canceled" },
   team_nukes_canceled: { label: "Own Nukes Canceled" },
   shots_hit_opponent_3hit: { label: "3-Hit Shots" },
+  reset_opponent: { label: "Opponents Reset" },
   ammo_boost: { label: "Ammo Boost" },
+  ammo_boost_recipients: { label: "Ammo Boost Teammates" },
   life_boost: { label: "Life Boost" },
+  life_boost_recipients: { label: "Life Boost Teammates" },
+  assists: { label: "Assists" },
   survival_bonus: { label: "Survival Bonus" },
   elimination_bonus: { label: "Elimination Bonus" },
   eliminated: { label: "Eliminated Penalty" },
   times_hit_by_missile: { label: "Times Missiled" },
+  times_reset: { label: "Times Reset" },
 } as const;
 
 export function getMvpComponentLabel(key: string): string {

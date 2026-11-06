@@ -29,6 +29,7 @@ import {
 import { eq, and, asc, desc, inArray, isNull, sql, SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
+import { mvpComponentModelCondition, mvpPointsSql, type MvpModelRef } from "./mvp-models";
 
 export type GameListFilters = {
   centerId?: string;
@@ -587,7 +588,10 @@ async function getStepTotals(
  * games they select (a center's night, a competition's whole run), never in what a detailed
  * game looks like.
  */
-async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDetail[]> {
+async function buildGameDetails(
+  gameRows: GameDetailListRow[],
+  mvpModel?: MvpModelRef | null,
+): Promise<GameDetail[]> {
   if (gameRows.length === 0) return [];
 
   const gameIds = gameRows.map((r) => r.id);
@@ -619,7 +623,7 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
         position: sm5Scorecard.position,
         eliminated: sm5Scorecard.eliminated,
         score: sm5Scorecard.score,
-        mvpPoints: sm5Scorecard.mvpPoints,
+        mvpPoints: mvpPointsSql(mvpModel),
         livesLeft: sm5Scorecard.livesLeft,
         shotsLeft: sm5Scorecard.shotsLeft,
         hitDiff: sm5Scorecard.hitDiff,
@@ -699,7 +703,7 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
       })
       .from(sm5ScorecardMvp)
       .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
-      .where(inArray(sm5Scorecard.gameId, gameIds)),
+      .where(and(inArray(sm5Scorecard.gameId, gameIds), mvpComponentModelCondition(mvpModel))),
 
     db
       .select({
@@ -949,7 +953,11 @@ async function buildGameDetails(gameRows: GameDetailListRow[]): Promise<GameDeta
 }
 
 /** Every non-competition SM5 game a center played on one date, in full detail. */
-export async function getNightlyDetails(centerId: string, date: string): Promise<GameDetail[]> {
+export async function getNightlyDetails(
+  centerId: string,
+  date: string,
+  mvpModel?: MvpModelRef | null,
+): Promise<GameDetail[]> {
   const gameRows = await db
     .select({
       id: game.id,
@@ -980,7 +988,7 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
     )
     .orderBy(desc(game.startTime));
 
-  return buildGameDetails(gameRows);
+  return buildGameDetails(gameRows, mvpModel);
 }
 
 /**
@@ -990,7 +998,10 @@ export async function getNightlyDetails(centerId: string, date: string): Promise
  * has no rounds or matches to slice by, so its whole run is presented as one flat list the
  * same way a social night is.
  */
-export async function getCompetitionGameDetails(competitionId: string): Promise<GameDetail[]> {
+export async function getCompetitionGameDetails(
+  competitionId: string,
+  mvpModel?: MvpModelRef | null,
+): Promise<GameDetail[]> {
   const gameRows = await db
     .select({
       id: game.id,
@@ -1016,7 +1027,7 @@ export async function getCompetitionGameDetails(competitionId: string): Promise<
     )
     .orderBy(desc(game.startTime));
 
-  return buildGameDetails(gameRows);
+  return buildGameDetails(gameRows, mvpModel);
 }
 
 export async function getGameCenterId(id: string): Promise<string | null> {
@@ -1028,7 +1039,10 @@ export async function deleteGame(id: string): Promise<void> {
   await db.delete(game).where(eq(game.id, id));
 }
 
-export async function getGameDetail(id: string): Promise<GameDetail | null> {
+export async function getGameDetail(
+  id: string,
+  mvpModel?: MvpModelRef | null,
+): Promise<GameDetail | null> {
   const [gameRow] = await db
     .select({
       id: game.id,
@@ -1078,7 +1092,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
         position: sm5Scorecard.position,
         eliminated: sm5Scorecard.eliminated,
         score: sm5Scorecard.score,
-        mvpPoints: sm5Scorecard.mvpPoints,
+        mvpPoints: mvpPointsSql(mvpModel),
         livesLeft: sm5Scorecard.livesLeft,
         shotsLeft: sm5Scorecard.shotsLeft,
         hitDiff: sm5Scorecard.hitDiff,
@@ -1169,7 +1183,7 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
       })
       .from(sm5ScorecardMvp)
       .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
-      .where(eq(sm5Scorecard.gameId, id)),
+      .where(and(eq(sm5Scorecard.gameId, id), mvpComponentModelCondition(mvpModel))),
 
     db
       .select({
@@ -1406,7 +1420,10 @@ export async function getGameDetail(id: string): Promise<GameDetail | null> {
   };
 }
 
-export async function getGameDetailBySlug(slug: string): Promise<GameDetail | null> {
+export async function getGameDetailBySlug(
+  slug: string,
+  mvpModel?: MvpModelRef | null,
+): Promise<GameDetail | null> {
   const parsed = parseGameSlug(slug);
   if (!parsed) return null;
 
@@ -1424,7 +1441,7 @@ export async function getGameDetailBySlug(slug: string): Promise<GameDetail | nu
     );
 
   if (!idRow) return null;
-  return getGameDetail(idRow.id);
+  return getGameDetail(idRow.id, mvpModel);
 }
 
 export async function getGameSlugById(gameId: string): Promise<string | null> {

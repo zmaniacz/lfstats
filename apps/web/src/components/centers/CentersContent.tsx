@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { MvpModelRef } from "@lfstats/db";
 import Link from "next/link";
 import {
   getCenterPositionStats,
@@ -22,11 +23,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatScore, formatMVP } from "@/lib/format";
 import { POSITIONS } from "@/lib/positions";
 
-export async function CentersContent({ scopeFilter }: { scopeFilter: GameScopeFilter }) {
+export async function CentersContent({
+  scopeFilter,
+  mvpModel,
+}: {
+  scopeFilter: GameScopeFilter;
+  mvpModel?: MvpModelRef | null;
+}) {
   const [positionStats, mvpComponents, mvpBoxPlot] = await Promise.all([
-    getCenterPositionStats(scopeFilter),
-    getGlobalMvpComponents(scopeFilter),
-    getGlobalMvpBoxPlot(scopeFilter),
+    getCenterPositionStats(scopeFilter, mvpModel),
+    getGlobalMvpComponents(scopeFilter, mvpModel),
+    getGlobalMvpBoxPlot(scopeFilter, mvpModel),
   ]);
 
   const statsByPosition = new Map<number, typeof positionStats>();

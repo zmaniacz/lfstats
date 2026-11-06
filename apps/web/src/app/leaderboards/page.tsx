@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import { LeaderboardsContent } from "@/components/competitions/LeaderboardsContent";
 import { LeaderboardsSkeleton } from "@/components/competitions/LeaderboardsSkeleton";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -18,6 +20,7 @@ export default async function LeaderboardsPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    mvp?: string | string[];
     scope?: string;
     center?: string;
     competition?: string;
@@ -30,6 +33,7 @@ export default async function LeaderboardsPage({
   }>;
 }) {
   const sp = await searchParams;
+  const mvpModel = await resolveMvpModel(sp.mvp);
   const gameType = await resolveGameType(sp.game);
   const ctx = await resolveFilterContext(sp, { gameType });
 
@@ -98,8 +102,9 @@ export default async function LeaderboardsPage({
             />
           )}
 
-          <Suspense key={contentKey} fallback={<LeaderboardsSkeleton />}>
-            <LeaderboardsContent scopeFilter={scopeFilter} options={options} />
+          <MvpModelNotice model={mvpModel} />
+          <Suspense key={contentKey + mvpModel?.version} fallback={<LeaderboardsSkeleton />}>
+            <LeaderboardsContent scopeFilter={scopeFilter} options={options} mvpModel={mvpModel} />
           </Suspense>
         </>
       )}

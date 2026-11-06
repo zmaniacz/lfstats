@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { MvpModelRef } from "@lfstats/db";
 import { NightlyStatsTable } from "@/components/nightly/NightlyStatsTable";
 import { NightlySummaryTable } from "@/components/nightly/NightlySummaryTable";
 import { MedicHitsLeaderboardTable } from "@/components/players/MedicHitsLeaderboardTable";
@@ -17,8 +18,14 @@ import { getCompetitionGameDetails } from "@lfstats/db";
  * without its ▲/▼ trend icons: those compare against a player's social average at one
  * center, which is not a meaningful baseline for a competitive event that may span several.
  */
-export async function NoScoringContent({ competitionId }: { competitionId: string }) {
-  const gameDetails = await getCompetitionGameDetails(competitionId);
+export async function NoScoringContent({
+  competitionId,
+  mvpModel,
+}: {
+  competitionId: string;
+  mvpModel?: MvpModelRef | null;
+}) {
+  const gameDetails = await getCompetitionGameDetails(competitionId, mvpModel);
   const rows = toScorecardRows(gameDetails);
 
   if (rows.length === 0) {

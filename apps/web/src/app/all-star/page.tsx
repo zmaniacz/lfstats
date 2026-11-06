@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
 import { AllStarContent } from "@/components/competitions/AllStarContent";
@@ -16,6 +18,7 @@ export default async function AllStarPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    mvp?: string | string[];
     scope?: string;
     competition?: string;
     pool?: string;
@@ -24,6 +27,7 @@ export default async function AllStarPage({
   }>;
 }) {
   const sp = await searchParams;
+  const mvpModel = await resolveMvpModel(sp.mvp);
 
   const showPool = sp.pool !== "0";
   const showFinals = sp.finals === "1";
@@ -46,7 +50,9 @@ export default async function AllStarPage({
   const activeComp = ctx.competition;
   const options = { showPool, showFinals, showMercs };
 
-  const contentKey = [activeComp.slug, showPool, showFinals, showMercs].join("|");
+  const contentKey = [activeComp.slug, showPool, showFinals, showMercs, mvpModel?.version].join(
+    "|",
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -74,8 +80,10 @@ export default async function AllStarPage({
         />
       )}
 
+      <MvpModelNotice model={mvpModel} />
       <Suspense key={contentKey} fallback={<AllStarSkeleton />}>
         <AllStarContent
+          mvpModel={mvpModel}
           competitionId={activeComp.id}
           options={options}
           format={activeComp.format}

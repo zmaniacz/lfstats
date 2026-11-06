@@ -3,6 +3,7 @@
 
 import { db } from "../client";
 import { game, sm5GameTeam, sm5Scorecard, center, competition, gameTagAssignment } from "../schema";
+import { mvpPointsSql, type MvpModelRef } from "./mvp-models";
 import { eq, and, isNull, isNotNull, or, inArray, gte, lte, sql, desc } from "drizzle-orm";
 import type { GameListItem } from "./games";
 
@@ -229,11 +230,12 @@ export type PlayerSocialAverages = {
 
 export async function getPlayerSocialAveragesByCenter(
   centerId: string,
+  mvpModel?: MvpModelRef | null,
 ): Promise<PlayerSocialAverages[]> {
   const rows = await db
     .select({
       playerId: sm5Scorecard.playerId,
-      avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
+      avgMvp: sql<number>`AVG(${mvpPointsSql(mvpModel)})::float`,
       avgScore: sql<number>`AVG(${sm5Scorecard.score})::float`,
     })
     .from(sm5Scorecard)

@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import {
   getCompetitionRounds,
   getCompetitionUnassignedGamesForAdmin,
@@ -34,6 +36,7 @@ export default async function StandingsPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    mvp?: string | string[];
     scope?: string;
     competition?: string;
     round?: string;
@@ -41,6 +44,7 @@ export default async function StandingsPage({
   }>;
 }) {
   const sp = await searchParams;
+  const mvpModel = await resolveMvpModel(sp.mvp);
   const roundIdParam = sp.round;
 
   // A competition is SM5 or Laserball, never both, so the picker offers every competition and
@@ -84,8 +88,9 @@ export default async function StandingsPage({
           scorecards only.
         </p>
 
-        <Suspense key={activeComp.slug} fallback={<NightlySkeleton />}>
-          <NoScoringContent competitionId={activeId} />
+        <MvpModelNotice model={mvpModel} />
+        <Suspense key={activeComp.slug + mvpModel?.version} fallback={<NightlySkeleton />}>
+          <NoScoringContent competitionId={activeId} mvpModel={mvpModel} />
         </Suspense>
       </div>
     );
@@ -109,8 +114,13 @@ export default async function StandingsPage({
         )}
         <StandingsHeader ctx={ctx} competitionSlug={activeComp.slug} isAdmin={isAdmin} />
 
-        <Suspense key={activeComp.slug} fallback={<StandingsSkeleton />}>
-          <SoloStandingsContent activeId={activeId} competitionName={activeComp.name} />
+        <MvpModelNotice model={mvpModel} />
+        <Suspense key={activeComp.slug + mvpModel?.version} fallback={<StandingsSkeleton />}>
+          <SoloStandingsContent
+            activeId={activeId}
+            competitionName={activeComp.name}
+            mvpModel={mvpModel}
+          />
         </Suspense>
       </div>
     );

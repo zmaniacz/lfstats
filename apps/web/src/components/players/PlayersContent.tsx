@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { MvpModelRef } from "@lfstats/db";
 import {
   getCompetitionTopPlayers,
   getCompetitionCommanderPlayers,
@@ -26,9 +27,11 @@ import { LegacyTopPlayersTable } from "@/components/competitions/LegacyTopPlayer
 export async function PlayersContent({
   options,
   scopeFilter,
+  mvpModel,
 }: {
   options: CompetitionTopPlayersOptions;
   scopeFilter: GameScopeFilter;
+  mvpModel?: MvpModelRef | null;
 }) {
   // One competition with PDF-era games gets its own table; every other scope, including all
   // competitions together, stays TDF-only so PDF games never reach an aggregate.
@@ -37,18 +40,18 @@ export async function PlayersContent({
     scopeFilter.competitionId &&
     (await competitionHasLegacyGames(scopeFilter.competitionId))
   ) {
-    const legacyPlayers = await getLegacyCompetitionTopPlayers(scopeFilter, options);
+    const legacyPlayers = await getLegacyCompetitionTopPlayers(scopeFilter, options, mvpModel);
     return <LegacyTopPlayersTable players={legacyPlayers} />;
   }
 
   const [players, commanders, heavyPlayers, scoutPlayers, ammoPlayers, medicPlayers, medicHits] =
     await Promise.all([
-      getCompetitionTopPlayers(scopeFilter, options),
-      getCompetitionCommanderPlayers(scopeFilter, options),
-      getCompetitionHeavyPlayers(scopeFilter, options),
-      getCompetitionScoutPlayers(scopeFilter, options),
-      getCompetitionAmmoPlayers(scopeFilter, options),
-      getCompetitionMedicPlayers(scopeFilter, options),
+      getCompetitionTopPlayers(scopeFilter, options, mvpModel),
+      getCompetitionCommanderPlayers(scopeFilter, options, mvpModel),
+      getCompetitionHeavyPlayers(scopeFilter, options, mvpModel),
+      getCompetitionScoutPlayers(scopeFilter, options, mvpModel),
+      getCompetitionAmmoPlayers(scopeFilter, options, mvpModel),
+      getCompetitionMedicPlayers(scopeFilter, options, mvpModel),
       getCompetitionMedicHitsLeaderboard(scopeFilter, options),
     ]);
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { MvpModelRef } from "@lfstats/db";
 import {
   getCompetitionAllStarRankings,
   type CompetitionFormat,
@@ -13,12 +14,14 @@ export async function AllStarContent({
   competitionId,
   options,
   format,
+  mvpModel,
 }: {
   competitionId: string;
   options: CompetitionTopPlayersOptions;
   format: CompetitionFormat;
+  mvpModel?: MvpModelRef | null;
 }) {
-  const rankings = await getCompetitionAllStarRankings(competitionId, options, format);
+  const rankings = await getCompetitionAllStarRankings(competitionId, options, format, mvpModel);
 
   return (
     <>

@@ -3,6 +3,7 @@
 
 import { db } from "../client";
 import { competition, competitionPlayer, game, player, sm5Scorecard } from "../schema";
+import { mvpPointsSql, type MvpModelRef } from "./mvp-models";
 import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { RosterMutationResult } from "./competition-tournament";
 
@@ -54,6 +55,7 @@ export type SoloStandingsRow = {
  */
 export async function getSoloCompetitionStandings(
   competitionId: string,
+  mvpModel?: MvpModelRef | null,
 ): Promise<SoloStandingsRow[]> {
   // Rank each player's games within each position they played, best MVP first. The score
   // and id tiebreaks only decide *which* game fills the last counted slot on an exact MVP
@@ -62,11 +64,11 @@ export async function getSoloCompetitionStandings(
     .select({
       playerId: sql<string>`${sm5Scorecard.playerId}`.as("player_id"),
       position: sm5Scorecard.position,
-      mvpPoints: sm5Scorecard.mvpPoints,
+      mvpPoints: mvpPointsSql(mvpModel).as("mvp_points"),
       score: sm5Scorecard.score,
       rn: sql<number>`row_number() over (
         partition by ${sm5Scorecard.playerId}, ${sm5Scorecard.position}
-        order by ${sm5Scorecard.mvpPoints} desc, ${sm5Scorecard.score} desc, ${sm5Scorecard.id}
+        order by ${mvpPointsSql(mvpModel)} desc, ${sm5Scorecard.score} desc, ${sm5Scorecard.id}
       )`.as("rn"),
     })
     .from(sm5Scorecard)
@@ -161,6 +163,7 @@ export type SoloUnenrolledPlayer = {
  */
 export async function getSoloCompetitionUnenrolledPlayers(
   competitionId: string,
+  mvpModel?: MvpModelRef | null,
 ): Promise<SoloUnenrolledPlayer[]> {
   const rows = await db
     .select({
@@ -168,7 +171,7 @@ export async function getSoloCompetitionUnenrolledPlayers(
       iplId: player.iplId,
       callsign: player.currentCallsign,
       gamesPlayed: sql<number>`count(*)::int`,
-      avgMvp: sql<number | null>`avg(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number | null>`avg(${mvpPointsSql(mvpModel)})`,
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(game.id, sm5Scorecard.gameId))

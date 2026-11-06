@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import Link from "next/link";
 import { getCenterList } from "@lfstats/db";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -26,6 +28,7 @@ export default async function CentersPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    mvp?: string | string[];
     scope?: string;
     center?: string;
     competition?: string;
@@ -35,6 +38,7 @@ export default async function CentersPage({
   }>;
 }) {
   const sp = await searchParams;
+  const mvpModel = await resolveMvpModel(sp.mvp);
   const gameType = await resolveGameType(sp.game);
   const ctx = await resolveFilterContext(sp, { gameType });
   const scopeFilter = toGameScopeFilter(ctx);
@@ -100,8 +104,9 @@ export default async function CentersPage({
             </TableBody>
           </Table>
 
-          <Suspense key={contentKey} fallback={<CentersSkeleton />}>
-            <CentersContent scopeFilter={scopeFilter} />
+          <MvpModelNotice model={mvpModel} />
+          <Suspense key={contentKey + mvpModel?.version} fallback={<CentersSkeleton />}>
+            <CentersContent scopeFilter={scopeFilter} mvpModel={mvpModel} />
           </Suspense>
         </>
       )}

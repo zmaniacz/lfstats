@@ -12,6 +12,7 @@ import {
   getPlayerHeadToHead,
   getPlayerPdfGameList,
   type GameScopeFilter,
+  type MvpModelRef,
 } from "@lfstats/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerWinsByColorChart } from "@/components/players/PlayerWinsByColorChart";
@@ -30,9 +31,11 @@ import { buildStatSeries } from "@/lib/player-stat-series";
 export async function PlayerDetailContent({
   playerId,
   scopeFilter,
+  mvpModel,
 }: {
   playerId: string;
   scopeFilter: GameScopeFilter;
+  mvpModel?: MvpModelRef | null;
 }) {
   const [
     gameResults,
@@ -46,12 +49,12 @@ export async function PlayerDetailContent({
     legacyGames,
   ] = await Promise.all([
     getPlayerResultsByColor(playerId, scopeFilter),
-    getPlayerAvgMvpByPosition(playerId, scopeFilter),
-    getGlobalAvgMvpByPosition(scopeFilter),
-    getPlayerMvpBoxPlot(playerId, scopeFilter),
+    getPlayerAvgMvpByPosition(playerId, scopeFilter, mvpModel),
+    getGlobalAvgMvpByPosition(scopeFilter, mvpModel),
+    getPlayerMvpBoxPlot(playerId, scopeFilter, mvpModel),
     getPlayerAvgScoreByPosition(playerId, scopeFilter),
     getGlobalAvgScoreByPosition(scopeFilter),
-    getPlayerGames(playerId, scopeFilter),
+    getPlayerGames(playerId, scopeFilter, mvpModel),
     getPlayerHeadToHead(playerId, scopeFilter),
     getPlayerPdfGameList(playerId, scopeFilter),
   ]);

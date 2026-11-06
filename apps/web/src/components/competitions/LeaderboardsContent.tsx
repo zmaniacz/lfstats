@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { MvpModelRef } from "@lfstats/db";
 import { DualStatLeaderboardCard } from "@/components/competitions/DualStatLeaderboardCard";
 import { PositionLeaderboardCard } from "@/components/competitions/PositionLeaderboardCard";
 import { StatLeaderboardCard } from "@/components/competitions/StatLeaderboardCard";
@@ -23,9 +24,11 @@ import {
 export async function LeaderboardsContent({
   scopeFilter,
   options,
+  mvpModel,
 }: {
   scopeFilter: GameScopeFilter;
   options: CompetitionTopPlayersOptions;
+  mvpModel?: MvpModelRef | null;
 }) {
   // One competition with PDF-era games gets the boards its scorecards can fill; every other
   // scope stays TDF-only so PDF games never reach an aggregate.
@@ -51,11 +54,11 @@ export async function LeaderboardsContent({
     nukeNonsense,
     miscMischief,
   ] = await Promise.all([
-    getCompetitionPositionScorecards(scopeFilter, 1, options),
-    getCompetitionPositionScorecards(scopeFilter, 2, options),
-    getCompetitionPositionScorecards(scopeFilter, 3, options),
-    getCompetitionPositionScorecards(scopeFilter, 4, options),
-    getCompetitionPositionScorecards(scopeFilter, 5, options),
+    getCompetitionPositionScorecards(scopeFilter, 1, options, mvpModel),
+    getCompetitionPositionScorecards(scopeFilter, 2, options, mvpModel),
+    getCompetitionPositionScorecards(scopeFilter, 3, options, mvpModel),
+    getCompetitionPositionScorecards(scopeFilter, 4, options, mvpModel),
+    getCompetitionPositionScorecards(scopeFilter, 5, options, mvpModel),
     getCompetitionGamesPlayed(scopeFilter, options),
     getCompetitionTotalScore(scopeFilter, options),
     getCompetitionTotalTime(scopeFilter, options),

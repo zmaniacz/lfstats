@@ -11,6 +11,7 @@ import {
   type CompetitionTopPlayersOptions,
 } from "./competition-tournament";
 import type { GameScopeFilter } from "./scope";
+import { mvpPointsSql, type MvpModelRef } from "./mvp-models";
 
 // Per-player competition stats for competitions that hold PDF-era games (sm5_pdf). The
 // TDF-only queries in competition-tournament.ts read sm5_scorecard and stay the path for every
@@ -33,11 +34,17 @@ export async function competitionHasLegacyGames(competitionId: string): Promise<
 }
 
 // Both scorecard kinds in one row shape, with the side's result. Columns a PDF scorecard has
-// no source for are null on its rows, so avg() skips them.
-const SCORECARDS = sql`(
+// no source for are null on its rows, so avg() skips them. A TDF row's mvp_points is the
+// selected MVP model's total (the stored default unless another model is passed).
+function scorecardsSql(mvpModel?: MvpModelRef | null): SQL {
+  const mvpPoints = mvpPointsSql(mvpModel, {
+    scorecardId: sql`s.id`,
+    mvpPoints: sql`s.mvp_points`,
+  });
+  return sql`(
   SELECT s.id, s.game_id, s.team_id, s.player_id, s.position, s.is_mercenary,
          false AS legacy, s.score, s.accuracy, s.hit_diff, s.medic_hits, s.times_hit,
-         s.eliminated, s.penalties, s.mvp_points, NULL::float AS legacy_mvp_points,
+         s.eliminated, s.penalties, ${mvpPoints} AS mvp_points, NULL::float AS legacy_mvp_points,
          s.deactivated_opponent, s.assists, s.reset_opponent, s.eliminated_opponent,
          s.uptime::float / nullif(s.uptime + s.resupply_downtime + s.other_downtime, 0)
            AS uptime_pct,
@@ -53,6 +60,7 @@ const SCORECARDS = sql`(
   FROM sm5_pdf_scorecard p
   JOIN sm5_pdf_game_team gt ON gt.id = p.team_id
 )`;
+}
 
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
@@ -62,6 +70,7 @@ const num = (v: unknown): number | null => (v === null || v === undefined ? null
  */
 export async function getLegacyCompetitionTeamPlayerStats(
   teamId: string,
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionTeamPlayerStat[]> {
   const rows = await db.execute<Record<string, unknown>>(sql`
     SELECT sc.player_id, sc.position,
@@ -81,7 +90,7 @@ export async function getLegacyCompetitionTeamPlayerStats(
            avg(CASE WHEN sc.eliminated THEN 0 ELSE 1 END)::float AS survival_rate,
            avg(sc.uptime_pct) AS avg_uptime_pct,
            avg(sc.penalties)::float AS avg_penalties
-    FROM ${SCORECARDS} sc
+    FROM ${scorecardsSql(mvpModel)} sc
     JOIN game g ON g.id = sc.game_id
     WHERE sc.player_id IS NOT NULL
       AND g.exclude = false
@@ -160,6 +169,7 @@ export type LegacyCompetitionTopPlayer = {
 export async function getLegacyCompetitionTopPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<LegacyCompetitionTopPlayer[]> {
   const where = scopeConditions(scopeFilter, options);
   if (!where) return [];
@@ -178,7 +188,7 @@ export async function getLegacyCompetitionTopPlayers(
            avg(CASE WHEN sc.eliminated THEN 0 ELSE 1 END) AS survival_rate,
            (count(*) FILTER (WHERE sc.result = 'win'))::int AS wins,
            count(*)::int AS total_games
-    FROM ${SCORECARDS} sc
+    FROM ${scorecardsSql(mvpModel)} sc
     JOIN player pl ON pl.id = sc.player_id
     WHERE ${where}
     GROUP BY pl.id, pl.ipl_id, pl.current_callsign`);
@@ -191,7 +201,7 @@ export async function getLegacyCompetitionTopPlayers(
            avg(sc.accuracy) AS avg_accuracy,
            (count(*) FILTER (WHERE sc.result = 'win'))::int AS wins,
            count(*)::int AS total_games
-    FROM ${SCORECARDS} sc
+    FROM ${scorecardsSql(mvpModel)} sc
     WHERE ${where}
     GROUP BY sc.player_id, sc.position`);
 
@@ -247,7 +257,7 @@ export async function getLegacyCompetitionPositionScorecards(
            sc.legacy_mvp_points,
            concat(c.country_code::text, '-', c.site_code::text, '-',
                   to_char(g.start_time, 'YYYYMMDDHH24MISS')) AS game_slug
-    FROM ${SCORECARDS} sc
+    FROM ${scorecardsSql()} sc
     JOIN game g ON g.id = sc.game_id
     JOIN center c ON c.id = g.center_id
     JOIN player pl ON pl.id = sc.player_id
@@ -288,7 +298,7 @@ export async function getLegacyCompetitionPlayerTotals(
            count(*)::int AS total_games,
            sum(sc.score)::int AS total_score,
            sum(sc.medic_hits)::int AS total_medic_hits
-    FROM ${SCORECARDS} sc
+    FROM ${scorecardsSql()} sc
     JOIN player pl ON pl.id = sc.player_id
     WHERE ${where}
     GROUP BY pl.id, pl.ipl_id, pl.current_callsign`);

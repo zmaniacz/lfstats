@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
@@ -41,6 +43,7 @@ export default async function CenterDetailPage({
 }: {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{
+    mvp?: string | string[];
     scope?: string;
     competition?: string;
     from?: string;
@@ -50,6 +53,7 @@ export default async function CenterDetailPage({
 }) {
   const { slug } = await params;
   const sp = await searchParams;
+  const mvpModel = await resolveMvpModel(sp.mvp);
   const gameType = await resolveGameType(sp.game);
 
   const centerDetail = await getCenter(slug);
@@ -122,8 +126,8 @@ export default async function CenterDetailPage({
   const [gameCount, winsByColor, mvpBoxPlot, mvpComponents] = await Promise.all([
     getCenterGameCount(centerDetail.id, scopeFilter),
     getCenterWinsByColor(centerDetail.id, scopeFilter),
-    getCenterMvpBoxPlot(centerDetail.id, scopeFilter),
-    getCenterMvpComponents(centerDetail.id, scopeFilter),
+    getCenterMvpBoxPlot(centerDetail.id, scopeFilter, mvpModel),
+    getCenterMvpComponents(centerDetail.id, scopeFilter, mvpModel),
   ]);
 
   return (
@@ -131,6 +135,7 @@ export default async function CenterDetailPage({
       <div className="space-y-4">
         {header}
         {filterBar}
+        <MvpModelNotice model={mvpModel} />
         <p className="text-sm text-muted-foreground">{gameCount.toLocaleString("en-US")} games</p>
       </div>
 

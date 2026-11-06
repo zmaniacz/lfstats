@@ -12,6 +12,7 @@ import { GameCompetitionManager } from "@/components/games/GameCompetitionManage
 import { GameHighlightsCard } from "@/components/games/GameHighlightsCard";
 import { GameMomentumTab } from "@/components/games/GameMomentumTab";
 import { GameTagManager } from "@/components/games/GameTagManager";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
 import { MarkAbortedButton } from "@/components/games/MarkAbortedButton";
 import { MarkReplayButton } from "@/components/games/MarkReplayButton";
 import { PdfGameDetail } from "@/components/sm5-pdf/PdfGameDetail";
@@ -26,6 +27,7 @@ import { EDIT_MODE_COOKIE } from "@/lib/edit-mode";
 import { formatDateTime, formatGameName, formatMs, formatScore } from "@/lib/format";
 import { getTeamColor } from "@/lib/team-colors";
 import { getTdfArchiveUrl } from "@/lib/tdf";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import {
   getAvailableMatchesForGame,
   getCompetitionGameNavigation,
@@ -77,11 +79,13 @@ const getMatchAssignment = cache(getGameMatchAssignment);
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ mvp?: string | string[] }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const game = await getGame(slug);
+  const [{ slug }, { mvp }] = await Promise.all([params, searchParams]);
+  const game = await getGame(slug, await resolveMvpModel(mvp));
   if (!game) {
     const pdfGame = await getPdfGame(slug);
     return {
@@ -104,14 +108,18 @@ export default async function GameDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string | string[]; t?: string | string[] }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+    t?: string | string[];
+    mvp?: string | string[];
+  }>;
 }) {
-  const { slug } = await params;
-  const [game, session, cookieStore, { tab, t }] = await Promise.all([
-    getGame(slug),
+  const [{ slug }, { tab, t, mvp }] = await Promise.all([params, searchParams]);
+  const mvpModel = await resolveMvpModel(mvp);
+  const [game, session, cookieStore] = await Promise.all([
+    getGame(slug, mvpModel),
     auth(),
     cookies(),
-    searchParams,
   ]);
 
   if (!game) {
@@ -229,6 +237,7 @@ export default async function GameDetailPage({
   return (
     <div className="p-6 space-y-8">
       <div className="space-y-2">
+        <MvpModelNotice model={mvpModel} />
         {game.competitionName && (
           <p className="text-sm font-medium text-muted-foreground">{game.competitionName}</p>
         )}
