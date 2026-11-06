@@ -1,7 +1,11 @@
 # MVP2027 — Proposal to the Tournament Committee
 
 **Status:** Draft, phase 1 (design document). Nothing here changes the live formula yet.
-**Current model:** `2021.12` (`sm5_mvp_model`), the only model in production.
+**Current model:** `2021.12` (`sm5_mvp_model`), the default and only official model.
+**Implemented as:** model `2027.1-dev`, a _development_ model (`status = 'development'`, not the
+default). It is computed for every game alongside `2021.12` and can be viewed with the MVP model
+switcher at the bottom of the site's sidebar; it never changes `mvp_points`, ratings or anything
+official. See [Implementation: 2027.1-dev](#implementation-20271-dev) at the end of section 5.
 **Data as of:** 2026-11-04.
 
 MVP2027 is a data-driven review of how SM5 MVP points are calculated. TDF files now give us
@@ -1257,6 +1261,24 @@ stored `scheduled_duration` and `actual_duration`. Boost recipients are recorded
 state rows today and would need storing per scorecard at ingest. The new model would be a new
 `sm5_mvp_model` version, so historical scorecards can be recalculated and compared side by side
 with 2021.12.
+
+### Implementation: 2027.1-dev
+
+The recommendations ship as MVP model **`2027.1-dev`**, a development model alongside the default
+`2021.12` (migration `0068_mvp2027_dev_model`). Boost recipients are now stored per scorecard
+(`sm5_scorecard.ammo_boost_recipients`, `life_boost_recipients`) at ingest, and filled for older
+games from the replay state rows by `pnpm --filter chomper recalcMVP --model 2027.1-dev`, which
+also writes the model's breakdown for every existing game. See
+[chomper-design.md](chomper-design.md#multiple-mvp-models-and-backfill) and
+[Core_Schema.md](Core_Schema.md#mvpmodel).
+
+Replayed through the implementation over the same 5,202 standard games (decided games, as in the
+tables above), the medians are Commander 14.80 (10.74–19.84), Heavy 14.75, Scout 14.85, Ammo 14.73
+and Medic 15.11: Heavy, Scout, Ammo and Medic match section 5 to within 0.01. Commander lands 0.1
+lower than the 14.90 above because C1 is implemented as written — the whole opponent medic hit
+component (`medic_hits`, which also counts missile damage on the Medic) at +0.5 — whereas the
+analysis script halved only shots on the Medic (`shots_hit_opponent_medic`) and left missile damage
+at +1.
 
 ---
 

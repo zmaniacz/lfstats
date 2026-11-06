@@ -37,6 +37,12 @@ const COMPONENT_COLORS: Record<string, string> = {
   elimination_bonus: "#f59e0b",
   eliminated: "#64748b",
   times_hit_by_missile: "#94a3b8",
+  // MVP2027 (2027.1-dev) components
+  reset_opponent: "#6366f1",
+  ammo_boost_recipients: "#059669",
+  life_boost_recipients: "#0d9488",
+  assists: "#ec4899",
+  times_reset: "#b45309",
 };
 
 const FALLBACK_COLORS = ["#6366f1", "#ec4899", "#0ea5e9", "#d946ef", "#fb923c"];

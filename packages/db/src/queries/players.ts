@@ -13,6 +13,7 @@ import {
   game,
   center,
 } from "../schema";
+import { mvpComponentModelCondition, mvpPointsSql, type MvpModelRef } from "./mvp-models";
 import { alias } from "drizzle-orm/pg-core";
 import { eq, and, asc, desc, count, sql, inArray } from "drizzle-orm";
 import type { MvpBoxPlotItem } from "./centers";
@@ -122,11 +123,12 @@ export async function getPlayerResultsByColor(
 export async function getPlayerAvgMvpByPosition(
   playerId: string,
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<PositionAvgMvp[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
-      avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
+      avgMvp: sql<number>`AVG(${mvpPointsSql(mvpModel)})::float`,
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
@@ -142,12 +144,13 @@ export async function getPlayerAvgMvpByPosition(
 
 export async function getGlobalAvgMvpByPosition(
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<PositionAvgMvp[]> {
   const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
-      avgMvp: sql<number>`AVG(${sm5Scorecard.mvpPoints})::float`,
+      avgMvp: sql<number>`AVG(${mvpPointsSql(mvpModel)})::float`,
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
@@ -164,15 +167,16 @@ export async function getGlobalAvgMvpByPosition(
 export async function getPlayerMvpBoxPlot(
   playerId: string,
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<MvpBoxPlotItem[]> {
   const rows = await db
     .select({
       position: sm5Scorecard.position,
-      min: sql<number>`MIN(${sm5Scorecard.mvpPoints})::float`,
-      q1: sql<number>`PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      median: sql<number>`PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      q3: sql<number>`PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      max: sql<number>`MAX(${sm5Scorecard.mvpPoints})::float`,
+      min: sql<number>`MIN(${mvpPointsSql(mvpModel)})::float`,
+      q1: sql<number>`PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      median: sql<number>`PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      q3: sql<number>`PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      max: sql<number>`MAX(${mvpPointsSql(mvpModel)})::float`,
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
@@ -376,6 +380,7 @@ export async function getPlayerOverallAverages(): Promise<PlayerOverallAverages[
 export async function getPlayerGames(
   playerId: string,
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<PlayerGameListItem[]> {
   const rows = await db
     .select({
@@ -390,7 +395,7 @@ export async function getPlayerGames(
       description: game.description,
       callsign: sm5Scorecard.callsign,
       position: sm5Scorecard.position,
-      mvpPoints: sm5Scorecard.mvpPoints,
+      mvpPoints: mvpPointsSql(mvpModel),
       score: sm5Scorecard.score,
       accuracy: sm5Scorecard.accuracy,
       hitDiff: sm5Scorecard.hitDiff,
@@ -436,7 +441,13 @@ export async function getPlayerGames(
         points: sm5ScorecardMvp.points,
       })
       .from(sm5ScorecardMvp)
-      .where(inArray(sm5ScorecardMvp.scorecardId, scorecardIds)),
+      .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
+      .where(
+        and(
+          inArray(sm5ScorecardMvp.scorecardId, scorecardIds),
+          mvpComponentModelCondition(mvpModel),
+        ),
+      ),
   ]);
 
   const teamsByGame = new Map<string, GameTeamSummary[]>();

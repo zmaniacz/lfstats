@@ -28,6 +28,7 @@ import {
   lbMatch,
   lbMatchGame,
 } from "../schema";
+import { mvpPointsSql, type MvpModelRef } from "./mvp-models";
 import {
   eq,
   and,
@@ -554,13 +555,14 @@ export type CompetitionTeamPlayerStat = {
  */
 export async function getCompetitionTeamPlayerStats(
   teamId: string,
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionTeamPlayerStat[]> {
   const rows = await db
     .select({
       playerId: sm5Scorecard.playerId,
       position: sm5Scorecard.position,
       gamesPlayed: sql<number>`count(*)::int`,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})::float`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})::float`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})::float`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})::float`,
       avgMedicHits: sql<number>`avg(${sm5Scorecard.medicHits})::float`,
@@ -2546,6 +2548,7 @@ function roundTypeSqlCondition(showPool: boolean, showFinals: boolean): SQL | nu
 export async function getCompetitionTopPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionTopPlayer[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options);
   if (!conditions) return [];
@@ -2555,8 +2558,8 @@ export async function getCompetitionTopPlayers(
       playerId: player.id,
       iplId: player.iplId,
       callsign: player.currentCallsign,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
-      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})`,
+      totalMvp: sql<number>`sum(${mvpPointsSql(mvpModel)})`,
       totalTimeInGameSec: sql<number>`sum(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}) / 1000.0`,
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
@@ -2565,7 +2568,7 @@ export async function getCompetitionTopPlayers(
       // Per-position stats (positions 1–5)
       p1AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 1)`,
       p1AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
@@ -2573,7 +2576,7 @@ export async function getCompetitionTopPlayers(
       p1Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1)::int`,
       p2AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 2)`,
       p2AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
@@ -2581,7 +2584,7 @@ export async function getCompetitionTopPlayers(
       p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
       p3AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 3)`,
       p3AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
@@ -2589,7 +2592,7 @@ export async function getCompetitionTopPlayers(
       p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
       p4AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 4)`,
       p4AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
@@ -2597,7 +2600,7 @@ export async function getCompetitionTopPlayers(
       p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
       p5AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 5)`,
       p5AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,
@@ -2609,7 +2612,7 @@ export async function getCompetitionTopPlayers(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+    .orderBy(sql`avg(${mvpPointsSql(mvpModel)}) DESC`);
 
   function posStats(
     avgMvp: number | null,
@@ -2671,6 +2674,7 @@ export type CompetitionCommanderPlayer = {
 export async function getCompetitionCommanderPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionCommanderPlayer[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, 1),
@@ -2686,8 +2690,8 @@ export async function getCompetitionCommanderPlayers(
       totalGames: sql<number>`count(*)::int`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})`,
       totalScore: sql<number>`sum(${sm5Scorecard.score})`,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
-      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})`,
+      totalMvp: sql<number>`sum(${mvpPointsSql(mvpModel)})`,
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
@@ -2704,7 +2708,7 @@ export async function getCompetitionCommanderPlayers(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+    .orderBy(sql`avg(${mvpPointsSql(mvpModel)}) DESC`);
 
   return rows.map((r) => ({
     playerId: r.playerId,
@@ -2832,6 +2836,7 @@ export type CompetitionHeavyPlayer = {
 export async function getCompetitionHeavyPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionHeavyPlayer[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, 2),
@@ -2847,8 +2852,8 @@ export async function getCompetitionHeavyPlayers(
       totalGames: sql<number>`count(*)::int`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})`,
       totalScore: sql<number>`sum(${sm5Scorecard.score})`,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
-      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})`,
+      totalMvp: sql<number>`sum(${mvpPointsSql(mvpModel)})`,
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
@@ -2860,7 +2865,7 @@ export async function getCompetitionHeavyPlayers(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+    .orderBy(sql`avg(${mvpPointsSql(mvpModel)}) DESC`);
 
   return rows.map((r) => ({
     playerId: r.playerId,
@@ -2903,6 +2908,7 @@ export type CompetitionScoutPlayer = {
 export async function getCompetitionScoutPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionScoutPlayer[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, 3),
@@ -2918,8 +2924,8 @@ export async function getCompetitionScoutPlayers(
       totalGames: sql<number>`count(*)::int`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})`,
       totalScore: sql<number>`sum(${sm5Scorecard.score})`,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
-      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})`,
+      totalMvp: sql<number>`sum(${mvpPointsSql(mvpModel)})`,
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
@@ -2934,7 +2940,7 @@ export async function getCompetitionScoutPlayers(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+    .orderBy(sql`avg(${mvpPointsSql(mvpModel)}) DESC`);
 
   return rows.map((r) => ({
     playerId: r.playerId,
@@ -2979,6 +2985,7 @@ export type CompetitionAmmoPlayer = {
 export async function getCompetitionAmmoPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionAmmoPlayer[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, 4),
@@ -2994,8 +3001,8 @@ export async function getCompetitionAmmoPlayers(
       totalGames: sql<number>`count(*)::int`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})`,
       totalScore: sql<number>`sum(${sm5Scorecard.score})`,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
-      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})`,
+      totalMvp: sql<number>`sum(${mvpPointsSql(mvpModel)})`,
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
@@ -3009,7 +3016,7 @@ export async function getCompetitionAmmoPlayers(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+    .orderBy(sql`avg(${mvpPointsSql(mvpModel)}) DESC`);
 
   return rows.map((r) => ({
     playerId: r.playerId,
@@ -3055,6 +3062,7 @@ export type CompetitionMedicPlayer = {
 export async function getCompetitionMedicPlayers(
   scopeFilter: GameScopeFilter,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionMedicPlayer[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, 5),
@@ -3070,8 +3078,8 @@ export async function getCompetitionMedicPlayers(
       totalGames: sql<number>`count(*)::int`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})`,
       totalScore: sql<number>`sum(${sm5Scorecard.score})`,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})`,
-      totalMvp: sql<number>`sum(${sm5Scorecard.mvpPoints})`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})`,
+      totalMvp: sql<number>`sum(${mvpPointsSql(mvpModel)})`,
       avgAccuracy: sql<number>`avg(${sm5Scorecard.accuracy})`,
       avgHitDiff: sql<number>`avg(${sm5Scorecard.hitDiff})`,
       avgUptime: sql<number>`avg(${sm5Scorecard.uptime}::float / nullif(${sm5Scorecard.uptime} + ${sm5Scorecard.resupplyDowntime} + ${sm5Scorecard.otherDowntime}, 0))`,
@@ -3086,7 +3094,7 @@ export async function getCompetitionMedicPlayers(
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
     .groupBy(player.id, player.iplId, player.currentCallsign)
-    .orderBy(sql`avg(${sm5Scorecard.mvpPoints}) DESC`);
+    .orderBy(sql`avg(${mvpPointsSql(mvpModel)}) DESC`);
 
   return rows.map((r) => ({
     playerId: r.playerId,
@@ -3236,6 +3244,7 @@ export async function getCompetitionPositionScorecards(
   scopeFilter: GameScopeFilter,
   position: number,
   options: CompetitionTopPlayersOptions = {},
+  mvpModel?: MvpModelRef | null,
 ): Promise<CompetitionPositionScorecard[]> {
   const conditions = leaderboardScopeConditions(scopeFilter, options, [
     eq(sm5Scorecard.position, position),
@@ -3250,7 +3259,7 @@ export async function getCompetitionPositionScorecards(
       iplId: player.iplId,
       callsign: player.currentCallsign,
       score: sm5Scorecard.score,
-      mvpPoints: sm5Scorecard.mvpPoints,
+      mvpPoints: mvpPointsSql(mvpModel),
     })
     .from(sm5Scorecard)
     .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
@@ -3258,7 +3267,7 @@ export async function getCompetitionPositionScorecards(
     .innerJoin(center, eq(center.id, game.centerId))
     .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
     .where(and(...conditions))
-    .orderBy(desc(sm5Scorecard.mvpPoints))
+    .orderBy(desc(mvpPointsSql(mvpModel)))
     .limit(100);
 
   return rows.map((r) => ({
@@ -3793,6 +3802,7 @@ export async function getCompetitionAllStarRankings(
   competitionId: string,
   options: CompetitionTopPlayersOptions = {},
   format: CompetitionFormat = "team",
+  mvpModel?: MvpModelRef | null,
 ): Promise<AllStarRankings> {
   const conditions = leaderboardScopeConditions(
     { scope: "competition", competitionId, format },
@@ -3809,7 +3819,7 @@ export async function getCompetitionAllStarRankings(
       p1Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 1)::int`,
       p1AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 1)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 1)`,
       p1AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 1)`,
@@ -3822,7 +3832,7 @@ export async function getCompetitionAllStarRankings(
       p2Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 2)::int`,
       p2AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 2)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 2)`,
       p2AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 2)`,
@@ -3835,7 +3845,7 @@ export async function getCompetitionAllStarRankings(
       p3Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 3)::int`,
       p3AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 3)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 3)`,
       p3AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 3)`,
@@ -3848,7 +3858,7 @@ export async function getCompetitionAllStarRankings(
       p4Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 4)::int`,
       p4AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 4)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 4)`,
       p4AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 4)`,
@@ -3861,7 +3871,7 @@ export async function getCompetitionAllStarRankings(
       p5Games: sql<number>`count(*) filter (where ${sm5Scorecard.position} = 5)::int`,
       p5AvgMvp: sql<
         number | null
-      >`avg(${sm5Scorecard.mvpPoints}) filter (where ${sm5Scorecard.position} = 5)`,
+      >`avg(${mvpPointsSql(mvpModel)}) filter (where ${sm5Scorecard.position} = 5)`,
       p5AvgAccuracy: sql<
         number | null
       >`avg(${sm5Scorecard.accuracy}) filter (where ${sm5Scorecard.position} = 5)`,

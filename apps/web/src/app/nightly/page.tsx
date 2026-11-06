@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import { DateFilter } from "@/components/nightly/DateFilter";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { ResetFilterCookies } from "@/components/filters/ResetFilterCookies";
@@ -22,9 +24,10 @@ export const metadata: Metadata = { title: "Nightly Stats" };
 export default async function NightlyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ center?: string; date?: string }>;
+  searchParams: Promise<{ center?: string; date?: string; mvp?: string | string[] }>;
 }) {
-  const { center: centerSlugParam, date } = await searchParams;
+  const { center: centerSlugParam, date, mvp } = await searchParams;
+  const mvpModel = await resolveMvpModel(mvp);
   // Async server component: renders once per request, so there are no re-renders for an
   // impure call to destabilise.
   // eslint-disable-next-line react/purity
@@ -96,7 +99,7 @@ export default async function NightlyPage({
   const gameDates = await getGameDatesForCenter(center.id);
   const selectedDate = date ?? gameDates[0] ?? today;
 
-  const contentKey = [centerSlug, selectedDate].join("|");
+  const contentKey = [centerSlug, selectedDate, mvpModel?.version].join("|");
 
   return (
     <>
@@ -119,8 +122,9 @@ export default async function NightlyPage({
           </div>
         </div>
 
+        <MvpModelNotice model={mvpModel} />
         <Suspense key={contentKey} fallback={<NightlySkeleton />}>
-          <NightlyContent centerId={center.id} selectedDate={selectedDate} />
+          <NightlyContent centerId={center.id} selectedDate={selectedDate} mvpModel={mvpModel} />
         </Suspense>
       </div>
     </>

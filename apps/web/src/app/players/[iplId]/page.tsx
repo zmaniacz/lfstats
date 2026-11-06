@@ -24,6 +24,8 @@ import {
 import { FilterBar } from "@/components/filters/FilterBar";
 import { resolveFilterContext, resolveGameType, toGameScopeFilter } from "@/lib/filter-context";
 import { PlayerDetailContent } from "@/components/players/PlayerDetailContent";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import { LbPlayerDetailContent } from "@/components/players/LbPlayerDetailContent";
 import { PlayerDetailSkeleton } from "@/components/players/PlayerDetailSkeleton";
 import { MergeLegacyPlayer } from "@/components/players/MergeLegacyPlayer";
@@ -59,16 +61,18 @@ export default async function PlayerDetailPage({
     to?: string;
     game?: string;
     tab?: string;
+    mvp?: string | string[];
   }>;
 }) {
   const { iplId } = await params;
   const sp = await searchParams;
   const gameType = await resolveGameType(sp.game);
 
-  const [playerDetail, session, ctx] = await Promise.all([
+  const [playerDetail, session, ctx, mvpModel] = await Promise.all([
     getPlayer(iplId),
     auth(),
     resolveFilterContext(sp, { gameType }),
+    resolveMvpModel(sp.mvp),
   ]);
   if (!playerDetail) notFound();
 
@@ -139,6 +143,7 @@ export default async function PlayerDetailPage({
     ctx.competition?.slug ?? null,
     ctx.dateFrom,
     ctx.dateTo,
+    mvpModel?.version ?? null,
   ].join("|");
 
   return (
@@ -195,7 +200,14 @@ export default async function PlayerDetailPage({
         {gameType === "lb" ? (
           <LbPlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
         ) : (
-          <PlayerDetailContent playerId={playerDetail.id} scopeFilter={toGameScopeFilter(ctx)} />
+          <>
+            <MvpModelNotice model={mvpModel} />
+            <PlayerDetailContent
+              playerId={playerDetail.id}
+              scopeFilter={toGameScopeFilter(ctx)}
+              mvpModel={mvpModel}
+            />
+          </>
         )}
       </Suspense>
     </div>

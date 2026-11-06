@@ -143,6 +143,15 @@ https://www.iplaylaserforce.com/mission-stats/?t={iplId_without_hash}
 display directly. `Scorecard.mvp_model_id` identifies which formula version produced the
 number — surface this when displaying historical comparisons across model versions.
 
+`mvp_points` is always the **default** model. Pages that show MVP honour the sidebar's MVP
+model switcher (`?mvp=<version>` > `mvpModel` cookie > default): resolve it with
+`resolveMvpModel(searchParams.mvp)` from `lib/mvp-model.ts`, pass the result to the query
+(every MVP-reading query takes an optional `mvpModel`), and render `<MvpModelNotice>`. In
+`packages/db`, read MVP through `mvpPointsSql(model)` and filter `sm5_scorecard_mvp` with
+`mvpComponentModelCondition(model)` — every non-retired model has its own breakdown rows, so an
+unfiltered read mixes models. Admin pages, the public API (`/api/...`, `/api/query/v1`) and MCP
+stay on the default.
+
 **SP (Special Points)** are null for Heavy Weapons only — all other positions track SP.
 The cap is 99; `sp_earned` reflects actual accrual respecting that cap, not a theoretical
 uncapped total.

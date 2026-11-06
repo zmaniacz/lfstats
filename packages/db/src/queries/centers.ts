@@ -4,6 +4,7 @@
 import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../client";
 import { center, game, sm5GameTeam, sm5Scorecard, sm5ScorecardMvp } from "../schema";
+import { mvpComponentModelCondition, mvpPointsSql, type MvpModelRef } from "./mvp-models";
 import { gameScopeConditions, type GameScopeFilter } from "./scope";
 
 export type CenterListItem = {
@@ -55,6 +56,7 @@ export async function getCenterList(): Promise<CenterListItem[]> {
 
 export async function getCenterPositionStats(
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<CenterPositionStat[]> {
   const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
@@ -63,7 +65,7 @@ export async function getCenterPositionStats(
       centerSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text)`,
       centerName: center.name,
       position: sm5Scorecard.position,
-      avgMvp: sql<number>`avg(${sm5Scorecard.mvpPoints})::float`,
+      avgMvp: sql<number>`avg(${mvpPointsSql(mvpModel)})::float`,
       avgScore: sql<number>`avg(${sm5Scorecard.score})::float`,
     })
     .from(sm5Scorecard)
@@ -215,16 +217,17 @@ export type MvpBoxPlotItem = {
 
 export async function getGlobalMvpBoxPlot(
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<MvpBoxPlotItem[]> {
   const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
-      min: sql<number>`MIN(${sm5Scorecard.mvpPoints})::float`,
-      q1: sql<number>`PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      median: sql<number>`PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      q3: sql<number>`PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      max: sql<number>`MAX(${sm5Scorecard.mvpPoints})::float`,
+      min: sql<number>`MIN(${mvpPointsSql(mvpModel)})::float`,
+      q1: sql<number>`PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      median: sql<number>`PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      q3: sql<number>`PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      max: sql<number>`MAX(${mvpPointsSql(mvpModel)})::float`,
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
@@ -245,16 +248,17 @@ export async function getGlobalMvpBoxPlot(
 export async function getCenterMvpBoxPlot(
   id: string,
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<MvpBoxPlotItem[]> {
   const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
     .select({
       position: sm5Scorecard.position,
-      min: sql<number>`MIN(${sm5Scorecard.mvpPoints})::float`,
-      q1: sql<number>`PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      median: sql<number>`PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      q3: sql<number>`PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ${sm5Scorecard.mvpPoints})::float`,
-      max: sql<number>`MAX(${sm5Scorecard.mvpPoints})::float`,
+      min: sql<number>`MIN(${mvpPointsSql(mvpModel)})::float`,
+      q1: sql<number>`PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      median: sql<number>`PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      q3: sql<number>`PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ${mvpPointsSql(mvpModel)})::float`,
+      max: sql<number>`MAX(${mvpPointsSql(mvpModel)})::float`,
     })
     .from(sm5Scorecard)
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
@@ -280,6 +284,7 @@ export type MvpComponentItem = {
 
 export async function getGlobalMvpComponents(
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<MvpComponentItem[]> {
   const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
@@ -291,7 +296,7 @@ export async function getGlobalMvpComponents(
     .from(sm5ScorecardMvp)
     .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(and(mvpComponentModelCondition(mvpModel), ...conditions))
     .groupBy(sm5Scorecard.position, sm5ScorecardMvp.component)
     .orderBy(sm5Scorecard.position);
 
@@ -318,6 +323,7 @@ export async function updateCenter(
 export async function getCenterMvpComponents(
   id: string,
   scopeFilter?: GameScopeFilter,
+  mvpModel?: MvpModelRef | null,
 ): Promise<MvpComponentItem[]> {
   const conditions = gameScopeConditions(scopeFilter);
   const rows = await db
@@ -329,7 +335,7 @@ export async function getCenterMvpComponents(
     .from(sm5ScorecardMvp)
     .innerJoin(sm5Scorecard, eq(sm5ScorecardMvp.scorecardId, sm5Scorecard.id))
     .innerJoin(game, eq(sm5Scorecard.gameId, game.id))
-    .where(and(eq(game.centerId, id), ...conditions))
+    .where(and(eq(game.centerId, id), mvpComponentModelCondition(mvpModel), ...conditions))
     .groupBy(sm5Scorecard.position, sm5ScorecardMvp.component)
     .orderBy(sm5Scorecard.position);
 

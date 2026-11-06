@@ -2,7 +2,7 @@
 // Copyright (C) 2015 Russell Lewis
 
 import {
-  findActiveMvpModel,
+  findIngestMvpModels,
   getCompetitionMatchGameForReingest,
   getGameById,
   getGameIdsForReingest,
@@ -16,7 +16,7 @@ import {
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseGameStartTime } from "./ingester.js";
-import { calculateMvp } from "./mvp.js";
+import { calculateMvpForModels } from "./mvp.js";
 import { ParseError, parseTdf, RejectionError } from "./parser.js";
 import type { PreservedGameMeta } from "./reingester.js";
 import { reingest } from "./reingester.js";
@@ -54,9 +54,11 @@ if (!MODERN_ARCHIVE_BUCKET) {
 await initDb();
 await assertReingestHandlesGameTeamReferences();
 
-const mvpModel = await findActiveMvpModel();
-if (!mvpModel) {
-  console.error("No active MVP model found in database");
+let mvpModels: Awaited<ReturnType<typeof findIngestMvpModels>>;
+try {
+  mvpModels = await findIngestMvpModels();
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 }
 
@@ -259,11 +261,11 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
   const entityEndsById = new Map(
     parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
   );
-  const mvpRows = calculateMvp(
+  const mvpRows = calculateMvpForModels(
     simResult,
     sm5StatsById,
     entityEndsById,
-    mvpModel!,
+    mvpModels,
     parsed.meta.duration,
   );
 

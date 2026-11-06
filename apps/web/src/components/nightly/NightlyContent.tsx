@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
+import type { MvpModelRef } from "@lfstats/db";
 import { NightlyStatsTable } from "@/components/nightly/NightlyStatsTable";
 import { NightlySummaryTable } from "@/components/nightly/NightlySummaryTable";
 import { NightlyLegacyStatsTable } from "@/components/nightly/NightlyLegacyStatsTable";
@@ -17,13 +18,15 @@ import {
 export async function NightlyContent({
   centerId,
   selectedDate,
+  mvpModel,
 }: {
   centerId: string;
   selectedDate: string;
+  mvpModel?: MvpModelRef | null;
 }) {
   const [gameDetails, lifetimeAvgsArr, legacyGames, legacyRows] = await Promise.all([
-    getNightlyDetails(centerId, selectedDate),
-    getPlayerSocialAveragesByCenter(centerId),
+    getNightlyDetails(centerId, selectedDate, mvpModel),
+    getPlayerSocialAveragesByCenter(centerId, mvpModel),
     getGamesList({
       centerId,
       gameTypes: ["sm5_pdf"],

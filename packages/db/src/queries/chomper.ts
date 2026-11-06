@@ -335,9 +335,29 @@ export async function insertGamePlayerSteps(
 // MVP
 // ---------------------------------------------------------------------------
 
-export async function findActiveMvpModel() {
-  const rows = await db.select().from(sm5MvpModel).where(isNull(sm5MvpModel.retiredAt));
-  return rows[0] ?? null;
+/**
+ * Every non-retired MVP model, default first. Ingest computes breakdown rows for all of them;
+ * only the one with `isDefault` writes sm5_scorecard.mvp_points / mvp_model_id.
+ */
+export async function findActiveMvpModels() {
+  return db
+    .select()
+    .from(sm5MvpModel)
+    .where(isNull(sm5MvpModel.retiredAt))
+    .orderBy(desc(sm5MvpModel.isDefault), sm5MvpModel.releasedAt);
+}
+
+/**
+ * Non-retired models for an ingest. Throws unless exactly one of them is the default, so a
+ * misconfigured model table can never let a development model write mvp_points.
+ */
+export async function findIngestMvpModels() {
+  const models = await findActiveMvpModels();
+  const defaults = models.filter((m) => m.isDefault);
+  if (defaults.length !== 1) {
+    throw new Error(`Expected exactly one non-retired default MVP model, found ${defaults.length}`);
+  }
+  return models;
 }
 
 export async function insertScorecardMvps(tx: Tx, rows: (typeof sm5ScorecardMvp.$inferInsert)[]) {
@@ -410,6 +430,11 @@ export async function getScorecardsForRecalc(gameId: string) {
       missilesHitTeamMedic: sm5Scorecard.missilesHitTeamMedic,
       lifeBoost: sm5Scorecard.lifeBoost,
       ammoBoost: sm5Scorecard.ammoBoost,
+      ammoBoostRecipients: sm5Scorecard.ammoBoostRecipients,
+      lifeBoostRecipients: sm5Scorecard.lifeBoostRecipients,
+      assists: sm5Scorecard.assists,
+      resetOpponent: sm5Scorecard.resetOpponent,
+      timesReset: sm5Scorecard.timesReset,
       livesLeft: sm5Scorecard.livesLeft,
       shotsLeft: sm5Scorecard.shotsLeft,
       penalties: sm5Scorecard.penalties,
@@ -439,14 +464,27 @@ export async function getPenaltyMvpAggregatesForGame(gameId: string) {
     .groupBy(sm5GamePenalty.scorecardId);
 }
 
+/**
+ * Replaces the breakdown rows of `modelIds` (and only those) for a game's scorecards, and
+ * writes `updates` — which must come from the default model — to sm5_scorecard.mvp_points.
+ * Pass an empty `updates` when recomputing only non-default models.
+ */
 export async function recalcMvpForGame(
   tx: Tx,
   scorecardIds: string[],
+  modelIds: string[],
   updates: { id: string; mvpPoints: number; mvpModelId: string }[],
   components: (typeof sm5ScorecardMvp.$inferInsert)[],
 ) {
-  if (scorecardIds.length === 0) return;
-  await tx.delete(sm5ScorecardMvp).where(inArray(sm5ScorecardMvp.scorecardId, scorecardIds));
+  if (scorecardIds.length === 0 || modelIds.length === 0) return;
+  await tx
+    .delete(sm5ScorecardMvp)
+    .where(
+      and(
+        inArray(sm5ScorecardMvp.scorecardId, scorecardIds),
+        inArray(sm5ScorecardMvp.mvpModelId, modelIds),
+      ),
+    );
   for (const u of updates) {
     await tx
       .update(sm5Scorecard)
@@ -456,6 +494,51 @@ export async function recalcMvpForGame(
   if (components.length > 0) {
     await tx.insert(sm5ScorecardMvp).values(components);
   }
+}
+
+/**
+ * Fills sm5_scorecard.ammo_boost_recipients / life_boost_recipients for one game from its
+ * stored replay rows, for games ingested before those columns existed. Ingest computes the
+ * same value from the simulation (`computeBoostRecipients` in chomper's mvp.ts).
+ *
+ * A teammate is reached by a boost when their sm5_game_player_state row at the 0510/0512
+ * event has more shots/lives than their previous row. This is exactly the SQL the MVP2027
+ * analysis used (scripts/mvp2027/ammo_ev.sql, med_ev.sql), including its row order of
+ * (time, event_id); ingest orders by event sequence instead, which differs only when a
+ * player has two state rows in the same millisecond. Games with no replay rows get 0.
+ * Returns the number of scorecards updated.
+ */
+export async function backfillBoostRecipientsForGame(gameId: string): Promise<number> {
+  const result = await db.execute(sql`
+    with st as (
+      select p.scorecard_id, p.event_id, p.shots, p.lives,
+        lag(p.shots) over w as prev_shots,
+        lag(p.lives) over w as prev_lives
+      from sm5_game_player_state p
+      where p.game_id = ${gameId}
+      window w as (partition by p.scorecard_id order by p.time, p.event_id)
+    ),
+    reached as (
+      select e.actor_scorecard_id as scorecard_id,
+        count(*) filter (
+          where e.event_type = '0510' and st.shots > coalesce(st.prev_shots, st.shots)
+        )::int as ammo,
+        count(*) filter (
+          where e.event_type = '0512' and st.lives > coalesce(st.prev_lives, st.lives)
+        )::int as life
+      from sm5_game_event e
+      join st on st.event_id = e.id and st.scorecard_id <> e.actor_scorecard_id
+      where e.game_id = ${gameId} and e.event_type in ('0510', '0512')
+      group by e.actor_scorecard_id
+    )
+    update sm5_scorecard s
+    set ammo_boost_recipients = case when s.position = 4 then coalesce(r.ammo, 0) end,
+        life_boost_recipients = case when s.position = 5 then coalesce(r.life, 0) end
+    from sm5_scorecard s2
+    left join reached r on r.scorecard_id = s2.id
+    where s2.id = s.id and s.game_id = ${gameId}
+  `);
+  return result.count ?? 0;
 }
 
 // ---------------------------------------------------------------------------

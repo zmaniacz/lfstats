@@ -3,6 +3,7 @@
 
 "use client";
 
+import { MvpModelSwitcher } from "@/components/mvp/MvpModelSwitcher";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import {
@@ -35,6 +36,7 @@ import {
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import * as React from "react";
+import type { MvpModelChoice } from "@/lib/mvp-model-params";
 
 const socialNavItems = [
   {
@@ -117,7 +119,14 @@ const browseNavItems = [
   },
 ];
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  mvpModels,
+  mvpModelCookie,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  mvpModels: MvpModelChoice[];
+  mvpModelCookie: string | null;
+}) {
   const { data: session } = useSession();
 
   const roles = session?.user?.roles ?? [];
@@ -171,6 +180,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain label="Browse" items={browseNavItems} />
       </SidebarContent>
       <SidebarFooter>
+        <React.Suspense fallback={null}>
+          <MvpModelSwitcher models={mvpModels} initialCookieVersion={mvpModelCookie} />
+        </React.Suspense>
         <NavUser />
       </SidebarFooter>
     </Sidebar>

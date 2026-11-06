@@ -8,6 +8,7 @@ import {
   type FilterGameType,
   type Scope,
 } from "@/lib/filter-cookies";
+import { MVP_MODEL_COOKIE } from "@/lib/mvp-model-params";
 
 export type FilterUrlState = {
   scope: Scope;
@@ -79,4 +80,15 @@ export function writeFilterCookies(
 /** Persists the active game type (1y) so other pages default to it. */
 export function writeGameTypeCookie(gameType: FilterGameType): void {
   document.cookie = `${GAME_TYPE_COOKIE}=${gameType}; path=/; max-age=31536000; samesite=lax`;
+}
+
+/**
+ * Remembers the selected MVP model (1y), or forgets the choice when `version` is null — the
+ * default model is never stored, so a cleared cookie always means the official figures.
+ */
+export function writeMvpModelCookie(version: string | null): void {
+  document.cookie =
+    version === null
+      ? `${MVP_MODEL_COOKIE}=; path=/; max-age=0; samesite=lax`
+      : `${MVP_MODEL_COOKIE}=${encodeURIComponent(version)}; path=/; max-age=31536000; samesite=lax`;
 }

@@ -3,6 +3,8 @@
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MvpModelNotice } from "@/components/mvp/MvpModelNotice";
+import { resolveMvpModel } from "@/lib/mvp-model";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GameTypeToggle } from "@/components/filters/GameTypeToggle";
 import { ScopeExtraToggles } from "@/components/filters/ScopeExtraToggles";
@@ -19,6 +21,7 @@ export default async function PlayersPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    mvp?: string | string[];
     scope?: string;
     center?: string;
     competition?: string;
@@ -31,6 +34,7 @@ export default async function PlayersPage({
   }>;
 }) {
   const sp = await searchParams;
+  const mvpModel = await resolveMvpModel(sp.mvp);
   const gameType = await resolveGameType(sp.game);
   const ctx = await resolveFilterContext(sp, { gameType });
 
@@ -100,8 +104,13 @@ export default async function PlayersPage({
             />
           )}
 
-          <Suspense key={contentKey} fallback={<PlayersSkeleton />}>
-            <PlayersContent options={options} scopeFilter={toGameScopeFilter(ctx)} />
+          <MvpModelNotice model={mvpModel} />
+          <Suspense key={contentKey + mvpModel?.version} fallback={<PlayersSkeleton />}>
+            <PlayersContent
+              options={options}
+              scopeFilter={toGameScopeFilter(ctx)}
+              mvpModel={mvpModel}
+            />
           </Suspense>
         </MinGamesProvider>
       )}
