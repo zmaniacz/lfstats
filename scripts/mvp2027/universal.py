@@ -1,6 +1,6 @@
 import csv, numpy as np
 from collections import defaultdict
-N={r['id']:float(r['new_mvp']) for r in csv.DictReader(open('new_mvp.csv'))}
+N={r['id']:float(r['new_mvp']) for r in csv.DictReader(open('new_mvp_pos.csv'))}
 rows=[r for r in csv.DictReader(open('full.csv',encoding='utf-8'))]
 for r in rows: r['new']=N[r['id']]; r['cur']=float(r['mvp_points']); r['eb']=float(r['c_elim_bonus'] or 0)
 POS={'1':'Commander','2':'Heavy','3':'Scout','4':'Ammo','5':'Medic'}
