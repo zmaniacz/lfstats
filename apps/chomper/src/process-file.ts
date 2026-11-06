@@ -6,7 +6,7 @@ import {
   createChomperJob,
   enqueueUnassignedGame,
   publishLiveEvent,
-  findActiveMvpModel,
+  findIngestMvpModels,
   findCenterByNaturalKey,
   findChomperJobByLambdaRequestId,
   findGameByNaturalKey,
@@ -15,7 +15,7 @@ import {
   updateChomperJob,
 } from "@lfstats/db";
 import { buildArchiveKey, ingest, parseGameStartTime } from "./ingester.js";
-import { calculateMvp } from "./mvp.js";
+import { calculateMvpForModels } from "./mvp.js";
 import { ParseError, RejectionError, parseTdf } from "./parser.js";
 import { archiveTdf, deleteTdf, fetchTdf, isMissingObjectError, objectExists } from "./s3.js";
 import { runConsistencyCheck, simulate } from "./simulator.js";
@@ -245,21 +245,18 @@ export async function processFile(
         throw new Error(`Consistency check failed:\n${discrepancies.join("\n")}`);
       }
 
-      // 7. Find active MVP model
-      const mvpModel = await findActiveMvpModel();
-      if (!mvpModel) {
-        throw new Error("No active MVP model found");
-      }
+      // 7. Find the non-retired MVP models (exactly one default; throws otherwise)
+      const mvpModels = await findIngestMvpModels();
 
       // 8. Calculate MVP scores
       const entityEndsById = new Map(
         parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
       );
-      const mvpRows = calculateMvp(
+      const mvpRows = calculateMvpForModels(
         simResult,
         sm5StatsById,
         entityEndsById,
-        mvpModel,
+        mvpModels,
         parsed.meta.duration,
       );
 

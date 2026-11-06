@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../client";
 import {
   center,
@@ -13,6 +13,7 @@ import {
   sm5GamePenalty,
   sm5GameTeam,
   sm5GameTeamPenalty,
+  sm5MvpModel,
   sm5Scorecard,
   sm5ScorecardMvp,
 } from "../schema";
@@ -462,12 +463,18 @@ export async function deleteTeamPenalty(id: string): Promise<void> {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function upsertPenaltyMvpComponent(scorecardId: string, tx: Tx): Promise<void> {
-  // Get the scorecard's mvpModelId
+  // The scorecard's own model plus every other non-retired model: a penalty deduction is
+  // part of each model's breakdown, so a non-default model's summed total includes it too.
   const [sc] = await tx
     .select({ mvpModelId: sm5Scorecard.mvpModelId })
     .from(sm5Scorecard)
     .where(eq(sm5Scorecard.id, scorecardId));
   if (!sc?.mvpModelId) return;
+  const activeModels = await tx
+    .select({ id: sm5MvpModel.id })
+    .from(sm5MvpModel)
+    .where(isNull(sm5MvpModel.retiredAt));
+  const modelIds = [...new Set([sc.mvpModelId, ...activeModels.map((m) => m.id)])];
 
   // Sum non-rescinded penalty mvp values
   const [agg] = await tx
@@ -493,13 +500,15 @@ async function upsertPenaltyMvpComponent(scorecardId: string, tx: Tx): Promise<v
   } else {
     await tx
       .insert(sm5ScorecardMvp)
-      .values({
-        scorecardId,
-        mvpModelId: sc.mvpModelId,
-        component: "penalty_adjustment",
-        inputValue: count,
-        points: total,
-      })
+      .values(
+        modelIds.map((mvpModelId) => ({
+          scorecardId,
+          mvpModelId,
+          component: "penalty_adjustment",
+          inputValue: count,
+          points: total,
+        })),
+      )
       .onConflictDoUpdate({
         target: [
           sm5ScorecardMvp.scorecardId,
@@ -519,6 +528,7 @@ async function recalculateScorecardMvp(scorecardId: string, tx: Tx): Promise<voi
         select coalesce(sum(${sm5ScorecardMvp.points}), 0)
         from ${sm5ScorecardMvp}
         where ${sm5ScorecardMvp.scorecardId} = ${scorecardId}
+          and ${sm5ScorecardMvp.mvpModelId} = "sm5_scorecard"."mvp_model_id"
       )`,
     })
     .where(eq(sm5Scorecard.id, scorecardId));

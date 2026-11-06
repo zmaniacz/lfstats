@@ -19,6 +19,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql, type SQL } from "drizzle-orm";
@@ -38,6 +39,10 @@ export const gameOutcomeEnum = pgEnum("game_outcome", [
 ]);
 
 export const teamResultEnum = pgEnum("team_result", ["win", "loss", "draw"]);
+
+// 'released' models are official formulas; 'development' models are candidates computed
+// alongside them for comparison and never drive mvp_points, ratings or highlights.
+export const mvpModelStatusEnum = pgEnum("mvp_model_status", ["released", "development"]);
 
 export const destructionMethodEnum = pgEnum("destruction_method", ["shot", "missile", "awarded"]);
 
@@ -254,14 +259,28 @@ export const playerRating = pgTable(
   ],
 );
 
-export const sm5MvpModel = pgTable("sm5_mvp_model", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  version: text("version").notNull().unique(),
-  releasedAt: timestamp("released_at").notNull(),
-  retiredAt: timestamp("retired_at"),
-  description: text("description"),
-  parameters: jsonb("parameters").notNull(),
-});
+export const sm5MvpModel = pgTable(
+  "sm5_mvp_model",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    version: text("version").notNull().unique(),
+    // For a development model this is the date the candidate was added, not a release.
+    releasedAt: timestamp("released_at").notNull(),
+    retiredAt: timestamp("retired_at"),
+    description: text("description"),
+    parameters: jsonb("parameters").notNull(),
+    status: mvpModelStatusEnum("status").notNull().default("released"),
+    // Exactly one model is the default: it alone writes sm5_scorecard.mvp_points /
+    // mvp_model_id and drives everything official. Every non-retired model gets
+    // sm5_scorecard_mvp breakdown rows.
+    isDefault: boolean("is_default").notNull().default(false),
+  },
+  (t) => [
+    uniqueIndex("sm5_mvp_model_single_default_idx")
+      .on(t.isDefault)
+      .where(sql`${t.isDefault}`),
+  ],
+);
 
 // ---------------------------------------------------------------------------
 // Game Organization Tables
@@ -757,6 +776,10 @@ export const sm5Scorecard = pgTable(
     accuracyDuringRapid: doublePrecision("accuracy_during_rapid"), // Scout only
     ammoBoost: integer("ammo_boost"), // Ammo Carrier only
     lifeBoost: integer("life_boost"), // Medic only
+    // Teammates reached by this player's boosts, summed over every boost: a teammate counts
+    // once per boost whose state row shows their shots (ammo) / lives (life) went up.
+    ammoBoostRecipients: integer("ammo_boost_recipients"), // Ammo Carrier only
+    lifeBoostRecipients: integer("life_boost_recipients"), // Medic only
 
     // Support Stats — Ammo Carrier and Medic only; null for all other positions
     resuppliesGiven: integer("resupplies_given"),

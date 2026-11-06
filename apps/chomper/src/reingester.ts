@@ -32,7 +32,7 @@ import {
 } from "@lfstats/db";
 import type { ParsedTdf, SimulatedGame } from "./types.js";
 import { POSITION } from "./types.js";
-import type { MvpRow } from "./mvp.js";
+import { computeBoostRecipients, type MvpRow } from "./mvp.js";
 import { isNeutralTeam } from "./teams.js";
 import { buildArchiveKey, buildStepRows } from "./ingester.js";
 
@@ -303,6 +303,7 @@ export async function reingest(
     const missionEndEvent = parsed.events.find((e) => e.type === "0101");
     const missionEndOffset = missionEndEvent?.time ?? 0;
 
+    const boostRecipients = computeBoostRecipients(simResult);
     const scorecardInsertRows = playerEntityList.map((entity) => {
       const ps = simResult.playerStats.get(entity.id);
       const end = endByEntityId.get(entity.id);
@@ -354,7 +355,8 @@ export async function reingest(
             return 0;
           })();
 
-      const mvpData = mvpRows.find((m) => m.entityId === entity.id);
+      // Only the default model's total is written to the scorecard; every model's breakdown is stored below.
+      const mvpData = mvpRows.find((m) => m.entityId === entity.id && m.isDefault);
 
       return {
         gameId: existingGameId,
@@ -406,6 +408,8 @@ export async function reingest(
         accuracyDuringRapid: accDuringRapid,
         ammoBoost: isAmmo ? (sm5?.ammoBoost ?? 0) : null,
         lifeBoost: isMedic ? (sm5?.lifeBoost ?? 0) : null,
+        ammoBoostRecipients: isAmmo ? (boostRecipients.get(entity.id) ?? 0) : null,
+        lifeBoostRecipients: isMedic ? (boostRecipients.get(entity.id) ?? 0) : null,
         resuppliesGiven: isSupport ? (ps?.resuppliesGiven ?? 0) : null,
         doubleResuppliesGiven: isSupport ? (ps?.doubleResuppliesGiven ?? 0) : null,
         resuppliesReceivedAmmo: ps?.resuppliesReceivedAmmo ?? 0,
