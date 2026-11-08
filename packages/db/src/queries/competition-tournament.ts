@@ -19,6 +19,7 @@ import {
   playerCallsignHistory,
   game,
   sm5GamePenalty,
+  sm5GamePlayerStep,
   sm5GameTeam,
   sm5Scorecard,
   sm5PdfGameTeam,
@@ -3446,6 +3447,73 @@ export async function getCompetitionMiscMischief(
     totalDoubleResuppliesGiven:
       r.totalDoubleResuppliesGiven !== null ? Number(r.totalDoubleResuppliesGiven) : null,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Dead Tired leaderboard (step-tracker totals)
+// ---------------------------------------------------------------------------
+
+export type CompetitionDeadTiredItem = {
+  playerId: string;
+  iplId: string;
+  callsign: string;
+  totalSteps: number;
+  /** Scorecards that carried step data — the denominator for avgSteps. */
+  gamesTracked: number;
+  avgSteps: number;
+};
+
+/**
+ * Total steps per player across the scope. Only TDFs with line type 10 have step rows, so
+ * games without them are left out entirely (no step data is "not recorded", not zero) and
+ * the average divides by tracked games only.
+ */
+export async function getCompetitionDeadTired(
+  scopeFilter: GameScopeFilter,
+  options: CompetitionTopPlayersOptions = {},
+): Promise<CompetitionDeadTiredItem[]> {
+  const conditions = leaderboardScopeConditions(scopeFilter, options);
+  if (!conditions) return [];
+
+  // Inner join drops scorecards with no step rows. Joining on game_id as well lets the
+  // (game_id, scorecard_id, time) index serve the join; count(distinct) counts games, not rows.
+  const rows = await db
+    .select({
+      playerId: player.id,
+      iplId: player.iplId,
+      callsign: player.currentCallsign,
+      totalSteps: sql<number>`sum(${sm5GamePlayerStep.delta})::bigint`,
+      gamesTracked: sql<number>`count(distinct ${sm5Scorecard.id})::int`,
+    })
+    .from(sm5Scorecard)
+    .innerJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5Scorecard.teamId))
+    .innerJoin(player, eq(player.id, sm5Scorecard.playerId))
+    .innerJoin(
+      sm5GamePlayerStep,
+      and(
+        eq(sm5GamePlayerStep.gameId, sm5GameTeam.gameId),
+        eq(sm5GamePlayerStep.scorecardId, sm5Scorecard.id),
+      ),
+    )
+    .where(and(...conditions))
+    .groupBy(player.id, player.iplId, player.currentCallsign);
+
+  return rows
+    .map((r) => {
+      const totalSteps = Number(r.totalSteps);
+      const gamesTracked = Number(r.gamesTracked);
+      return {
+        playerId: r.playerId,
+        iplId: r.iplId,
+        callsign: r.callsign,
+        totalSteps,
+        gamesTracked,
+        avgSteps: gamesTracked > 0 ? Math.round(totalSteps / gamesTracked) : 0,
+      };
+    })
+    .filter((r) => r.totalSteps > 0)
+    .sort((a, b) => b.totalSteps - a.totalSteps)
+    .slice(0, 100);
 }
 
 // ---------------------------------------------------------------------------
