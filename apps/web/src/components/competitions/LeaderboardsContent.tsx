@@ -6,6 +6,7 @@ import { DualStatLeaderboardCard } from "@/components/competitions/DualStatLeade
 import { PositionLeaderboardCard } from "@/components/competitions/PositionLeaderboardCard";
 import { StatLeaderboardCard } from "@/components/competitions/StatLeaderboardCard";
 import {
+  getCompetitionDeadTired,
   getCompetitionGamesPlayed,
   getCompetitionMedicTomfoolery,
   getCompetitionMiscMischief,
@@ -53,6 +54,7 @@ export async function LeaderboardsContent({
     missileMalarkey,
     nukeNonsense,
     miscMischief,
+    deadTired,
   ] = await Promise.all([
     getCompetitionPositionScorecards(scopeFilter, 1, options, mvpModel),
     getCompetitionPositionScorecards(scopeFilter, 2, options, mvpModel),
@@ -66,6 +68,7 @@ export async function LeaderboardsContent({
     getCompetitionMissileMalarkey(scopeFilter, options),
     getCompetitionNukeNonsense(scopeFilter, options),
     getCompetitionMiscMischief(scopeFilter, options),
+    getCompetitionDeadTired(scopeFilter, options),
   ]);
 
   return (
@@ -361,6 +364,15 @@ export async function LeaderboardsContent({
               .slice(0, 100)
               .map((r) => ({ ...r, value: r.totalDoubleResuppliesGiven! }))}
             format="integer"
+          />
+          {/* Step trackers only exist in newer TDFs; Avg is per game that recorded steps. */}
+          <DualStatLeaderboardCard
+            title="Dead Tired"
+            col1Label="Steps"
+            col2Label="Avg"
+            rows={deadTired.map((r) => ({ ...r, value1: r.totalSteps, value2: r.avgSteps }))}
+            format1="integer"
+            format2="integer"
           />
         </div>
       </div>
