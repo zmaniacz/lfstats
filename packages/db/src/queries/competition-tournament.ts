@@ -58,7 +58,6 @@ import { enqueueMatchGame } from "./notifications";
 import type { GameScopeFilter } from "./scope";
 import { slugify, resolveUniqueSlug } from "../lib/slug";
 import { getTeamLogoUrl } from "../lib/team-logos";
-import { getPlayerPictureUrl } from "../lib/player-pictures";
 import {
   compareStandings,
   computeTeamStats,
@@ -4406,7 +4405,15 @@ const ZERO_PLAYER_STATS: Omit<
   medic_avg_double_resup_ratio: null,
 };
 
-export async function getCompetitionPlayerStats(slug: string): Promise<{
+/**
+ * `signPictures` turns roster entry ids into picture URLs. Player pictures are private, so
+ * the caller passes it only for a trusted client; without it every `player_picture_url` is
+ * null. A roster entry missing from the returned map is null too.
+ */
+export async function getCompetitionPlayerStats(
+  slug: string,
+  signPictures?: (rosterEntryIds: string[]) => Promise<Map<string, string>>,
+): Promise<{
   [key: string]: CompetitionPlayerStatRow[];
   alltime: CompetitionPlayerStatRow[];
 } | null> {
@@ -4811,13 +4818,19 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
   const compMap = new Map(compRows.map((r) => [r.playerId, r]));
   const alltimeMap = new Map(alltimeRows.map((r) => [r.playerId, r]));
 
+  const pictureUrls = signPictures
+    ? await signPictures(rosterRows.filter((p) => p.hasProfilePicture).map((p) => p.rosterEntryId))
+    : new Map<string, string>();
+  const pictureUrl = (p: RosterEntry) =>
+    p.hasProfilePicture ? (pictureUrls.get(p.rosterEntryId) ?? null) : null;
+
   return {
     [slug]: rosterRows.map((p) =>
       mapRow(
         compMap.get(p.playerId),
         p.iplId,
         p.callsign,
-        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId, p.pictureVersion) : null,
+        pictureUrl(p),
         p.teamName,
         p.teamHasLogo && p.teamId ? getTeamLogoUrl(p.teamId, p.teamLogoVersion) : null,
       ),
@@ -4827,7 +4840,7 @@ export async function getCompetitionPlayerStats(slug: string): Promise<{
         alltimeMap.get(p.playerId),
         p.iplId,
         p.callsign,
-        p.hasProfilePicture ? getPlayerPictureUrl(p.rosterEntryId, p.pictureVersion) : null,
+        pictureUrl(p),
         p.teamName,
         p.teamHasLogo && p.teamId ? getTeamLogoUrl(p.teamId, p.teamLogoVersion) : null,
       ),

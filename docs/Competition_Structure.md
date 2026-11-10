@@ -142,15 +142,15 @@ One row per team per competition. Teams do not persist across competitions.
 
 Official roster for a team within a competition. The source of truth for mercenary status.
 
-| Column                | Type                       | Notes                                                     |
-| --------------------- | -------------------------- | --------------------------------------------------------- |
-| `id`                  | uuid PK                    |                                                           |
-| `competition_team_id` | uuid FK → competition_team | cascade delete                                            |
-| `player_id`           | uuid FK → player           | cascade delete                                            |
-| `is_mercenary`        | boolean                    | default `false`. See [Mercenary rules](#mercenary-rules). |
-| `has_profile_picture` | boolean                    | default `false`                                           |
-| `picture_version`     | integer                    | default `0`. Cache-buster, same rule as `logo_version`.   |
-| `created_at`          | timestamp                  | defaults to now                                           |
+| Column                | Type                       | Notes                                                                                                                                                                                          |
+| --------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | uuid PK                    |                                                                                                                                                                                                |
+| `competition_team_id` | uuid FK → competition_team | cascade delete                                                                                                                                                                                 |
+| `player_id`           | uuid FK → player           | cascade delete                                                                                                                                                                                 |
+| `is_mercenary`        | boolean                    | default `false`. See [Mercenary rules](#mercenary-rules).                                                                                                                                      |
+| `has_profile_picture` | boolean                    | default `false`                                                                                                                                                                                |
+| `picture_version`     | integer                    | default `0`. Bumped on every upload or removal. Unused in URLs now that pictures are served as signed links from the private bucket (see [API.md](API.md#player-pictures-player_picture_url)). |
+| `created_at`          | timestamp                  | defaults to now                                                                                                                                                                                |
 
 **Unique:** `(competition_team_id, player_id)` · **Index:** `player_id`
 

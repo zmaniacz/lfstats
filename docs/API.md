@@ -6,6 +6,10 @@ by query functions in `packages/db/src/queries/`.
 Everything here is an unauthenticated GET **except `POST` and `DELETE /api/videos`**, which require
 an API key — see [Video routes](#post-apivideos) below.
 
+The one piece of data that is not public is **player profile pictures**. They are returned only
+by `GET /api/competitions/[slug]/stats`, and only to a key with `picture:read` — see
+[Player pictures](#player-pictures-player_picture_url).
+
 ---
 
 ## `GET /api/games`
@@ -248,6 +252,26 @@ is no persistent Laserball team table — this is a lighter structure than the S
 Per-player stats for a competition, keyed by competition slug. Backed by
 `getCompetitionPlayerStats` in `packages/db/src/queries/competition-tournament.ts`. `404` if the
 slug doesn't match a competition.
+
+### Player pictures (`player_picture_url`)
+
+Each SM5 row carries `team_logo_url` and `player_picture_url`. Logos are public. **Player
+pictures are private**: `player_picture_url` is `null` unless the request carries an API key with
+the `picture:read` permission (issued at `/admin/api-keys`, sent as for
+[`POST /api/videos`](#post-apivideos)):
+
+```
+Authorization: Bearer lfs_xxxxxxxxxxxxxxxxxxxx
+```
+
+With such a key, each player who has a picture gets a signed URL that **expires after one hour**,
+and the response is `Cache-Control: private, no-store`. Fetch the stats again for fresh URLs
+rather than storing them. Without a key the route behaves as before, minus the pictures. A key
+without `picture:read` also gets `null`; a key that is unknown or revoked is a `401`.
+
+Pictures live in the private `PLAYER_PICTURES_BUCKET` under `player-pictures/<roster entry id>`
+(`apps/web/src/lib/player-picture-storage.ts`). Nothing else in the API or the MCP server returns
+them, and OAuth tokens never can: `picture:read` exists only on API keys.
 
 For a **solo** competition (`competition.format = 'solo'`) the player list comes from
 `competition_player` rather than team rosters, and the per-competition aggregate counts every
@@ -649,6 +673,8 @@ exported as `@lfstats/db/analytics`.
 
 - Default to no auth — every route here is public except `POST` and `DELETE /api/videos`, which
   need a Bearer API key because they write. Follow that precedent for any future mutating route.
+- Never return a player picture URL from a public response. Sign it with `signPlayerPictureUrls`
+  and only for a key holding `picture:read`, as `GET /api/competitions/[slug]/stats` does.
 - Request and response bodies use `snake_case` field names, not the `camelCase` used internally.
 - Query logic belongs in `packages/db/src/queries/`, never inline in `app/api/**/route.ts`.
 - Prefer `NextResponse.json({ data })` for list endpoints; a 404 with `{ "error": "Not found" }`

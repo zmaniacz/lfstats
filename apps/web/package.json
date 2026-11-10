@@ -8,7 +8,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "oxlint",
     "format": "prettier --write .",
-    "mcp:eval": "tsx scripts/mcp-eval.mts"
+    "mcp:eval": "tsx scripts/mcp-eval.mts",
+    "pictures:migrate": "tsx scripts/migrate-player-pictures.mts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
