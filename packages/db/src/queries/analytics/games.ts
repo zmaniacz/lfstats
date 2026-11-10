@@ -14,11 +14,19 @@ import {
   competitionRound,
   competitionTeam,
   game,
+  gameReferee,
+  gameTag,
+  gameTagAssignment,
+  gameVideo,
   lbGameTeam,
   lbMatchGame,
   lbScorecard,
   player,
+  sm5GameHighlight,
   sm5GamePenalty,
+  sm5GamePlayerStep,
+  sm5GameTarget,
+  sm5GameTargetDestruction,
   sm5GameTeam,
   sm5GameTeamPenalty,
   sm5PdfGamePenalty,
@@ -27,7 +35,9 @@ import {
   sm5PdfScorecard,
   sm5Scorecard,
   sm5ScorecardMvp,
+  target,
 } from "../../schema";
+import type { HighlightCategory } from "../../lib/highlights/detectors";
 import {
   POSITIONS,
   positionCode,
@@ -388,6 +398,12 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
       field: "players.match",
     });
   }
+  if (req.highlights && gameType === "lb") {
+    throw new QueryApiError("invalid_request", "Highlights exist for SM5 games only.", {
+      field: "highlights",
+      hint: "Remove highlights, or set scope.game_type to 'sm5'.",
+    });
+  }
   const legacy: LegacyMode = req.legacy ?? "include";
   if (gameType === "lb" && legacy === "only") {
     throw new QueryApiError("invalid_request", "Legacy games are SM5 only.", {
@@ -421,6 +437,14 @@ export async function searchGames(req: SearchGamesRequest, today: string) {
   if (req.min_margin !== undefined) conditions.push(sql`m.margin >= ${req.min_margin}`);
   if (req.max_margin !== undefined) conditions.push(sql`m.margin <= ${req.max_margin}`);
   if (byMargin) conditions.push(sql`m.margin is not null`);
+  if (req.highlights) {
+    // Legacy games have no events, so no highlights: this filter leaves them out.
+    conditions.push(
+      sql`exists (select 1 from ${sm5GameHighlight}
+        where ${sm5GameHighlight.gameId} = ${game.id}
+          and ${inArray(sm5GameHighlight.category, req.highlights)})`,
+    );
+  }
   if (unique.length > 0) {
     const played = (ids: string[]) =>
       or(
@@ -660,6 +684,167 @@ async function rostersFor(
 // games/{slug}
 // ---------------------------------------------------------------------------
 
+/** What the game's referees, tags and videos say about it. The same for every game type. */
+async function gameExtras(gameId: string) {
+  const db = getAnalyticsDb();
+  const [tags, videos, referees] = await Promise.all([
+    db
+      .select({ name: gameTag.name, description: gameTag.description })
+      .from(gameTagAssignment)
+      .innerJoin(gameTag, eq(gameTag.id, gameTagAssignment.tagId))
+      .where(and(eq(gameTagAssignment.gameId, gameId), eq(gameTag.archived, false)))
+      .orderBy(asc(gameTag.name)),
+    db
+      .select({
+        iplId: player.iplId,
+        callsign: player.currentCallsign,
+        videoId: gameVideo.youtubeVideoId,
+        startSeconds: gameVideo.startSeconds,
+        gameStartOffset: gameVideo.gameStartOffset,
+        label: gameVideo.label,
+      })
+      .from(gameVideo)
+      .leftJoin(player, eq(player.id, gameVideo.playerId))
+      .where(eq(gameVideo.gameId, gameId))
+      .orderBy(asc(gameVideo.createdAt)),
+    db
+      .select({ iplId: gameReferee.iplId, callsign: gameReferee.callsign })
+      .from(gameReferee)
+      .where(eq(gameReferee.gameId, gameId))
+      .orderBy(asc(gameReferee.callsign)),
+  ]);
+  return {
+    tags: tags.map((t) => ({ name: t.name.trim(), description: t.description })),
+    // A null ipl_id is a game-level video (scoreboard or arena camera); otherwise it is that
+    // player's point of view. `url` opens at start_seconds; game_start_offset is where the
+    // game clock reads 0:00, both counted from the start of the video.
+    videos: videos.map((v) => ({
+      ipl_id: publicIplId(v.iplId),
+      callsign: v.callsign?.trim() ?? null,
+      label: v.label,
+      url: `https://www.youtube.com/watch?v=${v.videoId}${v.startSeconds ? `&t=${v.startSeconds}s` : ""}`,
+      start_seconds: v.startSeconds,
+      game_start_offset: v.gameStartOffset,
+    })),
+    referees: referees.map((r) => ({ ipl_id: r.iplId, callsign: r.callsign.trim() })),
+  };
+}
+
+/** Beacons, generators and other non-player targets, and who destroyed each one, if anyone. */
+async function sm5Targets(gameId: string) {
+  const db = getAnalyticsDb();
+  const [targets, destructions] = await Promise.all([
+    db
+      .select({
+        id: sm5GameTarget.id,
+        name: target.name,
+        type: sm5GameTarget.type,
+        team: sm5GameTeam.name,
+      })
+      .from(sm5GameTarget)
+      .innerJoin(target, eq(target.id, sm5GameTarget.targetId))
+      .leftJoin(sm5GameTeam, eq(sm5GameTeam.id, sm5GameTarget.gameTeamId))
+      .where(eq(sm5GameTarget.gameId, gameId))
+      .orderBy(asc(target.name)),
+    db
+      .select({
+        gameTargetId: sm5GameTargetDestruction.gameTargetId,
+        iplId: sm5Scorecard.iplId,
+        callsign: sm5Scorecard.callsign,
+        method: sm5GameTargetDestruction.method,
+        time: sm5GameTargetDestruction.time,
+      })
+      .from(sm5GameTargetDestruction)
+      .innerJoin(sm5GameTarget, eq(sm5GameTarget.id, sm5GameTargetDestruction.gameTargetId))
+      .innerJoin(sm5Scorecard, eq(sm5Scorecard.id, sm5GameTargetDestruction.scorecardId))
+      .where(eq(sm5GameTarget.gameId, gameId))
+      .orderBy(asc(sm5GameTargetDestruction.time)),
+  ]);
+  return targets.map((t) => ({
+    name: t.name.trim(),
+    type: t.type,
+    // The team that owns the target, not the one that destroyed it.
+    team: t.team,
+    destroyed_by: destructions
+      .filter((d) => d.gameTargetId === t.id)
+      .map((d) => ({
+        ipl_id: d.iplId,
+        callsign: d.callsign.trim(),
+        method: d.method,
+        time: clock(d.time),
+      })),
+  }));
+}
+
+/** Plain-language meaning of each highlight category and of its `magnitude`. */
+export const HIGHLIGHT_MEANINGS: Record<HighlightCategory, { name: string; magnitude: string }> = {
+  nuke_chain: { name: "5 Chain: five nukes detonated in a row", magnitude: "span in ms" },
+  comeback: { name: "Comeback: won after trailing by over 10,000", magnitude: "largest deficit" },
+  medic_save: {
+    name: "Medic Save: resupplied a teammate who then survived an enemy nuke",
+    magnitude: "teammates saved",
+  },
+  missile_chain: {
+    name: "Missile Chain: three or more missile hits in quick succession",
+    magnitude: "missiles in the chain",
+  },
+  nuke_saved: {
+    name: "Nuke Saved: a nuking commander downed an attacker and the nuke detonated",
+    magnitude: "attackers downed",
+  },
+  nuke_denied: {
+    name: "Nuke Denied: an opponent ended a nuke before it detonated",
+    magnitude: "always 1",
+  },
+  last_stand: {
+    name: "Last Stand: stayed on exactly one life for over a minute",
+    magnitude: "run length in ms",
+  },
+};
+
+/** Every stored highlight for an SM5 game, in game order. Hidden for excluded games. */
+async function sm5Highlights(g: { id: string; slug: string; exclude: boolean; outcome: string }) {
+  if (g.exclude || g.outcome === "aborted" || g.outcome === "replay") return [];
+  const primary = alias(sm5Scorecard, "hl_primary");
+  const secondary = alias(sm5Scorecard, "hl_secondary");
+  const rows = await getAnalyticsDb()
+    .select({
+      category: sm5GameHighlight.category,
+      time: sm5GameHighlight.time,
+      magnitude: sm5GameHighlight.magnitude,
+      primaryIplId: primary.iplId,
+      primaryCallsign: primary.callsign,
+      secondaryIplId: secondary.iplId,
+      secondaryCallsign: secondary.callsign,
+      team: sm5GameTeam.name,
+    })
+    .from(sm5GameHighlight)
+    .leftJoin(primary, eq(primary.id, sm5GameHighlight.primaryScorecardId))
+    .leftJoin(secondary, eq(secondary.id, sm5GameHighlight.secondaryScorecardId))
+    .leftJoin(
+      sm5GameTeam,
+      and(
+        eq(sm5GameTeam.gameId, sm5GameHighlight.gameId),
+        eq(sm5GameTeam.tdfTeamIndex, sm5GameHighlight.tdfTeamIndex),
+      ),
+    )
+    .where(eq(sm5GameHighlight.gameId, g.id))
+    .orderBy(asc(sm5GameHighlight.time));
+  const who = (iplId: string | null, callsign: string | null) =>
+    callsign === null ? null : { ipl_id: iplId, callsign: callsign.trim() };
+  return rows.map((r) => ({
+    category: r.category,
+    what: HIGHLIGHT_MEANINGS[r.category].name,
+    time: clock(r.time),
+    player: who(r.primaryIplId, r.primaryCallsign),
+    other_player: who(r.secondaryIplId, r.secondaryCallsign),
+    team: r.team,
+    magnitude: r.magnitude,
+    magnitude_means: HIGHLIGHT_MEANINGS[r.category].magnitude,
+    replay_url: `${gameWebUrl(g.slug, "sm5")}?tab=replay&t=${r.time}`,
+  }));
+}
+
 export async function getGameDetail(slug: string, req: GameDetailRequest) {
   const parsed = parseGameSlug(slug);
   if (!parsed) {
@@ -699,10 +884,15 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
       hint: "Use search_games to find the game.",
     });
   }
-  if (g.type === "lb") return lbGameDetail(g);
+  if (g.type === "lb") return lbGameDetail(g, req);
   if (g.type === "sm5_pdf") return legacyGameDetail(g, req);
 
   const sc = sm5Scorecard;
+  const [extras, targets, highlights] = await Promise.all([
+    gameExtras(g.id),
+    sm5Targets(g.id),
+    req.include_highlights ? sm5Highlights(g) : null,
+  ]);
   const [teams, comps, scorecards, penalties, teamPenalties, components] = await Promise.all([
     teamsFor("sm5", [g.id]),
     competitionInfo([g.id]),
@@ -734,6 +924,15 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
         shotsLeft: sc.shotsLeft,
         eliminated: sc.eliminated,
         penalties: sc.penalties,
+        targetsDestroyed: sc.targetsDestroyed,
+        deactivations: sc.deactivatedOpponent,
+        spEarned: sc.spEarned,
+        spSpent: sc.spSpent,
+        steps: sql<
+          number | null
+        >`(select sum(${sm5GamePlayerStep.delta})::int from ${sm5GamePlayerStep}
+          where ${sm5GamePlayerStep.gameId} = ${sc.gameId}
+            and ${sm5GamePlayerStep.scorecardId} = ${sc.id})`,
         uptimePct: sql<
           number | null
         >`${sc.uptime}::float8 / nullif(${sc.uptime} + ${sc.resupplyDowntime} + ${sc.otherDowntime}, 0)`,
@@ -830,6 +1029,13 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
         eliminated: s.eliminated,
         uptime_pct: s.uptimePct,
         penalties: s.penalties,
+        deactivations: s.deactivations,
+        targets_destroyed: s.targetsDestroyed,
+        // Null for Heavies, who have no special points.
+        sp_earned: s.spEarned,
+        sp_spent: s.spSpent,
+        // Null when the game file recorded no steps (older files).
+        steps: s.steps,
         ...(req.include_mvp_components && { mvp_components: componentsBy.get(s.id) ?? {} }),
       }));
 
@@ -876,6 +1082,9 @@ export async function getGameDetail(slug: string, req: GameDetailRequest) {
           })),
         ],
       }),
+      ...extras,
+      targets,
+      ...(highlights && { highlights }),
       tdf_url: getTdfArchiveUrl(g.tdfFilename),
       web_url: gameWebUrl(g.slug, "sm5"),
     },
@@ -908,11 +1117,12 @@ type GameHeader = {
  * A Laserball game: goal totals, every player's stats, and, when the game is one half of a
  * linked match, the other half. Laserball has no penalties or MVP.
  */
-async function lbGameDetail(g: GameHeader) {
+async function lbGameDetail(g: GameHeader, req: GameDetailRequest) {
   const db = getAnalyticsDb();
   const sc = lbScorecard;
   const other = alias(lbMatchGame, "other");
-  const [teams, scorecards, halves] = await Promise.all([
+  const [extras, teams, scorecards, halves] = await Promise.all([
+    gameExtras(g.id),
     teamsFor("lb", [g.id]),
     db
       .select({
@@ -1006,15 +1216,21 @@ async function lbGameDetail(g: GameHeader) {
             time_played_ms: s.timePlayedMs,
           })),
       })),
+      ...extras,
       tdf_url: getTdfArchiveUrl(g.tdfFilename),
       web_url: gameWebUrl(g.slug, "lb"),
     },
     meta: {
-      warnings: g.exclude
-        ? [
-            "This game is excluded from all aggregates (aborted or excluded by an admin); don't treat it as typical.",
-          ]
-        : [],
+      warnings: [
+        ...(g.exclude
+          ? [
+              "This game is excluded from all aggregates (aborted or excluded by an admin); don't treat it as typical.",
+            ]
+          : []),
+        ...(req.include_highlights
+          ? ["include_highlights applies to SM5 games only and was ignored."]
+          : []),
+      ],
     },
   };
 }
@@ -1028,7 +1244,8 @@ async function legacyGameDetail(g: GameHeader, req: GameDetailRequest) {
   const db = getAnalyticsDb();
   const sc = sm5PdfScorecard;
   const withPenalties = req.include_penalties ?? true;
-  const [teams, scorecards, penalties, teamPenalties] = await Promise.all([
+  const [extras, teams, scorecards, penalties, teamPenalties] = await Promise.all([
+    gameExtras(g.id),
     teamsFor("sm5_pdf", [g.id]),
     db
       .select({
@@ -1095,6 +1312,9 @@ async function legacyGameDetail(g: GameHeader, req: GameDetailRequest) {
   ];
   if (req.include_mvp_components) {
     warnings.push("include_mvp_components does not apply to legacy games and was ignored.");
+  }
+  if (req.include_highlights) {
+    warnings.push("Legacy games have no event data, so they have no highlights.");
   }
   if (g.exclude) {
     warnings.push(
@@ -1174,6 +1394,7 @@ async function legacyGameDetail(g: GameHeader, req: GameDetailRequest) {
           })),
         ],
       }),
+      ...extras,
       tdf_url: null,
       web_url: gameWebUrl(g.slug, "sm5"),
     },

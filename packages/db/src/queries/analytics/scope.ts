@@ -9,6 +9,8 @@ import {
   competitionMatchGame,
   competitionRound,
   game,
+  gameTag,
+  gameTagAssignment,
   lbGameTeam,
   lbScorecard,
   sm5GameTeam,
@@ -51,14 +53,22 @@ export type NormalizedScope = {
   /** Null for Laserball, which has no mercenary concept. */
   include_mercenary_games: boolean | null;
   include_excluded: boolean;
+  /** Tag names as given; a game matches if it carries any of them. */
+  tags: string[] | null;
 };
 
 export type CenterRef = { id: string; slug: string; name: string };
 export type CompetitionRef = { id: string; slug: string; name: string };
+export type TagRef = { name: string; ids: string[] };
 
 export type ResolvedScope = NormalizedScope & {
   centerRefs: CenterRef[] | null;
   competitionRefs: CompetitionRef[] | null;
+  /**
+   * One per requested tag name. Tags are per center, so a name can stand for several tag
+   * rows ("League Night" at two centers); `ids` holds them all.
+   */
+  tagRefs: TagRef[] | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -178,6 +188,7 @@ export function normalizeScope(input: ScopeInput, today: string): NormalizedScop
     team_result: input.team_result ?? null,
     include_mercenary_games: includeMercs,
     include_excluded: input.include_excluded ?? false,
+    tags: dedupe(input.tags),
   };
 }
 
@@ -265,12 +276,38 @@ async function resolveCompetitions(slugs: string[], gameType: GameType): Promise
   });
 }
 
+/** Tag names → tag rows, ignoring case. An unknown name is an error listing the real ones. */
+async function resolveTags(names: string[]): Promise<TagRef[]> {
+  const rows = await getAnalyticsDb()
+    .select({ id: gameTag.id, name: gameTag.name })
+    .from(gameTag)
+    .where(eq(gameTag.archived, false));
+  const key = (name: string) => name.trim().toLowerCase();
+  const byName = new Map<string, TagRef>();
+  for (const r of rows) {
+    const ref = byName.get(key(r.name)) ?? { name: r.name.trim(), ids: [] };
+    ref.ids.push(r.id);
+    byName.set(key(r.name), ref);
+  }
+  const missing = names.find((n) => !byName.has(key(n)));
+  if (missing) {
+    const all = [...byName.values()].map((t) => t.name).sort();
+    throw new QueryApiError("invalid_scope", `No game tag named '${missing}'.`, {
+      field: "scope.tags",
+      hint: `${suggestionPrefix(missing, all)}Tags are labels centers put on games; the list tool shows them.`,
+      validValues: all,
+    });
+  }
+  return names.map((n) => byName.get(key(n))!);
+}
+
 export async function resolveScope(scope: NormalizedScope): Promise<ResolvedScope> {
-  const [centerRefs, competitionRefs] = await Promise.all([
+  const [centerRefs, competitionRefs, tagRefs] = await Promise.all([
     scope.centers ? resolveCenters(scope.centers) : null,
     scope.competitions ? resolveCompetitions(scope.competitions, scope.game_type) : null,
+    scope.tags ? resolveTags(scope.tags) : null,
   ]);
-  return { ...scope, centerRefs, competitionRefs };
+  return { ...scope, centerRefs, competitionRefs, tagRefs };
 }
 
 /** The resolved scope as echoed in `meta.scope`, so the model can state its assumptions. */
@@ -286,6 +323,7 @@ export function describeScope(scope: ResolvedScope) {
     team_result: scope.team_result,
     include_mercenary_games: scope.include_mercenary_games,
     include_excluded: scope.include_excluded,
+    tags: scope.tagRefs?.map((t) => t.name) ?? null,
   };
 }
 
@@ -354,6 +392,17 @@ export function scopeGameConditions(scope: ResolvedScope, legacy: LegacyMode = "
         inner join ${competitionRound} on ${competitionRound.id} = ${competitionMatch.roundId}
         where ${competitionMatchGame.gameId} = ${game.id}
           and ${inArray(competitionRound.type, scope.round_types)})`,
+    );
+  }
+
+  if (scope.tagRefs) {
+    conditions.push(
+      sql`exists (select 1 from ${gameTagAssignment}
+        where ${gameTagAssignment.gameId} = ${game.id}
+          and ${inArray(
+            gameTagAssignment.tagId,
+            scope.tagRefs.flatMap((t) => t.ids),
+          )})`,
     );
   }
 

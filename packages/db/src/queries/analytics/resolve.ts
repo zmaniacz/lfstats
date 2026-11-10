@@ -91,6 +91,8 @@ export type PlayerMatch = {
   ipl_id: string;
   member_id: string | null;
   callsign: string;
+  /** Names the player used before the current one, most recently used first. */
+  previous_callsigns: string[];
   matched_on: PlayerMatchedOn;
   similarity?: number;
   home_center: { slug: string; name: string } | null;
@@ -241,7 +243,7 @@ export async function resolvePlayer(query: string): Promise<ResolveResult<Player
   }
 
   const ids = candidates.map((c) => c.playerId);
-  const [players, activity] = await Promise.all([
+  const [players, activity, history] = await Promise.all([
     getAnalyticsDb()
       .select({
         id: player.id,
@@ -252,8 +254,28 @@ export async function resolvePlayer(query: string): Promise<ResolveResult<Player
       .from(player)
       .where(inArray(player.id, ids)),
     playerActivity(ids),
+    getAnalyticsDb()
+      .select({
+        playerId: playerCallsignHistory.playerId,
+        callsign: playerCallsignHistory.callsign,
+      })
+      .from(playerCallsignHistory)
+      .where(inArray(playerCallsignHistory.playerId, ids))
+      .orderBy(desc(playerCallsignHistory.lastSeenAt)),
   ]);
   const playerById = new Map(players.map((p) => [p.id, p]));
+  // The history table also holds the current callsign, and the same name in other casings.
+  const previousCallsigns = (playerId: string, current: string) => {
+    const seen = new Set([current.trim().toLowerCase()]);
+    const names: string[] = [];
+    for (const h of history) {
+      const name = h.callsign.trim();
+      if (h.playerId !== playerId || seen.has(name.toLowerCase())) continue;
+      seen.add(name.toLowerCase());
+      names.push(name);
+    }
+    return names;
+  };
 
   const matches: PlayerMatch[] = candidates.map((c) => {
     const p = playerById.get(c.playerId)!;
@@ -262,6 +284,7 @@ export async function resolvePlayer(query: string): Promise<ResolveResult<Player
       ipl_id: p.iplId,
       member_id: p.memberId,
       callsign: p.callsign.trim(),
+      previous_callsigns: previousCallsigns(c.playerId, p.callsign),
       matched_on: c.matchedOn,
       ...(c.similarity !== undefined && { similarity: c.similarity }),
       home_center: a?.home ?? null,

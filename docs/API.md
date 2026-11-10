@@ -156,6 +156,182 @@ persist on the scorecard, so **a guest is identifiable only by codename** — th
 
 ---
 
+## `GET /api/games/[slug]/stats`
+
+One game in full: the header, every team with every player's stats, penalties, referees, tags,
+linked videos, the targets and who destroyed them, and the game's highlights. Where
+[`GET /api/games/[slug]`](#get-apigamesslug) says who was on the field, this says how they did.
+
+Defined in `apps/web/src/app/api/games/[game]/stats/route.ts`. It returns the `data` object of the
+query API's [`GET /games/{slug}`](Query_API_Spec.md#get-gamesslug) unwrapped, plus a `warnings`
+array, and takes the same optional query parameters: `include_penalties` (default `true`),
+`include_mvp_components` (default `false`) and `include_highlights` (default **`true`** here). SM5,
+Laserball and legacy PDF-era games all resolve; the field lists for each are in that spec.
+
+`404` for a malformed or unknown slug, `400` for an unknown query parameter.
+
+---
+
+## `GET /api/players/[iplId]`
+
+One player's profile. `iplId` is the IPL id with or without its `#` (`/api/players/kzWkJy`), the
+same value as in `/players/[iplId]` page URLs. Callsigns are not accepted: this route never
+guesses between players. Use [`GET /api/players/averages`](#get-apiplayersaverages) to find an id.
+
+Defined in `apps/web/src/app/api/players/[iplId]/route.ts`, backed by `resolvePlayer` and
+`getPlayerStats` in `packages/db/src/queries/analytics/`.
+
+One optional query parameter, `game_type` — `sm5` (the default) or `lb`.
+
+```jsonc
+{
+  "ipl_id": "#kzWkJy",
+  "member_id": "3-1-6683", // null if never recorded
+  "callsign": "Brew",
+  "previous_callsigns": ["RainbowPanthaV2", "YAmIASadBrew"], // most recently used first
+  "home_center": { "slug": "4-23", "name": "Syracuse" }, // center with the most games
+  "games_played": 428, // SM5 + Laserball, non-excluded
+  "last_played": "2026-11-04",
+  "game_type": "sm5",
+  "overall": {
+    "games": 428, // this game type only
+    "win_rate": 0.593,
+    "avg_mvp": 21.02,
+    "avg_score": 7255.7,
+    "avg_accuracy": 0.776,
+    "avg_hit_diff": 1.67,
+  },
+  "by_position": [{ "position": "commander", "games": 76, "win_rate": 0.697, "avg_mvp": 22.39 }],
+  "rating": { "rank": 14, "of": 175, "rating": 1.21 }, // null when not in the global ranking
+  "web_url": "https://lfstats.com/players/kzWkJy",
+}
+```
+
+`overall` and `by_position` hold the query API's default metrics, computed exactly as
+[`player_stats`](Query_API_Spec.md#post-player_stats) computes them over every non-excluded game.
+With `?game_type=lb`, `overall` holds games, win rate, goals, assists, steals and blocks, and
+`by_position` and `rating` are omitted (Laserball has neither). A player with no games of the
+requested type comes back with `overall.games: 0` and null metrics.
+
+`404` for an unknown IPL id, `400` for an invalid `game_type`.
+
+---
+
+## `GET /api/centers`
+
+Every center, busiest first. No parameters. Defined in `apps/web/src/app/api/centers/route.ts`,
+backed by `listDirectory` in `packages/db/src/queries/analytics/competitions.ts`.
+
+```json
+{
+  "data": [
+    {
+      "slug": "4-19",
+      "name": "Loveland",
+      "short_name": "LLT",
+      "city": null,
+      "country": null,
+      "sm5_games": 2506,
+      "laserball_games": 618,
+      "legacy_sm5_games": 525,
+      "last_played": "2026-11-08"
+    }
+  ]
+}
+```
+
+The game counts include excluded games, since they still happened there. `legacy_sm5_games` are
+the PDF-era games (see [Legacy_Migration_PDF_Games.md](Legacy_Migration_PDF_Games.md)).
+
+## `GET /api/competitions`
+
+Every competition, newest first. Defined in `apps/web/src/app/api/competitions/route.ts`, backed
+by the same `listDirectory`.
+
+| Param       | Format                                             | Description                              |
+| ----------- | -------------------------------------------------- | ---------------------------------------- |
+| `game_type` | `sm5` \| `lb`                                      | Only this game type                      |
+| `year`      | `YYYY`                                             | Only competitions that started that year |
+| `category`  | `internationals` \| `tournament` \| `league`       | Only this browsing category              |
+| `state`     | `preshow` \| `upcoming` \| `active` \| `completed` | Only this state                          |
+| `type`      | `competitive` \| `social`                          | Only this type                           |
+| `center`    | center slug, e.g. `4-23`                           | Only competitions this center hosted     |
+| `limit`     | 1–200                                              | Default 200                              |
+
+```json
+{
+  "data": [
+    {
+      "slug": "internationals_2026",
+      "name": "Internationals 2026",
+      "type": "competitive",
+      "game_type": "sm5",
+      "format": "team",
+      "category": "internationals",
+      "state": "completed",
+      "start_date": "2026-07-13",
+      "end_date": "2026-07-18",
+      "host_center": "4-23",
+      "games": 312
+    }
+  ],
+  "truncated": false
+}
+```
+
+`games` counts the competition's non-excluded games. `400` for an invalid parameter value or an
+unknown parameter; `404` for a `center` slug that matches no center.
+
+## `GET /api/rankings`
+
+The global SM5 player ranking, best first: the same board as the site's `/rankings` page
+([Player_Rating.md](Player_Rating.md)). Defined in `apps/web/src/app/api/rankings/route.ts`,
+backed by `getRankings` in `packages/db/src/queries/analytics/rankings.ts`.
+
+Query parameters: `limit` (1–200, default 100) and `offset` (default 0).
+
+```jsonc
+{
+  "data": [
+    {
+      "rank": 1,
+      "ipl_id": "#sppDpM3",
+      "callsign": "Taipan",
+      "rating": 1.644,
+      "standard_error": 0.15,
+      "rating_group": 6, // players in one group are too close to separate with confidence
+      "games_played": 233, // inside the rating window
+      "wins": 159,
+      "losses": 74,
+      "draws": 0,
+    },
+  ],
+  "ranked_players": 175, // everyone ranked, not just this page
+  "window_start": "2024-11-10",
+  "window_end": "2026-11-10",
+  "computed_at": "2026-11-10T08:30:30",
+  "model_version": "2026.08",
+  "truncated": true, // more ranks follow this page
+}
+```
+
+`data` is empty, with the window fields null, when no ranking has been computed yet.
+
+---
+
+## `GET /api/live`
+
+A Server-Sent Events stream of live events, for pages that update as games are ingested. Public
+and read-only: the events carry only ids and text that the site already shows. Defined in
+`apps/web/src/app/api/live/route.ts`; the events come from
+`packages/db/src/queries/live-events.ts`.
+
+Each message is `event: <type>` with a JSON `data:` payload. The stream sends a `: ping` comment
+every 25 seconds so idle proxies keep it open, and tells the browser to reconnect after 10
+seconds if it drops. It is a stream, not a request/response route: open it with `EventSource`.
+
+---
+
 ## `GET /api/players/averages`
 
 Returns overall and per-position career averages for every player. Defined in
@@ -215,10 +391,19 @@ It returns:
 - downtime spans, each classified `resupply` or `down`;
 - missile and nuke markers.
 
-Keyed by internal `gameId` and `scorecardId` (UUIDs). Defined in
+Each segment takes either form. The game is the internal game UUID (what the game page sends)
+or the public [game slug](#game-slugs). The player is the internal scorecard UUID or the
+player's IPL id, with or without its `#`:
+
+```
+/api/games/4-23-20261104194503/players/3HcR6fG/timeline
+```
+
+A guest has no IPL id, so a guest's timeline is reachable by scorecard UUID only. Defined in
 `apps/web/src/app/api/games/[game]/players/[scorecard]/timeline/route.ts`, backed by
 `getPlayerTimeline` in `packages/db/src/queries/games.ts`. Returns `404` with
-`{ "error": "Not found" }` when the scorecard isn't in that game.
+`{ "error": "Not found" }` for an unknown game, a Laserball or PDF-era game, or a player who
+isn't in that game.
 
 Downtime spans run from a player's first deactivation to their reactivation. They can add up to
 more than the scorecard's `resupply_downtime` + `other_downtime`, because the simulator restarts
@@ -649,16 +834,20 @@ specified in [Query_API_Spec.md](Query_API_Spec.md); this is only an index.
 the rest of this API. Requests are rate limited per key and logged to `api_request_log`. Errors are
 `{ "error": { "code", "message", "field?", "hint?", "valid_values?" } }`.
 
-| Route                             | Purpose                                                       |
-| --------------------------------- | ------------------------------------------------------------- |
-| `GET /api/query/v1/catalog`       | Metrics, filter values, defaults and limits                   |
-| `POST /api/query/v1/resolve`      | Player, center and competition names → ids                    |
-| `POST /api/query/v1/leaderboard`  | Rank players by one metric within a scope                     |
-| `POST /api/query/v1/player_stats` | 1–10 players side by side: breakdowns, baseline, head-to-head |
-| `POST /api/query/v1/search_games` | Find games by scope, players, margin and outcome              |
-| `GET /api/query/v1/games/{slug}`  | One game with every player's stats and penalties              |
+| Route                                   | Purpose                                                       |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `GET /api/query/v1/catalog`             | Metrics, filter values, defaults and limits                   |
+| `POST /api/query/v1/resolve`            | Player, center and competition names → ids                    |
+| `POST /api/query/v1/leaderboard`        | Rank players by one metric within a scope                     |
+| `POST /api/query/v1/player_stats`       | 1–10 players side by side: breakdowns, baseline, head-to-head |
+| `POST /api/query/v1/search_games`       | Find games by scope, players, margin, outcome and highlight   |
+| `GET /api/query/v1/games/{slug}`        | One game with every player's stats and penalties              |
+| `GET /api/query/v1/competitions/{slug}` | One competition with standings, schedule and rosters          |
+| `POST /api/query/v1/rankings`           | The global SM5 player ranking                                 |
+| `POST /api/query/v1/penalties`          | Player penalties across games                                 |
+| `POST /api/query/v1/list`               | Every center, competition or game tag                         |
 
-The same six operations are exposed as MCP tools at **`/mcp`** (Streamable HTTP, stateless, same
+The same ten operations are exposed as MCP tools at **`/mcp`** (Streamable HTTP, stateless, same
 key and limits); see [Query_API_Spec.md](Query_API_Spec.md#mcp-server). `/mcp` also supports OAuth,
 so any signed-in LFstats user can connect an MCP client without a key; see
 [Query_API_Spec.md](Query_API_Spec.md#oauth).
@@ -671,6 +860,10 @@ exported as `@lfstats/db/analytics`.
 
 ## Conventions for new routes
 
+- A public route may reuse a query API read function through `publicRead` in
+  `apps/web/src/lib/query-api/public.ts`, as `/api/centers`, `/api/rankings` and
+  `/api/games/[slug]/stats` do. Only fixed-shape, bounded reads belong there; anything that
+  takes an open-ended scope stays behind a key in `/api/query/v1`.
 - Default to no auth — every route here is public except `POST` and `DELETE /api/videos`, which
   need a Bearer API key because they write. Follow that precedent for any future mutating route.
 - Never return a player picture URL from a public response. Sign it with `signPlayerPictureUrls`

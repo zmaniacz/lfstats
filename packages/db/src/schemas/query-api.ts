@@ -2,7 +2,15 @@
 // Copyright (C) 2015 Russell Lewis
 
 import { z } from "zod";
-import { competitionRoundTypeEnum, gameOutcomeEnum, teamResultEnum } from "../schema";
+import { HIGHLIGHT_CATEGORIES } from "../lib/highlights/detectors";
+import {
+  competitionCategoryEnum,
+  competitionRoundTypeEnum,
+  competitionStateEnum,
+  competitionTypeEnum,
+  gameOutcomeEnum,
+  teamResultEnum,
+} from "../schema";
 
 // Request schemas for the query API (docs/Query_API_Spec.md). Each schema is the single
 // source for HTTP body validation, the published JSON Schema and the MCP tool inputSchema,
@@ -94,6 +102,13 @@ const scopeFields = {
   include_excluded: z
     .boolean()
     .describe("Include admin-excluded and aborted games. Default false; rarely wanted."),
+  tags: z
+    .array(z.string().trim().min(1))
+    .min(1)
+    .max(10)
+    .describe(
+      "Game tag names (labels a center puts on games, e.g. 'League Night'), matched ignoring case. Matches games carrying any of them. The list tool shows the tags in use.",
+    ),
 };
 
 export const ScopeSchema = z
@@ -108,6 +123,7 @@ export const ScopeSchema = z
     team_result: scopeFields.team_result.optional(),
     include_mercenary_games: scopeFields.include_mercenary_games.optional(),
     include_excluded: scopeFields.include_excluded.optional(),
+    tags: scopeFields.tags.optional(),
   })
   .describe(
     "Which games and scorecards a query covers. Every field is optional; an empty scope is every non-excluded SM5 game.",
@@ -130,6 +146,7 @@ export const ScopeOverrideSchema = z
     team_result: scopeFields.team_result.nullable().optional(),
     include_mercenary_games: scopeFields.include_mercenary_games.optional(),
     include_excluded: scopeFields.include_excluded.nullable().optional(),
+    tags: scopeFields.tags.nullable().optional(),
   })
   .describe("Fields here replace the base scope's; null removes a filter.");
 export type ScopeOverride = z.infer<typeof ScopeOverrideSchema>;
@@ -360,6 +377,13 @@ export const SearchGamesRequestSchema = z
       .describe(
         "Add each team's players (callsign, position, score, MVP). Needs 'teams' in fields.",
       ),
+    highlights: z
+      .array(z.enum(HIGHLIGHT_CATEGORIES))
+      .min(1)
+      .optional()
+      .describe(
+        "SM5 only. Only games containing at least one of these highlight types: nuke_chain (five nukes in a row), comeback, medic_save, missile_chain, nuke_saved, nuke_denied, last_stand. Use game_detail with include_highlights to see them.",
+      ),
     legacy: z
       .enum(LEGACY_MODES)
       .optional()
@@ -377,6 +401,121 @@ export const GameDetailRequestSchema = z
   .strictObject({
     include_penalties: queryFlag.describe("Default true."),
     include_mvp_components: queryFlag.describe("Per-player MVP breakdown. Default false."),
+    include_highlights: queryFlag.describe(
+      "SM5 only. Notable moments (nuke chains, comebacks, medic saves…) with replay links. Default false.",
+    ),
   })
   .describe("One game with every player's stats.");
 export type GameDetailRequest = z.infer<typeof GameDetailRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// Competitions, rankings, penalties and listings
+// ---------------------------------------------------------------------------
+
+const competitionOptions = {
+  include_schedule:
+    "Every scheduled or played game (SM5) or half (Laserball) with both teams and scores, finals included. Default false.",
+  include_rosters: "Each team's players. Default false.",
+};
+
+/** GET /competitions/{slug}: flags arrive as query-string text. */
+export const CompetitionRequestSchema = z
+  .strictObject({
+    include_schedule: queryFlag.describe(competitionOptions.include_schedule),
+    include_rosters: queryFlag.describe(competitionOptions.include_rosters),
+  })
+  .describe("One competition with its standings.");
+export type CompetitionRequest = z.infer<typeof CompetitionRequestSchema>;
+
+/** The MCP tool takes the slug as an argument, and booleans as booleans. */
+export const CompetitionToolSchema = z
+  .strictObject({
+    slug: z
+      .string()
+      .min(1)
+      .describe("Competition slug, e.g. 'internationals_2026', from resolve or list."),
+    include_schedule: z.boolean().optional().describe(competitionOptions.include_schedule),
+    include_rosters: z.boolean().optional().describe(competitionOptions.include_rosters),
+  })
+  .describe("One competition with its standings.");
+
+export const RANKINGS_LIMITS = { max_limit: 200, default_limit: 25 } as const;
+
+export const RankingsRequestSchema = z
+  .strictObject({
+    limit: z.int().min(1).max(RANKINGS_LIMITS.max_limit).optional().describe("Default 25."),
+    offset: z.int().min(0).optional().describe("Ranks to skip, for paging. Default 0."),
+  })
+  .describe("The global SM5 player ranking, best first.");
+export type RankingsRequest = z.infer<typeof RankingsRequestSchema>;
+
+export const LIST_KINDS = ["centers", "competitions", "tags"] as const;
+export const COMPETITION_CATEGORIES = competitionCategoryEnum.enumValues;
+export const COMPETITION_STATES = competitionStateEnum.enumValues;
+export const COMPETITION_TYPES = competitionTypeEnum.enumValues;
+export const LIST_LIMITS = { max_limit: 200, default_limit: 100 } as const;
+
+export const ListRequestSchema = z
+  .strictObject({
+    what: z.enum(LIST_KINDS).describe("Which list to return."),
+    game_type: z
+      .enum(GAME_TYPES)
+      .optional()
+      .describe("Competitions: only this game type. Centers and tags: ignored."),
+    year: z
+      .int()
+      .min(2000)
+      .max(2100)
+      .optional()
+      .describe("Competitions only: those that started in this calendar year."),
+    category: z
+      .enum(COMPETITION_CATEGORIES)
+      .optional()
+      .describe(
+        "Competitions only. 'internationals' = the big annual championships, 'tournament' = other tournaments, 'league' = a site-run season.",
+      ),
+    state: z.enum(COMPETITION_STATES).optional().describe("Competitions only."),
+    type: z
+      .enum(COMPETITION_TYPES)
+      .optional()
+      .describe("Competitions only: 'competitive' or 'social'."),
+    center: centerSlug
+      .optional()
+      .describe("Tags: only this center's tags. Competitions: only those it hosted."),
+    limit: z.int().min(1).max(LIST_LIMITS.max_limit).optional().describe("Default 100."),
+  })
+  .describe(
+    "Lists every center, competition or game tag, for questions with no name to resolve ('which tournaments ran in 2026?').",
+  );
+export type ListRequest = z.infer<typeof ListRequestSchema>;
+
+export const PENALTY_LIMITS = { max_limit: 100, default_limit: 20, max_players: 10 } as const;
+
+export const PenaltiesRequestSchema = z
+  .strictObject({
+    scope: ScopeSchema.optional().describe(
+      "Which SM5 games to look in. positions and team_result apply to the penalized player's scorecard.",
+    ),
+    players: z
+      .array(playerRef)
+      .min(1)
+      .max(PENALTY_LIMITS.max_players)
+      .optional()
+      .describe("Only penalties given to these players (callsigns, IPL ids or member ids)."),
+    types: z
+      .array(z.string().trim().min(1))
+      .min(1)
+      .max(10)
+      .optional()
+      .describe(
+        "Penalty types, matched ignoring case, e.g. 'Common Foul'. meta.by_type lists the types present in scope.",
+      ),
+    include_rescinded: z
+      .boolean()
+      .optional()
+      .describe("Include penalties that were later rescinded. Default false."),
+    limit: z.int().min(1).max(PENALTY_LIMITS.max_limit).optional().describe("Default 20."),
+    offset: z.int().min(0).optional(),
+  })
+  .describe("Finds SM5 player penalties across games, newest first.");
+export type PenaltiesRequest = z.infer<typeof PenaltiesRequestSchema>;

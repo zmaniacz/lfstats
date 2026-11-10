@@ -72,7 +72,9 @@ data on the run date.
   description says so. Watch whether models get this right in live testing.
 - **Gap: competition results.** "Who won Europe Championship 2026?" has no direct tool. The best
   effort is the last finals game. This is the `team_stats` / standings extension listed in the
-  spec.
+  spec. _Addressed 2026-11-10 by `lfstats_competition`, which returns standings and, with
+  `include_schedule`, the finals games. Question 30 has not been rerun against it, so the table
+  above still shows the original result._
 - **Data issue surfaced:** a Czech center's "Neutrální" team is stored as a competing team, so it
   shows as a third team that lost (#4, #30). This is filed separately as an ingest fix.
 - **Laserball** was added in phase 6. Question 23 originally checked that it was refused. It now
