@@ -1,8 +1,8 @@
 # Query API Specification (v1)
 
-**Status:** Draft — not yet implemented  
+**Status:** Implemented (API version 1.1)  
 **Audience:** implementers of the query API and the LFstats MCP server  
-**Last Updated:** 2026-10-14
+**Last Updated:** 2026-11-10
 
 ---
 
@@ -24,7 +24,7 @@ directly over HTTP.
 
 ### Design goals
 
-1. **A few composable tools, not one per question.** About six endpoints should cover most
+1. **A few composable tools, not one per question.** About ten endpoints should cover most
    questions. New question types should usually need a new **metric** or **filter**, not a new
    endpoint.
 2. **One shared scope object.** Every aggregate endpoint takes the same `scope` filter, so a model
@@ -190,6 +190,7 @@ Every field is optional. An empty scope means every non-excluded SM5 game ever r
   "team_result": "win", // "win" | "loss" | "draw" — only the player's own team's result
   "include_mercenary_games": null, // see below
   "include_excluded": false, // admin-excluded / aborted games. Default false.
+  "tags": ["League Night"], // game tag names; OR'd
 }
 ```
 
@@ -208,6 +209,13 @@ Every field is optional. An empty scope means every non-excluded SM5 game ever r
 | `team_result`             | `sm5_game_team.result` / `lb_game_team.result` of the scorecard's own team       | Answers questions like "average MVP in wins".                                                                                                                                                                                                                                                                                        |
 | `include_mercenary_games` | `sm5_scorecard.is_mercenary`                                                     | `null` (default) means **false when `competitions` is set, otherwise true**. This matches both rules on the site: competition aggregates exclude mercenary scorecards ([Core_Schema.md](Core_Schema.md)), but a player's merc games are still their own games. The resolved value is echoed.                                         |
 | `include_excluded`        | `game.exclude`                                                                   | Default `false`, per Core_Schema ("omitted from all aggregates and leaderboards"). The analytics scope always applies it. (Some existing site queries, such as `getPlayerAvgMvpByPosition`, currently omit it. That is a bug, tracked separately, and must be fixed before the leaderboard parity check in the implementation plan.) |
+
+**`tags`** maps to `game_tag_assignment`. Tags are labels a center's admins put on games, so
+they are per center: a name is matched ignoring case against every center's unarchived tags, and
+a game matches if it carries any tag with any of the given names. Combine with `centers` to mean
+one center's tag. An unknown name is a `400 invalid_scope` whose `valid_values` lists the real
+ones; [`list`](#post-list) shows them with their centers. `qualify.scope` can override or remove
+it like any other field.
 
 **Always applied, not configurable:**
 
@@ -277,6 +285,36 @@ The registry fixes one aggregation per metric, chosen to match the website:
 | `avg_rapid_fire`       | Mean `rapid_fire` activations                                    | scout            |
 | `avg_penalties`        | Mean `penalties`                                                 | all              |
 
+Added in 1.1:
+
+| id                            | Definition                                                      | Positions                     |
+| ----------------------------- | --------------------------------------------------------------- | ----------------------------- |
+| `avg_shots_fired`             | Mean `shots_fired`                                              | all                           |
+| `avg_deactivations`           | Mean `deactivated_opponent`                                     | all                           |
+| `avg_3hit_hits`               | Mean `shots_hit_opponent_3hit` (tags on Commanders and Heavies) | all                           |
+| `avg_team_hits`               | Mean `shots_hit_team` (lower is better)                         | all                           |
+| `avg_times_missiled`          | Mean `times_hit_by_missile` (lower is better)                   | all                           |
+| `avg_targets_destroyed`       | Mean `targets_destroyed`                                        | all                           |
+| `total_targets_destroyed`     | Sum of `targets_destroyed`                                      | all                           |
+| `avg_nukes_activated`         | Mean `nukes_activated`, including canceled ones                 | commander                     |
+| `avg_rapid_fire_accuracy`     | Mean `accuracy_during_rapid` (fraction)                         | scout                         |
+| `avg_ammo_boosts`             | Mean `ammo_boost`                                               | ammo                          |
+| `avg_life_boosts`             | Mean `life_boost`                                               | medic                         |
+| `avg_double_resupplies_given` | Mean `double_resupplies_given`                                  | ammo, medic                   |
+| `avg_resupplies_received`     | Mean `resupplies_received_ammo + resupplies_received_lives`     | all                           |
+| `avg_sp_earned`               | Mean `sp_earned`                                                | commander, scout, ammo, medic |
+| `avg_sp_spent`                | Mean `sp_spent`                                                 | commander, scout, ammo, medic |
+| `avg_resupply_downtime_ms`    | Mean `resupply_downtime`, in ms (lower is better)               | all                           |
+| `avg_other_downtime_ms`       | Mean `other_downtime`, in ms (lower is better)                  | all                           |
+| `avg_steps`                   | Mean steps per game, over games whose file recorded steps       | all                           |
+| `total_steps`                 | Steps across all games in scope whose file recorded steps       | all                           |
+
+**Steps** are the one metric not stored on the scorecard. They are summed per scorecard from
+`sm5_game_player_step`, which only newer game files fill (TDF line type 10). A scorecard with no
+step rows yields null, so `avg_steps` skips it instead of counting it as zero. `games` and
+`min_games` still count every game in scope, so a player's `avg_steps` may rest on fewer games
+than `games` shows. `total_steps` is summed the same way as the site's Dead Tired leaderboard.
+
 ### v1 catalog — Laserball
 
 Select with `scope.game_type: "lb"`. Laserball has no positions, so every metric applies to every
@@ -333,14 +371,18 @@ highest", and `sort_by: "rating"` is currently an `invalid_metric`.
 
 ## Endpoints
 
-| Endpoint             | Answers                                                           |
-| -------------------- | ----------------------------------------------------------------- |
-| `GET  /catalog`      | What can I ask? Metrics, enums, presets, limits.                  |
-| `POST /resolve`      | Which player, center or competition does this name mean?          |
-| `POST /leaderboard`  | Who is best at X within scope S?                                  |
-| `POST /player_stats` | How did these 1–10 players do within S? Breakdowns, head-to-head. |
-| `POST /search_games` | Which games match these conditions?                               |
-| `GET  /games/{slug}` | What happened in this one game, with per-player stats?            |
+| Endpoint                    | Answers                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| `GET  /catalog`             | What can I ask? Metrics, enums, presets, limits.                  |
+| `POST /resolve`             | Which player, center or competition does this name mean?          |
+| `POST /leaderboard`         | Who is best at X within scope S?                                  |
+| `POST /player_stats`        | How did these 1–10 players do within S? Breakdowns, head-to-head. |
+| `POST /search_games`        | Which games match these conditions?                               |
+| `GET  /games/{slug}`        | What happened in this one game, with per-player stats?            |
+| `GET  /competitions/{slug}` | How did this competition go? Standings, schedule, rosters.        |
+| `POST /rankings`            | Who is ranked highest overall?                                    |
+| `POST /penalties`           | Which penalties were given, to whom, for what?                    |
+| `POST /list`                | Which centers, competitions or tags exist?                        |
 
 ### `GET /catalog`
 
@@ -389,7 +431,10 @@ can call it as the `describe` tool when unsure.
 }
 ```
 
-The catalog also lists `game_kinds` and `team_results`. It needs no database access.
+The catalog also lists `game_kinds`, `team_results`, `list_kinds`, `competition_categories`,
+`competition_states`, `competition_types` and `highlight_categories` (each highlight type with
+its meaning and what its `magnitude` measures), and the limits of the 1.1 endpoints. It needs no
+database access.
 
 ---
 
@@ -422,6 +467,7 @@ to show the user candidates before querying.
             "ipl_id": "#1234567",
             "member_id": "4-19-24329", // null if never recorded
             "callsign": "SHRAPNEL",
+            "previous_callsigns": ["Shrap", "ShrapnelV2"], // most recently used first
             // current_callsign | previous_callsign | ipl_id | member_id | similar_callsign
             "matched_on": "current_callsign",
             "home_center": { "slug": "4-19", "name": "Loveland" }, // center with the most games
@@ -831,6 +877,7 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
   "cursor": null,
   "fields": ["game_slug", "start_time", "center", "competition", "outcome", "margin", "teams"],
   "include_rosters": false, // true adds players[] (ipl_id, callsign, position, score, mvp) to each team
+  "highlights": ["nuke_chain"], // SM5 only: games containing any of these highlight types
   "legacy": "include", // legacy PDF-era SM5 games: "include" (default) | "exclude" | "only"
 }
 ```
@@ -912,6 +959,12 @@ locate games, then use `GET /games/{slug}` to look at one in detail.
 - **`players.match: "all"`** requires every listed player to have played; `"any"` requires at
   least one. `relation` adds a same-team or opposing-team requirement for exactly two players.
   Players are matched by name as described in [Player identifiers](#player-identifiers).
+- **`highlights`** keeps only games with at least one stored highlight of any listed type
+  (`nuke_chain`, `comeback`, `medic_save`, `missile_chain`, `nuke_saved`, `nuke_denied`,
+  `last_stand`; see [Highlights_Spec.md](Highlights_Spec.md)). It is a `400` for Laserball, and
+  it leaves out legacy games, which have no events. Highlights exist only for games the detectors
+  have run on, so a count from this filter is a floor, not a census.
+- **`scope.tags`** filters by game tag, as in every scoped endpoint.
 - **`outcomes`** defaults to every outcome except `aborted`. Aborted games are excluded at ingest
   anyway, unless `scope.include_excluded` is set.
 - **Pagination** is keyset pagination on `(sort key, game.id)`, with an opaque cursor. A cursor
@@ -945,8 +998,8 @@ green team" wording belongs to the client, not the API.
 One game with full per-player stats. It extends the roster-only `GET /api/games/[slug]` with each
 scorecard's stats.
 
-Query parameters: `include_penalties` (default `true`) and `include_mvp_components` (default
-`false`), as `true`/`false`. The draft's `metrics` parameter was dropped: the response carries
+Query parameters: `include_penalties` (default `true`), `include_mvp_components` (default
+`false`) and `include_highlights` (default `false`), as `true`/`false`. The draft's `metrics` parameter was dropped: the response carries
 the full standard stat set, which is small enough for one game.
 
 ```jsonc
@@ -1011,13 +1064,34 @@ Implemented details:
   `callsign`, `position`, `is_mercenary`, `score`, `mvp`, `accuracy`, `hit_diff`, `shots_fired`,
   `shots_hit`, `times_hit`, `missiles_hit`, `times_hit_by_missile`, `medic_hits`,
   `eliminations`, `assists`, `nukes_detonated`, `nukes_canceled`, `rapid_fire`,
-  `resupplies_given`, `lives_left`, `shots_left`, `eliminated`, `uptime_pct` and `penalties`.
-  Position-specific stats are `null` where the position has no such ability.
+  `resupplies_given`, `lives_left`, `shots_left`, `eliminated`, `uptime_pct`, `penalties`,
+  `deactivations`, `targets_destroyed`, `sp_earned`, `sp_spent` and `steps`.
+  Position-specific stats are `null` where the position has no such ability (`sp_*` for
+  Heavies), and `steps` is `null` when the game file recorded none.
   `include_mvp_components` adds `mvp_components: { component: points }` under the model that
   produced the stored `mvp`.
 - **Penalties** list player penalties (`ipl_id`, `callsign`) and team penalties (`team`) together,
   each with `type`, `description`, `score_value`, `mvp_value` (null for team penalties), `time`
   and `rescinded`.
+- **Tags, videos and referees** are returned for every game type:
+  - `tags: [{ name, description }]` — the game's unarchived tags.
+  - `videos: [{ ipl_id, callsign, label, url, start_seconds, game_start_offset }]` — a null
+    `ipl_id` is a game-level video (scoreboard or arena camera), otherwise that player's point
+    of view. `url` is a YouTube link that opens at `start_seconds`; `game_start_offset` is where
+    the game clock reads 0:00. Both offsets count from the start of the video (see
+    [API.md](API.md#start-offsets)).
+  - `referees: [{ ipl_id, callsign }]`.
+- **Targets** (SM5 only): `targets: [{ name, type, team, destroyed_by }]`. `team` is the team
+  that owns the target, and `destroyed_by` lists each destruction as
+  `{ ipl_id, callsign, method, time }`, where `method` is `shot`, `missile` or `awarded`.
+- **Highlights** (SM5 only, with `include_highlights`): every stored highlight in game order, as
+  `{ category, what, time, player, other_player, team, magnitude, magnitude_means, replay_url }`.
+  `what` is the category in words, `player` is the player credited and `other_player` the other
+  one involved (for example the commander whose nuke was denied), each `{ ipl_id, callsign }` or
+  null; `team` is set for `comeback` only. `replay_url` opens the site's replay at that moment.
+  Excluded, aborted and replayed games return none, as on the site, and the flag is ignored with
+  a warning for Laserball and legacy games. The site shows at most five per game; this returns
+  them all.
 - **Guests** appear with `ipl_id: null`, as in the existing route.
 - **Legacy games** resolve with `game_type: "sm5"`, `legacy: true`, `competition: null`,
   `tdf_url: null` and a warning. Players carry the printed scorecard's end-of-game totals: no
@@ -1038,6 +1112,245 @@ Implemented details:
     regulation half; `other_halves` lists every other game in the match.
 
   There are no penalties or MVP components.
+
+### `GET /competitions/{slug}`
+
+One competition: its header and standings, and optionally its schedule and rosters. This closes
+the gap the first eval found ("who won Europe Championship 2026?").
+
+Query parameters: `include_schedule` and `include_rosters`, as `true`/`false`, both default
+`false`.
+
+```jsonc
+{
+  "data": {
+    "slug": "internationals_2026",
+    "name": "Internationals 2026",
+    "type": "competitive",
+    "game_type": "sm5",
+    "format": "team",
+    "category": "internationals",
+    "state": "completed",
+    "start_date": "2026-07-13",
+    "end_date": "2026-07-18",
+    "host_center": { "slug": "4-23", "name": "Syracuse" },
+    "description": null,
+    "bracket_url": "https://challonge.com/…", // null when there is none
+    "standings_of": "teams", // "teams" | "players" | null
+    "standings": [
+      {
+        "rank": 1,
+        "team_name": "Hidden Valley Sanch",
+        "team_slug": "syra",
+        "team_short_name": "SYRA",
+        "match_points": 66,
+        "match_wins": 11,
+        "match_losses": 0,
+        "match_draws": 0,
+        "game_wins": 22,
+        "game_losses": 2,
+        "game_draws": 0,
+        "team_eliminations": 13,
+        "score_for": 987487,
+        "score_against": 629749,
+        "adjustment_points": 0,
+        "web_url": "https://lfstats.com/competitions/internationals_2026/teams/syra",
+      },
+    ],
+    "schedule": [
+      {
+        "game_name": "Finals M18 G2",
+        "team1_name": "Hidden Valley Sanch",
+        "team2_name": "Utah Heatseekers",
+        "scheduled_start_time": "2026-07-18T15:50:00",
+        "actual_start_time": "2026-07-18T15:31:02", // null until played
+        "team1_score": 41200,
+        "team2_score": 39560,
+        "score_differential": 1640,
+      },
+    ],
+    "teams": [
+      {
+        "name": "Hidden Valley Sanch",
+        "short_name": "SYRA",
+        "players": [{ "ipl_id": "#1234567", "callsign": "SHRAPNEL", "is_mercenary": false }],
+      },
+    ],
+  },
+  "meta": { "row_count": 12, "warnings": ["Standings leave out finals rounds. …"] },
+}
+```
+
+- **Standings, schedule and their numbers come from the site's own functions**
+  (`getCompetitionStandingsData`, `getLbCompetitionStandingsData`,
+  `getSoloCompetitionStandingsData`, `getCompetitionSchedule`, `getLbCompetitionSchedule`): the
+  same ones behind the standings page and the public `/api/competitions/[slug]/*` routes. Rows are
+  those functions' rows with snake_case keys, center-local timestamps without a zone, and
+  internal ids and logo fields removed (`publicRow` in `analytics/competitions.ts`). Their field
+  meanings are in [API.md](API.md#get-apicompetitionsslugstandings). These functions read through
+  the site's pool, not the read-only analytics pool; they are fixed-shape reads of one
+  competition.
+- **`standings_of`** says what the rows are. `"teams"` for `team`, `trios` and `duos` formats (one
+  row per trio or duo) and for Laserball, each with a `rank` and a team page `web_url`.
+  `"players"` for `solo`. `null` for a `none`-format competition, which is scored elsewhere:
+  `standings` is empty and a warning says so.
+- **Standings leave out finals rounds**, as on the site, so the top row is the best pool-play
+  record, not necessarily the winner. Every team response carries a warning saying so. To answer
+  "who won", pass `include_schedule` and read the finals games.
+- **`schedule`** lists every scheduled or played game (SM5) or half (Laserball), finals included,
+  in scheduled order with unscheduled entries last. Laserball entries carry `team1_goals`,
+  `team2_goals` and `goal_differential` in place of the score fields.
+- **`teams`** lists each team's rostered players, mercenaries flagged. Player pictures are never
+  included.
+- `include_schedule` and `include_rosters` are ignored, with a warning, for a competition with no
+  teams.
+- An unknown slug is `404 competition_not_found`, with a nearest-slug suggestion.
+
+---
+
+### `POST /rankings`
+
+The global SM5 player ranking ([Player_Rating.md](Player_Rating.md)), best first: the same board
+as the site's `/rankings` page, read through the same `getGlobalRankings`.
+
+```jsonc
+// request
+{ "limit": 25, "offset": 0 } // limit default 25, max 200
+```
+
+```jsonc
+{
+  "data": [
+    {
+      "rank": 1,
+      "ipl_id": "#sppDpM3",
+      "callsign": "Taipan",
+      "rating": 1.644,
+      "standard_error": 0.15,
+      "rating_group": 6,
+      "games_played": 233,
+      "wins": 159,
+      "losses": 74,
+      "draws": 0,
+    },
+  ],
+  "meta": {
+    "ranked_players": 175, // everyone ranked, not just this page
+    "offset": 0,
+    "window_start": "2024-11-10",
+    "window_end": "2026-11-10",
+    "computed_at": "2026-11-10T08:30:30",
+    "model_version": "2026.08",
+    "row_count": 1,
+    "truncated": true,
+    "warnings": ["The rating is global: … Use leaderboard for scoped rankings by a metric."],
+    "web_url": "https://lfstats.com/rankings",
+  },
+}
+```
+
+The rating is precomputed over a rolling window and takes no `scope`; every response says so in a
+warning, so the model does not present it as a ranking "at Loveland". This replaces the deferred
+`leaderboard` `sort_by: "rating"`, which is still an `invalid_metric`. One player's rank comes
+from [`player_stats`](#post-player_stats). `data` is empty, with a warning, when no ranking has
+been computed.
+
+---
+
+### `POST /penalties`
+
+Player penalties across games, newest first. `game_detail` lists one game's penalties; this
+answers "what has X been penalized for this year?" and "every Chasing call at Internationals".
+SM5 only: `scope.game_type: "lb"` is a `400`, since Laserball records no penalties.
+
+```jsonc
+{
+  "scope": { "competitions": ["internationals_2026"] },
+  "players": ["shrapnel"], // optional; up to 10 callsigns, IPL ids or member ids
+  "types": ["Chasing"], // optional; matched ignoring case
+  "include_rescinded": false, // default false
+  "limit": 20, // default 20; max 100
+  "offset": 0,
+}
+```
+
+```jsonc
+{
+  "data": [
+    {
+      "game_slug": "4-23-20261104201729",
+      "start_time": "2026-11-04T20:17:29",
+      "center": { "slug": "4-23", "name": "Syracuse" },
+      "competition": { "slug": "syracuse_trios_2026", "name": "Syracuse Trios 2026" }, // or null
+      "ipl_id": "#3HcR6fG", // null for a guest
+      "callsign": "Sabo",
+      "position": "commander",
+      "team": "Ice Marines",
+      "type": "Common Foul",
+      "description": "Common Foul",
+      "score_value": 0,
+      "mvp_value": 0,
+      "time": "7:38", // into the game; null if none was recorded
+      "in_game": true, // false for a penalty added after the game
+      "rescinded": false,
+      "web_url": "https://lfstats.com/games/4-23-20261104201729",
+    },
+  ],
+  "meta": {
+    "scope": { "…": "…" },
+    "offset": 0,
+    "total_matches": 1146,
+    "by_type": { "Common Foul": 943, "Chasing": 115, "Shielding": 60 },
+    "row_count": 1,
+    "truncated": true,
+    "warnings": [],
+    "data_as_of": "2026-11-09T21:14:02",
+  },
+}
+```
+
+- The scope's game filters apply to the game; `positions`, `team_result` and
+  `include_mercenary_games` apply to the penalized player's scorecard.
+- **`by_type`** counts each penalty type in scope **before** the `types` filter, most common
+  first, so the model can see which types exist and how to spell them.
+- **`total_matches`** counts every match, so "how many times has X been penalized?" is one call
+  with `limit: 1`.
+- Players are matched as described in [Player identifiers](#player-identifiers).
+- Team penalties (given to a team, not a player) are not listed; they are in `game_detail` and in
+  each team's `penalty_score`. To rank players by how often they are penalized, use
+  `leaderboard` with `avg_penalties` and `order: "desc"`.
+
+---
+
+### `POST /list`
+
+Lists every center, competition or game tag. `resolve` needs a name; this is for questions with
+none, such as "which tournaments ran in 2026?".
+
+```jsonc
+{
+  "what": "competitions", // "centers" | "competitions" | "tags"
+  "game_type": "sm5", // competitions only
+  "year": 2026, // competitions only: started in this calendar year
+  "category": "tournament", // competitions only: internationals | tournament | league
+  "state": "completed", // competitions only: preshow | upcoming | active | completed
+  "type": "competitive", // competitions only: competitive | social
+  "center": "4-23", // competitions: hosted there. tags: that center's tags
+  "limit": 100, // default 100; max 200
+}
+```
+
+- **`centers`** — `slug`, `name`, `short_name`, `city`, `country`, `sm5_games`,
+  `laserball_games`, `legacy_sm5_games` and `last_played`, busiest first. The counts include
+  excluded games.
+- **`competitions`** — the same fields as a `resolve` competition match, plus `games` (its
+  non-excluded games), newest first.
+- **`tags`** — `name`, `description`, `center` (`{ slug, name }`) and `games`, most used first.
+  A tag's `name` is what `scope.tags` takes. Archived tags are left out.
+
+`meta` holds `what`, `row_count`, `truncated` and `warnings`. A filter that does not apply to the
+requested list is ignored with a warning rather than rejected, so one request shape serves all
+three. An unknown `center` is `404 center_not_found`.
 
 ---
 
@@ -1087,7 +1400,8 @@ error-message redaction does not apply. Still, never return raw database error t
 - **`statement_timeout = 5s`** on that pool. A timeout returns a `504 query_timeout` whose hint
   suggests narrowing the scope.
 - **Row caps:** `leaderboard.limit ≤ 100`, `search_games.limit ≤ 100`, `player_stats.players ≤ 10`,
-  `resolve` lists ≤ 10 each, `breakdown` ≤ 2 dimensions.
+  `resolve` lists ≤ 10 each, `breakdown` ≤ 2 dimensions, `rankings.limit ≤ 200`,
+  `penalties.limit ≤ 100`, `list.limit ≤ 200`.
 - **`scope_too_broad`:** `player_stats` with `breakdown: ["period"]`, `period: "month"` and
   `all_time` across 10 players could return thousands of cells. The cap is 500 cells per request.
 - **Rate limit:** per API key, default 60 requests/minute and 2,000/day, overridable per key
@@ -1119,17 +1433,23 @@ metric list. Definitions, descriptions and the server instructions live in
 `packages/db/src/queries/analytics/tools.ts`, so they are unit-tested and sit next to the queries
 they describe. `apps/web/src/lib/mcp/server.ts` only wires them into the MCP SDK.
 
-| Tool                   | Endpoint             |
-| ---------------------- | -------------------- |
-| `lfstats_catalog`      | `GET /catalog`       |
-| `lfstats_resolve`      | `POST /resolve`      |
-| `lfstats_leaderboard`  | `POST /leaderboard`  |
-| `lfstats_player_stats` | `POST /player_stats` |
-| `lfstats_search_games` | `POST /search_games` |
-| `lfstats_game_detail`  | `GET /games/{slug}`  |
+| Tool                   | Endpoint                   |
+| ---------------------- | -------------------------- |
+| `lfstats_catalog`      | `GET /catalog`             |
+| `lfstats_resolve`      | `POST /resolve`            |
+| `lfstats_leaderboard`  | `POST /leaderboard`        |
+| `lfstats_player_stats` | `POST /player_stats`       |
+| `lfstats_search_games` | `POST /search_games`       |
+| `lfstats_game_detail`  | `GET /games/{slug}`        |
+| `lfstats_competition`  | `GET /competitions/{slug}` |
+| `lfstats_rankings`     | `POST /rankings`           |
+| `lfstats_penalties`    | `POST /penalties`          |
+| `lfstats_list`         | `POST /list`               |
 
-`lfstats_game_detail` takes `{ slug, include_penalties?, include_mvp_components? }` with real
-booleans, where the HTTP route takes the slug in the path and flags in the query string.
+`lfstats_game_detail` takes
+`{ slug, include_penalties?, include_mvp_components?, include_highlights? }` and
+`lfstats_competition` takes `{ slug, include_schedule?, include_rosters? }`, both with real
+booleans, where the HTTP routes take the slug in the path and flags in the query string.
 
 Every tool is annotated `readOnlyHint: true`, `openWorldHint: false`.
 
@@ -1162,7 +1482,12 @@ streams or sessions to close.
 The text is `MCP_INSTRUCTIONS` in `tools.ts`. In summary:
 
 - Pass player callsigns straight to the tools.
-- Resolve centers and competitions to slugs first.
+- Resolve centers and competitions to slugs first; with no name to resolve, call
+  `lfstats_list`.
+- For who won, use `lfstats_competition`, and for a competition with finals read the finals
+  games in its schedule rather than the top of the standings.
+- "Best player" with no metric named is `lfstats_rankings`; "best at X" is
+  `lfstats_leaderboard`.
 - On `ambiguous` or `ambiguous_player`, ask the user, never pick.
 - Use `date_range.preset` for relative dates.
 - State the scope, game counts and warnings from `meta`.
@@ -1323,13 +1648,20 @@ competition's own stats page.
 
 Prefer these changes, in this order:
 
-1. **New metric** — add a registry entry. Example: `avg_targets_destroyed`, `pooled_accuracy`.
+1. **New metric** — add a registry entry. Example: `pooled_accuracy`. A stat that lives
+   outside the scorecard can still be a metric if it reduces to one value per scorecard, as
+   `avg_steps` does with a correlated subquery.
 2. **New scope field** — add it to the scope zod schema and to `analytics/scope.ts`. Example:
    `opponent_teams` or `with_teammates`. Every endpoint gains the filter.
 3. **New option on an existing endpoint** — e.g. a `breakdown` dimension such as `opponent` or
    `team_colour`.
 4. **New endpoint** — only when the result has a different shape. Likely candidates:
-   - `POST /team_stats` — competition team aggregates (standings already exist as a fixed route).
+   - `POST /team_stats` — competition team aggregates beyond what
+     [`competitions/{slug}`](#get-competitionsslug) returns in its standings, such as a team's
+     per-position averages.
+   - `POST /highlights` — highlights across games ranked by magnitude ("fastest 5 Chain this
+     year"). `search_games.highlights` finds the games today; ranking the moments themselves
+     needs its own shape.
    - `POST /trend` — one metric over time for one player, at finer resolution than
      `breakdown: period`. It could also be served by `player_stats`, so add it only if needed.
    - `POST /aggregate` — a general `group_by` query (player, position, center, period, team
@@ -1379,6 +1711,13 @@ against the live database cover the rest.
    the teammates search agrees; search margins equal goal differences; players' goals add up
    to the team score in game detail. SM5 results from earlier phases are unchanged._
 7. Add the routes to [API.md](API.md) as they ship.
+8. **1.1 additions (2026-11-10).** `scope.tags`; 19 SM5 metrics including steps;
+   `search_games.highlights`; tags, videos, referees, targets and highlights in `games/{slug}`;
+   `previous_callsigns` in `resolve`; and the `competitions/{slug}`, `rankings`, `penalties` and
+   `list` endpoints with their MCP tools. _Done. Unit tests cover the tag SQL, the new metrics
+   and the tool list. Each new tool was run against the live database: standings come from the same function as the public standings route, `total_steps` is summed the way the Dead Tired leaderboard sums it, and unknown tags, slugs and filters return the documented errors. The 30-question
+   eval in [Query_API_Eval.md](Query_API_Eval.md) has not been rerun or extended for these
+   tools._
 
 ## Decisions
 

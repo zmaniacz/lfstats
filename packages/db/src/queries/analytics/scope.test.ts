@@ -27,7 +27,7 @@ function render(conditions: ReturnType<typeof scopeGameConditions>) {
 }
 
 function resolved(scope: NormalizedScope, extra: Partial<ResolvedScope> = {}): ResolvedScope {
-  return { ...scope, centerRefs: null, competitionRefs: null, ...extra };
+  return { ...scope, centerRefs: null, competitionRefs: null, tagRefs: null, ...extra };
 }
 
 function normalize(input: unknown) {
@@ -102,6 +102,7 @@ describe("normalizeScope", () => {
       team_result: null,
       include_mercenary_games: true,
       include_excluded: false,
+      tags: null,
     });
   });
 
@@ -289,6 +290,20 @@ describe("scopeGameConditions", () => {
       /"game"\."competition_id" in \(select "competition"\."id" from "competition" where "competition"\."type" = 'competitive'\)/,
     );
     assert.doesNotMatch(sql, /is null/);
+  });
+
+  it("filters tags through their assignments, across every center's tag of that name", () => {
+    const scope = resolved(normalize({ tags: ["League Night", "league night", "Finals"] }), {
+      tagRefs: [
+        { name: "League Night", ids: ["tag-a", "tag-b"] },
+        { name: "Finals", ids: ["tag-c"] },
+      ],
+    });
+    assert.deepEqual(scope.tags, ["League Night", "league night", "Finals"]);
+    const { sql, params } = render(scopeGameConditions(scope));
+    assert.match(sql, /exists \(select 1 from "game_tag_assignment"/);
+    assert.match(sql, /"game_tag_assignment"\."tag_id" in \(\$\d+, \$\d+, \$\d+\)/);
+    for (const id of ["tag-a", "tag-b", "tag-c"]) assert.ok(params.includes(id));
   });
 
   it("filters round types through the match schedule", () => {

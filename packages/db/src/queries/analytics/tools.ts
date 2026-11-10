@@ -4,16 +4,23 @@
 import { z } from "zod";
 import {
   CatalogRequestSchema,
+  CompetitionToolSchema,
   LeaderboardRequestSchema,
+  ListRequestSchema,
+  PenaltiesRequestSchema,
   PlayerStatsRequestSchema,
+  RankingsRequestSchema,
   ResolveRequestSchema,
   SearchGamesRequestSchema,
 } from "../../schemas/query-api";
 import { getQueryCatalog, QUERY_API_VERSION } from "./catalog";
+import { getCompetitionDetail, listDirectory } from "./competitions";
 import { getGameDetail, searchGames } from "./games";
 import { getLeaderboard } from "./leaderboard";
 import { getMetricCatalog } from "./metrics";
+import { searchPenalties } from "./penalties";
 import { getPlayerStats } from "./player-stats";
+import { getRankings } from "./rankings";
 import { resolveNames } from "./resolve";
 import { localToday } from "./scope";
 
@@ -31,7 +38,9 @@ export const MCP_INSTRUCTIONS = `LFstats records Space Marines 5 (SM5) and Laser
 
 How to use these tools:
 - Players: pass callsigns straight to the tools. If a tool returns error code "ambiguous_player" (or resolve says "ambiguous"), ask the user which player they mean, using the candidates' home_center, games_played and last_played, then retry with that player's ipl_id. Never pick one yourself.
-- Centers ("sites", "arenas") and competitions ("events", "tournaments"): call lfstats_resolve first; the other tools take them as slugs.
+- Centers ("sites", "arenas") and competitions ("events", "tournaments"): call lfstats_resolve first; the other tools take them as slugs. With no name to resolve ("which tournaments ran this year?"), call lfstats_list.
+- Who won, or where a team finished: lfstats_competition gives standings; for a competition with finals, the winner is whoever won the finals games in its schedule, not the top of the standings.
+- "Who is the best / highest ranked player" with no metric named: lfstats_rankings (the global rating). "Best at X" for a metric, center, position or competition: lfstats_leaderboard.
 - Positions are commander, heavy, scout, ammo and medic. "MVP" means the per-game MVP points score; higher is better.
 - Relative dates: use scope.date_range.preset (last_30_days, last_90_days, last_365_days, this_year, last_year, all_time) rather than computing dates.
 - When answering, state the scope you used from meta.scope (dates, centers, positions), the number of games, and any meta.warnings. Treat fewer than ~10 games as a small sample and say so. Leaderboards only rank players with at least min_games games (default 10) — mention it.
@@ -68,6 +77,12 @@ export const GameDetailToolSchema = z
       .boolean()
       .optional()
       .describe("Per-player breakdown of how MVP points were earned. Default false."),
+    include_highlights: z
+      .boolean()
+      .optional()
+      .describe(
+        "SM5 only. Notable moments (nuke chains, comebacks, medic saves…) with replay links. Default false.",
+      ),
   })
   .describe("One game with every player's stats.");
 
@@ -78,7 +93,7 @@ export function mcpTools(): McpTool[] {
       name: "lfstats_resolve",
       title: "Resolve names",
       description:
-        "Turn player callsigns, center names and competition names into ids. Required for centers and competitions (other tools take their slugs). For players it is optional — other tools accept callsigns — but useful to look someone up or to show the user candidates. Each name comes back 'unique', 'ambiguous' (ask the user which one) or 'not_found'.",
+        "Turn player callsigns, center names and competition names into ids. Required for centers and competitions (other tools take their slugs). For players it is optional — other tools accept callsigns — but useful to look someone up (home center, games played, last played, previous callsigns) or to show the user candidates. Each name comes back 'unique', 'ambiguous' (ask the user which one) or 'not_found'.",
       schema: ResolveRequestSchema,
       run: (args: z.infer<typeof ResolveRequestSchema>) => resolveNames(args),
     },
@@ -100,7 +115,7 @@ export function mcpTools(): McpTool[] {
       name: "lfstats_search_games",
       title: "Search games",
       description:
-        "Find games: by scope (center, competition, round type, dates), by players (callsigns; all or any of them; as teammates or opponents), by score margin and by outcome. Returns compact summaries with teams and scores, newest first or by margin, and meta.total_matches counts every match ('how many times did X play Y?' is one call with limit 1). Legacy SM5 games (2012–2020, from printed scorecards) are included and flagged legacy: true; pass legacy 'exclude' or 'only' to change that. Use lfstats_game_detail to look inside one game.",
+        "Find games: by scope (center, competition, round type, dates), by players (callsigns; all or any of them; as teammates or opponents), by game tag (scope.tags), by score margin, by outcome and by highlight type (SM5 games containing a nuke chain, comeback, medic save…). Returns compact summaries with teams and scores, newest first or by margin, and meta.total_matches counts every match ('how many times did X play Y?' is one call with limit 1). Legacy SM5 games (2012–2020, from printed scorecards) are included and flagged legacy: true; pass legacy 'exclude' or 'only' to change that. Use lfstats_game_detail to look inside one game.",
       schema: SearchGamesRequestSchema,
       run: (args: z.infer<typeof SearchGamesRequestSchema>) => searchGames(args, localToday()),
     },
@@ -108,16 +123,49 @@ export function mcpTools(): McpTool[] {
       name: "lfstats_game_detail",
       title: "Game detail",
       description:
-        "One game in full: teams, every player's stats, penalties, and optionally how each player's MVP points were earned. Laserball games return goals, steals, blocks and the like, plus the other half when the game is part of a two-half match. Legacy games (legacy: true) return the printed scorecard's end-of-game totals and the old site's legacy_mvp. Takes a game slug from lfstats_search_games or a game page URL.",
+        "One game in full: teams, every player's stats, penalties, referees, tags, linked videos, and for SM5 the targets and who destroyed them. Optionally how each player's MVP points were earned (include_mvp_components) and the game's highlights with replay links (include_highlights). Laserball games return goals, steals, blocks and the like, plus the other half when the game is part of a two-half match. Legacy games (legacy: true) return the printed scorecard's end-of-game totals and the old site's legacy_mvp. Takes a game slug from lfstats_search_games or a game page URL.",
       schema: GameDetailToolSchema,
       run: ({ slug, ...options }: z.infer<typeof GameDetailToolSchema>) =>
         getGameDetail(slug, options),
     },
     {
+      name: "lfstats_competition",
+      title: "Competition",
+      description:
+        "One competition (tournament, league or event): its dates, host, format and standings. Team competitions rank teams with match and game records and points; solo competitions rank players. Standings leave out finals rounds, so for 'who won' also pass include_schedule and read the finals games. include_rosters adds each team's players. Takes a competition slug from lfstats_resolve or lfstats_list. For player stats inside a competition use lfstats_leaderboard or lfstats_player_stats with scope.competitions.",
+      schema: CompetitionToolSchema,
+      run: ({ slug, ...options }: z.infer<typeof CompetitionToolSchema>) =>
+        getCompetitionDetail(slug, options),
+    },
+    {
+      name: "lfstats_rankings",
+      title: "Global rankings",
+      description:
+        "The global SM5 player ranking, best first: rank, rating, record and games in the rating window. It is one precomputed board over all centers and cannot be filtered; meta gives the window and how many players are ranked. For one player's rank use lfstats_player_stats (its rating block). For rankings by a metric, or within a center, position or competition, use lfstats_leaderboard.",
+      schema: RankingsRequestSchema,
+      run: (args: z.infer<typeof RankingsRequestSchema>) => getRankings(args),
+    },
+    {
+      name: "lfstats_penalties",
+      title: "Search penalties",
+      description:
+        "Find SM5 penalties given to players, across games, newest first: by scope (center, competition, dates, position), by player and by penalty type. meta.total_matches counts every match and meta.by_type counts each type in scope. Team penalties and a single game's penalties are in lfstats_game_detail. To rank players by how often they are penalized, use lfstats_leaderboard with avg_penalties and order 'desc'.",
+      schema: PenaltiesRequestSchema,
+      run: (args: z.infer<typeof PenaltiesRequestSchema>) => searchPenalties(args, localToday()),
+    },
+    {
+      name: "lfstats_list",
+      title: "List centers, competitions or tags",
+      description:
+        "Lists everything of one kind when there is no name to resolve. what 'centers': every center with game counts and last game date. what 'competitions': every competition, newest first, filterable by game_type, year, category, state, type and host center. what 'tags': the game tags centers use (pass a name to scope.tags). Use lfstats_resolve instead when the user named the thing.",
+      schema: ListRequestSchema,
+      run: (args: z.infer<typeof ListRequestSchema>) => listDirectory(args),
+    },
+    {
       name: "lfstats_catalog",
       title: "Catalog",
       description:
-        "Every metric with its definition, every allowed filter value, the defaults and limits, and today's date on the server. Call it when unsure what a metric means or which values a field accepts.",
+        "Every metric with its definition, every allowed filter value, what each highlight type means, the defaults and limits, and today's date on the server. Call it when unsure what a metric means or which values a field accepts.",
       schema: CatalogRequestSchema,
       run: async () => getQueryCatalog(localToday()),
     },

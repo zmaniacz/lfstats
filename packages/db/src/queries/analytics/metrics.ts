@@ -3,6 +3,7 @@
 
 import { and, eq, inArray, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { POSITIONS, positionCode, type GameType, type Position } from "../../schemas/query-api";
+import { sm5GamePlayerStep } from "../../schema";
 import { QueryApiError, suggestionPrefix } from "./errors";
 import type { LbSource, ScorecardSource, Sm5Source } from "./scope";
 
@@ -216,7 +217,148 @@ export const SM5_METRICS: readonly Sm5Metric[] = [
   sm5Avg("avg_penalties", "Average penalties", "Mean penalties per game.", (s) => s.sc.penalties, {
     higher_is_better: false,
   }),
+  sm5Avg(
+    "avg_shots_fired",
+    "Average shots fired",
+    "Mean shots_fired per game.",
+    (s) => s.sc.shotsFired,
+  ),
+  sm5Avg(
+    "avg_deactivations",
+    "Average deactivations",
+    "Mean deactivated_opponent per game: times this player put an opponent out of action by tag or missile, whether or not it eliminated them.",
+    (s) => s.sc.deactivatedOpponent,
+  ),
+  sm5Avg(
+    "avg_3hit_hits",
+    "Average hits on 3-hit opponents",
+    "Mean shots_hit_opponent_3hit per game: tags landed on opposing Commanders and Heavies, the two 3-hit positions.",
+    (s) => s.sc.shotsHitOpponent3hit,
+  ),
+  sm5Avg(
+    "avg_team_hits",
+    "Average team hits",
+    "Mean shots_hit_team per game: tags landed on the player's own teammates.",
+    (s) => s.sc.shotsHitTeam,
+    { higher_is_better: false },
+  ),
+  sm5Avg(
+    "avg_times_missiled",
+    "Average times missiled",
+    "Mean times_hit_by_missile per game.",
+    (s) => s.sc.timesHitByMissile,
+    { higher_is_better: false },
+  ),
+  sm5Avg(
+    "avg_targets_destroyed",
+    "Average targets destroyed",
+    "Mean targets_destroyed per game: bases, generators and other non-player targets destroyed by shot or missile.",
+    (s) => s.sc.targetsDestroyed,
+  ),
+  sm5({
+    id: "total_targets_destroyed",
+    label: "Total targets destroyed",
+    definition: "Sum of targets_destroyed across all games in scope.",
+    unit: "count",
+    higher_is_better: true,
+    agg: "sum",
+    expr: (src) => sql`${src.sc.targetsDestroyed}`,
+  }),
+  sm5Avg(
+    "avg_nukes_activated",
+    "Average nukes activated",
+    "Mean nukes_activated per game: nuke sequences begun, including those later canceled.",
+    (s) => s.sc.nukesActivated,
+    { positions: ["commander"] },
+  ),
+  sm5Avg(
+    "avg_rapid_fire_accuracy",
+    "Average accuracy during rapid fire",
+    "Mean accuracy_during_rapid per game (shots hit / shots fired while rapid fire was active), as a fraction.",
+    (s) => s.sc.accuracyDuringRapid,
+    { positions: ["scout"], unit: "fraction" },
+  ),
+  sm5Avg(
+    "avg_ammo_boosts",
+    "Average ammo boosts",
+    "Mean ammo_boost per game: uses of the team-wide shot resupply ability.",
+    (s) => s.sc.ammoBoost,
+    { positions: ["ammo"] },
+  ),
+  sm5Avg(
+    "avg_life_boosts",
+    "Average life boosts",
+    "Mean life_boost per game: uses of the team-wide lives resupply ability.",
+    (s) => s.sc.lifeBoost,
+    { positions: ["medic"] },
+  ),
+  sm5Avg(
+    "avg_double_resupplies_given",
+    "Average double resupplies given",
+    "Mean double_resupplies_given per game: resupplies landed together with the other support player so the target takes one downtime for both shots and lives.",
+    (s) => s.sc.doubleResuppliesGiven,
+    { positions: ["ammo", "medic"] },
+  ),
+  sm5Avg(
+    "avg_resupplies_received",
+    "Average resupplies received",
+    "Mean resupplies received per game: shot resupplies plus lives resupplies (resupplies_received_ammo + resupplies_received_lives).",
+    (s) => sql`${s.sc.resuppliesReceivedAmmo} + ${s.sc.resuppliesReceivedLives}`,
+  ),
+  sm5Avg(
+    "avg_sp_earned",
+    "Average SP earned",
+    "Mean sp_earned per game: special points earned, respecting the cap of 99. Heavies have no SP.",
+    (s) => s.sc.spEarned,
+    { positions: ["commander", "scout", "ammo", "medic"] },
+  ),
+  sm5Avg(
+    "avg_sp_spent",
+    "Average SP spent",
+    "Mean sp_spent per game: special points spent on nukes, rapid fire and boosts. Heavies have no SP.",
+    (s) => s.sc.spSpent,
+    { positions: ["commander", "scout", "ammo", "medic"] },
+  ),
+  sm5Avg(
+    "avg_resupply_downtime_ms",
+    "Average resupply downtime",
+    "Mean resupply_downtime per game, in milliseconds: time spent down because of being resupplied.",
+    (s) => s.sc.resupplyDowntime,
+    { unit: "ms", higher_is_better: false },
+  ),
+  sm5Avg(
+    "avg_other_downtime_ms",
+    "Average downtime from being tagged",
+    "Mean other_downtime per game, in milliseconds: time spent down for any reason other than a resupply (tagged, missiled or nuked).",
+    (s) => s.sc.otherDowntime,
+    { unit: "ms", higher_is_better: false },
+  ),
+  // Steps live in their own table, one row per step reading. Only newer game files carry
+  // them, so a scorecard without step rows yields null and is skipped by avg().
+  sm5Avg(
+    "avg_steps",
+    "Average steps",
+    "Mean steps taken per game, over games whose file recorded steps (newer game files only; older games are skipped, not counted as zero).",
+    (s) => stepsSql(s),
+  ),
+  sm5({
+    id: "total_steps",
+    label: "Total steps",
+    definition:
+      "Steps taken across all games in scope whose file recorded steps (newer game files only).",
+    unit: "count",
+    higher_is_better: true,
+    agg: "sum",
+    expr: (src) => stepsSql(src),
+  }),
 ];
+
+/** One scorecard's step total, or null when its game file carried no step lines. */
+function stepsSql(src: Sm5Source): SQL {
+  return sql`(select sum(${sm5GamePlayerStep.delta}) from ${sm5GamePlayerStep}
+    where ${sm5GamePlayerStep.gameId} = ${src.sc.gameId}
+      and ${sm5GamePlayerStep.scorecardId} = ${src.sc.id})`;
+}
 
 /**
  * Names models and people commonly use for a metric. Only ever used to suggest the real id
@@ -244,6 +386,18 @@ const SM5_METRIC_ALIASES: Record<string, string> = {
   eliminations: "avg_eliminations",
   uptime: "avg_uptime_pct",
   nukes: "avg_nukes_detonated",
+  steps: "avg_steps",
+  targets: "avg_targets_destroyed",
+  bases: "avg_targets_destroyed",
+  targets_destroyed: "avg_targets_destroyed",
+  deactivations: "avg_deactivations",
+  tags: "avg_shots_hit",
+  team_fire: "avg_team_hits",
+  friendly_fire: "avg_team_hits",
+  sp: "avg_sp_earned",
+  special_points: "avg_sp_earned",
+  boosts: "avg_ammo_boosts",
+  downtime: "avg_other_downtime_ms",
 };
 
 /** Laserball has no positions, so every metric applies to every player. */

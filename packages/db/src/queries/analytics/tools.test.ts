@@ -13,9 +13,13 @@ describe("MCP tools", () => {
     assert.deepEqual(new Set(names).size, names.length);
     assert.deepEqual(names.sort(), [
       "lfstats_catalog",
+      "lfstats_competition",
       "lfstats_game_detail",
       "lfstats_leaderboard",
+      "lfstats_list",
+      "lfstats_penalties",
       "lfstats_player_stats",
+      "lfstats_rankings",
       "lfstats_resolve",
       "lfstats_search_games",
     ]);
@@ -35,6 +39,10 @@ describe("MCP tools", () => {
     assert.deepEqual(leaderboard.required, ["sort_by"]);
     const detail = toolInputSchema(tools.find((t) => t.name === "lfstats_game_detail")!);
     assert.deepEqual(detail.required, ["slug"]);
+    const competition = toolInputSchema(tools.find((t) => t.name === "lfstats_competition")!);
+    assert.deepEqual(competition.required, ["slug"]);
+    const list = toolInputSchema(tools.find((t) => t.name === "lfstats_list")!);
+    assert.deepEqual(list.required, ["what"]);
   });
 
   it("carries field descriptions into the JSON Schema", () => {

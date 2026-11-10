@@ -164,6 +164,36 @@ describe("checkMetricPositions", () => {
   });
 });
 
+describe("added SM5 metrics", () => {
+  it("reads steps from the step table, per scorecard", () => {
+    const { sql } = dialect.sqlToQuery(metricSql(getMetric("sm5", "avg_steps", "f"), SM5_SOURCE));
+    assert.match(sql, /select sum\("sm5_game_player_step"\."delta"\) from "sm5_game_player_step"/);
+    assert.match(sql, /"sm5_game_player_step"\."scorecard_id" = "sm5_scorecard"\."id"/);
+  });
+
+  it("keeps SP metrics off Heavies, who have none", () => {
+    const sp = getMetric("sm5", "avg_sp_earned", "f");
+    assert.ok(sp.positions !== "all" && !sp.positions.includes("heavy"));
+    assert.throws(
+      () => checkMetricPositions(sp, ["heavy"], "sort_by"),
+      (err: QueryApiError) => err.code === "metric_not_applicable",
+    );
+  });
+
+  it("ranks downtime and team hits lowest first", () => {
+    for (const id of ["avg_team_hits", "avg_other_downtime_ms", "avg_times_missiled"]) {
+      assert.equal(getMetric("sm5", id, "f").higher_is_better, false, id);
+    }
+  });
+
+  it("maps common names to the new metrics", () => {
+    assert.throws(
+      () => getMetric("sm5", "steps", "sort_by"),
+      (err: QueryApiError) => /Did you mean 'avg_steps'/.test(err.hint!),
+    );
+  });
+});
+
 describe("Laserball metrics", () => {
   it("covers the Laserball catalog in the spec, all position-free", () => {
     const ids = new Set(LB_METRICS.map((m) => m.id));

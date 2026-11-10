@@ -316,6 +316,18 @@ export async function getGameBySlug(
   return row ?? null;
 }
 
+/** The SM5 scorecard a player holds in one game, by IPL id. Null for a guest or a stranger. */
+export async function getSm5ScorecardIdByIplId(
+  gameId: string,
+  iplId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ id: sm5Scorecard.id })
+    .from(sm5Scorecard)
+    .where(and(eq(sm5Scorecard.gameId, gameId), eq(sm5Scorecard.iplId, iplId)));
+  return row?.id ?? null;
+}
+
 /**
  * Resolves an IPL id to a player id **only if that player has a scorecard in
  * this game**. A plain player lookup would happily attach POV footage to a real
