@@ -20,6 +20,7 @@ import {
 } from "@lfstats/db";
 import { getImagesBucket } from "@lfstats/db/lib/images";
 import { auth } from "@/auth";
+import { deletePlayerPicture, signPlayerPictureUploadUrl } from "@/lib/player-picture-storage";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -216,13 +217,9 @@ export async function getPlayerPictureUploadUrlAction(
     return { ok: false, error: `Unsupported image type: ${contentType}` };
   }
 
-  const command = new PutObjectCommand({
-    Bucket: getImagesBucket(),
-    Key: entryId,
-    ContentType: contentType,
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const url = await getSignedUrl(getS3Client() as any, command, { expiresIn: 300 });
+  // Pictures go to the private bucket, never the public images bucket the logos use.
+  const url = await signPlayerPictureUploadUrl(entryId, contentType);
+  if (!url) return { ok: false, error: "Player picture storage is not configured." };
   return { ok: true, url };
 }
 
@@ -243,8 +240,7 @@ export async function removePlayerPictureAction(
   entryId: string,
 ): Promise<void> {
   await requireAdmin();
-  const s3 = getS3Client();
-  await s3.send(new DeleteObjectCommand({ Bucket: getImagesBucket(), Key: entryId }));
+  await deletePlayerPicture(entryId);
   await setCompetitionTeamPlayerPicture(entryId, false);
   await revalidateTeamPaths(competitionId, teamId);
   refresh();

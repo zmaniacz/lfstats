@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2015 Russell Lewis
 
-import Image from "next/image";
-import { getPlayerPictureUrl } from "@/lib/player-pictures";
 import { cn } from "@/lib/utils";
 
 function initials(name: string): string {
@@ -12,25 +10,28 @@ function initials(name: string): string {
   return (words[0]![0]! + words[1]![0]!).toUpperCase();
 }
 
+/**
+ * `src` is a short-lived signed URL from `signPlayerPictureUrls` (server-side), or null to
+ * show initials. Player pictures are private, so there is no public URL to build here.
+ */
 export function PlayerPicture({
-  entryId,
-  hasProfilePicture,
-  pictureVersion,
+  src,
   name,
   size = 32,
   className,
 }: {
-  entryId: string;
-  hasProfilePicture: boolean;
-  pictureVersion?: number;
+  src: string | null;
   name: string;
   size?: number;
   className?: string;
 }) {
-  if (hasProfilePicture) {
+  if (src !== null) {
     return (
-      <Image
-        src={getPlayerPictureUrl(entryId, pictureVersion ?? 0)}
+      // A plain <img> on purpose: next/image would cache the picture in the optimizer and
+      // serve it from /_next/image to anyone, long after the signed URL expired.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
         alt={name}
         width={size}
         height={size}

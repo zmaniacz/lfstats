@@ -18,6 +18,7 @@ import {
   getCompetitionTeamRoster,
   getTeamGameParticipants,
 } from "@lfstats/db";
+import { signPlayerPictureUrls } from "@/lib/player-picture-storage";
 import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -70,6 +71,11 @@ export default async function TeamRosterPage({
     getCompetitionTeamRoster(team.id),
     getTeamGameParticipants(team.id),
   ]);
+
+  // Pictures are private: this admin page gets short-lived signed URLs, re-signed per render.
+  const pictureUrls = await signPlayerPictureUrls(
+    roster.filter((e) => e.hasProfilePicture).map((e) => e.id),
+  );
 
   const regularRoster = roster.filter((e) => !e.isMercenary);
   const mercs = roster.filter((e) => e.isMercenary);
@@ -184,7 +190,7 @@ export default async function TeamRosterPage({
                         entryId={entry.id}
                         callsign={entry.currentCallsign}
                         hasProfilePicture={entry.hasProfilePicture}
-                        pictureVersion={entry.pictureVersion}
+                        pictureUrl={pictureUrls.get(entry.id) ?? null}
                       />
                     </TableCell>
                     <TableCell className="text-right">
@@ -259,7 +265,7 @@ export default async function TeamRosterPage({
                         entryId={entry.id}
                         callsign={entry.currentCallsign}
                         hasProfilePicture={entry.hasProfilePicture}
-                        pictureVersion={entry.pictureVersion}
+                        pictureUrl={pictureUrls.get(entry.id) ?? null}
                       />
                     </TableCell>
                     <TableCell className="text-right">

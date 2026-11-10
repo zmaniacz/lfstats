@@ -3,7 +3,6 @@
 
 export { db, getDb, initDb } from "./client";
 export { getTeamLogoUrl } from "./lib/team-logos";
-export { getPlayerPictureUrl } from "./lib/player-pictures";
 export { isOvertimeHalf } from "./lib/lb-match-points";
 export * from "./lib/highlights/detectors";
 export * from "./lib/notifications";

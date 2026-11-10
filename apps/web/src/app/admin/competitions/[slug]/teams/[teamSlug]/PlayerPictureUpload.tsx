@@ -18,7 +18,7 @@ interface PlayerPictureUploadProps {
   entryId: string;
   callsign: string;
   hasProfilePicture: boolean;
-  pictureVersion: number;
+  pictureUrl: string | null;
 }
 
 export function PlayerPictureUpload({
@@ -27,7 +27,7 @@ export function PlayerPictureUpload({
   entryId,
   callsign,
   hasProfilePicture,
-  pictureVersion,
+  pictureUrl,
 }: PlayerPictureUploadProps) {
   const [isPending, setIsPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -80,13 +80,7 @@ export function PlayerPictureUpload({
 
   return (
     <div className="flex items-center gap-2">
-      <PlayerPicture
-        entryId={entryId}
-        hasProfilePicture={hasProfilePicture}
-        pictureVersion={pictureVersion}
-        name={callsign}
-        size={32}
-      />
+      <PlayerPicture src={pictureUrl} name={callsign} size={32} />
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <input

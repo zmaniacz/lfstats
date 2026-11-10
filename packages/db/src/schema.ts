@@ -1811,7 +1811,7 @@ export const userFavoritePlayer = pgTable(
  * needs, so a video-upload key cannot run analytics queries and a query key cannot post
  * videos. See docs/Query_API_Spec.md.
  */
-export const API_KEY_SCOPES = ["video:write", "query:read"] as const;
+export const API_KEY_SCOPES = ["video:write", "query:read", "picture:read"] as const;
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
 
 // Global keys — not center-scoped. Any valid key may act for any center.

@@ -102,11 +102,19 @@ A function form that returns the full standalone config only during `PHASE_PRODU
   (from the `build-web` workflow's `build-args`, sourced from the repository **variables** of the
   same names) and are set as `ENV` in the builder stage before `next build`. Next inlines
   `NEXT_PUBLIC_*` into the browser bundle at build time, and `.env*` never enters the build
-  context, so without them every team logo and player picture rendered by a client component
+  context, so without them every team logo rendered by a client component
   points at `<bucket>.s3.undefined.amazonaws.com`. `next.config.ts` refuses a production build
   that lacks either one, and derives the `images.remotePatterns` hostname from them. The URL
-  builder is `packages/db/src/lib/images.ts`; the logo/picture upload actions use the same bucket.
+  builder is `packages/db/src/lib/images.ts`; the logo upload action uses the same bucket.
   Changing either value means a rebuild, not a container restart.
+- **Player pictures** do not use that bucket. They live in a private one named by the runtime
+  variable `PLAYER_PICTURES_BUCKET` (in the host's `.env`, same region and credentials as the
+  web app's other S3 access: `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on
+  `player-pictures/*`). The bucket must keep Block Public Access on and needs a CORS rule
+  allowing `PUT` from the site origin, because admins upload straight from the browser. Without
+  the variable, pictures are simply unavailable: uploads are refused and no URL is returned.
+  `pnpm --filter web pictures:migrate` moved the pictures that were uploaded to the public bucket
+  before this split (`apps/web/scripts/migrate-player-pictures.mts`).
 - **Runner stage**: fresh `node:24-alpine`, copies only the standalone bundle, `.next/static`, and `public/` from the builder. Runs as a non-root `nextjs` user. `ENV HOSTNAME=0.0.0.0` and `ENV PORT=3000` so the standalone server binds where the published port can reach it.
 
 The runner stage doesn't inherit anything from the builder except the explicit `COPY`s, so build-time concerns (placeholder env vars, etc.) never leak into the final image.

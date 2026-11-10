@@ -39,6 +39,12 @@ const SCOPE_OPTIONS: { scope: ApiKeyScope; label: string; description: string }[
     label: "Query stats",
     description: "Run analytics queries through the query API and MCP server.",
   },
+  {
+    scope: "picture:read",
+    label: "Read player pictures",
+    description:
+      "Receive signed player picture links from competition stats. Trusted clients only.",
+  },
 ];
 
 type Props = {
