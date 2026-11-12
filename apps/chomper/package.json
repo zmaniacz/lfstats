@@ -9,6 +9,7 @@
     "bulk-ingest": "tsx --env-file=../../packages/db/.env src/bulk-ingest.ts",
     "bulk-reingest": "tsx --env-file=../../packages/db/.env src/bulk-reingest.ts",
     "bulk-reingest-lb": "tsx --env-file=../../packages/db/.env src/bulk-reingest-lb.ts",
+    "fix-player": "tsx --env-file=../../packages/db/.env src/fix-player.ts",
     "recalcMVP": "tsx --env-file=../../packages/db/.env src/recalc-mvp.ts",
     "test": "tsx src/test-suite.ts",
     "build": "esbuild src/worker.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/worker.mjs --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",

@@ -7,6 +7,7 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 
@@ -96,4 +97,15 @@ export async function archiveTdf(
       }),
     );
   }
+}
+
+export async function putObject(
+  bucket: string,
+  key: string,
+  body: Buffer,
+  contentType = "application/octet-stream",
+): Promise<void> {
+  await s3.send(
+    new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }),
+  );
 }
