@@ -56,6 +56,7 @@ The specs live in /docs — see [docs/README.md](docs/README.md) for the full in
 - Notifications_Spec.md — mobile push notifications: admin alerts and event following
 - Role_Spec.md — the four-level role hierarchy and permission matrix
 - build-and-deploy.md — web app Docker/GHCR build and self-hosted deploy
+- Tools.md — how-to guides for hand-run admin tools (fix-player: wrong-codename TDF corrections)
 
 ## Skills
 

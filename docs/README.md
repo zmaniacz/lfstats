@@ -27,6 +27,7 @@ Specifications and design docs for the LFstats monorepo. Start here.
 | Work on push notifications                  | [Notifications_Spec.md](Notifications_Spec.md)                                 |
 | Understand who can do what in the app       | [Role_Spec.md](Role_Spec.md)                                                   |
 | Deploy the web app, or debug a build        | [build-and-deploy.md](build-and-deploy.md)                                     |
+| Fix a game played under the wrong codename  | [Tools.md](Tools.md#fix-player--a-game-played-under-the-wrong-codename)        |
 
 ---
 
@@ -92,6 +93,8 @@ Specifications and design docs for the LFstats monorepo. Start here.
 
 ### Operations
 
+- **[Tools.md](Tools.md)** — how-to guides for the hand-run admin tools: `fix-player` for games
+  played under the wrong codename (wrong login, swapped suits, or a member playing as a guest).
 - **[build-and-deploy.md](build-and-deploy.md)** — the web app's Docker build, GHCR push, and
   self-hosted runner deploy, plus common build errors.
 - **[../apps/chomper/README.md](../apps/chomper/README.md)** — chomper's worker setup, IAM

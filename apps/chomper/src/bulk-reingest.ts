@@ -3,45 +3,15 @@
 
 import {
   findIngestMvpModels,
-  getCompetitionMatchGameForReingest,
   getGameById,
   getGameIdsForReingest,
-  getPenaltiesWithIplForReingest,
-  getScorecardsIsMercenaryForReingest,
-  getTeamPenaltiesForReingest,
   assertReingestHandlesGameTeamReferences,
   initDb,
-  refreshGameHighlights,
 } from "@lfstats/db";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parseGameStartTime } from "./ingester.js";
-import { calculateMvpForModels } from "./mvp.js";
-import { ParseError, parseTdf, RejectionError } from "./parser.js";
-import type { PreservedGameMeta } from "./reingester.js";
-import { reingest } from "./reingester.js";
+import { reingestSm5Game } from "./reingest-sm5-game.js";
 import { fetchTdf } from "./s3.js";
-import { runConsistencyCheck, simulate } from "./simulator.js";
-
-const DEADLOCK_CODE = "40P01";
-const MAX_REINGEST_RETRIES = 3;
-
-async function reingestWithRetry(...args: Parameters<typeof reingest>): Promise<void> {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await reingest(...args);
-    } catch (err: unknown) {
-      const isDeadlock =
-        typeof err === "object" &&
-        err !== null &&
-        "cause" in err &&
-        typeof (err as { cause?: unknown }).cause === "object" &&
-        (err as { cause?: { code?: string } }).cause?.code === DEADLOCK_CODE;
-      if (!isDeadlock || attempt >= MAX_REINGEST_RETRIES) throw err;
-      console.warn(`Deadlock on reingest attempt ${attempt}, retrying…`);
-    }
-  }
-}
 
 const targetGameId = process.argv[2] ?? null;
 
@@ -126,161 +96,24 @@ async function processGame(gameEntry: { id: string; tdfFilename: string }): Prom
     return;
   }
 
-  // 2. Parse TDF
-  let parsed;
-  try {
-    parsed = parseTdf(buffer);
-  } catch (err) {
-    const reason =
-      err instanceof RejectionError
-        ? `Rejected: ${err.message}`
-        : err instanceof ParseError
-          ? `Parse error: ${err.message}`
-          : `Unexpected parse error: ${(err as Error).message}`;
-    log(`FAIL [parse] ${gameId}: ${reason}`);
-    results.push({ id: gameId, status: "failed", reason });
-    failed++;
-    return;
-  }
-
-  // 3. Only SM5 is re-ingestable by this tool. Laserball games (mission type 28)
-  // have no preserved SM5 metadata (penalties/mercenaries/MVP) and no reingester,
-  // so they are intentionally skipped here rather than treated as anomalies.
-  if (parsed.meta.missionType !== 5) {
-    const reason = `Mission type ${parsed.meta.missionType} is not SM5 (not re-ingestable here)`;
-    log(`SKIP ${gameId}: ${reason}`);
-    results.push({ id: gameId, status: "skipped", reason });
+  // 2. Parse, simulate, check and rebuild
+  const result = await reingestSm5Game(gameId, buffer, mvpModels);
+  if (result.status === "skipped") {
+    log(`SKIP ${gameId}: ${result.reason}`);
+    results.push({ id: gameId, status: "skipped", reason: result.reason });
     skipped++;
     return;
   }
-
-  // 4. Simulate
-  let simResult;
-  try {
-    simResult = simulate(parsed);
-  } catch (err) {
-    const reason = `Simulation failed: ${(err as Error).message}`;
-    log(`FAIL [simulate] ${gameId}`);
-    results.push({ id: gameId, status: "failed", reason });
+  if (result.status === "failed") {
+    log(
+      result.stage === "parse"
+        ? `FAIL [parse] ${gameId}: ${result.reason}`
+        : `FAIL [${result.stage}] ${gameId}`,
+    );
+    results.push({ id: gameId, status: "failed", reason: result.reason });
     failed++;
     return;
   }
-
-  // 5. Consistency check
-  const sm5StatsById = new Map(parsed.sm5Stats.map((s) => [s.id, s]));
-  const { discrepancies } = runConsistencyCheck(
-    simResult.playerStats,
-    sm5StatsById,
-    simResult.resourceLog,
-  );
-  if (discrepancies.length > 0) {
-    const reason = `Consistency check failed:\n${JSON.stringify(discrepancies, null, 2)}`;
-    log(`FAIL [consistency] ${gameId}`);
-    results.push({ id: gameId, status: "failed", reason });
-    failed++;
-    return;
-  }
-
-  // 6. Snapshot metadata to preserve
-  const [gameRow, matchGameRow, penaltyRows, mercenaryRows, teamPenaltyRows] = await Promise.all([
-    getGameById(gameId),
-    getCompetitionMatchGameForReingest(gameId),
-    getPenaltiesWithIplForReingest(gameId),
-    getScorecardsIsMercenaryForReingest(gameId),
-    getTeamPenaltiesForReingest(gameId),
-  ]);
-
-  if (!gameRow) {
-    const reason = "Game row disappeared between listing and reingest";
-    log(`FAIL [missing] ${gameId}`);
-    results.push({ id: gameId, status: "failed", reason });
-    failed++;
-    return;
-  }
-
-  const inGamePenalties = new Map<
-    string,
-    {
-      rescinded: boolean;
-      type: string;
-      scoreValue: number;
-      mvpValue: number;
-      description: string;
-      inGame: boolean;
-    }
-  >();
-  const postGamePenalties: PreservedGameMeta["postGamePenalties"] = [];
-
-  for (const p of penaltyRows) {
-    if (p.time !== null) {
-      const key = `${p.iplId ?? ""}:${p.time}`;
-      inGamePenalties.set(key, {
-        rescinded: p.rescinded,
-        type: p.type,
-        scoreValue: p.scoreValue,
-        mvpValue: p.mvpValue,
-        description: p.description,
-        inGame: p.inGame,
-      });
-    } else {
-      postGamePenalties.push({
-        iplId: p.iplId,
-        refereeIplId: p.refereeIplId,
-        refereeHardwareId: p.refereeHardwareId,
-        scoreValue: p.scoreValue,
-        description: p.description,
-        type: p.type,
-        mvpValue: p.mvpValue,
-        inGame: p.inGame,
-        rescinded: p.rescinded,
-      });
-    }
-  }
-
-  const preservedMeta: PreservedGameMeta = {
-    competitionId: gameRow.competitionId ?? null,
-    exclude: gameRow.exclude,
-    description: gameRow.description ?? null,
-    matchGame: matchGameRow
-      ? {
-          matchId: matchGameRow.matchId,
-          gameNumber: matchGameRow.gameNumber,
-          team1TdfTeamIndex: matchGameRow.team1TdfTeamIndex,
-          team2TdfTeamIndex: matchGameRow.team2TdfTeamIndex,
-          assignedBy: matchGameRow.assignedBy,
-        }
-      : null,
-    inGamePenalties,
-    postGamePenalties,
-    mercenaries: new Set(mercenaryRows.map((r) => r.iplId).filter((id): id is string => !!id)),
-    teamPenalties: teamPenaltyRows,
-  };
-
-  // 7. Calculate MVP
-  const gameStartTime = parseGameStartTime(parsed.meta.startTime);
-  const entityEndsById = new Map(
-    parsed.entityEnds.map((e) => [e.id, { score: e.score, exitType: e.exitType }]),
-  );
-  const mvpRows = calculateMvpForModels(
-    simResult,
-    sm5StatsById,
-    entityEndsById,
-    mvpModels,
-    parsed.meta.duration,
-  );
-
-  // 8. Reingest
-  try {
-    await reingestWithRetry(gameId, preservedMeta, parsed, simResult, gameStartTime, mvpRows);
-  } catch (err) {
-    const reason = `Reingest failed: ${(err as Error).message}`;
-    log(`FAIL [reingest] ${gameId}`);
-    results.push({ id: gameId, status: "failed", reason });
-    failed++;
-    return;
-  }
-
-  await refreshGameHighlights(gameId);
 
   log(`OK ${gameId}`);
   results.push({ id: gameId, status: "reingested" });

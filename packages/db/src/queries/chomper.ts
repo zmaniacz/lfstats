@@ -550,6 +550,24 @@ export async function getGameById(gameId: string) {
   return row ?? null;
 }
 
+export async function getGameByTdfFilename(tdfFilename: string) {
+  const [row] = await db.select().from(game).where(eq(game.tdfFilename, tdfFilename)).limit(1);
+  return row ?? null;
+}
+
+/** Identity fields for the given ipl ids (with the leading `#`); unknown ids are omitted. */
+export async function getPlayerIdentities(iplIds: string[]) {
+  if (iplIds.length === 0) return [];
+  return db
+    .select({
+      iplId: player.iplId,
+      currentCallsign: player.currentCallsign,
+      memberId: player.memberId,
+    })
+    .from(player)
+    .where(inArray(player.iplId, iplIds));
+}
+
 export async function getCompetitionMatchGameForReingest(gameId: string) {
   const [cmg] = await db
     .select({

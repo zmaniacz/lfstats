@@ -47,6 +47,9 @@ apps/chomper/
     bulk-ingest.ts        ← `bulk-ingest`       — ingest from S3 (both modes)
     bulk-reingest.ts      ← `bulk-reingest`     — re-ingest stored SM5 games
     bulk-reingest-lb.ts   ← `bulk-reingest-lb`  — re-ingest stored Laserball games
+    fix-player.ts         ← `fix-player`        — correct a wrong codename in an archived TDF
+    reingest-sm5-game.ts  ← (library) one-game SM5 reingest, shared by bulk-reingest + fix-player
+    tdf-remap.ts          ← (library) field-exact player-id rewrite of a raw TDF
     ingest-local-lb.ts    ← `ingest-lb-local`   — local dir → DB, Laserball only
     recalc-mvp.ts         ← `recalcMVP`         — recompute MVP from stored scorecards
 
@@ -184,7 +187,7 @@ pnpm bulk-ingest "1-1-2026*"   # combined
 
 ## Re-ingest and Maintenance CLIs
 
-Four further tools operate on games that are **already in the database**. All are manually invoked and all read `packages/db/.env`.
+Five further tools operate on games that are **already in the database**. All are manually invoked and all read `packages/db/.env`.
 
 | Script                                   | What it does                                                                                                                                                                                                                                                                      |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -196,6 +199,18 @@ Four further tools operate on games that are **already in the database**. All ar
 **Both re-ingest paths preserve admin-owned metadata.** Before rewriting a `game` row they snapshot `competition_id`, `exclude`, and `description`, and restore them afterwards via `restoreGameMetadata`. Without this, re-ingesting would silently detach games from their competitions.
 
 > `recalcMVP` does **not** re-simulate — it reconstructs MVP inputs from the stored `sm5_scorecard` columns. It is therefore only valid for MVP _model_ changes. If simulation computed a stat wrongly, `bulk-reingest` is the tool; `recalcMVP` would faithfully recompute MVP from the same bad numbers.
+
+### Wrong-codename fixes (`fix-player`)
+
+When someone plays under another member's login, or without logging in at all (an `@NNN` guest), the archived TDF itself is corrected so the fix survives every future reingest. Usage, options and the operator checklist are in [Tools.md](Tools.md#fix-player--a-game-played-under-the-wrong-codename); this section covers how it works.
+
+- **Field-exact rewrite.** `tdf-remap.ts` replaces whole tab-separated fields equal to a source id on line types 3–13, never substrings. All mappings go through one lookup table in one pass, so swaps work.
+- **Callsign and member id follow the id.** On the source's line 3 rows `desc` becomes the target's current callsign and `memberId` the target's stored member id. Swapping only the id would rename the target site-wide, because ingest copies `desc` into `player.current_callsign`.
+- **Refusals.** The source must be a `player` entity in the game; the target must not already be in the game unless another mapping moves it away; no id may appear twice.
+- **Validation before any write.** The corrected file is re-parsed, simulated and consistency-checked (Laserball: goal cross-check).
+- **S3 layout** (`MODERN_ARCHIVE_BUCKET`): the untouched upload is kept once at `originals/<key>` (never overwritten by a later correction), each run is appended to `corrections/<slug>.json`, and the corrected file replaces `<key>`.
+- **Admin metadata follows the player.** SM5 penalty overrides, post-game penalties and mercenary flags are snapshotted keyed by ipl id; `reingestSm5Game`'s `iplRemap` re-keys them to the target. Edits made against a guest have no ipl id and are not carried over. Laserball keeps no ipl-keyed admin data and is reingested via `bulk-reingest-lb`.
+- The global player rating is not recomputed; run `pnpm --filter @lfstats/db recalc-rating` afterwards.
 
 ---
 
