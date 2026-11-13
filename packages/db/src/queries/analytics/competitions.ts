@@ -15,9 +15,13 @@ import {
 import { LIST_LIMITS, type CompetitionRequest, type ListRequest } from "../../schemas/query-api";
 import { getLbCompetitionSchedule, getLbCompetitionStandingsData } from "../competition-laserball";
 import { getSoloCompetitionStandingsData } from "../competition-solo";
-import { getCompetitionSchedule, getCompetitionStandingsData } from "../competition-tournament";
+import {
+  getCompetitionSchedule,
+  getCompetitionStandingsData,
+  type CompetitionScheduleTeam,
+} from "../competition-tournament";
 import { QueryApiError, suggestionPrefix } from "./errors";
-import { siteUrl } from "./games";
+import { gameWebUrl, siteUrl } from "./games";
 import { centerSlugSql } from "./meta";
 import { getAnalyticsDb } from "./pool";
 
@@ -47,6 +51,11 @@ export function publicRow(row: object): Record<string, unknown> {
     out[snakeKey(key)] = value instanceof Date ? value.toISOString().slice(0, 19) : value;
   }
   return out;
+}
+
+/** A schedule side's team, without its logo, its slug matching the standings' team_slug. */
+function scheduleTeam(t: CompetitionScheduleTeam) {
+  return { slug: t.slug, name: t.name, short_name: t.shortName };
 }
 
 const STANDINGS_NOTE =
@@ -127,7 +136,12 @@ export async function getCompetitionDetail(slug: string, req: CompetitionRequest
       const entries = lb
         ? await getLbCompetitionSchedule(comp.id)
         : ((await getCompetitionSchedule(slug)) ?? []);
-      schedule = entries.map(publicRow);
+      schedule = entries.map((e) => ({
+        ...publicRow(e),
+        team1_teams: e.team1Teams.map(scheduleTeam),
+        team2_teams: e.team2Teams.map(scheduleTeam),
+        web_url: e.gameSlug ? gameWebUrl(e.gameSlug, lb ? "lb" : "sm5") : null,
+      }));
     }
   }
 

@@ -4852,8 +4852,29 @@ export async function getCompetitionPlayerStats(
 // Competition schedule
 // ---------------------------------------------------------------------------
 
+/**
+ * One competition team on a schedule side. A side is one team, or two (trios) or three (duos)
+ * teams playing together as one sm5_game_team; the first entry is the match's primary slot.
+ */
+export type CompetitionScheduleTeam = {
+  slug: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+};
+
 export type CompetitionScheduleEntry = {
   gameName: string;
+  roundNumber: number;
+  roundName: string;
+  roundType: CompetitionRoundType;
+  matchNumber: number;
+  gameNumber: 1 | 2;
+  /** Public game slug once a game is assigned to the slot; null while it is still to be played. */
+  gameSlug: string | null;
+  /** The teams making up each side; empty while the side is TBD. */
+  team1Teams: CompetitionScheduleTeam[];
+  team2Teams: CompetitionScheduleTeam[];
   team1Name: string;
   team2Name: string;
   team1LogoUrl: string | null;
@@ -4881,6 +4902,7 @@ export async function getCompetitionSchedule(
       matchId: competitionMatch.id,
       matchNumber: competitionMatch.matchNumber,
       roundNumber: competitionRound.roundNumber,
+      roundName: competitionRound.name,
       roundType: competitionRound.type,
       team1Id: competitionMatch.team1Id,
       team1PartnerId: competitionMatch.team1PartnerId,
@@ -4905,7 +4927,9 @@ export async function getCompetitionSchedule(
       ? await db
           .select({
             id: competitionTeam.id,
+            slug: competitionTeam.slug,
             name: competitionTeam.name,
+            shortName: competitionTeam.shortName,
             hasLogo: competitionTeam.hasLogo,
             logoVersion: competitionTeam.logoVersion,
           })
@@ -4914,6 +4938,19 @@ export async function getCompetitionSchedule(
       : [];
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const teamNames = new Map(teams.map((t) => [t.id, t.name]));
+  const sideTeams = (...ids: (string | null)[]): CompetitionScheduleTeam[] =>
+    sideTeamIds(...ids).flatMap((id) => {
+      const t = teamMap.get(id);
+      if (!t) return [];
+      return [
+        {
+          slug: t.slug,
+          name: t.name,
+          shortName: t.shortName,
+          logoUrl: t.hasLogo ? getTeamLogoUrl(t.id, t.logoVersion) : null,
+        },
+      ];
+    });
 
   // Fetch all game assignments with actual scores
   const matchIds = matchRows.map((m) => m.matchId);
@@ -4921,6 +4958,7 @@ export async function getCompetitionSchedule(
     .select({
       matchId: competitionMatchGame.matchId,
       gameNumber: competitionMatchGame.gameNumber,
+      gameSlug: sql<string>`concat(${center.countryCode}::text, '-', ${center.siteCode}::text, '-', to_char(${game.startTime}, 'YYYYMMDDHH24MISS'))`,
       actualStartTime: game.startTime,
       team1Score: sql<
         number | null
@@ -4931,12 +4969,14 @@ export async function getCompetitionSchedule(
     })
     .from(competitionMatchGame)
     .innerJoin(game, eq(game.id, competitionMatchGame.gameId))
+    .innerJoin(center, eq(center.id, game.centerId))
     .leftJoin(sql`competition_game_side t1`, sql`t1.id = ${competitionMatchGame.team1GameTeamId}`)
     .leftJoin(sql`competition_game_side t2`, sql`t2.id = ${competitionMatchGame.team2GameTeamId}`)
     .where(inArray(competitionMatchGame.matchId, matchIds));
 
   // Index assignments by matchId + gameNumber
   type AssignmentData = {
+    gameSlug: string;
     actualStartTime: Date;
     team1Score: number | null;
     team2Score: number | null;
@@ -4944,6 +4984,7 @@ export async function getCompetitionSchedule(
   const assignmentMap = new Map<string, AssignmentData>();
   for (const a of assignments) {
     assignmentMap.set(`${a.matchId}:${a.gameNumber}`, {
+      gameSlug: a.gameSlug,
       actualStartTime: a.actualStartTime,
       team1Score: a.team1Score,
       team2Score: a.team2Score,
@@ -4963,6 +5004,8 @@ export async function getCompetitionSchedule(
       m.team1Id && team1?.hasLogo ? getTeamLogoUrl(m.team1Id, team1.logoVersion) : null;
     const team2LogoUrl =
       m.team2Id && team2?.hasLogo ? getTeamLogoUrl(m.team2Id, team2.logoVersion) : null;
+    const team1Teams = m.team1Id ? sideTeams(m.team1Id, m.team1PartnerId, m.team1Partner2Id) : [];
+    const team2Teams = m.team2Id ? sideTeams(m.team2Id, m.team2PartnerId, m.team2Partner2Id) : [];
 
     for (const gameNumber of [1, 2] as const) {
       const scheduled = gameNumber === 1 ? m.game1ScheduledStartTime : m.game2ScheduledStartTime;
@@ -4976,6 +5019,14 @@ export async function getCompetitionSchedule(
 
       entries.push({
         gameName: `${roundPrefix} M${m.matchNumber} G${gameNumber}`,
+        roundNumber: m.roundNumber,
+        roundName: m.roundName,
+        roundType: m.roundType,
+        matchNumber: m.matchNumber,
+        gameNumber,
+        gameSlug: actual?.gameSlug ?? null,
+        team1Teams,
+        team2Teams,
         team1Name,
         team2Name,
         team1LogoUrl,

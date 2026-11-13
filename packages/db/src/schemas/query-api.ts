@@ -414,7 +414,7 @@ export type GameDetailRequest = z.infer<typeof GameDetailRequestSchema>;
 
 const competitionOptions = {
   include_schedule:
-    "Every scheduled or played game (SM5) or half (Laserball) with both teams and scores, finals included. Default false.",
+    "Every scheduled or played game (SM5) or half (Laserball), finals included: round and match numbers, each side's teams (two for a trios side, three for duos), scores, and the game slug once played. Games not yet played have null actual_start_time, scores and game_slug. Default false.",
   include_rosters: "Each team's players. Default false.",
 };
 
