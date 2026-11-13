@@ -499,10 +499,69 @@ Competition schedule (rounds/matches), keyed by competition slug. Backed by
 `getCompetitionSchedule` in `packages/db/src/queries/competition-tournament.ts`. `404` if the slug
 doesn't match a competition.
 
+An array with one entry per game slot, ordered by scheduled start time, unscheduled entries last.
+A slot with neither a scheduled time nor an assigned game is left out.
+
+```jsonc
+[
+  {
+    // syracuse_trios_2026: a trios side is two teams
+    "gameName": "R1 M1 G1",
+    "roundNumber": 1,
+    "roundName": "Day 1",
+    "roundType": "pool", // pool | split-pool | wildcard | finals
+    "matchNumber": 1,
+    "gameNumber": 1, // 1 or 2
+    "gameSlug": "4-23-20261102154552", // null until played — see GET /api/games/[slug]
+    "team1Teams": [
+      {
+        "slug": "boob",
+        "name": "Baden's Overly Optimistic Buddies",
+        "shortName": "BOOB",
+        "logoUrl": null,
+      },
+      { "slug": "fbf", "name": "Fireball Friends", "shortName": "FBF", "logoUrl": "https://…" },
+    ],
+    "team2Teams": [
+      {
+        "slug": "dbk",
+        "name": "Death By Budder Knife",
+        "shortName": "DBK",
+        "logoUrl": "https://…",
+      },
+      { "slug": "sex", "name": "Still Expendable", "shortName": "SEx", "logoUrl": null },
+    ],
+    "team1Name": "Baden's Overly Optimistic Buddies & Fireball Friends",
+    "team2Name": "Death By Budder Knife & Still Expendable",
+    "team1LogoUrl": null,
+    "team2LogoUrl": "https://…",
+    "scheduledStartTime": "2026-11-02T15:00:00.000Z", // center-local wall clock, despite the Z
+    "actualStartTime": "2026-11-02T15:45:52.000Z", // null until played
+    "team1Score": 41172, // null until played
+    "team2Score": 11229,
+    "scoreDifferential": 29943,
+  },
+]
+```
+
+- **Games not yet played** have a `scheduledStartTime` and null `actualStartTime`, `gameSlug`,
+  `team1Score`, `team2Score` and `scoreDifferential`. Once a game is assigned, `gameSlug` is the
+  key for [`GET /api/games/[slug]`](#get-apigamesslug) and `/api/games/[slug]/stats`.
+- **`team1Teams` / `team2Teams`** are the competition teams on each side. Most competitions have
+  one per side; a **trios** side has two (two trios of three players) and a **duos** side three,
+  playing together as one team in the game (see [Competition_Structure.md](Competition_Structure.md#trios-competitions)). The
+  first entry is the match's primary slot. `slug` matches `teamSlug` in the standings. Empty while
+  a side is still TBD (e.g. finals before seeding), when the name is `"TBD"`.
+- `team1Name` / `team2Name` are the side's team names joined with `&`, and `team1LogoUrl` /
+  `team2LogoUrl` are the primary team's logo; both predate the `*Teams` arrays.
+- Timestamps are stored as center-local wall-clock time and serialized with a `Z` suffix that
+  does not mean UTC.
+
 For a **Laserball** competition the entries come from `getLbCompetitionSchedule` in
 `packages/db/src/queries/competition-laserball.ts`: one per **half** rather than per game slot, named
 `R1 M5 H1`, `R1 M5 H2`, then `R1 M5 OT1`, `OT2`… for overtime halves (`Finals M5 H1` in a finals
-round). Halves 1 and 2 take the match's two scheduled start times; overtime halves have none. The
+round), with `halfNumber` (3 and up for overtime) in place of `gameNumber` and always one team per
+`*Teams` array. Halves 1 and 2 take the match's two scheduled start times; overtime halves have none. The
 score fields are goals: `team1Goals`, `team2Goals` and `goalDifferential` in place of
 `team1Score`, `team2Score` and `scoreDifferential`. Ordering and the skipping of halves with
 neither a scheduled time nor a game match the SM5 route.

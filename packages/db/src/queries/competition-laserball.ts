@@ -40,7 +40,11 @@ import {
   type LbTeamStats,
 } from "../lib/lb-match-points";
 import { getTeamLogoUrl } from "../lib/team-logos";
-import { getCompetitionTeamAdjustments, type CompetitionRoundType } from "./competition-tournament";
+import {
+  getCompetitionTeamAdjustments,
+  type CompetitionRoundType,
+  type CompetitionScheduleTeam,
+} from "./competition-tournament";
 import { linkLbMatch } from "./lb-match";
 import { enqueueMatchGame } from "./notifications";
 
@@ -927,6 +931,17 @@ export async function restampLbMercenariesForTeam(competitionTeamId: string): Pr
 /** One half of a match, the Laserball counterpart of SM5's CompetitionScheduleEntry. */
 export type LbCompetitionScheduleEntry = {
   gameName: string;
+  roundNumber: number;
+  roundName: string;
+  roundType: CompetitionRoundType;
+  matchNumber: number;
+  /** 1 and 2 are the regulation halves; 3 and up are overtime halves (OT1, OT2…). */
+  halfNumber: number;
+  /** Public game slug once the half is played; null while it is still to be played. */
+  gameSlug: string | null;
+  /** Always one team, or empty while the side is TBD — same shape as the SM5 schedule. */
+  team1Teams: CompetitionScheduleTeam[];
+  team2Teams: CompetitionScheduleTeam[];
   team1Name: string;
   team2Name: string;
   team1LogoUrl: string | null;
@@ -963,6 +978,8 @@ export async function getLbCompetitionSchedule(
     const roundPrefix = m.roundType === "finals" ? "Finals" : `R${m.roundNumber}`;
     const logo = (t: LbCompetitionMatchTeam | null) =>
       t?.hasLogo ? getTeamLogoUrl(t.id, t.logoVersion) : null;
+    const sideTeams = (t: LbCompetitionMatchTeam | null): CompetitionScheduleTeam[] =>
+      t ? [{ slug: t.slug, name: t.name, shortName: t.shortName, logoUrl: logo(t) }] : [];
     const slot = scheduled.get(m.matchId);
     const halfNumbers = new Set([1, 2, ...m.halves.map((h) => h.half)]);
 
@@ -981,6 +998,14 @@ export async function getLbCompetitionSchedule(
       const team2Goals = half?.team2Goals ?? null;
       entries.push({
         gameName: `${roundPrefix} M${m.matchNumber} ${halfNumber > 2 ? `OT${halfNumber - 2}` : `H${halfNumber}`}`,
+        roundNumber: m.roundNumber,
+        roundName: m.roundName,
+        roundType: m.roundType,
+        matchNumber: m.matchNumber,
+        halfNumber,
+        gameSlug: half?.gameSlug ?? null,
+        team1Teams: sideTeams(m.team1),
+        team2Teams: sideTeams(m.team2),
         team1Name: m.team1?.name ?? "TBD",
         team2Name: m.team2?.name ?? "TBD",
         team1LogoUrl: logo(m.team1),

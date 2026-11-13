@@ -1160,13 +1160,22 @@ Query parameters: `include_schedule` and `include_rosters`, as `true`/`false`, b
     "schedule": [
       {
         "game_name": "Finals M18 G2",
+        "round_number": 4,
+        "round_name": "Finals",
+        "round_type": "finals",
+        "match_number": 18,
+        "game_number": 2, // half_number for Laserball
+        "game_slug": "4-23-20260718153102", // null until played
+        "team1_teams": [{ "slug": "syra", "name": "Hidden Valley Sanch", "short_name": "SYRA" }],
+        "team2_teams": [{ "slug": "utah", "name": "Utah Heatseekers", "short_name": "UTAH" }],
         "team1_name": "Hidden Valley Sanch",
         "team2_name": "Utah Heatseekers",
         "scheduled_start_time": "2026-07-18T15:50:00",
         "actual_start_time": "2026-07-18T15:31:02", // null until played
-        "team1_score": 41200,
+        "team1_score": 41200, // null until played
         "team2_score": 39560,
         "score_differential": 1640,
+        "web_url": "https://lfstats.com/games/4-23-20260718153102", // null until played
       },
     ],
     "teams": [
@@ -1198,8 +1207,13 @@ Query parameters: `include_schedule` and `include_rosters`, as `true`/`false`, b
   record, not necessarily the winner. Every team response carries a warning saying so. To answer
   "who won", pass `include_schedule` and read the finals games.
 - **`schedule`** lists every scheduled or played game (SM5) or half (Laserball), finals included,
-  in scheduled order with unscheduled entries last. Laserball entries carry `team1_goals`,
-  `team2_goals` and `goal_differential` in place of the score fields.
+  in scheduled order with unscheduled entries last. An entry not yet played has a
+  `scheduled_start_time` and null `actual_start_time`, `game_slug`, `web_url` and scores.
+  `team1_teams`/`team2_teams` list the competition teams on each side — one team, or two for a
+  trios side and three for duos — with `slug` matching the standings' `team_slug`; empty while a side is
+  TBD. `team1_name`/`team2_name` are those names joined with `&`. Laserball entries carry
+  `half_number` in place of `game_number`, and `team1_goals`, `team2_goals` and
+  `goal_differential` in place of the score fields.
 - **`teams`** lists each team's rostered players, mercenaries flagged. Player pictures are never
   included.
 - `include_schedule` and `include_rosters` are ignored, with a warning, for a competition with no
