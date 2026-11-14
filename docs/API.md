@@ -825,17 +825,17 @@ row a `POST` with those values would have created or updated. Only the video id 
 Omitting `ipl_id` means the game-level video specifically, never "this video for any player"; to
 remove a POV link, pass the `ipl_id` it was posted with.
 
-**Only videos with `source: "api"` can be removed this way.** Keys are global, so letting one
-delete links an admin added on the game page would put hand-curated videos within reach of any
-tool for any center. Those are removed from the game page's Videos tab instead. Any `video:write`
-key can remove any API-sourced video, not only the ones it posted.
+Any `video:write` key can remove any video, whatever its `source` and whichever key posted it —
+the same reach `POST` with `overwrite: true` already has. This matters when a tool posts a video
+someone already added on the game page: the dedup hands back that `admin` row, and the tool must
+be able to unlink it later.
 
 | Status | Meaning                                                                                                   |
 | ------ | --------------------------------------------------------------------------------------------------------- |
 | `204`  | Removed; no body                                                                                          |
 | `400`  | No target, both forms mixed, or an unparseable `youtube_url`                                              |
 | `401`  | Missing, unknown, or revoked API key                                                                      |
-| `403`  | Key lacks `video:write`, or the video was added on the game page                                          |
+| `403`  | Key lacks `video:write`                                                                                   |
 | `404`  | No such video (including an `id` that isn't a UUID), game not found, or `ipl_id` didn't play in that game |
 
 Deleting an already-deleted video is a `404`, so a retry after a lost response should treat

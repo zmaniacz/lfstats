@@ -10,7 +10,7 @@ import {
   getGameSlugById,
   getGameVideos,
   getScorecardPlayerIdByIplId,
-  removeApiGameVideo,
+  removeGameVideoById,
 } from "@lfstats/db";
 import { revalidatePath } from "next/cache";
 import { parseYoutubeLink } from "@/lib/youtube";
@@ -239,14 +239,9 @@ export async function DELETE(request: Request) {
     }
   }
 
-  const result = await removeApiGameVideo(id);
-  if (!result.ok) {
-    return result.reason === "not_api"
-      ? NextResponse.json(
-          { error: "This video was added on the game page and can only be removed there" },
-          { status: 403 },
-        )
-      : NextResponse.json({ error: "Video not found" }, { status: 404 });
+  const result = await removeGameVideoById(id);
+  if (!result) {
+    return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }
 
   await revalidateGamePage(result.gameId, result.gameType);
