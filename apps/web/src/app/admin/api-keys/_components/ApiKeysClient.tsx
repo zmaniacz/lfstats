@@ -31,8 +31,8 @@ import type { ApiKeyListing, ApiKeyScope } from "@lfstats/db";
 const SCOPE_OPTIONS: { scope: ApiKeyScope; label: string; description: string }[] = [
   {
     scope: "video:write",
-    label: "Post videos",
-    description: "Attach game and POV video links (POST /api/videos).",
+    label: "Manage videos",
+    description: "Attach, update and remove game and POV video links (POST/DELETE /api/videos).",
   },
   {
     scope: "query:read",

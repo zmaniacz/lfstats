@@ -148,38 +148,31 @@ export async function findGameVideoId(
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * The API's delete. API keys are global, so a key may only remove links that
- * came in through the API — admin-added videos are curated by hand on the game
- * page and stay out of an external tool's reach.
+ * The API's delete. Any `video:write` key can remove any video, whatever its
+ * `source` — the same reach `POST` with `overwrite` already has. A tool that
+ * posts a video someone already added on the game page gets that row back from
+ * the dedup, and must be able to unlink it later.
  *
- * Returns the game so the caller can revalidate its page. A malformed id is
- * reported as not found rather than reaching Postgres as an invalid uuid.
+ * Returns the game so the caller can revalidate its page, or null when there is
+ * no such video. A malformed id is reported as not found rather than reaching
+ * Postgres as an invalid uuid.
  */
-export async function removeApiGameVideo(
+export async function removeGameVideoById(
   videoId: string,
-): Promise<
-  { ok: true; gameId: string; gameType: string } | { ok: false; reason: "not_found" | "not_api" }
-> {
-  if (!UUID_RE.test(videoId)) return { ok: false, reason: "not_found" };
+): Promise<{ gameId: string; gameType: string } | null> {
+  if (!UUID_RE.test(videoId)) return null;
 
-  const [row] = await db
-    .select({ source: gameVideo.source, gameId: gameVideo.gameId, gameType: game.type })
-    .from(gameVideo)
-    .innerJoin(game, eq(game.id, gameVideo.gameId))
-    .where(eq(gameVideo.id, videoId));
-
-  if (!row) return { ok: false, reason: "not_found" };
-  if (row.source !== "api") return { ok: false, reason: "not_api" };
-
-  // source is re-checked in the delete itself, so nothing slips through between
-  // the read and the write.
   const [deleted] = await db
     .delete(gameVideo)
-    .where(and(eq(gameVideo.id, videoId), eq(gameVideo.source, "api")))
-    .returning({ id: gameVideo.id });
+    .where(eq(gameVideo.id, videoId))
+    .returning({ gameId: gameVideo.gameId });
+  if (!deleted) return null;
 
-  if (!deleted) return { ok: false, reason: "not_found" };
-  return { ok: true, gameId: row.gameId, gameType: row.gameType };
+  const [row] = await db
+    .select({ gameType: game.type })
+    .from(game)
+    .where(eq(game.id, deleted.gameId));
+  return { gameId: deleted.gameId, gameType: row!.gameType };
 }
 
 /**
