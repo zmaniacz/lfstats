@@ -34,7 +34,7 @@ import {
   type NotificationMessage,
   type PushRecipient,
 } from "@lfstats/db";
-import webpush, { WebPushError } from "web-push";
+import { sendNotification, setVapidDetails, WebPushError } from "web-push";
 
 const POLL_MS = 5_000;
 const PRUNE_MS = 3_600_000;
@@ -58,7 +58,7 @@ async function sendOne(
   retried = false,
 ): Promise<SendResult> {
   try {
-    await webpush.sendNotification(
+    await sendNotification(
       { endpoint: recipient.endpoint, keys: { p256dh: recipient.p256dh, auth: recipient.auth } },
       JSON.stringify(message),
       { TTL: ttl, urgency: "high", timeout: SEND_TIMEOUT_MS },
@@ -358,7 +358,7 @@ export async function runNotificationDispatcher(signal: AbortSignal): Promise<vo
     console.log("Notification dispatcher disabled: VAPID keys are not set");
     return;
   }
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
   console.log("Notification dispatcher started");
 
   let lastPrune = 0;
