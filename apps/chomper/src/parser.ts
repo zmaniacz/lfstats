@@ -432,9 +432,25 @@ function parseLine2(fields: string[], columns: string[]): ParsedTeam {
 
 function parseLine3(fields: string[], columns: string[]): ParsedEntity {
   // [3, time, id, type, desc, team, level, category, ?battlesuit, ?memberId]
-  const getValue = makeColReader(fields, columns);
-
   const id = fields[2] ?? "";
+
+  // TDF is tab-delimited with no escaping, so a tab inside the codename (desc)
+  // splits it into two fields and shifts every later column by one: team,
+  // level, category, battlesuit and memberId would all silently read their
+  // neighbour's value. Extra fields beyond the declared schema are the only
+  // signal, so reject rather than ingest a misaligned row. Fewer fields is
+  // tolerated (trailing optional columns may be omitted).
+  const extra = fields.length - 1 - columns.length;
+  if (columns.length > 0 && extra > 0) {
+    // desc is field 4; if the extras came from it, it spans fields 4..4+extra.
+    const suspectDesc = fields.slice(4, 5 + extra).join("\\t");
+    throw new RejectionError(
+      `Line 3 entity ${id} has ${extra} more field(s) than its schema declares ` +
+        `(tab in codename "${suspectDesc}"?)`,
+    );
+  }
+
+  const getValue = makeColReader(fields, columns);
   return {
     time: parseInt(fields[1] ?? "0", 10),
     id,

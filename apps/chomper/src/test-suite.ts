@@ -84,6 +84,35 @@ function looksLikeHtml(buf: Buffer): boolean {
   }
 }
 
+// A tab inside a codename splits line 3's desc field and shifts every later
+// column; the parser must reject the row rather than read misaligned values.
+{
+  const tdf = (desc: string): Buffer =>
+    Buffer.from(
+      ";3/entity-start\ttime\tid\ttype\tdesc\tteam\tlevel\tcategory\tbattlesuit\tmemberId\r\n" +
+        `3\t0\t#abc\tplayer\t${desc}\t0\t0\t3\tSuit\t123\r\n`,
+      "utf16le",
+    );
+  const rejectsWith = (desc: string): string | null => {
+    try {
+      parseTdf(tdf(desc));
+    } catch (err) {
+      if (err instanceof RejectionError) return err.message;
+    }
+    return null;
+  };
+  const tabbed = rejectsWith("Foo\tBar");
+  const plain = rejectsWith("Foo Bar");
+  if (tabbed === null || !tabbed.includes("#abc")) {
+    console.error(`FAIL [line 3 field count] tab in codename was not rejected`);
+    process.exit(1);
+  }
+  if (plain !== null) {
+    console.error(`FAIL [line 3 field count] valid codename was rejected: ${plain}`);
+    process.exit(1);
+  }
+}
+
 console.log(`Running ingest on ${entries.length} TDF files...\n`);
 
 let passed = 0;
